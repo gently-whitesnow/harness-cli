@@ -1,3 +1,5 @@
 .agents
 .claude
 skills-lock.json
+bin/
+obj/
