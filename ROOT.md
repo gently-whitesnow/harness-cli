@@ -12,6 +12,8 @@ later CI. Reusable engineering rules live in executable gates, not in agent pros
     - `Checks/DotNet/` — .NET surface discovery and the SDK-backed format, build and test gates.
     - `Checks/Web/` — web surface discovery, package-manager selection, and the gates that
       run the repository's own format, lint, typecheck, test and build scripts.
+    - `Checks/Maintainability/` — the lexical C# reader (masking, declarations) and the
+      advisory hotspot metrics measured from it.
   - `Git/` — Git evidence: tracked entries, file modes, symbolic link targets.
   - `Processes/` — external command invocation with an argument vector, never a shell.
 - `tests/Harness.Tests` — acceptance tests that drive the compiled executable.
@@ -48,6 +50,10 @@ Use `harness check --skip dotnet.test` for the fast loop.
 - A quality command the repository does not have is a readiness gap: visible in the
   report, never a pass, never a violation, and never synthesized by the harness. Gates
   run commands the repository already declares, and only ones that verify rather than fix.
+- Heuristic analysis is advisory and names exactly what it measured. A metric never
+  borrows a stronger word than its formula earns, `explain` states the formula and its
+  limits, and the report stays bounded: the worst subjects per metric plus a count of the
+  rest, never the repository inventory.
 - External tools localize their output. Any tool whose output is read as evidence is
   invoked with its language pinned, so findings do not depend on the caller's locale.
 - The harness observes. It never edits tracked content, installs a toolchain, or changes

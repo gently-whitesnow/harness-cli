@@ -36,9 +36,9 @@ internal static class UsageText
         foreach (var check in checks)
         {
             text.Append("  ")
-                .Append(check.Id.PadRight(14))
+                .Append(check.Id.PadRight(24))
                 .Append("group ")
-                .Append(check.Group.PadRight(8))
+                .Append(check.Group.PadRight(16))
                 .Append(check.Summary)
                 .Append('\n');
         }

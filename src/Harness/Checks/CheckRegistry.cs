@@ -1,4 +1,5 @@
 using Harness.Checks.DotNet;
+using Harness.Checks.Maintainability;
 using Harness.Checks.Web;
 
 namespace Harness.Checks;
@@ -9,6 +10,7 @@ internal static class CheckRegistry
     public static readonly IReadOnlyList<IRepositoryCheck> All =
     [
         new DocumentationPolicyCheck(),
+        new MaintainabilityCheck(),
         new DotNetFormatCheck(),
         new DotNetBuildCheck(),
         new DotNetTestCheck(),
