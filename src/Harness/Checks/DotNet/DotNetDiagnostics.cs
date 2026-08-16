@@ -1,0 +1,154 @@
+using System.Text.RegularExpressions;
+using Harness.Processes;
+
+namespace Harness.Checks.DotNet;
+
+/// <summary>
+/// Turns SDK output into located findings. The SDK already reports where a problem is;
+/// this reads that back rather than restating "the build failed", so a reader can go
+/// straight to the file. Output that cannot be located is still reported, bounded, against
+/// the target that produced it — an unparsed failure is never downgraded to a pass.
+/// </summary>
+internal static partial class DotNetDiagnostics
+{
+    /// <summary>Enough located findings to act on; more of the same does not change the next step.</summary>
+    private const int FindingLimit = 20;
+
+    /// <summary>
+    /// MSBuild and `dotnet format` diagnostics. Both shapes occur: a diagnostic inside a
+    /// file carries a position — "path(line,col): error CODE: message" — while one about
+    /// the project as a whole, such as a restore failure, carries none.
+    /// </summary>
+    [GeneratedRegex(
+        @"^(?<path>[^\s(][^(:]*?)(?:\((?<line>\d+)(?:,\d+)?\))?\s*:\s*error\s+"
+            + @"(?<code>[A-Za-z0-9_]+):\s*(?<message>[^\r\n]*)$",
+        RegexOptions.Multiline)]
+    private static partial Regex ErrorDiagnostic { get; }
+
+    /// <summary>A test the runner reported as failed, for example "  Failed Widget.Size [3 ms]".</summary>
+    [GeneratedRegex(@"^\s*(?:Failed|failed)\s+(?<name>[^\s\[][^\[\r\n]*?)\s*(?:\[[^\]]*\])?$", RegexOptions.Multiline)]
+    private static partial Regex FailedTest { get; }
+
+    /// <summary>
+    /// Why a non-zero exit says nothing about the repository. NuGet's NU1xxx codes cover
+    /// package resolution and feed access: an unreachable feed, an unauthenticated feed and
+    /// a lock file the harness must not update all land here. That evidence is uncertain,
+    /// and uncertain evidence must not become a repository violation.
+    /// </summary>
+    public static string? RestoreFailure(ProcessResult run)
+    {
+        var restore = ErrorDiagnostic.Matches(Diagnostics(run))
+            .Select(match => match.Groups["code"].Value)
+            .Where(code => code.StartsWith("NU", StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        if (restore.Count == 0)
+        {
+            return null;
+        }
+
+        return $"`{run.DisplayCommand}` could not restore packages ({string.Join(", ", restore)}): "
+            + $"{Excerpt(run)}. This is an environment prerequisite, not repository content.";
+    }
+
+    public static IReadOnlyList<Finding> Locate(string rootPath, string target, ProcessResult run)
+    {
+        var findings = CompilerDiagnostics(rootPath, run);
+        return findings.Count > 0 ? findings : [Unlocated(target, run)];
+    }
+
+    public static IReadOnlyList<Finding> LocateFailedTests(string rootPath, string target, ProcessResult run)
+    {
+        // A test project that fails to compile reports compiler diagnostics, not failed tests.
+        var compilation = CompilerDiagnostics(rootPath, run);
+        if (compilation.Count > 0)
+        {
+            return compilation;
+        }
+
+        var failures = Collect(
+            FailedTest.Matches(Diagnostics(run)),
+            _ => target,
+            match => "failing test: " + match.Groups["name"].Value.Trim());
+
+        return failures.Count > 0 ? failures : [Unlocated(target, run)];
+    }
+
+    private static List<Finding> CompilerDiagnostics(string rootPath, ProcessResult run)
+        => Collect(
+            ErrorDiagnostic.Matches(Diagnostics(run)),
+            match => Location(rootPath, match),
+            match => match.Groups["code"].Value + ": " + match.Groups["message"].Value.Trim());
+
+    /// <summary>The file the SDK blamed, with its position when the diagnostic has one.</summary>
+    private static string Location(string rootPath, Match match)
+    {
+        var path = Relative(rootPath, match.Groups["path"].Value.Trim());
+        var line = match.Groups["line"];
+        return line.Success ? path + ":" + line.Value : path;
+    }
+
+    /// <summary>
+    /// The SDK splits diagnostics across both streams inconsistently, so evidence is read
+    /// from the two of them together.
+    /// </summary>
+    private static string Diagnostics(ProcessResult run)
+        => run.StandardOutput + '\n' + run.StandardError;
+
+    private static List<Finding> Collect(
+        MatchCollection matches,
+        Func<Match, string> location,
+        Func<Match, string> message)
+        => matches
+            .Select(match => new Finding(FindingSeverity.Blocking, location(match), message(match)))
+            .DistinctBy(finding => (finding.Location, finding.Message))
+            .Take(FindingLimit)
+            .ToList();
+
+    /// <summary>
+    /// A non-zero exit the harness could not attribute to a location. The diagnostic text
+    /// is preserved so the reader is not left with an unexplained failure.
+    /// </summary>
+    private static Finding Unlocated(string target, ProcessResult run)
+        => new(
+            FindingSeverity.Blocking,
+            target,
+            $"`{run.DisplayCommand}` exited with {run.ExitCode}: {Excerpt(run)}");
+
+    private static string Excerpt(ProcessResult run)
+    {
+        const int limit = 400;
+
+        var text = string.Join(
+            " | ",
+            Diagnostics(run)
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(line => line.Contains("error", StringComparison.OrdinalIgnoreCase)
+                    || line.Contains("failed", StringComparison.OrdinalIgnoreCase))
+                .Distinct(StringComparer.Ordinal)
+                .Take(3));
+
+        if (text.Length == 0)
+        {
+            return "no diagnostic output";
+        }
+
+        return text.Length <= limit ? text : text[..limit] + "…";
+    }
+
+    /// <summary>
+    /// The SDK reports absolute paths. Reporting them repository-relative keeps findings
+    /// comparable with the rest of the run and short enough to read.
+    /// </summary>
+    private static string Relative(string rootPath, string path)
+    {
+        if (!Path.IsPathRooted(path))
+        {
+            return path.Replace('\\', '/');
+        }
+
+        var relative = Path.GetRelativePath(rootPath, path).Replace('\\', '/');
+        return relative.StartsWith("..", StringComparison.Ordinal) ? path : relative;
+    }
+}

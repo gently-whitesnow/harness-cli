@@ -11,7 +11,8 @@ internal sealed record GateReport(
     CheckOutcome Outcome,
     IReadOnlyList<Finding> Findings,
     TimeSpan Duration,
-    string? IncompleteReason);
+    string? OutcomeReason,
+    IReadOnlyList<ExecutedCommand> Commands);
 
 /// <summary>Everything a caller needs to render a run and choose an exit code.</summary>
 /// <param name="EvidenceDuration">Cost of collecting the repository inventory shared by all gates.</param>
@@ -87,7 +88,7 @@ internal static class GateEngine
             var stopwatch = Stopwatch.StartNew();
             var evaluation = IsSelected(check, only, skip)
                 ? Evaluate(check, repository)
-                : new CheckEvaluation(CheckOutcome.Skipped, [], null);
+                : new CheckEvaluation(CheckOutcome.Skipped, [], null, []);
             stopwatch.Stop();
 
             gates.Add(new GateReport(
@@ -96,7 +97,8 @@ internal static class GateEngine
                 evaluation.Outcome,
                 evaluation.Findings,
                 stopwatch.Elapsed,
-                evaluation.IncompleteReason));
+                evaluation.OutcomeReason,
+                evaluation.Commands));
         }
 
         return new RunReport(repository.RootPath, gates, ToolError: null, repository.ReadDuration);

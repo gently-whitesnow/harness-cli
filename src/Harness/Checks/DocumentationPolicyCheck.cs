@@ -16,22 +16,6 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 
     private static readonly string[] AgentEntryPoints = ["AGENTS.md", "CLAUDE.md"];
 
-    private static readonly HashSet<string> ExcludedDirectories = new(StringComparer.Ordinal)
-    {
-        "node_modules",
-        "vendor",
-        "third_party",
-        "bin",
-        "obj",
-        "dist",
-        "build",
-        "out",
-        "target",
-        "coverage",
-        ".venv",
-        "site-packages",
-    };
-
     public string Id => "docs.policy";
 
     public string Group => "docs";
@@ -64,13 +48,6 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
         => path is RootDocument or ReadmeDocument
             || AgentEntryPoints.Contains(path, StringComparer.Ordinal)
             || path.StartsWith(AdrDirectory, StringComparison.Ordinal);
-
-    /// <summary>
-    /// Generated, vendored and build-output locations. Tracked Markdown there describes
-    /// someone else's code, so it is not the repository's documentation policy problem.
-    /// </summary>
-    private static bool IsExcludedLocation(string path)
-        => path.Split('/').Any(segment => ExcludedDirectories.Contains(segment));
 
     /// <summary>
     /// One evaluation of one repository: the tracked inventory, the findings collected so
@@ -140,7 +117,9 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
         {
             foreach (var entry in repository.TrackedEntries)
             {
-                if (!IsMarkdown(entry.Path) || IsAllowed(entry.Path) || IsExcludedLocation(entry.Path))
+                if (!IsMarkdown(entry.Path)
+                    || IsAllowed(entry.Path)
+                    || RepositoryLocations.IsGenerated(entry.Path))
                 {
                     continue;
                 }

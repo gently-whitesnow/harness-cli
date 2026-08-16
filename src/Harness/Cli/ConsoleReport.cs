@@ -36,17 +36,36 @@ internal static class ConsoleReport
                 .Append(FormatDuration(gate.Duration))
                 .Append(")\n");
 
-            if (gate.IncompleteReason is not null)
+            if (gate.OutcomeReason is not null)
             {
-                text.Append("      ").Append(gate.IncompleteReason).Append('\n');
+                text.Append("      ").Append(gate.OutcomeReason).Append('\n');
             }
 
+            AppendCommands(text, gate.Commands);
             AppendFindings(text, gate.Findings);
         }
 
         text.Append("\n  git evidence  (").Append(FormatDuration(report.EvidenceDuration)).Append(")\n");
         text.Append("\nRun `harness explain <check-id>` for rationale and remediation.\n");
         return text.ToString();
+    }
+
+    /// <summary>
+    /// Every command a gate ran, so a reader can reproduce the failure outside the harness
+    /// and see what the gate actually cost.
+    /// </summary>
+    private static void AppendCommands(StringBuilder text, IReadOnlyList<ExecutedCommand> commands)
+    {
+        foreach (var command in commands)
+        {
+            text.Append("      ran        ")
+                .Append(command.DisplayCommand)
+                .Append("  exit ")
+                .Append(command.ExitCode)
+                .Append("  (")
+                .Append(FormatDuration(command.Duration))
+                .Append(")\n");
+        }
     }
 
     /// <summary>
@@ -100,6 +119,7 @@ internal static class ConsoleReport
             CheckOutcome.Passed => "passed",
             CheckOutcome.Failed => "failed",
             CheckOutcome.Skipped => "skipped",
+            CheckOutcome.NotApplicable => "not applicable",
             _ => "incomplete",
         };
 

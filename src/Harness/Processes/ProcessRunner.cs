@@ -23,7 +23,15 @@ internal static class ProcessRunner
     /// <summary>Diagnostic output beyond this is not useful in a report and is discarded.</summary>
     private const int DiagnosticLimit = 4000;
 
-    public static ProcessResult Run(string executable, IReadOnlyList<string> arguments, string workingDirectory)
+    /// <param name="environment">
+    /// Variables set for the child only. Callers that read a tool's output use this to pin
+    /// what the tool emits, so evidence does not depend on the developer's locale.
+    /// </param>
+    public static ProcessResult Run(
+        string executable,
+        IReadOnlyList<string> arguments,
+        string workingDirectory,
+        IReadOnlyDictionary<string, string>? environment = null)
     {
         var display = executable + " " + string.Join(' ', arguments);
         var startInfo = new ProcessStartInfo(executable)
@@ -37,6 +45,11 @@ internal static class ProcessRunner
         foreach (var argument in arguments)
         {
             startInfo.ArgumentList.Add(argument);
+        }
+
+        foreach (var (name, value) in environment ?? new Dictionary<string, string>())
+        {
+            startInfo.Environment[name] = value;
         }
 
         var stopwatch = Stopwatch.StartNew();

@@ -1,0 +1,16 @@
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+charset = utf-8
+
+[*.{csproj,slnx,props,targets,json,yml,yaml}]
+indent_size = 2
+
+[*.cs]
+# A braced case block already carries its own indentation; indenting its contents
+# again buries the code that matters two levels deep.
+csharp_indent_case_contents_when_block = false

@@ -1,4 +1,5 @@
 using Harness.Git;
+using Harness.Processes;
 
 namespace Harness.Checks;
 
@@ -12,6 +13,12 @@ internal enum CheckOutcome
 
     /// <summary>The check was excluded by selection and reports no evidence.</summary>
     Skipped,
+
+    /// <summary>
+    /// The repository does not have the stack this check is about. Distinct from a failure
+    /// to execute, so a heterogeneous repository stays understandable.
+    /// </summary>
+    NotApplicable,
 
     /// <summary>The check could not be completed reliably.</summary>
     Incomplete,
@@ -29,22 +36,38 @@ internal enum FindingSeverity
 /// <param name="Location">Repository-relative path the finding is about.</param>
 internal sealed record Finding(FindingSeverity Severity, string Location, string Message);
 
+/// <summary>One external command a check ran, as a reader can reproduce and cost it.</summary>
+internal sealed record ExecutedCommand(string DisplayCommand, int ExitCode, TimeSpan Duration)
+{
+    public static ExecutedCommand From(ProcessResult result)
+        => new(result.DisplayCommand, result.ExitCode, result.Duration);
+}
+
 /// <summary>What a check concluded, before the engine adds timing and identity.</summary>
+/// <param name="OutcomeReason">Why the check is incomplete or not applicable; absent otherwise.</param>
+/// <param name="Commands">External commands the check ran, in the order it ran them.</param>
 internal sealed record CheckEvaluation(
     CheckOutcome Outcome,
     IReadOnlyList<Finding> Findings,
-    string? IncompleteReason)
+    string? OutcomeReason,
+    IReadOnlyList<ExecutedCommand> Commands)
 {
-    public static CheckEvaluation From(IReadOnlyList<Finding> findings)
+    public static CheckEvaluation From(
+        IReadOnlyList<Finding> findings,
+        IReadOnlyList<ExecutedCommand>? commands = null)
         => new(
             findings.Any(finding => finding.Severity == FindingSeverity.Blocking)
                 ? CheckOutcome.Failed
                 : CheckOutcome.Passed,
             findings,
-            IncompleteReason: null);
+            OutcomeReason: null,
+            commands ?? []);
 
-    public static CheckEvaluation Incomplete(string reason)
-        => new(CheckOutcome.Incomplete, [], reason);
+    public static CheckEvaluation Incomplete(string reason, IReadOnlyList<ExecutedCommand>? commands = null)
+        => new(CheckOutcome.Incomplete, [], reason, commands ?? []);
+
+    public static CheckEvaluation NotApplicable(string reason)
+        => new(CheckOutcome.NotApplicable, [], reason, []);
 }
 
 /// <summary>A check as the engine sees it: identity, applicability and evaluation.</summary>
