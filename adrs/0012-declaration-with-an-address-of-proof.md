@@ -2,8 +2,8 @@
 
 ## Status
 
-Accepted. Заменяет [ADR-0005](0005-capability-evidence-vocabulary.md): capability больше не
-выводится из распознанной evidence и не описывается словарём из пяти слов.
+Superseded by [ADR-0014](0014-frame-answers-are-self-reported.md). Ранее заменил
+[ADR-0005](0005-capability-evidence-vocabulary.md).
 
 ## Context
 

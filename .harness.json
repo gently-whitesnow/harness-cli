@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "declarations": {
+  "version": 2,
+  "answers": {
     "tests.unit": {
       "present": false,
       "reason": "ADR-0001: единственный тестовый шов — скомпилированный процесс CLI, поэтому юнит-тестов на internal-типы здесь нет намеренно"

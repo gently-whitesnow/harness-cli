@@ -43,46 +43,7 @@ public static class Fixtures
     public static RepositoryFixture WithRawFrame(string frame)
         => WithoutAFrame().WriteFile(".harness.json", frame).Commit();
 
-    /// <summary>The compliant shape plus one tracked .NET project of the given content.</summary>
-    public static RepositoryFixture DotNet(Frame frame, string projectPath, string project)
-        => Compliant(frame)
-            .WriteFile(".gitignore", "bin/\nobj/\n")
-            .WriteFile(projectPath, project)
-            .Commit();
-
-    /// <summary>The compliant shape plus one tracked web manifest.</summary>
-    public static RepositoryFixture Web(Frame frame, string manifest)
-        => Compliant(frame)
-            .WriteFile(".gitignore", "node_modules/\n")
-            .WriteFile("package.json", manifest)
-            .Commit();
-
-    public const string LibraryProject =
-        """
-        <Project Sdk="Microsoft.NET.Sdk">
-          <PropertyGroup>
-            <TargetFramework>net10.0</TargetFramework>
-          </PropertyGroup>
-        </Project>
-
-        """;
-
-    public const string TestProject =
-        """
-        <Project Sdk="Microsoft.NET.Sdk">
-          <PropertyGroup>
-            <TargetFramework>net10.0</TargetFramework>
-          </PropertyGroup>
-          <ItemGroup>
-            <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-            <PackageReference Include="xunit" Version="2.9.3" />
-          </ItemGroup>
-        </Project>
-
-        """;
-
-    /// <summary>A test project that hosts the application in process rather than mocking it.</summary>
-    public const string IntegrationTestProject =
+    public const string PreviouslyRecognizedIntegrationProject =
         """
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
@@ -96,40 +57,7 @@ public static class Fixtures
 
         """;
 
-    /// <summary>A project that references a library built to assert structure.</summary>
-    public const string ArchitectureTestProject =
-        """
-        <Project Sdk="Microsoft.NET.Sdk">
-          <PropertyGroup>
-            <TargetFramework>net10.0</TargetFramework>
-          </PropertyGroup>
-          <ItemGroup>
-            <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-            <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
-          </ItemGroup>
-        </Project>
-
-        """;
-
-    public const string WebManifest =
-        """
-        {
-          "name": "web-fixture",
-          "private": true,
-          "version": "0.0.0",
-          "scripts": {
-            "format:check": "prettier --check .",
-            "lint": "eslint .",
-            "typecheck": "tsc --noEmit",
-            "test": "vitest run",
-            "build": "vite build"
-          }
-        }
-
-        """;
-
-    /// <summary>A manifest that declares an end-to-end runner and a boundary linter.</summary>
-    public const string WebManifestWithIntegrationAndArchitectureEvidence =
+    public const string PreviouslyRecognizedWebManifest =
         """
         {
           "name": "web-fixture",

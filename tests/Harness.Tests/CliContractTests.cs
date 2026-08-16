@@ -90,7 +90,7 @@ public sealed class CliContractTests
             repository.Path,
             "check",
             "--skip",
-            "harness,docs,maintainability,duplication,declaration");
+            "harness,docs,maintainability,duplication,frame");
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("PASS"), run.Output);

@@ -3,16 +3,15 @@ using System.Text;
 namespace Harness.Tests;
 
 /// <summary>
-/// Builds a `.harness.json` for a fixture. Tests state only the part of the frame they are
-/// about; everything else stays at the honest default of a repository that owns nothing,
-/// so a test never passes because an unrelated question happened to be answered.
+/// Builds a complete `.harness.json` for a fixture. Every question has a self-reported
+/// answer unless a test deliberately removes or corrupts one.
 /// </summary>
 public sealed class Frame
 {
     private static readonly string[] Questions =
         ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck"];
 
-    private readonly Dictionary<string, string> declarations = Questions.ToDictionary(
+    private readonly Dictionary<string, string> answers = Questions.ToDictionary(
         question => question,
         _ => """{ "present": false, "reason": "fixture owns nothing here" }""",
         StringComparer.Ordinal);
@@ -21,32 +20,30 @@ public sealed class Frame
 
     private readonly List<string> suppressions = [];
 
-    /// <summary>A frame that answers "no" to every question, which no fixture evidence refutes.</summary>
+    /// <summary>A frame that answers "no" to every question.</summary>
     public static Frame Answering() => new();
 
-    /// <summary>Answers one question with a tracked address.</summary>
-    public Frame At(string question, params string[] paths)
+    public Frame Located(string question, params string[] paths)
         => With(question, $$"""{ "paths": [{{string.Join(", ", paths.Select(Quote))}}] }""");
 
-    /// <summary>Answers one question with a claim and no address.</summary>
-    public Frame Claiming(string question, string reason = "no single file carries it")
+    public Frame Present(string question, string reason = "no single file carries it")
         => With(question, $$"""{ "present": true, "reason": {{Quote(reason)}} }""");
 
-    /// <summary>Declares one question inapplicable to this repository.</summary>
+    /// <summary>Answers that one question does not apply to this repository.</summary>
     public Frame NotApplicable(string question, string reason = "no stack for it")
         => With(question, $$"""{ "applicable": false, "reason": {{Quote(reason)}} }""");
 
     /// <summary>Leaves one question out of the frame entirely.</summary>
     public Frame Silent(string question)
     {
-        declarations.Remove(question);
+        answers.Remove(question);
         return this;
     }
 
-    /// <summary>Writes a declaration verbatim, including one the reader should reject.</summary>
+    /// <summary>Writes one answer verbatim, including one the reader should reject.</summary>
     public Frame With(string question, string body)
     {
-        declarations[question] = body;
+        answers[question] = body;
         return this;
     }
 
@@ -65,10 +62,10 @@ public sealed class Frame
 
     public override string ToString()
     {
-        var text = new StringBuilder("{\n  \"version\": 1,\n  \"declarations\": {\n");
+        var text = new StringBuilder("{\n  \"version\": 2,\n  \"answers\": {\n");
         text.Append(string.Join(
             ",\n",
-            declarations.Select(entry => $"    {Quote(entry.Key)}: {entry.Value}")));
+            answers.Select(entry => $"    {Quote(entry.Key)}: {entry.Value}")));
         text.Append("\n  }");
 
         if (policy.Count > 0)

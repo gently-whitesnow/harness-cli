@@ -1,4 +1,3 @@
-using Harness.Checks.Surfaces;
 using Harness.Config;
 using Harness.Git;
 
@@ -16,17 +15,16 @@ internal enum CheckOutcome
     Skipped,
 
     /// <summary>
-    /// The repository does not have the stack this check is about, or has declared the
+    /// The repository does not have the stack this check is about, or has answered the
     /// question inapplicable. Distinct from a failure to execute, so a heterogeneous
     /// repository stays understandable.
     /// </summary>
     NotApplicable,
 
     /// <summary>
-    /// The repository has not shown what the check asks for: a question of the frame left
-    /// unanswered, or answered without an address the harness can verify. Missing
-    /// machinery is neither a code violation nor permission for the harness to invent an
-    /// answer, so it is reported as its own visible state that never reads as a pass.
+    /// The repository reports that expected machinery is absent. Absence is neither a code
+    /// violation nor a pass, so it remains visible without changing the exit code unless
+    /// repository policy makes the check required.
     /// </summary>
     ReadinessGap,
 
@@ -86,23 +84,12 @@ internal sealed record CheckEvaluation(
 }
 
 /// <summary>
-/// What one check may read while it runs: the Git evidence every check shares, and the
-/// repository's own harness frame. The two are not the same kind of thing and are never
-/// treated as such — evidence is what the repository is, the frame is what it claims — so a
-/// check that finds them disagreeing reports the disagreement rather than resolving it.
+/// What one check may read while it runs: the shared Git inventory and the repository's
+/// self-reported harness frame. Individual checks decide which source is in their scope.
 /// </summary>
 internal sealed class CheckContext(GitRepository repository, HarnessConfig? config, string? configFailure)
 {
-    private DotNetSurface? dotnet;
-    private WebSurface? web;
-
     public GitRepository Repository { get; } = repository;
-
-    /// <summary>What Git says the .NET side is, discovered once for the whole run.</summary>
-    public DotNetSurface DotNet => dotnet ??= DotNetSurface.Discover(Repository);
-
-    /// <summary>What Git says the web side is, discovered once for the whole run.</summary>
-    public WebSurface Web => web ??= WebSurface.Discover(Repository);
 
     /// <summary>The repository's frame, or null when it has none the harness could read.</summary>
     public HarnessConfig? Config { get; } = config;

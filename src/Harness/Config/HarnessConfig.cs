@@ -5,26 +5,26 @@ using Harness.Git;
 namespace Harness.Config;
 
 /// <summary>How a repository answered one question of the harness frame.</summary>
-internal enum DeclarationKind
+internal enum FrameAnswerKind
 {
-    /// <summary>Declared with an address the harness can hold against Git evidence.</summary>
-    Proven,
+    /// <summary>Present, with one or more navigation addresses.</summary>
+    Located,
 
-    /// <summary>Declared present with a justification, but without an address to verify.</summary>
-    Asserted,
+    /// <summary>Present, with a reason instead of a single address.</summary>
+    Present,
 
-    /// <summary>Declared absent with a justification.</summary>
+    /// <summary>Answered absent with a justification.</summary>
     Absent,
 
-    /// <summary>Declared to be a question this repository is not answerable for.</summary>
+    /// <summary>Answered as a question that does not apply to this repository.</summary>
     NotApplicable,
 }
 
-/// <param name="Paths">Repository-relative addresses that prove the declaration; empty unless proven.</param>
-/// <param name="Reason">Why, in the repository's own words. Required for every form but <see cref="DeclarationKind.Proven"/>.</param>
-internal sealed record Declaration(
+/// <param name="Paths">Repository-relative navigation addresses; empty unless located.</param>
+/// <param name="Reason">Why, in the repository's own words. Required for every form but <see cref="FrameAnswerKind.Located"/>.</param>
+internal sealed record FrameAnswer(
     string Key,
-    DeclarationKind Kind,
+    FrameAnswerKind Kind,
     IReadOnlyList<string> Paths,
     string? Reason);
 
@@ -50,45 +50,42 @@ internal enum CheckPolicy
 internal sealed record Suppression(string Check, string Location, string Reason);
 
 /// <summary>
-/// The repository's own statement of the harness frame: what quality machinery it owns and
-/// where the proof of that lives, how strictly each check is treated, and which findings it
-/// has consciously accepted and why.
+/// The repository's own answers to the harness frame, how strictly each check is treated,
+/// and which findings it has consciously accepted and why.
 /// </summary>
 /// <remarks>
-/// The config declares policy and answers; it never supplies facts. Every address it gives
-/// is checked against Git-tracked evidence, and a declaration that contradicts what Git
-/// shows is a violation rather than an override. That division is what keeps one file from
-/// becoming a way to declare a repository green.
+/// Answers are self-reported. The harness validates that every question was answered and
+/// reports the answer, but it neither inspects an address nor searches Git for a contradiction.
 /// </remarks>
 internal sealed class HarnessConfig
 {
     public const string FileName = ".harness.json";
 
-    private static readonly string[] TopLevelKeys = ["version", "declarations", "policy", "suppress"];
+    private static readonly string[] TopLevelKeys = ["version", "answers", "policy", "suppress"];
 
     /// <summary>The only schema version this harness reads.</summary>
-    private const int SupportedVersion = 1;
+    private const int SupportedVersion = 2;
 
     private HarnessConfig(
-        IReadOnlyDictionary<string, Declaration> declarations,
+        IReadOnlyDictionary<string, FrameAnswer> answers,
         IReadOnlyDictionary<string, CheckPolicy> policy,
         IReadOnlyList<Suppression> suppressions)
     {
-        Declarations = declarations;
+        Answers = answers;
         Policy = policy;
         Suppressions = suppressions;
     }
 
-    /// <summary>Answers keyed by declaration key, without the `declaration.` prefix.</summary>
-    public IReadOnlyDictionary<string, Declaration> Declarations { get; }
+    /// <summary>Complete answers keyed by question, without the `frame.` prefix.</summary>
+    public IReadOnlyDictionary<string, FrameAnswer> Answers { get; }
 
     /// <summary>Policy keyed by check or group identifier.</summary>
     public IReadOnlyDictionary<string, CheckPolicy> Policy { get; }
 
     public IReadOnlyList<Suppression> Suppressions { get; }
 
-    public Declaration? Declared(string key)
-        => Declarations.TryGetValue(key, out var declaration) ? declaration : null;
+    public FrameAnswer? Answered(string key)
+        => Answers.TryGetValue(key, out var answer) ? answer : null;
 
     /// <summary>
     /// Policy for one check. A check identifier outranks its group, so a repository can set
@@ -165,18 +162,17 @@ internal sealed class HarnessConfig
             }
         }
 
-        if (root.TryGetProperty("version", out var version))
+        if (!root.TryGetProperty("version", out var version)
+            || version.ValueKind != JsonValueKind.Number
+            || version.GetInt32() != SupportedVersion)
         {
-            if (version.ValueKind != JsonValueKind.Number || version.GetInt32() != SupportedVersion)
-            {
-                return Invalid($"'version' must be {SupportedVersion}");
-            }
+            return Invalid($"'version' must be {SupportedVersion}");
         }
 
-        var (declarations, declarationFailure) = ReadDeclarations(root, DeclarationKeys(checks));
-        if (declarations is null)
+        var (answers, answerFailure) = ReadAnswers(root, QuestionKeys(checks));
+        if (answers is null)
         {
-            return (null, declarationFailure);
+            return (null, answerFailure);
         }
 
         var selectors = Selectors(checks);
@@ -189,42 +185,45 @@ internal sealed class HarnessConfig
         var (suppressions, suppressionFailure) = ReadSuppressions(root, selectors);
         return suppressions is null
             ? (null, suppressionFailure)
-            : (new HarnessConfig(declarations, policy, suppressions), null);
+            : (new HarnessConfig(answers, policy, suppressions), null);
     }
 
-    private static (Dictionary<string, Declaration>? Declarations, string? Failure) ReadDeclarations(
+    private static (Dictionary<string, FrameAnswer>? Answers, string? Failure) ReadAnswers(
         JsonElement root,
         IReadOnlyList<string> knownKeys)
     {
-        var declarations = new Dictionary<string, Declaration>(StringComparer.Ordinal);
-        if (!root.TryGetProperty("declarations", out var declared))
+        if (!root.TryGetProperty("answers", out var declared))
         {
-            return (declarations, null);
+            return (null, Failure("'answers' must be an object containing every question this harness asks"));
         }
 
         if (declared.ValueKind != JsonValueKind.Object)
         {
-            return (null, Failure("'declarations' must be an object"));
+            return (null, Failure("'answers' must be an object"));
         }
 
+        var answers = new Dictionary<string, FrameAnswer>(StringComparer.Ordinal);
         foreach (var property in declared.EnumerateObject())
         {
             if (!knownKeys.Contains(property.Name, StringComparer.Ordinal))
             {
-                return (null, Failure($"'declarations.{property.Name}' is not a question this harness asks "
+                return (null, Failure($"'answers.{property.Name}' is not a question this harness asks "
                     + $"(expected {string.Join(", ", knownKeys)})"));
             }
 
-            var (declaration, failure) = ReadDeclaration(property.Name, property.Value);
-            if (declaration is null)
+            var (answer, failure) = ReadAnswer(property.Name, property.Value);
+            if (answer is null)
             {
                 return (null, failure);
             }
 
-            declarations[property.Name] = declaration;
+            answers[property.Name] = answer;
         }
 
-        return (declarations, null);
+        var missing = knownKeys.Where(key => !answers.ContainsKey(key)).ToList();
+        return missing.Count == 0
+            ? (answers, null)
+            : (null, Failure($"'answers' does not answer {string.Join(", ", missing.Select(key => $"'answers.{key}'"))}"));
     }
 
     /// <summary>
@@ -232,9 +231,9 @@ internal sealed class HarnessConfig
     /// gives an address and also claims absence has not answered, it has contradicted
     /// itself, and the harness will not choose which half to believe.
     /// </summary>
-    private static (Declaration? Declaration, string? Failure) ReadDeclaration(string key, JsonElement value)
+    private static (FrameAnswer? Answer, string? Failure) ReadAnswer(string key, JsonElement value)
     {
-        var at = $"declarations.{key}";
+        var at = $"answers.{key}";
         if (value.ValueKind != JsonValueKind.Object)
         {
             return (null, Failure($"'{at}' must be an object"));
@@ -270,7 +269,7 @@ internal sealed class HarnessConfig
 
             return string.IsNullOrWhiteSpace(reason)
                 ? (null, Failure($"'{at}' needs a non-empty 'reason' saying why the question does not apply"))
-                : (new Declaration(key, DeclarationKind.NotApplicable, [], reason), null);
+                : (new FrameAnswer(key, FrameAnswerKind.NotApplicable, [], reason.Trim()), null);
         }
 
         if (hasPaths && hasPresent)
@@ -283,7 +282,7 @@ internal sealed class HarnessConfig
             var (addresses, failure) = ReadPaths(at, paths);
             return addresses is null
                 ? (null, failure)
-                : (new Declaration(key, DeclarationKind.Proven, addresses, reason), null);
+                : (new FrameAnswer(key, FrameAnswerKind.Located, addresses, reason?.Trim()), null);
         }
 
         if (!hasPresent || present.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
@@ -300,11 +299,11 @@ internal sealed class HarnessConfig
         }
 
         return (
-            new Declaration(
+            new FrameAnswer(
                 key,
-                present.ValueKind == JsonValueKind.True ? DeclarationKind.Asserted : DeclarationKind.Absent,
+                present.ValueKind == JsonValueKind.True ? FrameAnswerKind.Present : FrameAnswerKind.Absent,
                 [],
-                reason),
+                reason.Trim()),
             null);
     }
 
@@ -440,14 +439,14 @@ internal sealed class HarnessConfig
             ? value.GetString()
             : null;
 
-    /// <summary>Declaration keys are exactly the questions the shipped declaration checks ask.</summary>
-    private static List<string> DeclarationKeys(IReadOnlyList<IRepositoryCheck> checks)
+    /// <summary>Question keys are exactly the suffixes of the shipped frame checks.</summary>
+    private static List<string> QuestionKeys(IReadOnlyList<IRepositoryCheck> checks)
         => checks
-            .Where(check => check.Group == DeclarationGroup)
-            .Select(check => check.Id[(DeclarationGroup.Length + 1)..])
+            .Where(check => check.Group == FrameGroup)
+            .Select(check => check.Id[(FrameGroup.Length + 1)..])
             .ToList();
 
-    public const string DeclarationGroup = "declaration";
+    public const string FrameGroup = "frame";
 
     private static List<string> Selectors(IReadOnlyList<IRepositoryCheck> checks)
         => checks.Select(check => check.Id)
@@ -468,8 +467,8 @@ internal sealed class HarnessConfig
         A minimal .harness.json, committed at the repository root:
 
           {
-            "version": 1,
-            "declarations": {
+            "version": 2,
+            "answers": {
               "tests.unit": { "paths": ["tests/Unit"] },
               "tests.integration": { "present": false, "reason": "no external dependencies yet" },
               "tests.architecture": { "present": false, "reason": "planned" },
@@ -480,6 +479,6 @@ internal sealed class HarnessConfig
             }
           }
 
-        Run `harness explain <check-id>` for what one declaration means and how it is verified.
+        Run `harness explain <check-id>` for what one answer means and how it is reported.
         """;
 }

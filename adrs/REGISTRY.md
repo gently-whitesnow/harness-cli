@@ -17,11 +17,10 @@
   `Failed`, `Skipped`, `NotApplicable`, `ReadinessGap`, `Incomplete`) против трёх кодов
   возврата: `Incomplete` → `2`, `Failed` → `1`, иначе `0`. `NotApplicable` и `ReadinessGap`
   код не меняют, но заголовок отчёта их различает (`PASS WITH GAPS`, `NOTHING VERIFIED`).
-- [ADR-0012](0012-declaration-with-an-address-of-proof.md) — Факт наличия — объявление
-  репозитория в tracked `.harness.json` (`paths`, `present`, `applicable`), а не вывод
-  харнеса. Распознанная evidence только опровергает отрицание и никогда не устанавливает
-  наличие. Строгость задаётся отдельно, через `policy`.
-  Заменяет [ADR-0005](0005-capability-evidence-vocabulary.md).
+- [ADR-0014](0014-frame-answers-are-self-reported.md) — Репозиторий self-reported отвечает
+  на каждый вопрос в tracked `.harness.json`; `paths` — навигация, не доказательство.
+  Харнес валидирует полноту и форму, но не инспектирует ответы и не ищет опровержения в Git.
+  Заменяет [ADR-0012](0012-declaration-with-an-address-of-proof.md).
 - [ADR-0013](0013-a-named-exception-is-written-down-and-printed.md) — Рамка обязательна:
   нет или невалиден `.harness.json` — `Incomplete`. Исключение называет `check`, `location`
   и непустой `reason`, печатается строкой `suppressed`, а протухшее — advisory-находка.

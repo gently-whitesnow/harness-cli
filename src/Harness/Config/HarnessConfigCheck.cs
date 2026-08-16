@@ -4,7 +4,7 @@ namespace Harness.Config;
 
 /// <summary>
 /// Whether the repository has a harness frame at all, and whether it is internally sound.
-/// It runs first because every declaration check reads its result, and it is the one place
+/// It runs first because every frame question reads its result, and it is the one place
 /// a repository that has never seen this tool is told what to write.
 /// </summary>
 internal sealed class HarnessConfigCheck : IRepositoryCheck
@@ -20,32 +20,30 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
         Rationale
           The harness holds the same frame over every repository it is pointed at, and the
           frame is a document the repository owns rather than a flag someone passes. One
-          tracked file therefore decides what this repository claims, how strictly each
-          claim is judged, and which findings it has consciously accepted — and the same
+          tracked file therefore carries its answers, check policy and accepted findings — and the same
           file is what a reviewer, an agent and CI all read.
 
         What it reads
           The tracked {HarnessConfig.FileName} at the repository root, and nothing else. An
-          untracked file does not exist for the harness: what verifies a repository has to
-          travel with it, so every developer, agent and CI job reads the same frame.
+          untracked file does not exist for the harness, so every developer, agent and CI
+          job reads the same frame.
 
         What it accepts
-          version       optional; must be 1.
-          declarations  the repository's answers to the questions the `declaration` checks
-                        ask, keyed without the `declaration.` prefix.
+          version       required; must be 2.
+          answers       one self-reported answer for every `frame` question, keyed without
+                        the `frame.` prefix.
           policy        check or group identifier to `required`, `advisory` or `off`.
           suppress      accepted findings, each naming `check`, `location` and `reason`.
 
         Why it is incomplete rather than a violation
-          Without a readable frame the harness cannot state what this repository claims, so
+          Without a readable frame the harness cannot state what this repository answers, so
           it has proved nothing about it. A run that cannot establish anything is incomplete
           (exit 2), which is distinct from having proved a violation (exit 1).
 
         Remediation
           Commit a {HarnessConfig.FileName} at the repository root and track it. The harness
-          never writes the file and never assumes an answer on the repository's behalf: an
-          unanswered question stays visibly unanswered. Every parse failure names the exact
-          key at fault.
+          never writes the file and never assumes an answer on the repository's behalf.
+          Every missing or malformed answer names the exact key at fault.
 
         {HarnessConfig.Template}
         """;
@@ -59,7 +57,7 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
     {
         var parts = new List<string>
         {
-            $"{config.Declarations.Count} declaration{(config.Declarations.Count == 1 ? "" : "s")}",
+            $"{config.Answers.Count} answer{(config.Answers.Count == 1 ? "" : "s")}",
         };
 
         if (config.Policy.Count > 0)
@@ -72,7 +70,7 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
             parts.Add($"{config.Suppressions.Count} named exception{(config.Suppressions.Count == 1 ? "" : "s")}");
         }
 
-        return $"{HarnessConfig.FileName} declares {string.Join(", ", parts)}. That the frame is well formed is "
-            + "not evidence that its answers are true; each declaration check verifies its own.";
+        return $"{HarnessConfig.FileName} contains {string.Join(", ", parts)}. Answers are self-reported; "
+            + "the harness validates their form and does not fact-check them.";
     }
 }
