@@ -1,4 +1,4 @@
-using Harness.Processes;
+using System.Diagnostics;
 
 namespace Harness.Git;
 
@@ -19,6 +19,13 @@ internal sealed record TrackedEntry(string Path, string Mode, string ObjectId)
 /// </summary>
 internal sealed class GitRepository
 {
+    private sealed record GitResult(
+        int ExitCode,
+        string StandardOutput,
+        string StandardError,
+        TimeSpan Duration,
+        string? Failure);
+
     private readonly Dictionary<string, string> blobs = new(StringComparer.Ordinal);
 
     private GitRepository(string rootPath, IReadOnlyList<TrackedEntry> trackedEntries, TimeSpan readDuration)
@@ -43,7 +50,7 @@ internal sealed class GitRepository
             return (null, $"Path '{path}' does not exist or is not a directory.");
         }
 
-        var topLevel = ProcessRunner.Run("git", ["rev-parse", "--show-toplevel"], path);
+        var topLevel = RunGit(["rev-parse", "--show-toplevel"], path);
         if (topLevel.Failure is not null)
         {
             return (null, topLevel.Failure);
@@ -60,7 +67,7 @@ internal sealed class GitRepository
             return (null, $"Git did not report a repository root for '{path}'.");
         }
 
-        var listing = ProcessRunner.Run("git", ["ls-files", "--stage", "-z"], rootPath);
+        var listing = RunGit(["ls-files", "--stage", "-z"], rootPath);
         if (listing.Failure is not null)
         {
             return (null, listing.Failure);
@@ -114,7 +121,7 @@ internal sealed class GitRepository
             return (cached, null);
         }
 
-        var blob = ProcessRunner.Run("git", ["cat-file", "blob", entry.ObjectId], RootPath);
+        var blob = RunGit(["cat-file", "blob", entry.ObjectId], RootPath);
         if (blob.Failure is not null)
         {
             return (null, blob.Failure);
@@ -151,6 +158,50 @@ internal sealed class GitRepository
         }
 
         return (entries, null);
+    }
+
+    /// <summary>Runs Git directly, without a shell, and captures evidence or a launch failure.</summary>
+    private static GitResult RunGit(IReadOnlyList<string> arguments, string workingDirectory)
+    {
+        var startInfo = new ProcessStartInfo("git")
+        {
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+        };
+
+        foreach (var argument in arguments)
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            using var process = Process.Start(startInfo);
+            if (process is null)
+            {
+                return new GitResult(-1, "", "", stopwatch.Elapsed, "Could not start Git.");
+            }
+
+            var standardOutput = process.StandardOutput.ReadToEndAsync();
+            var standardError = process.StandardError.ReadToEndAsync();
+            process.WaitForExit();
+            stopwatch.Stop();
+
+            return new GitResult(
+                process.ExitCode,
+                standardOutput.Result,
+                standardError.Result,
+                stopwatch.Elapsed,
+                Failure: null);
+        }
+        catch (Exception exception)
+        {
+            stopwatch.Stop();
+            return new GitResult(-1, "", "", stopwatch.Elapsed, $"Could not run Git: {exception.Message}");
+        }
     }
 
     private static string Summarize(string standardError)

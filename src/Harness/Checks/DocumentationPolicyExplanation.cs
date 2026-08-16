@@ -19,7 +19,7 @@ internal static class DocumentationPolicyExplanation
           CLAUDE.md    required tracked Git symbolic link whose direct relative target is ROOT.md.
           README.md    optional root overview, at most {LineLimit} physical lines.
           adrs/**.md   allowed as durable architectural decisions.
-          other *.md   advisory finding; never fails the run in v0.
+          other *.md   blocking violation by default.
 
         Evidence
           Only Git-tracked Markdown is considered, so generated, vendored and build-output
@@ -35,7 +35,9 @@ internal static class DocumentationPolicyExplanation
           Blocking findings: create ROOT.md if it is missing, shorten a document that
           exceeds the line limit, and replace AGENTS.md or CLAUDE.md with a direct relative
           symbolic link, for example `ln -sf ROOT.md AGENTS.md && git add AGENTS.md`.
-          Advisory findings: remove the document, fold its navigation into ROOT.md, or move
-          durable rationale into an ADR under adrs/. The harness never edits documentation.
+          Unexpected Markdown: remove the document, fold its navigation into ROOT.md, move
+          durable rationale into an ADR under adrs/, set `policy.docs.policy` to `advisory`
+          or `off`, or add a named `suppress` exception with a reason. The harness never
+          edits documentation.
         """;
 }

@@ -8,6 +8,32 @@ Standalone CLI, который держит одну и ту же рамку к�
 отвечает на три вопроса: что репозиторий заявляет о своём качестве, подтверждается ли это
 Git, и что показывают измерения, которые в каждом репозитории расходятся.
 
+## Запуск
+
+Из корня этого репозитория (нужен .NET 10 SDK):
+
+```sh
+dotnet run --project src/Harness -- check /path/to/repository
+```
+
+Путь можно не указывать, если проверяется текущий репозиторий. Он должен содержать tracked
+`.harness.json`. Список команд и проверок покажет `harness help`, подробности конкретной
+проверки — `harness explain <check-id>`.
+
+## Установка
+
+Соберите самостоятельный NativeAOT-бинарник и положите его в каталог из `PATH`:
+
+```sh
+dotnet publish src/Harness/Harness.csproj -c Release -r osx-arm64 -o /tmp/harness-publish
+mkdir -p ~/.local/bin
+install -m 755 /tmp/harness-publish/harness ~/.local/bin/harness
+harness check /path/to/repository
+```
+
+Для другой платформы замените `osx-arm64` на подходящий RID, например `linux-x64`,
+`linux-arm64` или `osx-x64`. Собранному бинарнику установленный .NET runtime не нужен.
+
 ## Как это работает
 
 Репозиторий заводит tracked `.harness.json` и отвечает в нём на вопросы рамки. Ответ —

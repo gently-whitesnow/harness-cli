@@ -24,7 +24,8 @@ build spec и tickets жили под `.scratch` и были удалены по
 `AGENTS.md` и `CLAUDE.md` — прямые относительные симлинки на него: цепочка ссылок, битая
 ссылка, абсолютная ссылка и обычный файл различимы, потому что ссылки читаются из индекса
 Git. `README.md` — краткий обзор. Долговременные решения живут в `adrs/`. Прочий tracked
-Markdown даёт advisory-находку.
+Markdown даёт blocking-находку. Репозиторий может осознанно смягчить всю проверку через
+`policy` или принять конкретный путь через именованный `suppress` с обязательной причиной.
 
 Разделение труда между `ROOT.md` и `adrs/`: `ROOT.md` несёт действующее правило в одну
 строку со ссылкой на ADR, ADR несёт контекст, решение и последствия. Правило нужно на
@@ -43,8 +44,8 @@ Markdown даёт advisory-находку.
 
 ### Negative / Risks
 
-- Политика намеренно opinionated и не описывает все экосистемы: `services-platform` хранит
-  ADR и agent skills в других tracked Markdown locations, поэтому получает advisory.
+- Политика намеренно opinionated и не описывает все экосистемы: репозиторий с ADR и agent
+  skills в других tracked Markdown locations должен настроить `policy` или `suppress`.
 - Симлинк читают не все инструменты. services-platform держит `AGENTS.md` и `CLAUDE.md`
   файлами-стабами со ссылкой на `ROOT.md` и получает от `docs.policy` violation.
 - Windows portability симлинков в v0 не решается; первые поддерживаемые среды — macOS и

@@ -35,8 +35,8 @@ Standalone CLI, который держит одну и ту же harness-рам
     - `Checks/Maintainability/` — advisory-метрики hotspot'ов, измеряемые этим ридером.
     - `Checks/Duplication/` — нормализация токенов и построенный на ней advisory-отчёт
       о межфайловых повторах.
-  - `Git/` — evidence из Git: tracked-записи, режимы файлов, цели символических ссылок.
-  - `Processes/` — запуск внешних команд вектором аргументов, никогда не через shell.
+  - `Git/` — безопасный вызов Git без shell и чтение evidence: tracked-записей, режимов
+    файлов и целей символических ссылок.
 - `tests/Harness.Tests` — приёмочные тесты, которые гоняют скомпилированный исполняемый файл.
 - `adrs/` — долговременные решения; правила ниже ссылаются туда за обоснованием.
   Реестр — [`adrs/REGISTRY.md`](adrs/REGISTRY.md), шаблон — `adrs/.template.md`.
@@ -65,5 +65,6 @@ dotnet publish src/Harness/Harness.csproj -c Release -r osx-arm64
 
 `ROOT.md` — единственный источник агентской навигации, не более 150 физических строк.
 `AGENTS.md` и `CLAUDE.md` — прямые относительные симлинки на него. `README.md` — краткий
-обзор. Долговременные решения живут в `adrs/`. Всё остальное advisory.
+обзор. Долговременные решения живут в `adrs/`. Прочий tracked Markdown — нарушение;
+проверку можно смягчить через `policy` или точечно подавить через `suppress`.
 [ADR-0010](adrs/0010-documentation-policy.md)

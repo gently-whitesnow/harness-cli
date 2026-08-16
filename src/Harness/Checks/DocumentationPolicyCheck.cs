@@ -127,7 +127,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
                 }
 
                 findings.Add(new Finding(
-                    FindingSeverity.Advisory,
+                    FindingSeverity.Blocking,
                     entry.Path,
                     "unexpected tracked Markdown; remove it, fold navigation into ROOT.md, "
                         + "or move durable rationale to adrs/"));
