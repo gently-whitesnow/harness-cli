@@ -1,90 +1,88 @@
-# Repository Quality Harness — agent navigation
+# Repository Quality Harness — навигация для агента
 
-Standalone CLI that checks repository quality identically for a human, an agent and
-later CI. Reusable engineering rules live in executable gates, not in agent prose.
+Standalone CLI, который проверяет качество репозитория одинаково для человека, агента и —
+позже — CI. Переиспользуемые инженерные правила живут в исполняемых гейтах, а не в прозе
+инструкций агенту.
 
-## Layout
+## Раскладка
 
-- `src/Harness` — the CLI. NativeAOT, no installed .NET runtime required at use time.
-  - `Cli/` — command line parsing, usage text, concise console report.
-  - `Engine/` — gate engine: selection, ordering, timing, aggregation, exit codes.
-  - `Checks/` — the shipped checks and their `explain` content.
-    - `Checks/DotNet/` — .NET surface discovery and the SDK-backed format, build and test gates.
-    - `Checks/Web/` — web surface discovery, package-manager selection, and the gates that
-      run the repository's own format, lint, typecheck, test and build scripts.
-    - `Checks/CSharp/` — the shared lexical C# reader: which sources are analyzable,
-      masking of comments and literals, and declaration structure.
-    - `Checks/Maintainability/` — the advisory hotspot metrics measured from that reader.
-    - `Checks/Duplication/` — token normalization and the advisory cross-file repetition
-      report built from it.
-    - `Checks/Capabilities/` — the evidence-backed readiness view of the test, integration
-      and architecture capabilities a repository owns.
-  - `Git/` — Git evidence: tracked entries, file modes, symbolic link targets.
-  - `Processes/` — external command invocation with an argument vector, never a shell.
-- `tests/Harness.Tests` — acceptance tests that drive the compiled executable.
-- `.scratch/harness` — temporary build specification and tickets; disposable.
+- `src/Harness` — сам CLI. NativeAOT, установленный .NET runtime в момент использования не нужен.
+  - `Cli/` — разбор командной строки, usage, компактный консольный отчёт.
+  - `Engine/` — движок гейтов: селекция, порядок, тайминг, агрегация, коды возврата.
+  - `Checks/` — поставляемые проверки и их содержимое для `explain`.
+    - `Checks/DotNet/` — обнаружение .NET surface и гейты format, build и test поверх SDK.
+    - `Checks/Web/` — обнаружение web surface, выбор пакетного менеджера и гейты, которые
+      запускают собственные скрипты репозитория: format, lint, typecheck, test, build.
+    - `Checks/CSharp/` — общий лексический ридер C#: какие исходники анализируемы,
+      маскирование комментариев и литералов, структура объявлений.
+    - `Checks/Maintainability/` — advisory-метрики hotspot'ов, измеряемые этим ридером.
+    - `Checks/Duplication/` — нормализация токенов и построенный на ней advisory-отчёт
+      о межфайловых повторах.
+    - `Checks/Capabilities/` — основанная на evidence картина готовности: какими test,
+      integration и architecture capabilities репозиторий владеет.
+  - `Git/` — evidence из Git: tracked-записи, режимы файлов, цели символических ссылок.
+  - `Processes/` — запуск внешних команд вектором аргументов, никогда не через shell.
+- `tests/Harness.Tests` — приёмочные тесты, которые гоняют скомпилированный исполняемый файл.
+- `adrs/` — долговременные решения; правила ниже ссылаются туда за обоснованием.
+  Реестр — [`adrs/REGISTRY.md`](adrs/REGISTRY.md), шаблон — `adrs/.template.md`.
+- `.scratch/harness` — временная спецификация сборки и тикеты; одноразовое.
 
-## Commands
+## Команды
 
 ```sh
-dotnet test                                        # full suite, includes NativeAOT publication
-dotnet build                                       # fast feedback
+dotnet test                                        # полный набор, включая NativeAOT-публикацию
+dotnet build                                       # быстрая обратная связь
 dotnet publish src/Harness/Harness.csproj -c Release -r osx-arm64
 ./src/Harness/bin/Release/net10.0/osx-arm64/publish/harness check
 ```
 
-Checking this repository with its own harness runs the whole suite through `dotnet.test`.
-Use `harness check --skip dotnet.test` for the fast loop.
+Проверка этого репозитория собственным харнесом прогоняет весь набор тестов через
+`dotnet.test`. Для быстрого цикла — `harness check --skip dotnet.test`.
 
-## Rules that matter here
+## Правила
 
-- The compiled CLI process is the only test seam. Internal types are not made public
-  merely to be testable.
-- A check becomes blocking only when it is deterministic, actionable, fast enough for the
-  normal feedback loop, low risk for false positives, and covered by a negative fixture.
-  "Fast enough" bounds analysis the harness owns. A gate that delegates to the
-  repository's own toolchain costs what that toolchain costs; `--skip` shortens the loop
-  explicitly rather than the harness quietly running less than it reports.
-- Uncertain evidence ends the run as incomplete (exit code `2`). It never becomes a pass
-  and never becomes a repository violation.
-- A stack the repository does not have is `not applicable`. That is distinct from a check
-  that failed to execute, and it never reads as a pass.
-- An execution plan is discovered from Git-tracked evidence, never configured and never
-  guessed. Evidence that does not single out one plan is incomplete, not a choice. The
-  caller's environment and global preferences are not repository evidence.
-- A quality command the repository does not have is a readiness gap: visible in the
-  report, never a pass, never a violation, and never synthesized by the harness. Gates
-  run commands the repository already declares, and only ones that verify rather than fix.
-- Capability evidence says what was looked for and what was found, in five words that are
-  not interchangeable: `detected`, `executed`, `not detected`, `unknown`, `not applicable`.
-  Absence of recognized evidence is never reported as absence of the capability, because
-  the recognized-evidence list lives in the harness and is always potentially behind the
-  repository. It is advisory in v0, so a capability that is missing or uncertain is a
-  readiness gap rather than an incomplete run, and readiness is never reduced to a score.
-- Heuristic analysis is advisory and names exactly what it measured. A metric never
-  borrows a stronger word than its formula earns, `explain` states the formula and its
-  limits, and the report stays bounded: the worst subjects per metric plus a count of the
-  rest, never the repository inventory. A heuristic that can be wrong says in `explain`
-  what its false positives look like and when the reader should decline to act.
-- A finding is reported once. Where analysis has an internal window or step, the finding
-  is grown to the whole region it covers before it is reported, so one defect never
-  arrives as the many overlapping units that revealed it.
-- External tools localize their output. Any tool whose output is read as evidence is
-  invoked with its language pinned, so findings do not depend on the caller's locale.
-- The harness observes. It never edits tracked content, installs a toolchain, or changes
-  a lockfile.
-- NativeAOT compatibility is a build invariant: no runtime reflection, no runtime code
-  generation, no dynamically loaded managed plug-ins.
+- Скомпилированный процесс CLI — единственный тестовый шов. Internal-типы не становятся
+  public только ради тестируемости. [ADR-0001](adrs/0001-compiled-cli-as-only-test-seam.md)
+- Проверка становится blocking, только если она детерминирована, actionable, достаточно
+  быстра для обычного цикла, малорискованна по false positive и покрыта негативной
+  фикстурой. [ADR-0002](adrs/0002-when-a-check-becomes-blocking.md)
+- Недостоверная evidence завершает прогон как incomplete, отсутствующий стек — это
+  not applicable, а отсутствующая команда качества — readiness gap. Ни одно из трёх не
+  читается как pass и не становится нарушением репозитория.
+  [ADR-0003](adrs/0003-six-outcomes-three-exit-codes.md)
+- План исполнения выводится из Git-tracked evidence: не конфигурируется и не угадывается.
+  Evidence, которая не выделяет ровно один план, — incomplete, а не выбор. Окружение и
+  глобальные предпочтения вызывающего — не evidence репозитория.
+  [ADR-0004](adrs/0004-execution-plan-from-git-evidence.md)
+- Capability evidence говорит пятью невзаимозаменяемыми словами: `detected`, `executed`,
+  `not detected`, `unknown`, `not applicable`. Отсутствие распознанной evidence — не
+  отсутствие capability, и готовность не сводится к одной оценке.
+  [ADR-0005](adrs/0005-capability-evidence-vocabulary.md)
+- Эвристика advisory и называет ровно то, что измерила: `explain` содержит формулу, её
+  пределы и вид её false positive, а отчёт ограничен худшими субъектами каждой метрики
+  плюс счётчиком остальных. [ADR-0006](adrs/0006-heuristics-are-advisory.md)
+- Находка репортится один раз: там, где у анализа есть внутреннее окно или шаг, находка
+  укрупняется до всего региона, который покрывает.
+  [ADR-0007](adrs/0007-one-finding-one-report.md)
+- Харнес наблюдает: не правит tracked-контент, не ставит toolchain, не меняет lockfile.
+  Гейты запускают команды, которые репозиторий уже объявил, и только те, что проверяют,
+  а не исправляют. [ADR-0008](adrs/0008-the-harness-only-observes.md)
+- Внешние инструменты локализуют вывод, поэтому любой инструмент, чей вывод читается как
+  evidence, вызывается с зафиксированным языком: находки не зависят от локали вызывающего.
+- Совместимость с NativeAOT — инвариант сборки: без рефлексии в рантайме, без генерации
+  кода в рантайме, без динамически загружаемых managed-плагинов.
+  [ADR-0009](adrs/0009-nativeaot-as-a-build-invariant.md)
 
-## Exit codes
+## Коды возврата
 
-- `0` — every selected applicable blocking check completed and passed. Advisory findings
-  and readiness gaps may still be present; the report says so instead of reading `PASS`.
-- `1` — a selected applicable blocking check proved a violation.
-- `2` — verification could not be completed reliably.
+- `0` — каждая выбранная применимая blocking-проверка отработала и прошла. Advisory-находки
+  и readiness gaps при этом могут быть: отчёт скажет об этом вместо `PASS`.
+- `1` — выбранная применимая blocking-проверка доказала нарушение.
+- `2` — проверку не удалось выполнить достоверно.
 
-## Documentation policy
+## Документация
 
-`ROOT.md` is the single source of agent navigation and is limited to 150 physical lines.
-`AGENTS.md` and `CLAUDE.md` are direct relative symbolic links to it. `README.md` is a
-short overview. Durable decisions belong under `adrs/`. Everything else is advisory.
+`ROOT.md` — единственный источник агентской навигации, не более 150 физических строк.
+`AGENTS.md` и `CLAUDE.md` — прямые относительные симлинки на него. `README.md` — краткий
+обзор. Долговременные решения живут в `adrs/`. Всё остальное advisory.
+[ADR-0010](adrs/0010-documentation-policy.md)
