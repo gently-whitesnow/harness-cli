@@ -31,14 +31,19 @@ internal static class UsageText
     /// </summary>
     public static string For(IReadOnlyList<IRepositoryCheck> checks)
     {
+        // Column widths follow the identifiers this build actually ships: a fixed width
+        // silently runs a long identifier into the next column, and these lines are parsed.
+        var identifier = checks.Max(check => check.Id.Length) + 2;
+        var group = checks.Max(check => check.Group.Length) + 2;
+
         var text = new StringBuilder(Usage);
         text.Append("\nChecks\n");
         foreach (var check in checks)
         {
             text.Append("  ")
-                .Append(check.Id.PadRight(24))
+                .Append(check.Id.PadRight(identifier))
                 .Append("group ")
-                .Append(check.Group.PadRight(16))
+                .Append(check.Group.PadRight(group))
                 .Append(check.Summary)
                 .Append('\n');
         }

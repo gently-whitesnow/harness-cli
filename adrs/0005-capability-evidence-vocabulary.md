@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0012](0012-declaration-with-an-address-of-proof.md). Отложенный здесь
+манифест заведён, и факт наличия capability стал объявлением репозитория, а не выводом из
+распознанной evidence. Отказ от сводной оценки готовности продолжает действовать.
 
 ## Context
 

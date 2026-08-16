@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "declarations": {
+    "tests.unit": {
+      "present": false,
+      "reason": "ADR-0001: единственный тестовый шов — скомпилированный процесс CLI, поэтому юнит-тестов на internal-типы здесь нет намеренно"
+    },
+    "tests.integration": {
+      "paths": ["tests/Harness.Tests"]
+    },
+    "tests.architecture": {
+      "present": false,
+      "reason": "структурные решения держатся ревью ADR, а не исполняемым ассертом; исполняемая проверка — следующий заход вместе со связанностью"
+    },
+    "format": {
+      "paths": [".editorconfig"]
+    },
+    "lint": {
+      "paths": ["src/Harness/Harness.csproj"],
+      "reason": "TreatWarningsAsErrors и AOT-анализаторы включены в самом проекте, отдельного файла правил нет"
+    },
+    "build": {
+      "paths": ["Harness.slnx"]
+    },
+    "typecheck": {
+      "applicable": false,
+      "reason": "нет web-стека; типы этого репозитория проверяет компилятор C# на сборке"
+    }
+  }
+}

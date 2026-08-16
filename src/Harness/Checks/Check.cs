@@ -1,5 +1,6 @@
+using Harness.Checks.Surfaces;
+using Harness.Config;
 using Harness.Git;
-using Harness.Processes;
 
 namespace Harness.Checks;
 
@@ -11,20 +12,21 @@ internal enum CheckOutcome
     /// <summary>The check ran and proved a violation.</summary>
     Failed,
 
-    /// <summary>The check was excluded by selection and reports no evidence.</summary>
+    /// <summary>The check was excluded by selection or by policy and reports no evidence.</summary>
     Skipped,
 
     /// <summary>
-    /// The repository does not have the stack this check is about. Distinct from a failure
-    /// to execute, so a heterogeneous repository stays understandable.
+    /// The repository does not have the stack this check is about, or has declared the
+    /// question inapplicable. Distinct from a failure to execute, so a heterogeneous
+    /// repository stays understandable.
     /// </summary>
     NotApplicable,
 
     /// <summary>
-    /// The repository has the stack this check is about but not the quality command the
-    /// check would run. Missing infrastructure is neither a code violation nor permission
-    /// for the harness to invent a repository-specific command, so it is reported as its
-    /// own visible state that never reads as a pass.
+    /// The repository has not shown what the check asks for: a question of the frame left
+    /// unanswered, or answered without an address the harness can verify. Missing
+    /// machinery is neither a code violation nor permission for the harness to invent an
+    /// answer, so it is reported as its own visible state that never reads as a pass.
     /// </summary>
     ReadinessGap,
 
@@ -44,83 +46,78 @@ internal enum FindingSeverity
 /// <param name="Location">Repository-relative path the finding is about.</param>
 internal sealed record Finding(FindingSeverity Severity, string Location, string Message);
 
-/// <summary>One external command a check ran, as a reader can reproduce and cost it.</summary>
-internal sealed record ExecutedCommand(string DisplayCommand, int ExitCode, TimeSpan Duration)
-{
-    public static ExecutedCommand From(ProcessResult result)
-        => new(result.DisplayCommand, result.ExitCode, result.Duration);
-}
+/// <summary>A finding the repository accepted in writing, and the sentence that accepted it.</summary>
+internal sealed record SuppressedFinding(Finding Finding, Suppression Suppression);
 
-/// <summary>What a check concluded, before the engine adds timing and identity.</summary>
+/// <summary>What a check concluded, before the engine adds timing, policy and identity.</summary>
 /// <param name="OutcomeReason">
 /// What the outcome means for this repository, in one line: why the check is incomplete,
 /// not applicable or a readiness gap, or what a check that passed established and did not.
 /// Absent when the outcome speaks for itself.
 /// </param>
-/// <param name="Commands">External commands the check ran, in the order it ran them.</param>
 internal sealed record CheckEvaluation(
     CheckOutcome Outcome,
     IReadOnlyList<Finding> Findings,
-    string? OutcomeReason,
-    IReadOnlyList<ExecutedCommand> Commands)
+    string? OutcomeReason)
 {
-    public static CheckEvaluation From(
-        IReadOnlyList<Finding> findings,
-        IReadOnlyList<ExecutedCommand>? commands = null)
+    public static CheckEvaluation From(IReadOnlyList<Finding> findings, string? reason = null)
         => new(
             findings.Any(finding => finding.Severity == FindingSeverity.Blocking)
                 ? CheckOutcome.Failed
                 : CheckOutcome.Passed,
             findings,
-            OutcomeReason: null,
-            commands ?? []);
+            reason);
 
     /// <summary>
     /// The check ran, found nothing wrong, and has something the reader still needs to know
     /// about what it did and did not establish.
     /// </summary>
     public static CheckEvaluation Passed(string reason)
-        => new(CheckOutcome.Passed, [], reason, []);
+        => new(CheckOutcome.Passed, [], reason);
 
-    public static CheckEvaluation Incomplete(string reason, IReadOnlyList<ExecutedCommand>? commands = null)
-        => new(CheckOutcome.Incomplete, [], reason, commands ?? []);
+    public static CheckEvaluation Incomplete(string reason)
+        => new(CheckOutcome.Incomplete, [], reason);
 
     public static CheckEvaluation NotApplicable(string reason)
-        => new(CheckOutcome.NotApplicable, [], reason, []);
+        => new(CheckOutcome.NotApplicable, [], reason);
 
     public static CheckEvaluation ReadinessGap(string reason)
-        => new(CheckOutcome.ReadinessGap, [], reason, []);
+        => new(CheckOutcome.ReadinessGap, [], reason);
 }
 
 /// <summary>
-/// What one check may read while it runs: the repository evidence every check shares, and
-/// the outcome of the gates that already completed in this run. The second exists so a
-/// check can tell evidence it merely found from evidence a command actually executed,
-/// without running that command a second time at the reader's expense.
+/// What one check may read while it runs: the Git evidence every check shares, and the
+/// repository's own harness frame. The two are not the same kind of thing and are never
+/// treated as such — evidence is what the repository is, the frame is what it claims — so a
+/// check that finds them disagreeing reports the disagreement rather than resolving it.
 /// </summary>
-internal sealed class CheckContext(GitRepository repository)
+internal sealed class CheckContext(GitRepository repository, HarnessConfig? config, string? configFailure)
 {
-    private readonly Dictionary<string, CheckOutcome> completed = new(StringComparer.Ordinal);
+    private DotNetSurface? dotnet;
+    private WebSurface? web;
 
     public GitRepository Repository { get; } = repository;
 
-    public void Record(string checkId, CheckOutcome outcome) => completed[checkId] = outcome;
+    /// <summary>What Git says the .NET side is, discovered once for the whole run.</summary>
+    public DotNetSurface DotNet => dotnet ??= DotNetSurface.Discover(Repository);
 
-    /// <summary>
-    /// True when the named gate ran in this run and passed. A gate that was skipped,
-    /// declined or never reached is not evidence of anything, so it reads as false.
-    /// </summary>
-    public bool Passed(string checkId)
-        => completed.TryGetValue(checkId, out var outcome) && outcome == CheckOutcome.Passed;
+    /// <summary>What Git says the web side is, discovered once for the whole run.</summary>
+    public WebSurface Web => web ??= WebSurface.Discover(Repository);
+
+    /// <summary>The repository's frame, or null when it has none the harness could read.</summary>
+    public HarnessConfig? Config { get; } = config;
+
+    /// <summary>Why the frame could not be read; null exactly when <see cref="Config"/> is not.</summary>
+    public string? ConfigFailure { get; } = configFailure;
 }
 
 /// <summary>A check as the engine sees it: identity, applicability and evaluation.</summary>
 internal interface IRepositoryCheck
 {
-    /// <summary>Stable identifier; the contract for selection, suppression and review.</summary>
+    /// <summary>Stable identifier; the contract for selection, policy, suppression and review.</summary>
     string Id { get; }
 
-    /// <summary>Group identifier accepted by --only and --skip alongside the check identifier.</summary>
+    /// <summary>Group identifier accepted by --only, --skip, policy and suppression.</summary>
     string Group { get; }
 
     /// <summary>One-line description shown in normal output.</summary>

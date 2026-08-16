@@ -17,20 +17,24 @@
   `Failed`, `Skipped`, `NotApplicable`, `ReadinessGap`, `Incomplete`) против трёх кодов
   возврата: `Incomplete` → `2`, `Failed` → `1`, иначе `0`. `NotApplicable` и `ReadinessGap`
   код не меняют, но заголовок отчёта их различает (`PASS WITH GAPS`, `NOTHING VERIFIED`).
-- [ADR-0005](0005-capability-evidence-vocabulary.md) — Capability описывается пятью
-  невзаимозаменяемыми словами (`detected`, `executed`, `not detected`, `unknown`,
-  `not applicable`). Отрицательный результат — утверждение о том, что искали, а не о
-  репозитории; сводной оценки готовности нет.
+- [ADR-0012](0012-declaration-with-an-address-of-proof.md) — Факт наличия — объявление
+  репозитория в tracked `.harness.json` (`paths`, `present`, `applicable`), а не вывод
+  харнеса. Распознанная evidence только опровергает отрицание и никогда не устанавливает
+  наличие. Строгость задаётся отдельно, через `policy`.
+  Заменяет [ADR-0005](0005-capability-evidence-vocabulary.md).
+- [ADR-0013](0013-a-named-exception-is-written-down-and-printed.md) — Рамка обязательна:
+  нет или невалиден `.harness.json` — `Incomplete`. Исключение называет `check`, `location`
+  и непустой `reason`, печатается строкой `suppressed`, а протухшее — advisory-находка.
 
 ## Что и как запускается
-<!-- Откуда берётся план исполнения и что харнесу разрешено делать -->
+<!-- Что харнесу разрешено делать с репозиторием -->
 
-- [ADR-0004](0004-execution-plan-from-git-evidence.md) — План выводится только из
-  Git-tracked evidence (lockfile, манифест, solution/csproj), без конфигурации и без
-  окружения вызывающего. Evidence, не выделяющая ровно один план, — `Incomplete`.
+- [ADR-0011](0011-the-harness-does-not-run-the-repository-toolchain.md) — Харнес не
+  запускает toolchain репозитория: единственный внешний процесс — `git`. Тесты, сборку и
+  линтеры гоняет CI; харнес держит рамку и считает то, что не воспроизводит чужой пайплайн.
+  Заменяет часть [ADR-0004](0004-execution-plan-from-git-evidence.md).
 - [ADR-0008](0008-the-harness-only-observes.md) — Харнес не правит tracked-контент, не
-  ставит toolchain, не меняет lockfile. Гейт запускает только проверяющую команду;
-  исправляющая (в том числе спрятанная во вложенном скрипте) — readiness gap.
+  ставит toolchain, не меняет lockfile.
 
 ## Анализ и отчёт
 <!-- Как измеряются и как подаются эвристические находки -->
