@@ -5,6 +5,21 @@ using Harness.Processes;
 namespace Harness.Checks.Web;
 
 /// <summary>
+/// The script names the harness recognizes for a role, most explicit first. One list per
+/// role, shared by the gate that runs the script and by the capability reader that treats
+/// the script's existence as evidence, so the two can never come to disagree about what a
+/// test script is called.
+/// </summary>
+internal static class WebScriptNames
+{
+    /// <summary>
+    /// The single-run variants come first: a watch-mode runner would never return, and a
+    /// gate that cannot finish is not a gate.
+    /// </summary>
+    public static readonly IReadOnlyList<string> Test = ["test:ci", "test:run", "test:unit", "test"];
+}
+
+/// <summary>
 /// Shared shape of the web gates: discover the execution plan, decline honestly when the
 /// stack is absent or the evidence is ambiguous, then run one of the repository's own
 /// scripts through its own package manager and translate the exit status. Subclasses
@@ -54,8 +69,10 @@ internal abstract class WebCheck : IRepositoryCheck
     /// <summary>What the gate is looking for, for the readiness gap it reports.</summary>
     protected abstract string Capability { get; }
 
-    public CheckEvaluation Evaluate(GitRepository repository)
+    public CheckEvaluation Evaluate(CheckContext context)
     {
+        var repository = context.Repository;
+
         var surface = WebSurface.Discover(repository);
         switch (surface.Kind)
         {
@@ -231,11 +248,7 @@ internal sealed class WebTestCheck : WebCheck
 
     protected override string Capability => "test";
 
-    /// <summary>
-    /// The single-run variants come first: a watch-mode runner would never return, and a
-    /// gate that cannot finish is not a gate.
-    /// </summary>
-    protected override IReadOnlyList<string> ScriptNames => ["test:ci", "test:run", "test:unit", "test"];
+    protected override IReadOnlyList<string> ScriptNames => WebScriptNames.Test;
 }
 
 internal sealed class WebBuildCheck : WebCheck

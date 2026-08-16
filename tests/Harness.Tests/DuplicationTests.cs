@@ -13,6 +13,24 @@ public sealed class DuplicationTests
 {
     private const string Check = "duplication.csharp";
 
+    /// <summary>
+    /// The worst subjects the gate lists, plus the one line that counts the rest. What must
+    /// not grow with the repository is the findings; the report as a whole is bounded
+    /// separately, by the density budget every run shares.
+    /// </summary>
+    private const int ShownFindingBudget = 6;
+
+    private static int ReportedFindings(CliRun run)
+        => run.Output.Split('\n').Count(line => line.Contains("advisory", StringComparison.Ordinal));
+
+    private static void AssertBoundedOutput(CliRun run, string repositoryPath)
+    {
+        Assert.True(ReportedFindings(run) <= ShownFindingBudget, run.Output);
+
+        var lines = run.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.True(lines.Length <= HarnessCli.ConciseLineBudget(repositoryPath), run.Output);
+    }
+
     [Fact]
     public void A_repository_without_csharp_sources_is_not_applicable()
     {
@@ -235,8 +253,7 @@ public sealed class DuplicationTests
 
         var run = HarnessCli.Run(committed.Path, "check", "--only", Check);
 
-        var lines = run.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.True(lines.Length <= 20, run.Output);
+        AssertBoundedOutput(run, committed.Path);
         Assert.True(run.OutputContains("24"), run.Output);
     }
 
@@ -255,8 +272,7 @@ public sealed class DuplicationTests
 
         var run = HarnessCli.Run(committed.Path, "check", "--only", Check);
 
-        var lines = run.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.True(lines.Length <= 20, run.Output);
+        AssertBoundedOutput(run, committed.Path);
         Assert.True(run.OutputContains("8 repeated blocks"), run.Output);
     }
 

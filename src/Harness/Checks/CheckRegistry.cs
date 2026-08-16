@@ -1,3 +1,4 @@
+using Harness.Checks.Capabilities;
 using Harness.Checks.DotNet;
 using Harness.Checks.Duplication;
 using Harness.Checks.Maintainability;
@@ -21,5 +22,11 @@ internal static class CheckRegistry
         new WebTypecheckCheck(),
         new WebTestCheck(),
         new WebBuildCheck(),
+
+        // The capability readers run last: what they may say about a repository depends on
+        // which gates already ran over the same evidence in this run.
+        new TestCapabilityCheck(),
+        new IntegrationCapabilityCheck(),
+        new ArchitectureCapabilityCheck(),
     ];
 }

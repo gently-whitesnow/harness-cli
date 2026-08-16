@@ -56,8 +56,10 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
 
     public string Explanation => MaintainabilityExplanation.Text;
 
-    public CheckEvaluation Evaluate(GitRepository repository)
+    public CheckEvaluation Evaluate(CheckContext context)
     {
+        var repository = context.Repository;
+
         var (sources, failure) = CSharpSources.Discover(repository);
         if (failure is not null)
         {

@@ -17,6 +17,8 @@ later CI. Reusable engineering rules live in executable gates, not in agent pros
     - `Checks/Maintainability/` — the advisory hotspot metrics measured from that reader.
     - `Checks/Duplication/` — token normalization and the advisory cross-file repetition
       report built from it.
+    - `Checks/Capabilities/` — the evidence-backed readiness view of the test, integration
+      and architecture capabilities a repository owns.
   - `Git/` — Git evidence: tracked entries, file modes, symbolic link targets.
   - `Processes/` — external command invocation with an argument vector, never a shell.
 - `tests/Harness.Tests` — acceptance tests that drive the compiled executable.
@@ -53,6 +55,12 @@ Use `harness check --skip dotnet.test` for the fast loop.
 - A quality command the repository does not have is a readiness gap: visible in the
   report, never a pass, never a violation, and never synthesized by the harness. Gates
   run commands the repository already declares, and only ones that verify rather than fix.
+- Capability evidence says what was looked for and what was found, in five words that are
+  not interchangeable: `detected`, `executed`, `not detected`, `unknown`, `not applicable`.
+  Absence of recognized evidence is never reported as absence of the capability, because
+  the recognized-evidence list lives in the harness and is always potentially behind the
+  repository. It is advisory in v0, so a capability that is missing or uncertain is a
+  readiness gap rather than an incomplete run, and readiness is never reduced to a score.
 - Heuristic analysis is advisory and names exactly what it measured. A metric never
   borrows a stronger word than its formula earns, `explain` states the formula and its
   limits, and the report stays bounded: the worst subjects per metric plus a count of the

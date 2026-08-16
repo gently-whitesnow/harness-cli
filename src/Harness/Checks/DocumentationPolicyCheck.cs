@@ -24,8 +24,10 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 
     public string Explanation => DocumentationPolicyExplanation.Text;
 
-    public CheckEvaluation Evaluate(GitRepository repository)
+    public CheckEvaluation Evaluate(CheckContext context)
     {
+        var repository = context.Repository;
+
         var audit = new DocumentationAudit(repository);
 
         audit.RequireRootDocument();

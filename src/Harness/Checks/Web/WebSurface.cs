@@ -26,7 +26,7 @@ internal enum WebSurfaceKind
 /// <param name="ManifestPath">Repository-relative path of the manifest that carries the scripts.</param>
 /// <param name="WorkingDirectory">Absolute directory the package manager is invoked from.</param>
 /// <param name="Scripts">Declared script names and their commands.</param>
-/// <param name="DeclaresDependencies">Whether the manifest declares dependencies that need installing.</param>
+/// <param name="Dependencies">Every package name the manifest declares, in any dependency section.</param>
 /// <param name="Reason">Why the surface is absent or ambiguous; absent when it is present.</param>
 internal sealed record WebSurface(
     WebSurfaceKind Kind,
@@ -34,9 +34,12 @@ internal sealed record WebSurface(
     string ManifestPath,
     string WorkingDirectory,
     IReadOnlyDictionary<string, string> Scripts,
-    bool DeclaresDependencies,
+    IReadOnlySet<string> Dependencies,
     string? Reason)
 {
+    /// <summary>Whether the manifest declares dependencies that need installing.</summary>
+    public bool DeclaresDependencies => Dependencies.Count > 0;
+
     private const string ManifestName = "package.json";
 
     /// <summary>
@@ -141,15 +144,17 @@ internal sealed record WebSurface(
             manifestPath,
             Path.Combine(repository.RootPath, directory),
             manifest.Scripts,
-            manifest.DeclaresDependencies,
+            manifest.Dependencies,
             Reason: null);
     }
 
-    private static WebSurface Absent(string reason)
-        => new(WebSurfaceKind.Absent, "", "", "", new Dictionary<string, string>(), false, reason);
+    private static WebSurface Absent(string reason) => Without(WebSurfaceKind.Absent, reason);
 
-    private static WebSurface Ambiguous(string reason)
-        => new(WebSurfaceKind.Ambiguous, "", "", "", new Dictionary<string, string>(), false, reason);
+    private static WebSurface Ambiguous(string reason) => Without(WebSurfaceKind.Ambiguous, reason);
+
+    /// <summary>A surface with no plan carries no execution detail to report.</summary>
+    private static WebSurface Without(WebSurfaceKind kind, string reason)
+        => new(kind, "", "", "", new Dictionary<string, string>(), new HashSet<string>(StringComparer.Ordinal), reason);
 
     /// <summary>
     /// The manifest's scripts and dependency declarations. Only the two facts the gates act
@@ -179,7 +184,7 @@ internal sealed record WebSurface(
             return (
                 new ManifestContent(
                     ReadScripts(document.RootElement),
-                    ReadDeclaresDependencies(document.RootElement),
+                    ReadDependencies(document.RootElement),
                     DeclaredPackageManager(document.RootElement)),
                 null);
         }
@@ -237,12 +242,33 @@ internal sealed record WebSurface(
     private static bool Supported(string packageManager)
         => Supported().Contains(packageManager, StringComparer.Ordinal);
 
-    private static bool ReadDeclaresDependencies(JsonElement root)
-        => root.ValueKind == JsonValueKind.Object
-            && new[] { "dependencies", "devDependencies", "optionalDependencies" }.Any(section =>
-                root.TryGetProperty(section, out var declared)
-                && declared.ValueKind == JsonValueKind.Object
-                && declared.EnumerateObject().Any());
+    /// <summary>
+    /// Every declared package name. The names are what the gates need installed and what a
+    /// capability reader recognizes, so they are read once here rather than twice apart.
+    /// </summary>
+    private static HashSet<string> ReadDependencies(JsonElement root)
+    {
+        var dependencies = new HashSet<string>(StringComparer.Ordinal);
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return dependencies;
+        }
+
+        foreach (var section in new[] { "dependencies", "devDependencies", "optionalDependencies" })
+        {
+            if (!root.TryGetProperty(section, out var declared) || declared.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            foreach (var package in declared.EnumerateObject())
+            {
+                dependencies.Add(package.Name);
+            }
+        }
+
+        return dependencies;
+    }
 
     private static string FileName(string path) => path[(path.LastIndexOf('/') + 1)..];
 
@@ -258,6 +284,6 @@ internal sealed record WebSurface(
 
     private sealed record ManifestContent(
         Dictionary<string, string> Scripts,
-        bool DeclaresDependencies,
+        HashSet<string> Dependencies,
         string? DeclaredPackageManager);
 }

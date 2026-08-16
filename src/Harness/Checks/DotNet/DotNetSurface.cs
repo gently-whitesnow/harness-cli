@@ -22,12 +22,22 @@ internal enum DotNetSurfaceKind
 /// </summary>
 /// <param name="BuildTargets">Repository-relative targets for formatting and compilation.</param>
 /// <param name="TestTargets">Repository-relative targets that hold test projects.</param>
+/// <param name="Projects">Every tracked project file, whether or not it is an execution target.</param>
+/// <param name="TestProjects">The tracked projects that declare a .NET test framework.</param>
 /// <param name="HasLockFiles">Whether a tracked NuGet lock file constrains restore.</param>
 /// <param name="Reason">Why the surface is absent or ambiguous; absent when it is present.</param>
+/// <remarks>
+/// Targets and projects are different questions. A solution is the better thing to run, but
+/// it is not the thing a reader can be pointed at as evidence, so discovery reports both
+/// once rather than letting each caller re-derive its own list — and which projects are
+/// test projects is decided here once, not again by everyone who needs to know.
+/// </remarks>
 internal sealed record DotNetSurface(
     DotNetSurfaceKind Kind,
     IReadOnlyList<string> BuildTargets,
     IReadOnlyList<string> TestTargets,
+    IReadOnlyList<TrackedEntry> Projects,
+    IReadOnlyList<string> TestProjects,
     bool HasLockFiles,
     string? Reason)
 {
@@ -40,9 +50,10 @@ internal sealed record DotNetSurface(
 
     /// <summary>
     /// Evidence a project is a test project. Both are the conventional markers the SDK
-    /// itself uses, so detection does not depend on a naming convention.
+    /// itself uses, so detection does not depend on a naming convention. Shared with the
+    /// capability reader, so what counts as a test project is decided in one place.
     /// </summary>
-    private static readonly string[] TestProjectMarkers = ["Microsoft.NET.Test.Sdk", "<IsTestProject>true"];
+    public static readonly string[] TestProjectMarkers = ["Microsoft.NET.Test.Sdk", "<IsTestProject>true"];
 
     public static DotNetSurface Discover(GitRepository repository)
     {
@@ -78,6 +89,7 @@ internal sealed record DotNetSurface(
 
         var buildTargets = Sorted(projects);
         var testProjects = Sorted(projects.Where(entry => IsTestProject(repository, entry)));
+        var projectEntries = projects.OrderBy(entry => entry.Path, StringComparer.Ordinal).ToList();
 
         // A solution is the repository's own statement of what belongs together, so it is
         // preferred over the individual projects it already names.
@@ -86,17 +98,26 @@ internal sealed record DotNetSurface(
                 DotNetSurfaceKind.Present,
                 solutions,
                 testProjects.Count > 0 ? solutions : [],
+                projectEntries,
+                testProjects,
                 hasLockFiles,
                 Reason: null)
-            : new DotNetSurface(DotNetSurfaceKind.Present, buildTargets, testProjects, hasLockFiles, Reason: null);
+            : new DotNetSurface(
+                DotNetSurfaceKind.Present,
+                buildTargets,
+                testProjects,
+                projectEntries,
+                testProjects,
+                hasLockFiles,
+                Reason: null);
     }
 
     /// <summary>A surface with no targets cannot be executed, so no execution detail applies.</summary>
     private static DotNetSurface Absent(string reason)
-        => new(DotNetSurfaceKind.Absent, [], [], HasLockFiles: false, reason);
+        => new(DotNetSurfaceKind.Absent, [], [], [], [], HasLockFiles: false, reason);
 
     private static DotNetSurface Ambiguous(string reason)
-        => new(DotNetSurfaceKind.Ambiguous, [], [], HasLockFiles: false, reason);
+        => new(DotNetSurfaceKind.Ambiguous, [], [], [], [], HasLockFiles: false, reason);
 
     private static bool IsTestProject(GitRepository repository, TrackedEntry entry)
     {

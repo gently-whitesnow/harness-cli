@@ -89,14 +89,18 @@ internal static class GateEngine
             return new RunReport(repositoryPath, [], failure);
         }
 
+        // One context per run, so a check that runs later can read what the gates before it
+        // concluded. Registry order is therefore also evidence order.
+        var context = new CheckContext(repository);
         var gates = new List<GateReport>();
         foreach (var check in checks)
         {
             var stopwatch = Stopwatch.StartNew();
             var evaluation = IsSelected(check, only, skip)
-                ? Evaluate(check, repository)
+                ? Evaluate(check, context)
                 : new CheckEvaluation(CheckOutcome.Skipped, [], null, []);
             stopwatch.Stop();
+            context.Record(check.Id, evaluation.Outcome);
 
             gates.Add(new GateReport(
                 check.Id,
@@ -111,11 +115,11 @@ internal static class GateEngine
         return new RunReport(repository.RootPath, gates, ToolError: null, repository.ReadDuration);
     }
 
-    private static CheckEvaluation Evaluate(IRepositoryCheck check, GitRepository repository)
+    private static CheckEvaluation Evaluate(IRepositoryCheck check, CheckContext context)
     {
         try
         {
-            return check.Evaluate(repository);
+            return check.Evaluate(context);
         }
         catch (Exception exception)
         {

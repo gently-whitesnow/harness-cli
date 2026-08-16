@@ -18,8 +18,10 @@ internal abstract class DotNetCheck : IRepositoryCheck
 
     public abstract string Explanation { get; }
 
-    public CheckEvaluation Evaluate(GitRepository repository)
+    public CheckEvaluation Evaluate(CheckContext context)
     {
+        var repository = context.Repository;
+
         var surface = DotNetSurface.Discover(repository);
         switch (surface.Kind)
         {

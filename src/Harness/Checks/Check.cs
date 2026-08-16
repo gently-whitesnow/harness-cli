@@ -52,7 +52,11 @@ internal sealed record ExecutedCommand(string DisplayCommand, int ExitCode, Time
 }
 
 /// <summary>What a check concluded, before the engine adds timing and identity.</summary>
-/// <param name="OutcomeReason">Why the check is incomplete or not applicable; absent otherwise.</param>
+/// <param name="OutcomeReason">
+/// What the outcome means for this repository, in one line: why the check is incomplete,
+/// not applicable or a readiness gap, or what a check that passed established and did not.
+/// Absent when the outcome speaks for itself.
+/// </param>
 /// <param name="Commands">External commands the check ran, in the order it ran them.</param>
 internal sealed record CheckEvaluation(
     CheckOutcome Outcome,
@@ -71,6 +75,13 @@ internal sealed record CheckEvaluation(
             OutcomeReason: null,
             commands ?? []);
 
+    /// <summary>
+    /// The check ran, found nothing wrong, and has something the reader still needs to know
+    /// about what it did and did not establish.
+    /// </summary>
+    public static CheckEvaluation Passed(string reason)
+        => new(CheckOutcome.Passed, [], reason, []);
+
     public static CheckEvaluation Incomplete(string reason, IReadOnlyList<ExecutedCommand>? commands = null)
         => new(CheckOutcome.Incomplete, [], reason, commands ?? []);
 
@@ -79,6 +90,28 @@ internal sealed record CheckEvaluation(
 
     public static CheckEvaluation ReadinessGap(string reason)
         => new(CheckOutcome.ReadinessGap, [], reason, []);
+}
+
+/// <summary>
+/// What one check may read while it runs: the repository evidence every check shares, and
+/// the outcome of the gates that already completed in this run. The second exists so a
+/// check can tell evidence it merely found from evidence a command actually executed,
+/// without running that command a second time at the reader's expense.
+/// </summary>
+internal sealed class CheckContext(GitRepository repository)
+{
+    private readonly Dictionary<string, CheckOutcome> completed = new(StringComparer.Ordinal);
+
+    public GitRepository Repository { get; } = repository;
+
+    public void Record(string checkId, CheckOutcome outcome) => completed[checkId] = outcome;
+
+    /// <summary>
+    /// True when the named gate ran in this run and passed. A gate that was skipped,
+    /// declined or never reached is not evidence of anything, so it reads as false.
+    /// </summary>
+    public bool Passed(string checkId)
+        => completed.TryGetValue(checkId, out var outcome) && outcome == CheckOutcome.Passed;
 }
 
 /// <summary>A check as the engine sees it: identity, applicability and evaluation.</summary>
@@ -96,5 +129,5 @@ internal interface IRepositoryCheck
     /// <summary>Rationale, evidence interpretation and remediation shown by `explain`.</summary>
     string Explanation { get; }
 
-    CheckEvaluation Evaluate(GitRepository repository);
+    CheckEvaluation Evaluate(CheckContext context);
 }

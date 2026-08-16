@@ -22,7 +22,7 @@ public static class Fixtures
     public static RepositoryFixture DotNetLibrary()
         => Compliant()
             .WriteFile(".gitignore", "bin/\nobj/\n")
-            .WriteFile("src/App/App.csproj", Library)
+            .WriteFile("src/App/App.csproj", LibraryProject)
             .WriteFile("src/App/Widget.cs", FormattedSource)
             .Commit();
 
@@ -31,6 +31,26 @@ public static class Fixtures
         => DotNetLibrary()
             .WriteFile("tests/App.Tests/App.Tests.csproj", TestProject)
             .WriteFile("tests/App.Tests/WidgetTests.cs", PassingTest)
+            .Commit();
+
+    /// <summary>
+    /// A compliant .NET repository whose second test project carries recognized architecture
+    /// evidence: a package whose whole purpose is asserting architectural rules.
+    /// </summary>
+    public static RepositoryFixture DotNetWithArchitectureTests()
+        => DotNetWithPassingTests()
+            .WriteFile("tests/App.Architecture.Tests/App.Architecture.Tests.csproj", ArchitectureTestProject)
+            .WriteFile("tests/App.Architecture.Tests/LayerTests.cs", "namespace App.Architecture.Tests;\n")
+            .Commit();
+
+    /// <summary>
+    /// A compliant .NET repository whose second test project carries recognized integration
+    /// evidence: the ASP.NET Core in-process test host.
+    /// </summary>
+    public static RepositoryFixture DotNetWithIntegrationTests()
+        => DotNetWithPassingTests()
+            .WriteFile("tests/App.IntegrationTests/App.IntegrationTests.csproj", IntegrationTestProject)
+            .WriteFile("tests/App.IntegrationTests/ApiTests.cs", "namespace App.IntegrationTests;\n")
             .Commit();
 
     /// <summary>
@@ -197,7 +217,7 @@ public static class Fixtures
 
         """;
 
-    private const string Library =
+    public const string LibraryProject =
         $"""
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
@@ -205,6 +225,16 @@ public static class Fixtures
             <Nullable>enable</Nullable>
           </PropertyGroup>
         </Project>
+
+        """;
+
+    /// <summary>
+    /// A solution file with no projects. Nothing reads its content: it exists so discovery
+    /// sees the tracked evidence a solution is.
+    /// </summary>
+    public const string EmptySolution =
+        """
+        Microsoft Visual Studio Solution File, Format Version 12.00
 
         """;
 
@@ -227,6 +257,79 @@ public static class Fixtures
           </ItemGroup>
           <ItemGroup>
             <ProjectReference Include="../../src/App/App.csproj" />
+          </ItemGroup>
+        </Project>
+
+        """;
+
+    /// <summary>
+    /// A test project that also references an architecture-rule library. The packages are
+    /// never restored by the capability checks, which read tracked evidence only.
+    /// </summary>
+    private const string ArchitectureTestProject =
+        $"""
+        <Project Sdk="Microsoft.NET.Sdk">
+          <PropertyGroup>
+            <TargetFramework>{TargetFramework}</TargetFramework>
+            <IsPackable>false</IsPackable>
+          </PropertyGroup>
+          <ItemGroup>
+            <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+            <PackageReference Include="xunit" Version="2.9.3" />
+            <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
+          </ItemGroup>
+        </Project>
+
+        """;
+
+    /// <summary>A test project that hosts the application in process rather than mocking it.</summary>
+    private const string IntegrationTestProject =
+        $"""
+        <Project Sdk="Microsoft.NET.Sdk">
+          <PropertyGroup>
+            <TargetFramework>{TargetFramework}</TargetFramework>
+            <IsPackable>false</IsPackable>
+          </PropertyGroup>
+          <ItemGroup>
+            <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+            <PackageReference Include="xunit" Version="2.9.3" />
+            <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.0" />
+          </ItemGroup>
+        </Project>
+
+        """;
+
+    /// <summary>A manifest that declares both an end-to-end runner and a boundary linter.</summary>
+    public const string WebManifestWithIntegrationAndArchitectureEvidence =
+        """
+        {
+          "name": "web-fixture",
+          "private": true,
+          "version": "0.0.0",
+          "scripts": {
+            "test": "node -e \"process.exit(0)\"",
+            "test:e2e": "playwright test"
+          },
+          "devDependencies": {
+            "@playwright/test": "^1.48.0",
+            "dependency-cruiser": "^16.0.0"
+          }
+        }
+
+        """;
+
+    /// <summary>
+    /// A library — not a test project — that references an architecture-rule package. Nothing
+    /// runs it, which is the point: `dotnet test` would not have executed these rules.
+    /// </summary>
+    public const string LibraryReferencingArchitectureRules =
+        $"""
+        <Project Sdk="Microsoft.NET.Sdk">
+          <PropertyGroup>
+            <TargetFramework>{TargetFramework}</TargetFramework>
+          </PropertyGroup>
+          <ItemGroup>
+            <PackageReference Include="NetArchTest.Rules" Version="1.3.2" />
           </ItemGroup>
         </Project>
 
