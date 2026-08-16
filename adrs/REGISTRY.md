@@ -1,7 +1,9 @@
 # ADR Registry
 
-Архитектурные решения repository quality harness. Один ADR = один файл, immutable после
-`Accepted`; пересмотр — новым ADR со ссылкой `Superseded by`. Шаблон — [.template.md](.template.md).
+Архитектурные решения repository quality harness. Один ADR = один файл. После `Accepted`
+неизменяемо само `Decision`; пересмотр решения — новым ADR со ссылкой `Superseded by`.
+Фактологическую ошибку в `Context` или `Consequences` можно исправить, не переписывая
+решение: commit history сохраняет такую правку. Шаблон — [.template.md](.template.md).
 После добавления ADR обнови этот реестр. Действующее правило в одну строку живёт в
 [`ROOT.md`](../ROOT.md) и ссылается сюда за обоснованием.
 
