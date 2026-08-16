@@ -12,8 +12,11 @@ later CI. Reusable engineering rules live in executable gates, not in agent pros
     - `Checks/DotNet/` — .NET surface discovery and the SDK-backed format, build and test gates.
     - `Checks/Web/` — web surface discovery, package-manager selection, and the gates that
       run the repository's own format, lint, typecheck, test and build scripts.
-    - `Checks/Maintainability/` — the lexical C# reader (masking, declarations) and the
-      advisory hotspot metrics measured from it.
+    - `Checks/CSharp/` — the shared lexical C# reader: which sources are analyzable,
+      masking of comments and literals, and declaration structure.
+    - `Checks/Maintainability/` — the advisory hotspot metrics measured from that reader.
+    - `Checks/Duplication/` — token normalization and the advisory cross-file repetition
+      report built from it.
   - `Git/` — Git evidence: tracked entries, file modes, symbolic link targets.
   - `Processes/` — external command invocation with an argument vector, never a shell.
 - `tests/Harness.Tests` — acceptance tests that drive the compiled executable.
@@ -53,7 +56,11 @@ Use `harness check --skip dotnet.test` for the fast loop.
 - Heuristic analysis is advisory and names exactly what it measured. A metric never
   borrows a stronger word than its formula earns, `explain` states the formula and its
   limits, and the report stays bounded: the worst subjects per metric plus a count of the
-  rest, never the repository inventory.
+  rest, never the repository inventory. A heuristic that can be wrong says in `explain`
+  what its false positives look like and when the reader should decline to act.
+- A finding is reported once. Where analysis has an internal window or step, the finding
+  is grown to the whole region it covers before it is reported, so one defect never
+  arrives as the many overlapping units that revealed it.
 - External tools localize their output. Any tool whose output is read as evidence is
   invoked with its language pinned, so findings do not depend on the caller's locale.
 - The harness observes. It never edits tracked content, installs a toolchain, or changes

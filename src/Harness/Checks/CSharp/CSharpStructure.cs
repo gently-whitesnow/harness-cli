@@ -1,4 +1,4 @@
-namespace Harness.Checks.Maintainability;
+namespace Harness.Checks.CSharp;
 
 internal enum DeclarationKind
 {

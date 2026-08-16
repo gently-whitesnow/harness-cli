@@ -1,4 +1,22 @@
-namespace Harness.Checks.Maintainability;
+namespace Harness.Checks.CSharp;
+
+/// <summary>What a masked region held, for readers that need the kind and not the text.</summary>
+internal enum MaskedContent
+{
+    Comment,
+
+    /// <summary>A preprocessor directive line, including the `#`.</summary>
+    Preprocessor,
+
+    /// <summary>A string literal in any of its forms, interpolation holes included.</summary>
+    StringLiteral,
+
+    CharacterLiteral,
+}
+
+/// <param name="Start">Offset of the first masked character.</param>
+/// <param name="End">Offset just after the last masked character.</param>
+internal sealed record MaskedRegion(int Start, int End, MaskedContent Content);
 
 /// <summary>
 /// One C# file reduced to what a lexical reader can state with certainty: the same text
@@ -16,10 +34,16 @@ internal sealed class CSharpSource
     private readonly int[] lineStarts;
     private readonly bool[] isLogical;
 
-    private CSharpSource(string path, string masked, int[] lineStarts, bool[] isLogical)
+    private CSharpSource(
+        string path,
+        string masked,
+        IReadOnlyList<MaskedRegion> maskedRegions,
+        int[] lineStarts,
+        bool[] isLogical)
     {
         Path = path;
         Masked = masked;
+        MaskedRegions = maskedRegions;
         this.lineStarts = lineStarts;
         this.isLogical = isLogical;
     }
@@ -30,6 +54,13 @@ internal sealed class CSharpSource
     /// <summary>The file with everything that is not code blanked out.</summary>
     public string Masked { get; }
 
+    /// <summary>
+    /// What was blanked and what kind of content it was, in increasing offset order. A reader
+    /// that must tell an empty pair of parentheses from a call with a string argument needs
+    /// this; a reader that only measures code does not.
+    /// </summary>
+    public IReadOnlyList<MaskedRegion> MaskedRegions { get; }
+
     public int LineCount => lineStarts.Length;
 
     /// <summary>Physical lines that carry code or continue a multi-line string literal.</summary>
@@ -37,9 +68,10 @@ internal sealed class CSharpSource
 
     public static CSharpSource Read(string path, string text)
     {
-        var (masked, literals) = Mask(text);
+        var (masked, regions) = Mask(text);
         var lineStarts = LineStarts(masked);
-        return new CSharpSource(path, masked, lineStarts, ClassifyLines(masked, lineStarts, literals));
+        return new CSharpSource(
+            path, masked, regions, lineStarts, ClassifyLines(masked, lineStarts, regions));
     }
 
     /// <summary>The 1-based physical line an offset in the masked text falls on.</summary>
@@ -99,7 +131,7 @@ internal sealed class CSharpSource
     /// of a multi-line string literal — the literal is content the file carries, even
     /// though none of its characters are code.
     /// </summary>
-    private static bool[] ClassifyLines(string masked, int[] lineStarts, List<(int Start, int End)> literals)
+    private static bool[] ClassifyLines(string masked, int[] lineStarts, List<MaskedRegion> regions)
     {
         var isLogical = new bool[lineStarts.Length];
         for (var line = 0; line < lineStarts.Length; line++)
@@ -109,7 +141,7 @@ internal sealed class CSharpSource
             isLogical[line] = masked.AsSpan(start, end - start).ContainsAnyExcept(" \t\r\n");
         }
 
-        foreach (var (start, end) in literals)
+        foreach (var (start, end, _) in regions.Where(region => region.Content == MaskedContent.StringLiteral))
         {
             for (var index = start; index < end; index++)
             {
@@ -132,13 +164,14 @@ internal sealed class CSharpSource
 
     /// <summary>
     /// Blanks every region a C# lexer would not hand to the parser. Returns the masked text
-    /// together with the spans of the string literals, which the caller needs to tell a
-    /// blank line apart from the inside of a multi-line literal.
+    /// together with what each blanked region held, which callers need to tell a blank line
+    /// apart from the inside of a multi-line literal, and an empty argument list apart from
+    /// one that carried a string.
     /// </summary>
-    private static (string Masked, List<(int Start, int End)> Literals) Mask(string text)
+    private static (string Masked, List<MaskedRegion> Regions) Mask(string text)
     {
         var buffer = text.ToCharArray();
-        var literals = new List<(int Start, int End)>();
+        var regions = new List<MaskedRegion>();
 
         var index = 0;
         var atLineStart = true;
@@ -162,7 +195,7 @@ internal sealed class CSharpSource
             // be read as a branch: the compiler decides conditional compilation, not this.
             if (atLineStart && character == '#')
             {
-                index = BlankToEndOfLine(buffer, text, index);
+                index = Record(regions, buffer, text, index, EndOfLine(text, index), MaskedContent.Preprocessor);
                 continue;
             }
 
@@ -172,20 +205,27 @@ internal sealed class CSharpSource
             {
                 if (text[index + 1] == '/')
                 {
-                    index = BlankToEndOfLine(buffer, text, index);
+                    index = Record(regions, buffer, text, index, EndOfLine(text, index), MaskedContent.Comment);
                     continue;
                 }
 
                 if (text[index + 1] == '*')
                 {
-                    index = BlankBlockComment(buffer, text, index);
+                    index = Record(
+                        regions, buffer, text, index, BlockCommentEnd(text, index), MaskedContent.Comment);
                     continue;
                 }
             }
 
             if (character == '\'')
             {
-                index = Blank(buffer, text, index, CharacterLiteralEnd(text, index));
+                index = Record(
+                    regions,
+                    buffer,
+                    text,
+                    index,
+                    CharacterLiteralEnd(text, index),
+                    MaskedContent.CharacterLiteral);
                 continue;
             }
 
@@ -194,8 +234,7 @@ internal sealed class CSharpSource
                 var end = StringLiteralEnd(text, index);
                 if (end > index)
                 {
-                    literals.Add((index, end));
-                    index = Blank(buffer, text, index, end);
+                    index = Record(regions, buffer, text, index, end, MaskedContent.StringLiteral);
                     continue;
                 }
             }
@@ -203,14 +242,27 @@ internal sealed class CSharpSource
             index++;
         }
 
-        return (new string(buffer), literals);
+        return (new string(buffer), regions);
     }
 
-    private static int BlankToEndOfLine(char[] buffer, string text, int index)
-        => Blank(buffer, text, index, EndOfLine(text, index));
+    /// <summary>Blanks one region and remembers what it held.</summary>
+    /// <returns>The offset the caller continues from.</returns>
+    private static int Record(
+        List<MaskedRegion> regions,
+        char[] buffer,
+        string text,
+        int from,
+        int to,
+        MaskedContent content)
+    {
+        var stop = Blank(buffer, text, from, to);
+        if (stop > from)
+        {
+            regions.Add(new MaskedRegion(from, stop, content));
+        }
 
-    private static int BlankBlockComment(char[] buffer, string text, int index)
-        => Blank(buffer, text, index, BlockCommentEnd(text, index));
+        return stop;
+    }
 
     private static int EndOfLine(string text, int index)
     {

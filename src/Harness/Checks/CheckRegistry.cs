@@ -1,4 +1,5 @@
 using Harness.Checks.DotNet;
+using Harness.Checks.Duplication;
 using Harness.Checks.Maintainability;
 using Harness.Checks.Web;
 
@@ -11,6 +12,7 @@ internal static class CheckRegistry
     [
         new DocumentationPolicyCheck(),
         new MaintainabilityCheck(),
+        new DuplicationCheck(),
         new DotNetFormatCheck(),
         new DotNetBuildCheck(),
         new DotNetTestCheck(),
