@@ -3,35 +3,15 @@ using Harness.Checks.CSharp;
 
 namespace Harness.Checks.Duplication;
 
-/// <param name="Line">The 1-based physical line the tokens start on.</param>
-/// <param name="Tokens">The normalized token sequence, space separated.</param>
-/// <param name="TokenCount">How many tokens the line contributed, which is its density.</param>
 internal sealed record NormalizedLine(int Line, string Tokens, int TokenCount);
 
 /// <summary>
-/// Reduces C# to the unit duplication compares: one normalized token sequence per physical
-/// line that carries tokens. Everything a rename or a reformat can change is removed, and
-/// nothing else is. The exact rules are the whole claim of the comparison, so they are
-/// short enough to state:
-/// <list type="bullet">
-///   <item>a comment or a preprocessor directive contributes nothing;</item>
-///   <item>a string literal is one <c>"</c> token and a character literal one <c>'</c>,
-///     whatever they contain;</item>
-///   <item>a numeric literal is one <c>#</c> token;</item>
-///   <item>a word is kept when it is a C# keyword and becomes <c>n</c> otherwise, so every
-///     identifier — type, member, parameter, local — reads the same;</item>
-///   <item>every other character is its own token;</item>
-///   <item>whitespace separates tokens and never survives, and a line with no tokens leaves
-///     no trace at all.</item>
-/// </list>
+/// Normalizes each physical C# line for lexical duplication: comments and directives vanish;
+/// literals and numbers become type-shaped tokens; keywords survive; identifiers become `n`;
+/// punctuation survives; whitespace and empty normalized lines vanish.
 /// </summary>
 internal sealed class CSharpNormalizer
 {
-    /// <summary>
-    /// The words kept as themselves. Reserved words plus the contextual words that carry
-    /// structure a reader would notice; every other word is an identifier as far as this
-    /// comparison is concerned.
-    /// </summary>
     private static readonly HashSet<string> Keywords = new(StringComparer.Ordinal)
     {
         "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked", "class",
@@ -113,11 +93,6 @@ internal sealed class CSharpNormalizer
         Flush();
     }
 
-    /// <summary>
-    /// One masked region as the single token its content is worth. A literal is evidence
-    /// that something was passed; which literal it was is exactly what normalization drops.
-    /// </summary>
-    /// <returns>The offset the walk continues from.</returns>
     private int Take(MaskedRegion region)
     {
         switch (region.Content)
@@ -166,10 +141,6 @@ internal sealed class CSharpNormalizer
         tokenCount = 0;
     }
 
-    /// <summary>
-    /// The end of a word or a number. Both are read the same way, so `1_000`, `0xFF` and
-    /// `1.5f` end where a reader expects and never leave a fragment behind as its own token.
-    /// </summary>
     private static int EndOfWord(string text, int index)
     {
         while (index < text.Length && (char.IsLetterOrDigit(text[index]) || text[index] is '_' or '@'))

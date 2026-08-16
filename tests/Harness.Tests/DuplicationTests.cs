@@ -4,20 +4,10 @@ using System.Text.RegularExpressions;
 
 namespace Harness.Tests;
 
-/// <summary>
-/// What the duplication gate compares, what it refuses to claim, and how it stays readable
-/// on a repository with many clones. The fixtures are C# sources without a project file, so
-/// the gate is exercised on its own analysis rather than through the SDK.
-/// </summary>
 public sealed class DuplicationTests
 {
     private const string Check = "duplication.csharp";
 
-    /// <summary>
-    /// The worst subjects the gate lists, plus the one line that counts the rest. What must
-    /// not grow with the repository is the findings; the report as a whole is bounded
-    /// separately, by the density budget every run shares.
-    /// </summary>
     private const int ShownFindingBudget = 6;
 
     private static int ReportedFindings(CliRun run)
@@ -43,10 +33,6 @@ public sealed class DuplicationTests
         Assert.False(run.OutputContains("passed"), run.Output);
     }
 
-    /// <summary>
-    /// The compatibility case the copied Python script existed for: the same structure in two
-    /// files, wearing different names and different literals.
-    /// </summary>
     [Fact]
     public void A_block_repeated_across_files_is_reported_at_every_location()
     {
@@ -62,10 +48,6 @@ public sealed class DuplicationTests
         Assert.True(run.OutputContains("src/App/Second.cs:1"), run.Output);
     }
 
-    /// <summary>
-    /// Every window of a repetition overlaps its neighbours. Reporting each one would turn a
-    /// single clone into a wall of findings that says nothing the first one did not.
-    /// </summary>
     [Fact]
     public void Overlapping_windows_of_one_repetition_become_a_single_finding()
     {
@@ -78,12 +60,6 @@ public sealed class DuplicationTests
         Assert.Equal(1, Occurrences(run.Output, "normalized lines"));
     }
 
-    /// <summary>
-    /// Three copies of which two run longer than the third. Growing the group of all three
-    /// stops at the shortest, and the two longer copies still have windows left over. Both
-    /// facts are worth reporting, but the lines they share are reported once: a reader must
-    /// not have to work out that two findings are partly the same code.
-    /// </summary>
     [Fact]
     public void A_third_shorter_copy_never_makes_the_same_lines_be_reported_twice()
     {
@@ -110,10 +86,6 @@ public sealed class DuplicationTests
         Assert.False(run.OutputContains("normalized lines"), run.Output);
     }
 
-    /// <summary>
-    /// A literal is one token whatever it contains. Code quoted inside a raw string is text,
-    /// and a reader that lost the end of that literal would match it against the real thing.
-    /// </summary>
     [Fact]
     public void Code_quoted_inside_a_string_literal_is_not_matched_against_real_code()
     {
@@ -127,11 +99,6 @@ public sealed class DuplicationTests
         Assert.False(run.OutputContains("normalized lines"), run.Output);
     }
 
-    /// <summary>
-    /// A character literal holding a quote, a brace or an escaped backslash ends where the
-    /// compiler says it does. A reader that lost one would run the rest of the file together
-    /// and match it against anything.
-    /// </summary>
     [Fact]
     public void Awkward_character_literals_do_not_desynchronize_the_comparison()
     {
@@ -147,11 +114,6 @@ public sealed class DuplicationTests
         AssertReportedRegionsDoNotOverlap(run.Output);
     }
 
-    /// <summary>
-    /// Two long declaration blocks about unrelated things, whose tokens are identical once
-    /// names and types are erased. This is the documented false positive; the gate is allowed
-    /// to report it, and is not allowed to call it duplicate behaviour or to fail the run.
-    /// </summary>
     [Fact]
     public void Unrelated_templates_of_the_same_shape_are_reported_only_as_a_lexical_match()
     {
@@ -180,10 +142,6 @@ public sealed class DuplicationTests
         Assert.False(run.OutputContains("normalized lines"), run.Output);
     }
 
-    /// <summary>
-    /// Interpolation holes, verbatim quotes and raw strings once ended a literal early, which
-    /// desynchronized everything after it. Here they precede the repetition that must be found.
-    /// </summary>
     [Fact]
     public void Awkward_literals_do_not_hide_the_repetition_that_follows_them()
     {
@@ -227,7 +185,6 @@ public sealed class DuplicationTests
         Assert.True(run.OutputContains("advisory"), run.Output);
     }
 
-    /// <summary>Lexical similarity is what was measured, so it is what the report says.</summary>
     [Fact]
     public void The_report_does_not_claim_proven_duplicate_behaviour()
     {
@@ -314,10 +271,6 @@ public sealed class DuplicationTests
         Assert.True(run.OutputContains("not proven duplicate behaviour"), run.Output);
     }
 
-    /// <summary>
-    /// Every `path:first-last` the report names, proven pairwise disjoint within each file.
-    /// This is the contract the reader depends on: one repetition, one place to read it.
-    /// </summary>
     private static void AssertReportedRegionsDoNotOverlap(string output)
     {
         var regions = Regex.Matches(output, @"([\w./-]+\.cs):(\d+)-(\d+)")
@@ -366,13 +319,8 @@ public sealed class DuplicationTests
     }
 }
 
-/// <summary>C# shapes the duplication comparison is measured against.</summary>
 internal static class Duplicated
 {
-    /// <summary>
-    /// One block long and dense enough to be compared, parameterized by the names and the
-    /// literal it carries — the differences normalization is supposed to remove.
-    /// </summary>
     public static string Block(string type, string field, string literal)
         => $$"""
             namespace App;
@@ -412,10 +360,6 @@ internal static class Duplicated
 
             """;
 
-    /// <summary>
-    /// The block of <see cref="Block"/> up to its second `if`, after which this copy goes
-    /// its own way — long enough to be compared, shorter than the copies it matches.
-    /// </summary>
     public static string TruncatedBlock(string type, string field)
         => $$"""
             namespace App;
@@ -444,7 +388,6 @@ internal static class Duplicated
 
             """;
 
-    /// <summary>The same block twice in one file, which is repetition but not cross-file.</summary>
     public const string SameBlockTwiceInOneFile =
         """
         namespace App;
@@ -490,10 +433,6 @@ internal static class Duplicated
 
         """;
 
-    /// <summary>
-    /// The block of <see cref="Block"/> as quoted text rather than as code. A literal is one
-    /// token, so nothing here can match the code it shows.
-    /// </summary>
     public const string BlockQuotedInARawString =
         """"
         namespace App;
@@ -529,7 +468,6 @@ internal static class Duplicated
 
         """";
 
-    /// <summary>Every awkward literal shape, in front of the block that must still be found.</summary>
     public static string AwkwardLiteralsThenBlock(string type, string field, string literal)
         => Block(type, field, literal).Replace(
             "    public static int Compute(",
@@ -553,7 +491,6 @@ internal static class Duplicated
             """",
             StringComparison.Ordinal);
 
-    /// <summary>Every character literal that carries a delimiter, before the block to find.</summary>
     public static string AwkwardCharactersThenBlock(string type, string field, string literal)
         => Block(type, field, literal).Replace(
             "    public static int Compute(",
@@ -567,10 +504,6 @@ internal static class Duplicated
             """,
             StringComparison.Ordinal);
 
-    /// <summary>
-    /// A declaration block long enough to be compared, about something the other one has
-    /// nothing to do with. After normalization the two are the same tokens.
-    /// </summary>
     public static string PropertyBag(string type, string owner)
     {
         var text = new StringBuilder($"namespace App;\n\npublic sealed class {type}\n{{\n");
@@ -583,7 +516,6 @@ internal static class Duplicated
             .ToString();
     }
 
-    /// <summary>Too few lines to fill one comparison window, whatever it resembles.</summary>
     public static string SmallRecord(string type, string first, string second)
         => $$"""
             namespace App;
@@ -592,10 +524,6 @@ internal static class Duplicated
 
             """;
 
-    /// <summary>
-    /// One block per index, distinguished by an argument count rather than by names or
-    /// literals — the only differences normalization keeps.
-    /// </summary>
     public static string DistinctBlock(int index, string side)
     {
         var call = "Sum(" + string.Join(", ", Enumerable.Repeat("seed", index + 1)) + ")";

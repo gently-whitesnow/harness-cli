@@ -5,8 +5,6 @@ using Harness.Git;
 
 namespace Harness.Engine;
 
-/// <summary>One check as executed: identity, outcome, evidence and cost.</summary>
-/// <param name="Suppressed">Findings the repository accepted in writing; reported, never hidden.</param>
 internal sealed record GateReport(
     string Id,
     string Summary,
@@ -16,23 +14,15 @@ internal sealed record GateReport(
     string? OutcomeReason,
     IReadOnlyList<SuppressedFinding> Suppressed);
 
-/// <summary>Everything a caller needs to render a run and choose an exit code.</summary>
-/// <param name="EvidenceDuration">Cost of collecting the repository inventory shared by all gates.</param>
 internal sealed record RunReport(
     string? RepositoryPath,
     IReadOnlyList<GateReport> Gates,
     string? ToolError,
     TimeSpan EvidenceDuration = default)
 {
-    /// <summary>True when no selected check actually produced evidence about the repository.</summary>
     public bool NothingWasVerified
         => ToolError is not null || !Gates.Any(gate => gate.Outcome is CheckOutcome.Passed or CheckOutcome.Failed);
 
-    /// <summary>
-    /// True when a selected check found a question of the frame open. It does not change the
-    /// exit code — an unanswered question is not a violation — but a run that passed what it
-    /// could must not read as a repository that has everything covered.
-    /// </summary>
     public bool HasReadinessGaps => Gates.Any(gate => gate.Outcome == CheckOutcome.ReadinessGap);
 
     public int ExitCode
@@ -53,13 +43,8 @@ internal sealed record RunReport(
 
 internal static class ExitCodes
 {
-    /// <summary>Every selected applicable blocking check completed and passed.</summary>
     public const int Success = 0;
-
-    /// <summary>At least one selected applicable blocking check proved a violation.</summary>
     public const int Violation = 1;
-
-    /// <summary>Verification could not be completed reliably.</summary>
     public const int Incomplete = 2;
 }
 
@@ -124,10 +109,6 @@ internal static class GateEngine
             repository.ReadDuration);
     }
 
-    /// <summary>
-    /// Turns what a check found into what it means for this repository: named exceptions are
-    /// set aside, then the repository's policy for the check is applied to what remains.
-    /// </summary>
     private static GateReport Judge(
         IRepositoryCheck check,
         CheckEvaluation evaluation,
@@ -219,10 +200,6 @@ internal static class GateEngine
             .ToList();
     }
 
-    /// <summary>
-    /// Whether one named exception covers one finding. A directory covers what is under it,
-    /// so a repository can accept a legacy corner without listing every file in it.
-    /// </summary>
     private static bool Covers(Suppression suppression, IRepositoryCheck check, Finding finding)
         => (string.Equals(suppression.Check, check.Id, StringComparison.Ordinal)
                 || string.Equals(suppression.Check, check.Group, StringComparison.Ordinal))

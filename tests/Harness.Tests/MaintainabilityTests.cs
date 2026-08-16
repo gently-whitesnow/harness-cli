@@ -2,11 +2,6 @@ using System.Text;
 
 namespace Harness.Tests;
 
-/// <summary>
-/// What the maintainability gate measures, what it refuses to claim, and how it stays
-/// advisory. The fixtures are C# sources without a project file, so the gate is exercised
-/// on its own analysis rather than through the SDK.
-/// </summary>
 public sealed class MaintainabilityTests
 {
     private const string Check = "maintainability.csharp";
@@ -37,11 +32,6 @@ public sealed class MaintainabilityTests
         Assert.True(run.OutputContains("src/App/Report.cs:5"), run.Output);
     }
 
-    /// <summary>
-    /// A parenthesized group before the member name is a return tuple. Reading it as the
-    /// parameter list named members after their last modifier and counted the wrong arity;
-    /// the harness found this against its own source.
-    /// </summary>
     [Fact]
     public void A_tuple_returning_method_is_named_after_the_member_and_not_its_modifier()
     {
@@ -184,10 +174,6 @@ public sealed class MaintainabilityTests
         Assert.False(run.OutputContains("src/App/Compact.cs"), run.Output);
     }
 
-    /// <summary>
-    /// Quotes and braces inside an interpolation hole once ended the literal early, which
-    /// silently lost every declaration after it instead of reporting anything.
-    /// </summary>
     [Fact]
     public void A_literal_with_awkward_interpolation_does_not_hide_what_follows_it()
     {
@@ -256,10 +242,6 @@ public sealed class MaintainabilityTests
         Assert.Equal(before, repository.TrackedState());
     }
 
-    /// <summary>
-    /// The metrics the copied Python script made useful, all reachable from one repository,
-    /// so the behaviour worth keeping is fixed before that script is removed elsewhere.
-    /// </summary>
     [Fact]
     public void Every_documented_metric_is_reachable_from_one_repository()
     {
@@ -320,10 +302,8 @@ public sealed class MaintainabilityTests
         => Fixtures.Compliant().WriteFile(path, source).Commit();
 }
 
-/// <summary>C# shapes the maintainability metrics are measured against.</summary>
 internal static class CSharp
 {
-    /// <summary>A method whose declaration starts on line 5 and whose body is long.</summary>
     public static string LongMethod(int statements)
         => $$"""
             namespace App;
@@ -339,10 +319,6 @@ internal static class CSharp
 
             """;
 
-    /// <summary>
-    /// A long method returning a tuple, whose seven-element return type would read as an
-    /// over-wide constructor if it were mistaken for a parameter list.
-    /// </summary>
     public static string LongTupleReturningMethod(int statements)
         => $$"""
             namespace App;
@@ -358,7 +334,6 @@ internal static class CSharp
 
             """;
 
-    /// <summary>The same method with its signature split across three physical lines.</summary>
     public static string LongMethodWithSplitSignature(int statements)
         => $$"""
             namespace App;
@@ -376,10 +351,6 @@ internal static class CSharp
 
             """;
 
-    /// <summary>
-    /// Every interpolation shape whose holes carry quotes, braces or nested literals,
-    /// followed by a method the reader must still find.
-    /// </summary>
     public static string LongMethodAfterAwkwardLiterals(int statements)
         => $$$$""""
             namespace App;
@@ -428,11 +399,6 @@ internal static class CSharp
 
             """;
 
-    /// <summary>
-    /// Every branch token appears only inside a comment, a regular string, a verbatim
-    /// string, a raw string or a character literal. A lexical reader that does not remove
-    /// them would report this method as the most complex in the repository.
-    /// </summary>
     public const string BranchTokensOnlyInCommentsAndStrings =
         """"
         namespace App;
@@ -460,7 +426,6 @@ internal static class CSharp
 
         """";
 
-    /// <summary>Fifteen counted branch tokens plus the entry path.</summary>
     public const string BranchingMethod =
         """
         namespace App;
@@ -551,7 +516,6 @@ internal static class CSharp
 
         """;
 
-    /// <summary>Expression-bodied members, a positional record and a lambda field.</summary>
     public const string ExpressionBodiedMembers =
         """
         namespace App;
@@ -578,7 +542,6 @@ internal static class CSharp
 
         """;
 
-    /// <summary>A method that opens disposables, which are statements rather than imports.</summary>
     public const string UsingStatements =
         """
         using System.IO;

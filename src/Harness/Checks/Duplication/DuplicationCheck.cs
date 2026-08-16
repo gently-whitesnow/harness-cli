@@ -11,23 +11,13 @@ namespace Harness.Checks.Duplication;
 /// </summary>
 internal sealed class DuplicationCheck : IRepositoryCheck
 {
-    /// <summary>
-    /// The comparison window, in normalized lines. Short enough to catch a repeated body,
-    /// long enough that ordinary C# punctuation cannot fill it on its own.
-    /// </summary>
     private const int WindowLines = 8;
 
-    /// <summary>
-    /// The tokens a window must carry — an average of three per line. It is what separates a
-    /// repeated block from a run of braces, `return`s and closing parentheses, which every
-    /// file has and which nobody can extract.
-    /// </summary>
+    // Density rejects punctuation-only shapes that ordinary C# repeats everywhere.
     private const int MinimumWindowTokens = 3 * WindowLines;
 
-    /// <summary>Enough of the largest repetitions to act on; the rest are counted, not listed.</summary>
     private const int ShownBlocks = 5;
 
-    /// <summary>Enough locations to see the shape of a repetition without printing an inventory.</summary>
     private const int ShownLocations = 4;
 
     public string Id => "duplication.csharp";
@@ -56,12 +46,6 @@ internal sealed class DuplicationCheck : IRepositoryCheck
         return CheckEvaluation.From(Report(Repetitions(NormalizedFile.From(sources))));
     }
 
-    /// <summary>
-    /// Every maximal repetition, largest first. Windows are the unit of comparison but never
-    /// the unit of reporting: a repetition is grown to its full extent in every file at once,
-    /// and the windows it covers are then spent, so one clone cannot be reported as the
-    /// dozens of overlapping windows it happens to contain.
-    /// </summary>
     private static List<Repetition> Repetitions(IReadOnlyList<NormalizedFile> files)
     {
         var byShape = new Dictionary<long, List<Occurrence>>();
@@ -115,11 +99,6 @@ internal sealed class DuplicationCheck : IRepositoryCheck
             .ToList();
     }
 
-    /// <summary>
-    /// Extends one group of matching windows in both directions for as long as every
-    /// occurrence still agrees, so the reported block is the whole repeated region rather
-    /// than the arbitrary window that happened to reveal it.
-    /// </summary>
     private static Repetition Grow(List<Occurrence> group)
     {
         // Growth stops at a window some earlier repetition already reported. Without that,
@@ -151,7 +130,6 @@ internal sealed class DuplicationCheck : IRepositoryCheck
                 .ToList());
     }
 
-    /// <summary>Whether every occurrence offers the same next line; a missing one never agrees.</summary>
     private static bool Agree(List<Occurrence> group, Func<Occurrence, int?> next)
     {
         var expected = next(group[0]);
@@ -189,38 +167,24 @@ internal sealed class DuplicationCheck : IRepositoryCheck
         return remaining > 0 ? $"{shown} and {remaining} more" : shown;
     }
 
-    /// <summary>
-    /// Where one occurrence is, as physical lines. The span is what makes the evidence
-    /// readable: normalized lines are not physical lines, so a start alone would leave a
-    /// reader unable to see how much of the file the repetition actually covers.
-    /// </summary>
     private sealed record Region(string Path, int FirstLine, int LastLine)
     {
         public override string ToString()
             => LastLine > FirstLine ? $"{Path}:{FirstLine}-{LastLine}" : $"{Path}:{FirstLine}";
     }
 
-    /// <param name="Lines">Normalized lines the repeated block spans.</param>
-    /// <param name="Regions">Where it occurs, in path and then line order.</param>
     private sealed record Repetition(int Lines, IReadOnlyList<Region> Regions);
 
-    /// <param name="Start">Index into the file's normalized lines.</param>
     private readonly record struct Occurrence(NormalizedFile File, int Start);
 
-    /// <summary>
-    /// One file as the comparison sees it: its normalized lines as identifiers, so comparing
-    /// two regions is comparing integers rather than re-reading text.
-    /// </summary>
     private sealed class NormalizedFile
     {
         private readonly IReadOnlyList<NormalizedLine> lines;
 
-        /// <summary>One identifier per normalized line; equal identifiers are equal lines.</summary>
         private readonly int[] ids;
 
         private readonly int[] tokensUpTo;
 
-        /// <summary>Windows already covered by a reported repetition.</summary>
         private readonly bool[] spent;
 
         private NormalizedFile(string path, IReadOnlyList<NormalizedLine> lines, int[] ids)
@@ -241,7 +205,6 @@ internal sealed class DuplicationCheck : IRepositoryCheck
 
         public string Path { get; }
 
-        /// <summary>How many comparison windows the file offers.</summary>
         public int Windows { get; }
 
         public static IReadOnlyList<NormalizedFile> From(IReadOnlyList<CSharpSource> sources)
@@ -269,20 +232,11 @@ internal sealed class DuplicationCheck : IRepositoryCheck
             return files;
         }
 
-        /// <summary>
-        /// Whether the window opening at <paramref name="start"/> carries enough tokens to
-        /// be worth comparing at all.
-        /// </summary>
         public bool IsComparable(int start)
             => tokensUpTo[start + WindowLines] - tokensUpTo[start] >= MinimumWindowTokens;
 
         public bool IsSpent(int start) => spent[start];
 
-        /// <summary>
-        /// Records that a reported repetition covers <paramref name="length"/> lines from
-        /// here. Every window that begins inside the region is spent, not only the ones that
-        /// fit inside it, so no later repetition can begin on a line already reported.
-        /// </summary>
         public void Spend(int start, int length)
         {
             for (var window = start; window < Math.Min(start + length, Windows); window++)
@@ -291,27 +245,17 @@ internal sealed class DuplicationCheck : IRepositoryCheck
             }
         }
 
-        /// <summary>
-        /// The line at <paramref name="index"/>, offered for growth forwards. A line already
-        /// covered by a reported repetition is not offered: the same lines are never
-        /// reported twice, whichever repetition reached them first.
-        /// </summary>
         public int? LineAt(int index)
             => index >= 0 && index < ids.Length && !IsReported(index - WindowLines + 1)
                 ? ids[index]
                 : null;
 
-        /// <summary>The line before <paramref name="index"/>, offered for growth backwards.</summary>
         public int? LineBefore(int index)
             => index > 0 && !IsReported(index - 1) ? ids[index - 1] : null;
 
         private bool IsReported(int window) => window >= 0 && window < Windows && spent[window];
 
-        /// <summary>
-        /// A hash of the window opening at <paramref name="start"/>. Buckets by shape keep
-        /// the search linear; equality is always confirmed against the identifiers
-        /// themselves, so a collision costs a comparison and never invents a repetition.
-        /// </summary>
+        // Hash collisions cost a comparison because Matches confirms every candidate.
         public long ShapeOf(int start)
         {
             var shape = unchecked((long)14695981039346656037UL);
@@ -339,7 +283,6 @@ internal sealed class DuplicationCheck : IRepositoryCheck
             return true;
         }
 
-        /// <summary>The physical lines a repeated block covers here.</summary>
         public Region RegionAt(int start, int length)
             => new(Path, lines[start].Line, lines[start + length - 1].Line);
     }

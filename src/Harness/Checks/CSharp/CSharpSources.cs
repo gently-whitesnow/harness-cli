@@ -9,17 +9,11 @@ namespace Harness.Checks.CSharp;
 /// </summary>
 internal static class CSharpSources
 {
-    /// <summary>What is reported when discovery found nothing to analyze.</summary>
     public const string NothingToAnalyze =
         "no tracked C# source outside generated and build-output locations";
 
-    /// <summary>File names the .NET ecosystem reserves for tool output rather than authored code.</summary>
     private static readonly string[] GeneratedSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
 
-    /// <summary>
-    /// Every analyzable source, in path order. A source the harness could not read is not
-    /// evidence of anything, so it ends discovery with a reason instead of a shorter list.
-    /// </summary>
     public static (IReadOnlyList<CSharpSource> Sources, string? Failure) Discover(GitRepository repository)
     {
         var candidates = repository.TrackedEntries

@@ -4,49 +4,28 @@ using Harness.Git;
 
 namespace Harness.Config;
 
-/// <summary>How a repository answered one question of the harness frame.</summary>
 internal enum FrameAnswerKind
 {
-    /// <summary>Present, with one or more navigation addresses.</summary>
     Located,
-
-    /// <summary>Present, with a reason instead of a single address.</summary>
     Present,
-
-    /// <summary>Answered absent with a justification.</summary>
     Absent,
-
-    /// <summary>Answered as a question that does not apply to this repository.</summary>
     NotApplicable,
 }
 
-/// <param name="Paths">Repository-relative navigation addresses; empty unless located.</param>
-/// <param name="Reason">Why, in the repository's own words. Required for every form but <see cref="FrameAnswerKind.Located"/>.</param>
 internal sealed record FrameAnswer(
     string Key,
     FrameAnswerKind Kind,
     IReadOnlyList<string> Paths,
     string? Reason);
 
-/// <summary>How strictly the run treats one check, over and above what the check concluded.</summary>
 internal enum CheckPolicy
 {
-    /// <summary>The check's own severity stands.</summary>
     Default,
-
-    /// <summary>A readiness gap becomes a violation: the repository has committed to this.</summary>
     Required,
-
-    /// <summary>Violations are reported without failing the run.</summary>
     Advisory,
-
-    /// <summary>The check does not run at all.</summary>
     Off,
 }
 
-/// <param name="Check">Check or group identifier the exception applies to.</param>
-/// <param name="Location">Repository-relative path, or directory prefix, the exception covers.</param>
-/// <param name="Reason">Why this is accepted. Never optional: an unexplained exception is not one.</param>
 internal sealed record Suppression(string Check, string Location, string Reason);
 
 /// <summary>
@@ -63,7 +42,6 @@ internal sealed class HarnessConfig
 
     private static readonly string[] TopLevelKeys = ["version", "answers", "policy", "suppress"];
 
-    /// <summary>The only schema version this harness reads.</summary>
     private const int SupportedVersion = 2;
 
     private HarnessConfig(
@@ -76,10 +54,8 @@ internal sealed class HarnessConfig
         Suppressions = suppressions;
     }
 
-    /// <summary>Complete answers keyed by question, without the `frame.` prefix.</summary>
     public IReadOnlyDictionary<string, FrameAnswer> Answers { get; }
 
-    /// <summary>Policy keyed by check or group identifier.</summary>
     public IReadOnlyDictionary<string, CheckPolicy> Policy { get; }
 
     public IReadOnlyList<Suppression> Suppressions { get; }
@@ -87,10 +63,6 @@ internal sealed class HarnessConfig
     public FrameAnswer? Answered(string key)
         => Answers.TryGetValue(key, out var answer) ? answer : null;
 
-    /// <summary>
-    /// Policy for one check. A check identifier outranks its group, so a repository can set
-    /// a group-wide policy and still say something different about one member.
-    /// </summary>
     public CheckPolicy PolicyFor(string checkId, string group)
     {
         if (Policy.TryGetValue(checkId, out var byId))
@@ -439,7 +411,6 @@ internal sealed class HarnessConfig
             ? value.GetString()
             : null;
 
-    /// <summary>Question keys are exactly the suffixes of the shipped frame checks.</summary>
     private static List<string> QuestionKeys(IReadOnlyList<IRepositoryCheck> checks)
         => checks
             .Where(check => check.Group == FrameGroup)

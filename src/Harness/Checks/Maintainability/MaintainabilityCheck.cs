@@ -3,11 +3,8 @@ using Harness.Git;
 
 namespace Harness.Checks.Maintainability;
 
-/// <param name="Name">Exactly what is counted, so the report cannot promise more than it measured.</param>
-/// <param name="ComparisonPoint">The value a measurement is reported against; never a threshold that fails a run.</param>
 internal sealed record MaintainabilityMetric(string Name, int ComparisonPoint);
 
-/// <param name="Location">Repository-relative path, with a line when the subject has one.</param>
 internal sealed record Measurement(MaintainabilityMetric Metric, int Value, string Subject, string Location);
 
 /// <summary>
@@ -19,7 +16,6 @@ internal sealed record Measurement(MaintainabilityMetric Metric, int Value, stri
 /// </summary>
 internal sealed class MaintainabilityCheck : IRepositoryCheck
 {
-    /// <summary>Enough of the worst subjects per metric to act on; the rest are counted, not listed.</summary>
     private const int ShownPerMetric = 5;
 
     private static readonly MaintainabilityMetric FileLines = new("file logical lines", 400);
@@ -30,7 +26,6 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
     private static readonly MaintainabilityMetric PublicMembers = new("public declared members", 25);
     private static readonly MaintainabilityMetric ImportFanOut = new("using directive fan-out", 20);
 
-    /// <summary>Report order, so a run of the same repository always reads the same way.</summary>
     private static readonly MaintainabilityMetric[] Metrics =
     [
         FileLines,
@@ -42,9 +37,7 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
         ImportFanOut,
     ];
 
-    /// <summary>
-    /// The branching keywords counted, longest match first so `foreach` is not read as `for`.
-    /// </summary>
+    // Longest first so `foreach` is not read as `for`.
     private static readonly string[] BranchKeywords =
         ["foreach", "while", "catch", "case", "when", "for", "if", "do"];
 
@@ -118,10 +111,6 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
         }
     }
 
-    /// <summary>
-    /// The worst subjects per metric, and an honest count of the ones left out. Bounded
-    /// output is part of the contract: a report an agent cannot read is not evidence.
-    /// </summary>
     private static IReadOnlyList<Finding> Report(List<Measurement> measurements)
     {
         var findings = new List<Finding>();
@@ -157,11 +146,6 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
         return findings;
     }
 
-    /// <summary>
-    /// Counted branch tokens plus the entry path. The token set is fixed and documented:
-    /// this is a lexical count of branching keywords and short-circuiting operators, not a
-    /// control-flow graph.
-    /// </summary>
     private static int BranchCount(ReadOnlySpan<char> text)
     {
         var count = 1;

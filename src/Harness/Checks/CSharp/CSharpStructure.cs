@@ -4,40 +4,30 @@ internal enum DeclarationKind
 {
     Type,
 
-    /// <summary>A declared constructor, or the primary constructor of a type.</summary>
     Constructor,
 
     Method,
 }
 
-/// <summary>
-/// One declaration the lexical reader is confident about: what it is, what to call it in a
-/// report, and the physical lines it spans.
-/// </summary>
 internal sealed class Declaration
 {
     public required DeclarationKind Kind { get; init; }
 
-    /// <summary>Namespace-qualified name, as the report names the subject of a finding.</summary>
     public required string Subject { get; init; }
 
     public required int FirstLine { get; init; }
 
     public int LastLine { get; set; }
 
-    /// <summary>Parameters of a constructor, or -1 when the declaration has no parameter list.</summary>
     public int ParameterCount { get; set; } = -1;
 
-    /// <summary>Members declared `public` directly in a type body.</summary>
     public int PublicMembers { get; set; }
 
     public bool IsComplete => LastLine >= FirstLine;
 }
 
-/// <param name="UsingDirectives">Using directives outside any type — the file's import fan-out.</param>
 internal sealed record CSharpStructure(IReadOnlyList<Declaration> Declarations, int UsingDirectives);
 
-/// <param name="ParameterList">Offset of the `(` that opens the parameter list, not a return tuple.</param>
 internal sealed record MemberSignature(string Name, int ParameterList);
 
 /// <summary>
@@ -50,10 +40,6 @@ internal sealed class CSharpStructureReader
 {
     private static readonly string[] TypeKeywords = ["class", "struct", "interface", "record", "enum"];
 
-    /// <summary>
-    /// Words that can precede a parenthesis without introducing a declaration. A statement
-    /// or an expression that reaches the reader must not be measured as a method.
-    /// </summary>
     private static readonly HashSet<string> NotDeclarationNames = new(StringComparer.Ordinal)
     {
         "if", "for", "foreach", "while", "do", "switch", "case", "catch", "try", "finally", "using", "lock",
@@ -62,10 +48,6 @@ internal sealed class CSharpStructureReader
         "and", "or", "not", "with", "from", "select", "where", "let", "goto", "delegate",
     };
 
-    /// <summary>
-    /// Words that precede a member rather than name one. A parenthesized group they precede
-    /// is a return tuple, not a parameter list.
-    /// </summary>
     private static readonly HashSet<string> Modifiers = new(StringComparer.Ordinal)
     {
         "public", "private", "protected", "internal", "file", "static", "sealed", "abstract", "virtual",
@@ -220,12 +202,6 @@ internal sealed class CSharpStructureReader
         }
     }
 
-    /// <summary>
-    /// What one declaration header introduces, wherever the header ends. Both terminators
-    /// recognize declarations the same way; only the span differs, so the recognition lives
-    /// in one place and cannot drift between them.
-    /// </summary>
-    /// <returns>The declaration, and the type name when it opens a type body.</returns>
     private (Declaration? Declaration, string? TypeName) Recognize(Scope parent, string text, int index)
     {
         CountPublicMember(parent, text);
@@ -296,11 +272,6 @@ internal sealed class CSharpStructureReader
         return name.Length == 0 ? null : name;
     }
 
-    /// <summary>
-    /// The declared name of a type, or null when the text does not declare one. Generic
-    /// parameter lists, base lists and constraints are removed first, so `where T : class`
-    /// cannot be read as a class declaration.
-    /// </summary>
     private static string? TypeNameOf(string text)
     {
         var declaration = WithoutConstraintsAndBaseList(text);
@@ -319,14 +290,8 @@ internal sealed class CSharpStructureReader
         return name is not null && IsIdentifier(name) ? name : null;
     }
 
-    /// <summary>
-    /// The declared name of a method or constructor and where its parameter list starts, or
-    /// null when the text is not one. A declaration is recognized only by its own shape: a
-    /// parameter list, a name in front of it, and no assignment — which is what separates a
-    /// member from a field whose initializer happens to be a lambda. Parenthesized groups
-    /// that no name precedes are skipped, so a tuple return type is not read as the
-    /// parameter list and the modifier before it is not read as the member's name.
-    /// </summary>
+    // Skipping groups without a preceding name prevents tuple return types from becoming
+    // parameter lists and their modifiers from becoming member names.
     private static MemberSignature? SignatureOf(string text)
     {
         var declaration = WithoutConstraints(text);
@@ -363,7 +328,6 @@ internal sealed class CSharpStructureReader
         return null;
     }
 
-    /// <summary>Parameters of the first top-level parameter list, or -1 when there is none.</summary>
     private static int ParameterCountOf(string text)
         => ParameterCountOf(text, TopLevelIndexOf(text, "(", 0));
 
@@ -445,7 +409,6 @@ internal sealed class CSharpStructureReader
         return false;
     }
 
-    /// <summary>The last identifier of a possibly qualified name, for example `Dispose` in `IDisposable.Dispose`.</summary>
     private static string? LastName(string text)
     {
         var end = text.Length;
@@ -481,7 +444,6 @@ internal sealed class CSharpStructureReader
             && text.StartsWith(word, StringComparison.Ordinal)
             && char.IsWhiteSpace(text[word.Length]);
 
-    /// <summary>The offset just after the bracketed group that opens at <paramref name="open"/>.</summary>
     private static int EndOfGroup(string text, int open)
     {
         var depth = 0;
@@ -500,11 +462,6 @@ internal sealed class CSharpStructureReader
         return text.Length;
     }
 
-    /// <summary>
-    /// The first occurrence of <paramref name="target"/> at or after <paramref name="from"/>
-    /// and outside any bracketed group. The caller starts only at a point where no group is
-    /// open, so nesting is counted from there.
-    /// </summary>
     private static int TopLevelIndexOf(string text, string target, int from = 0)
     {
         var depth = 0;
@@ -531,13 +488,11 @@ internal sealed class CSharpStructureReader
         return -1;
     }
 
-    /// <summary>`::` is part of a qualified name, not the base list a type declaration ends with.</summary>
     private static bool IsQualifiedNameSeparator(string text, int index, string target)
         => target == ":"
             && (text.AsSpan(index).StartsWith("::", StringComparison.Ordinal)
                 || (index > 0 && text[index - 1] == ':'));
 
-    /// <summary>Attribute lists say nothing about size or shape, and they hide the declaration behind them.</summary>
     private static (string Text, int Offset) WithoutAttributes(string header)
     {
         var index = 0;
@@ -583,16 +538,12 @@ internal sealed class CSharpStructureReader
         return -1;
     }
 
-    /// <summary>One brace-delimited region, and what the reader learned about it.</summary>
     private sealed class Scope
     {
-        /// <summary>Set when the scope is a type body; members are counted against it.</summary>
         public string? TypeName { get; set; }
 
-        /// <summary>Whether closing this scope also ends a name qualifier.</summary>
         public bool QualifiesName { get; set; }
 
-        /// <summary>The type or member this scope is the body of.</summary>
         public Declaration? Declaration { get; set; }
 
         public int PublicMembers { get; set; }

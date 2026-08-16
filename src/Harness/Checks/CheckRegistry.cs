@@ -1,3 +1,4 @@
+using Harness.Checks.Comments;
 using Harness.Checks.Duplication;
 using Harness.Checks.Frame;
 using Harness.Checks.Maintainability;
@@ -19,6 +20,7 @@ internal static class CheckRegistry
         new HarnessConfigCheck(),
 
         new DocumentationPolicyCheck(),
+        new CommentLineCheck(),
         new MaintainabilityCheck(),
         new DuplicationCheck(),
 

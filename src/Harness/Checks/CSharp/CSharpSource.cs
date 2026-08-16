@@ -1,80 +1,69 @@
 namespace Harness.Checks.CSharp;
 
-/// <summary>What a masked region held, for readers that need the kind and not the text.</summary>
 internal enum MaskedContent
 {
     Comment,
-
-    /// <summary>A preprocessor directive line, including the `#`.</summary>
     Preprocessor,
-
-    /// <summary>A string literal in any of its forms, interpolation holes included.</summary>
     StringLiteral,
-
     CharacterLiteral,
 }
 
-/// <param name="Start">Offset of the first masked character.</param>
-/// <param name="End">Offset just after the last masked character.</param>
 internal sealed record MaskedRegion(int Start, int End, MaskedContent Content);
 
 /// <summary>
-/// One C# file reduced to what a lexical reader can state with certainty: the same text
-/// with comment, string, character-literal and preprocessor content replaced by spaces,
-/// plus which physical lines carry code. Every measurement reads this instead of the raw
-/// text, so a keyword inside a comment and a brace inside a string cannot be mistaken for
-/// control flow or for structure.
+/// C# reduced to code by replacing comments, literals and directives with spaces.
+/// Newlines and offsets survive, so findings still point to the original file.
 /// </summary>
-/// <remarks>
-/// Masking preserves every offset and every newline, so a position in the masked text is
-/// the same position in the file the reader will open.
-/// </remarks>
 internal sealed class CSharpSource
 {
     private readonly int[] lineStarts;
     private readonly bool[] isLogical;
+    private readonly bool[] hasComment;
 
     private CSharpSource(
         string path,
         string masked,
         IReadOnlyList<MaskedRegion> maskedRegions,
         int[] lineStarts,
-        bool[] isLogical)
+        bool[] isLogical,
+        bool[] hasComment)
     {
         Path = path;
         Masked = masked;
         MaskedRegions = maskedRegions;
         this.lineStarts = lineStarts;
         this.isLogical = isLogical;
+        this.hasComment = hasComment;
     }
 
-    /// <summary>Repository-relative path, as findings report it.</summary>
     public string Path { get; }
 
-    /// <summary>The file with everything that is not code blanked out.</summary>
     public string Masked { get; }
 
-    /// <summary>
-    /// What was blanked and what kind of content it was, in increasing offset order. A reader
-    /// that must tell an empty pair of parentheses from a call with a string argument needs
-    /// this; a reader that only measures code does not.
-    /// </summary>
     public IReadOnlyList<MaskedRegion> MaskedRegions { get; }
 
     public int LineCount => lineStarts.Length;
 
-    /// <summary>Physical lines that carry code or continue a multi-line string literal.</summary>
     public int LogicalLines => LogicalLinesBetween(1, LineCount);
+
+    public int CommentLines => hasComment.Count(line => line);
+
+    public int AuthoredLines
+        => Enumerable.Range(0, LineCount).Count(line => isLogical[line] || hasComment[line]);
 
     public static CSharpSource Read(string path, string text)
     {
         var (masked, regions) = Mask(text);
         var lineStarts = LineStarts(masked);
         return new CSharpSource(
-            path, masked, regions, lineStarts, ClassifyLines(masked, lineStarts, regions));
+            path,
+            masked,
+            regions,
+            lineStarts,
+            ClassifyLines(masked, lineStarts, regions),
+            ClassifyCommentLines(lineStarts, regions));
     }
 
-    /// <summary>The 1-based physical line an offset in the masked text falls on.</summary>
     public int LineOf(int index)
     {
         var found = Array.BinarySearch(lineStarts, index);
@@ -98,7 +87,6 @@ internal sealed class CSharpSource
         return count;
     }
 
-    /// <summary>The masked text of a line range, which is what token counting reads.</summary>
     public ReadOnlySpan<char> TextBetween(int firstLine, int lastLine)
     {
         if (firstLine > LineCount || lastLine < firstLine)
@@ -126,11 +114,7 @@ internal sealed class CSharpSource
         return [.. starts];
     }
 
-    /// <summary>
-    /// A line is logical when code survives masking on it, or when it is the continuation
-    /// of a multi-line string literal — the literal is content the file carries, even
-    /// though none of its characters are code.
-    /// </summary>
+    // Multi-line literal continuations carry file content even though masking removes it.
     private static bool[] ClassifyLines(string masked, int[] lineStarts, List<MaskedRegion> regions)
     {
         var isLogical = new bool[lineStarts.Length];
@@ -156,18 +140,28 @@ internal sealed class CSharpSource
         return isLogical;
     }
 
+    private static bool[] ClassifyCommentLines(int[] lineStarts, List<MaskedRegion> regions)
+    {
+        var hasComment = new bool[lineStarts.Length];
+        foreach (var region in regions.Where(region => region.Content == MaskedContent.Comment))
+        {
+            var first = LineIndexOf(lineStarts, region.Start);
+            var last = LineIndexOf(lineStarts, Math.Max(region.Start, region.End - 1));
+            for (var line = first; line <= last; line++)
+            {
+                hasComment[line] = true;
+            }
+        }
+
+        return hasComment;
+    }
+
     private static int LineIndexOf(int[] lineStarts, int index)
     {
         var found = Array.BinarySearch(lineStarts, index);
         return found >= 0 ? found : ~found - 1;
     }
 
-    /// <summary>
-    /// Blanks every region a C# lexer would not hand to the parser. Returns the masked text
-    /// together with what each blanked region held, which callers need to tell a blank line
-    /// apart from the inside of a multi-line literal, and an empty argument list apart from
-    /// one that carried a string.
-    /// </summary>
     private static (string Masked, List<MaskedRegion> Regions) Mask(string text)
     {
         var buffer = text.ToCharArray();
@@ -245,8 +239,6 @@ internal sealed class CSharpSource
         return (new string(buffer), regions);
     }
 
-    /// <summary>Blanks one region and remembers what it held.</summary>
-    /// <returns>The offset the caller continues from.</returns>
     private static int Record(
         List<MaskedRegion> regions,
         char[] buffer,
@@ -303,14 +295,8 @@ internal sealed class CSharpSource
         return Math.Min(scan, text.Length);
     }
 
-    /// <summary>
-    /// The end of a string literal in any of the forms C# accepts: regular, verbatim, raw,
-    /// and the interpolated variants of each. Interpolation holes are walked rather than
-    /// skipped over, because a hole may contain quotes, braces and comments of its own; a
-    /// reader that ignored that would lose the end of the literal and, with it, the
-    /// structure of everything after it.
-    /// </summary>
-    /// <returns>The offset after the literal, or <paramref name="start"/> when none begins here.</returns>
+    // Interpolation holes are walked because their quotes, braces and nested literals can
+    // otherwise hide the end of the containing literal and everything after it.
     private static int StringLiteralEnd(string text, int start)
     {
         var scan = start;
@@ -363,7 +349,6 @@ internal sealed class CSharpSource
                     continue;
                 }
 
-                // A doubled quote is an escaped quote in a verbatim literal.
                 if (verbatim && run > 1)
                 {
                     index += 2;
@@ -381,7 +366,7 @@ internal sealed class CSharpSource
                     continue;
                 }
 
-                // An unterminated regular literal ends at the line, as the compiler says.
+                // Unterminated regular literals end at the physical line.
                 if (character == '\n')
                 {
                     return index;
@@ -394,11 +379,8 @@ internal sealed class CSharpSource
         return text.Length;
     }
 
-    /// <summary>
-    /// Walks one interpolation hole, or one escaped brace run. In a literal with N dollar
-    /// signs, N consecutive braces open a hole; with one dollar sign a doubled brace is an
-    /// escape instead, so only an odd run opens one.
-    /// </summary>
+    // N dollar signs require N braces to open a hole; with one dollar sign, only an odd
+    // brace run opens one because doubled braces escape each other.
     private static int HoleEnd(string text, int index, int dollars)
     {
         var run = RunLength(text, index, '{');
@@ -474,8 +456,6 @@ internal sealed class CSharpSource
         return run;
     }
 
-    /// <summary>Newlines survive, so masked offsets and line numbers stay the file's own.</summary>
-    /// <returns>The offset the caller continues from.</returns>
     private static int Blank(char[] buffer, string text, int from, int to)
     {
         var stop = Math.Min(to, text.Length);
