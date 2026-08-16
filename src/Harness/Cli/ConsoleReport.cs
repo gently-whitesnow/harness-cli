@@ -41,8 +41,8 @@ internal static class ConsoleReport
                 text.Append("      ").Append(gate.OutcomeReason).Append('\n');
             }
 
-            AppendCommands(text, gate.Commands);
             AppendFindings(text, gate.Findings);
+            AppendSuppressed(text, gate.Suppressed);
         }
 
         text.Append("\n  git evidence  (").Append(FormatDuration(report.EvidenceDuration)).Append(")\n");
@@ -51,20 +51,21 @@ internal static class ConsoleReport
     }
 
     /// <summary>
-    /// Every command a gate ran, so a reader can reproduce the failure outside the harness
-    /// and see what the gate actually cost.
+    /// Findings the repository has accepted in writing. They are printed with the sentence
+    /// that accepted them, because an exception nobody sees is indistinguishable from a
+    /// check that was never written.
     /// </summary>
-    private static void AppendCommands(StringBuilder text, IReadOnlyList<ExecutedCommand> commands)
+    private static void AppendSuppressed(StringBuilder text, IReadOnlyList<SuppressedFinding> suppressed)
     {
-        foreach (var command in commands)
+        foreach (var entry in suppressed)
         {
-            text.Append("      ran        ")
-                .Append(command.DisplayCommand)
-                .Append("  exit ")
-                .Append(command.ExitCode)
-                .Append("  (")
-                .Append(FormatDuration(command.Duration))
-                .Append(")\n");
+            text.Append("      suppressed  ")
+                .Append(entry.Finding.Location)
+                .Append(": ")
+                .Append(entry.Finding.Message)
+                .Append(" — accepted: ")
+                .Append(entry.Suppression.Reason)
+                .Append('\n');
         }
     }
 

@@ -6,7 +6,7 @@ public sealed class AgentEntryPointTests
     [Fact]
     public void Direct_relative_link_written_as_dot_slash_passes()
     {
-        using var repository = RepositoryFixture.CreateGitRepository()
+        using var repository = Fixtures.Framed()
             .WriteFile("ROOT.md", "# Root\n")
             .WriteSymbolicLink("AGENTS.md", "./ROOT.md")
             .WriteSymbolicLink("CLAUDE.md", "ROOT.md")
@@ -20,7 +20,7 @@ public sealed class AgentEntryPointTests
     [Fact]
     public void Missing_agent_entry_point_is_a_violation()
     {
-        using var repository = RepositoryFixture.CreateGitRepository()
+        using var repository = Fixtures.Framed()
             .WriteFile("ROOT.md", "# Root\n")
             .WriteSymbolicLink("AGENTS.md", "ROOT.md")
             .Commit();
@@ -48,7 +48,7 @@ public sealed class AgentEntryPointTests
     [Fact]
     public void Chained_link_is_a_violation()
     {
-        using var repository = RepositoryFixture.CreateGitRepository()
+        using var repository = Fixtures.Framed()
             .WriteFile("ROOT.md", "# Root\n")
             .WriteSymbolicLink("CLAUDE.md", "ROOT.md")
             .WriteSymbolicLink("AGENTS.md", "CLAUDE.md")
@@ -64,7 +64,7 @@ public sealed class AgentEntryPointTests
     [Fact]
     public void Broken_link_is_a_violation()
     {
-        using var repository = RepositoryFixture.CreateGitRepository()
+        using var repository = Fixtures.Framed()
             .WriteFile("ROOT.md", "# Root\n")
             .WriteSymbolicLink("CLAUDE.md", "ROOT.md")
             .WriteSymbolicLink("AGENTS.md", "docs/ROOT.md")
@@ -80,7 +80,7 @@ public sealed class AgentEntryPointTests
     [Fact]
     public void Absolute_link_is_a_violation()
     {
-        using var repository = RepositoryFixture.CreateGitRepository()
+        using var repository = Fixtures.Framed()
             .WriteFile("ROOT.md", "# Root\n")
             .WriteSymbolicLink("CLAUDE.md", "ROOT.md")
             .Commit();
@@ -96,7 +96,7 @@ public sealed class AgentEntryPointTests
     [Fact]
     public void Link_to_a_different_tracked_document_is_a_violation()
     {
-        using var repository = RepositoryFixture.CreateGitRepository()
+        using var repository = Fixtures.Framed()
             .WriteFile("ROOT.md", "# Root\n")
             .WriteFile("docs/ROOT.md", "# Other root\n")
             .WriteSymbolicLink("CLAUDE.md", "ROOT.md")

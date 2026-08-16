@@ -86,7 +86,11 @@ public sealed class CliContractTests
     {
         using var repository = Fixtures.Compliant().WriteLines("ROOT.md", 400).Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--skip", "docs.policy");
+        var run = HarnessCli.Run(
+            repository.Path,
+            "check",
+            "--skip",
+            "harness,docs,maintainability,duplication,declaration");
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("PASS"), run.Output);

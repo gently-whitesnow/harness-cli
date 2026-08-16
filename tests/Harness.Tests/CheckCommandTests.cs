@@ -16,7 +16,7 @@ public sealed class CheckCommandTests
     [Fact]
     public void Missing_root_document_is_a_violation()
     {
-        using var repository = RepositoryFixture.CreateGitRepository()
+        using var repository = Fixtures.Framed()
             .WriteFile("README.md", "# Overview\n")
             .Commit();
 
@@ -62,7 +62,7 @@ public sealed class CheckCommandTests
     [Fact]
     public void Missing_readme_is_allowed()
     {
-        using var repository = RepositoryFixture.CreateGitRepository()
+        using var repository = Fixtures.Framed()
             .WriteFile("ROOT.md", "# Root\n")
             .WriteSymbolicLink("AGENTS.md", "ROOT.md")
             .WriteSymbolicLink("CLAUDE.md", "ROOT.md")
@@ -89,7 +89,7 @@ public sealed class CheckCommandTests
     [Fact]
     public void Untracked_root_document_does_not_satisfy_the_policy()
     {
-        using var repository = RepositoryFixture.CreateGitRepository()
+        using var repository = Fixtures.Framed()
             .WriteFile("README.md", "# Overview\n")
             .Commit()
             .WriteFile("ROOT.md", "# Root\n");

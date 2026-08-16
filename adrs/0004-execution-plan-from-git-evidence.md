@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted
+Partially superseded by [ADR-0011](0011-the-harness-does-not-run-the-repository-toolchain.md).
+Исполнения больше нет, поэтому выведение плана исполнения потеряло предмет. Утверждение о
+том, что факты берутся только из Git-tracked evidence и что окружение вызывающего не
+является evidence репозитория, продолжает действовать. Отложенный здесь манифест заведён
+в [ADR-0012](0012-declaration-with-an-address-of-proof.md).
 
 ## Context
 
