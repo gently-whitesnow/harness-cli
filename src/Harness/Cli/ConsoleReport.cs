@@ -109,7 +109,12 @@ internal static class ConsoleReport
         => report.ExitCode switch
         {
             ExitCodes.Violation => "FAIL",
-            ExitCodes.Success => report.NothingWasVerified ? "NOTHING VERIFIED" : "PASS",
+            ExitCodes.Success => report switch
+            {
+                { NothingWasVerified: true } => "NOTHING VERIFIED",
+                { HasReadinessGaps: true } => "PASS WITH GAPS",
+                _ => "PASS",
+            },
             _ => "INCOMPLETE",
         };
 
@@ -120,6 +125,7 @@ internal static class ConsoleReport
             CheckOutcome.Failed => "failed",
             CheckOutcome.Skipped => "skipped",
             CheckOutcome.NotApplicable => "not applicable",
+            CheckOutcome.ReadinessGap => "readiness gap",
             _ => "incomplete",
         };
 

@@ -80,8 +80,8 @@ internal static class DotNetExplanations
         {Discovery}
           The gate applies only when a tracked project declares a .NET test framework —
           a `Microsoft.NET.Test.Sdk` reference or an explicit `IsTestProject` property. A
-          repository without one is reported as not applicable, which is a visible absence
-          of tests rather than a claim that the repository passed.
+          .NET repository without one has a readiness gap, which is a visible absence of
+          tests rather than a claim that the repository passed.
 
         Evidence
           `dotnet test <target>` builds and runs the discovered tests. Failing tests are

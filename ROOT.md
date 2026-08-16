@@ -10,6 +10,8 @@ later CI. Reusable engineering rules live in executable gates, not in agent pros
   - `Engine/` — gate engine: selection, ordering, timing, aggregation, exit codes.
   - `Checks/` — the shipped checks and their `explain` content.
     - `Checks/DotNet/` — .NET surface discovery and the SDK-backed format, build and test gates.
+    - `Checks/Web/` — web surface discovery, package-manager selection, and the gates that
+      run the repository's own format, lint, typecheck, test and build scripts.
   - `Git/` — Git evidence: tracked entries, file modes, symbolic link targets.
   - `Processes/` — external command invocation with an argument vector, never a shell.
 - `tests/Harness.Tests` — acceptance tests that drive the compiled executable.
@@ -41,7 +43,11 @@ Use `harness check --skip dotnet.test` for the fast loop.
 - A stack the repository does not have is `not applicable`. That is distinct from a check
   that failed to execute, and it never reads as a pass.
 - An execution plan is discovered from Git-tracked evidence, never configured and never
-  guessed. Evidence that does not single out one plan is incomplete, not a choice.
+  guessed. Evidence that does not single out one plan is incomplete, not a choice. The
+  caller's environment and global preferences are not repository evidence.
+- A quality command the repository does not have is a readiness gap: visible in the
+  report, never a pass, never a violation, and never synthesized by the harness. Gates
+  run commands the repository already declares, and only ones that verify rather than fix.
 - External tools localize their output. Any tool whose output is read as evidence is
   invoked with its language pinned, so findings do not depend on the caller's locale.
 - The harness observes. It never edits tracked content, installs a toolchain, or changes
@@ -51,7 +57,8 @@ Use `harness check --skip dotnet.test` for the fast loop.
 
 ## Exit codes
 
-- `0` — every selected applicable blocking check completed and passed.
+- `0` — every selected applicable blocking check completed and passed. Advisory findings
+  and readiness gaps may still be present; the report says so instead of reading `PASS`.
 - `1` — a selected applicable blocking check proved a violation.
 - `2` — verification could not be completed reliably.
 

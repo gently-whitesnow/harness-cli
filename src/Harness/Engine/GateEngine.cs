@@ -26,6 +26,13 @@ internal sealed record RunReport(
     public bool NothingWasVerified
         => ToolError is not null || !Gates.Any(gate => gate.Outcome is CheckOutcome.Passed or CheckOutcome.Failed);
 
+    /// <summary>
+    /// True when a selected gate found the stack but not the command it verifies with. It
+    /// does not change the exit code — a gap is not a violation — but a run that passed
+    /// what it could run must not read as a repository that has everything covered.
+    /// </summary>
+    public bool HasReadinessGaps => Gates.Any(gate => gate.Outcome == CheckOutcome.ReadinessGap);
+
     public int ExitCode
     {
         get

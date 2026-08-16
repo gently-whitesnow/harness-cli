@@ -33,7 +33,7 @@ internal abstract class DotNetCheck : IRepositoryCheck
         var targets = Targets(surface);
         if (targets.Count == 0)
         {
-            return CheckEvaluation.NotApplicable(NotApplicableReason);
+            return WithoutTargets;
         }
 
         // Applicability is decided from repository evidence alone, so a repository without
@@ -77,8 +77,11 @@ internal abstract class DotNetCheck : IRepositoryCheck
         return CheckEvaluation.From(findings, commands);
     }
 
-    /// <summary>Why this gate does not apply to a repository that does have a .NET surface.</summary>
-    protected abstract string NotApplicableReason { get; }
+    /// <summary>
+    /// What this gate concludes about a repository that has a .NET surface but nothing for
+    /// this gate to run against.
+    /// </summary>
+    protected abstract CheckEvaluation WithoutTargets { get; }
 
     protected abstract IReadOnlyList<string> Targets(DotNetSurface surface);
 
@@ -117,7 +120,8 @@ internal sealed class DotNetFormatCheck : DotNetCheck
 
     public override string Explanation => DotNetExplanations.Format;
 
-    protected override string NotApplicableReason => "no .NET target to verify formatting for";
+    protected override CheckEvaluation WithoutTargets
+        => CheckEvaluation.NotApplicable("no .NET target to verify formatting for");
 
     protected override IReadOnlyList<string> Targets(DotNetSurface surface) => surface.BuildTargets;
 
@@ -135,7 +139,8 @@ internal sealed class DotNetBuildCheck : DotNetCheck
 
     public override string Explanation => DotNetExplanations.Build;
 
-    protected override string NotApplicableReason => "no .NET target to compile";
+    protected override CheckEvaluation WithoutTargets
+        => CheckEvaluation.NotApplicable("no .NET target to compile");
 
     protected override IReadOnlyList<string> Targets(DotNetSurface surface) => surface.BuildTargets;
 
@@ -151,8 +156,13 @@ internal sealed class DotNetTestCheck : DotNetCheck
 
     public override string Explanation => DotNetExplanations.Test;
 
-    protected override string NotApplicableReason
-        => "no tracked project declares a .NET test framework, so there are no tests to run";
+    /// <summary>
+    /// A .NET repository with no test project has the stack but not the tests: that is a
+    /// readiness gap, the same absence the web gates report, and never a pass.
+    /// </summary>
+    protected override CheckEvaluation WithoutTargets
+        => CheckEvaluation.ReadinessGap(
+            "no tracked project declares a .NET test framework, so there are no tests to run");
 
     protected override IReadOnlyList<string> Targets(DotNetSurface surface) => surface.TestTargets;
 

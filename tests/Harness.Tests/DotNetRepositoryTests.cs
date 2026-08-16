@@ -113,14 +113,17 @@ public sealed class DotNetRepositoryTests
     }
 
     [Fact]
-    public void A_repository_without_a_test_project_reports_the_test_gate_as_not_applicable()
+    public void A_repository_without_a_test_project_reports_a_readiness_gap()
     {
         using var repository = Fixtures.DotNetLibrary();
 
         var run = HarnessCli.Run(repository.Path, "check", "--only", "dotnet.test");
 
+        // The stack is here and the tests are not: an absence to close, not a pass and not
+        // a stack the gate does not apply to.
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("not applicable"), run.Output);
+        Assert.True(run.OutputContains("readiness gap"), run.Output);
+        Assert.False(run.OutputContains("PASS"), run.Output);
         Assert.False(run.OutputContains("dotnet test"), run.Output);
     }
 

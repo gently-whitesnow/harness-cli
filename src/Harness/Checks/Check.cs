@@ -20,6 +20,14 @@ internal enum CheckOutcome
     /// </summary>
     NotApplicable,
 
+    /// <summary>
+    /// The repository has the stack this check is about but not the quality command the
+    /// check would run. Missing infrastructure is neither a code violation nor permission
+    /// for the harness to invent a repository-specific command, so it is reported as its
+    /// own visible state that never reads as a pass.
+    /// </summary>
+    ReadinessGap,
+
     /// <summary>The check could not be completed reliably.</summary>
     Incomplete,
 }
@@ -68,6 +76,9 @@ internal sealed record CheckEvaluation(
 
     public static CheckEvaluation NotApplicable(string reason)
         => new(CheckOutcome.NotApplicable, [], reason, []);
+
+    public static CheckEvaluation ReadinessGap(string reason)
+        => new(CheckOutcome.ReadinessGap, [], reason, []);
 }
 
 /// <summary>A check as the engine sees it: identity, applicability and evaluation.</summary>

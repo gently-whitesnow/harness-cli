@@ -33,6 +33,170 @@ public static class Fixtures
             .WriteFile("tests/App.Tests/WidgetTests.cs", PassingTest)
             .Commit();
 
+    /// <summary>
+    /// A compliant repository that also holds one web application: an npm lockfile as the
+    /// package-manager evidence, and the standard non-mutating quality scripts. The scripts
+    /// run `node` alone, so the fixture exercises real package-manager invocation without
+    /// requiring an install the harness is not allowed to perform.
+    /// </summary>
+    public static RepositoryFixture WebApplication()
+        => Compliant()
+            .WriteFile(".gitignore", "node_modules/\ndist/\n")
+            .WriteFile("package.json", WebManifest)
+            .WriteFile("package-lock.json", NpmLockFile)
+            .WriteFile("src/main.ts", "export const main = (): number => 0;\n")
+            .Commit();
+
+    public const string WebManifest =
+        """
+        {
+          "name": "web-fixture",
+          "private": true,
+          "version": "0.0.0",
+          "scripts": {
+            "format:check": "node -e \"process.exit(0)\"",
+            "lint": "node -e \"process.exit(0)\"",
+            "typecheck": "node -e \"process.exit(0)\"",
+            "test": "node -e \"process.exit(0)\"",
+            "build": "node -e \"process.exit(0)\""
+          }
+        }
+
+        """;
+
+    /// <summary>The standard scripts plus the manifest's own `packageManager` declaration.</summary>
+    public static string WebManifestDeclaring(string packageManager)
+        => WebManifest.Replace(
+            "\"name\": \"web-fixture\",",
+            $"\"name\": \"web-fixture\",\n  \"packageManager\": \"{packageManager}\",",
+            StringComparison.Ordinal);
+
+    public const string WebManifestWithFailingLint =
+        """
+        {
+          "name": "web-fixture",
+          "private": true,
+          "version": "0.0.0",
+          "scripts": {
+            "lint": "node -e \"console.log('src/main.ts: 1 problem')\"; exit 1"
+          }
+        }
+
+        """;
+
+    /// <summary>A typecheck script that reports a diagnostic in the shape the compiler uses.</summary>
+    public const string WebManifestWithFailingTypecheck =
+        """
+        {
+          "name": "web-fixture",
+          "private": true,
+          "version": "0.0.0",
+          "scripts": {
+            "typecheck": "node -e \"console.log('src/main.ts(3,5): error TS2322: Type string is not assignable to type number.')\"; exit 2"
+          }
+        }
+
+        """;
+
+    /// <summary>Every gate present and every one of them proving a defect.</summary>
+    public const string WebManifestWithFailingScripts =
+        """
+        {
+          "name": "web-fixture",
+          "private": true,
+          "version": "0.0.0",
+          "scripts": {
+            "format:check": "node -e \"console.log('src/main.ts would be reformatted')\"; exit 1",
+            "test": "node -e \"console.log('1 test failed')\"; exit 1",
+            "build": "node -e \"console.log('build error: could not resolve ./missing')\"; exit 1"
+          }
+        }
+
+        """;
+
+    /// <summary>
+    /// Formatting offered only through a script that delegates to the fixer, which the
+    /// harness must not run merely because the delegation hides the flag.
+    /// </summary>
+    public const string WebManifestWithDelegatedMutatingFormat =
+        """
+        {
+          "name": "web-fixture",
+          "private": true,
+          "version": "0.0.0",
+          "scripts": {
+            "format:check": "npm run format:fix",
+            "format:fix": "prettier --write ."
+          }
+        }
+
+        """;
+
+    public const string WebManifestWithoutTypecheck =
+        """
+        {
+          "name": "web-fixture",
+          "private": true,
+          "version": "0.0.0",
+          "scripts": {
+            "lint": "node -e \"process.exit(0)\"",
+            "build": "node -e \"process.exit(0)\""
+          }
+        }
+
+        """;
+
+    /// <summary>Formatting offered only as a fix, which is not a verification the harness may run.</summary>
+    public const string WebManifestWithMutatingFormat =
+        """
+        {
+          "name": "web-fixture",
+          "private": true,
+          "version": "0.0.0",
+          "scripts": {
+            "format": "prettier --write ."
+          }
+        }
+
+        """;
+
+    public const string WebManifestWithDependencies =
+        """
+        {
+          "name": "web-fixture",
+          "private": true,
+          "version": "0.0.0",
+          "scripts": {
+            "build": "node -e \"process.exit(0)\""
+          },
+          "devDependencies": {
+            "typescript": "^5.6.0"
+          }
+        }
+
+        """;
+
+    /// <summary>A valid npm lockfile for a project with no dependencies.</summary>
+    public const string NpmLockFile =
+        """
+        {
+          "name": "web-fixture",
+          "lockfileVersion": 3,
+          "requires": true,
+          "packages": {}
+        }
+
+        """;
+
+    public const string PnpmLockFile =
+        """
+        lockfileVersion: '9.0'
+
+        settings:
+          autoInstallPeers: true
+
+        """;
+
     private const string Library =
         $"""
         <Project Sdk="Microsoft.NET.Sdk">

@@ -37,6 +37,14 @@ public static class HarnessCli
             .ToList();
     }
 
+    /// <summary>
+    /// The most lines a default run may print: fixed framing plus a bounded cost per shipped
+    /// gate. Concise output is a contract about density — it grows with the number of checks
+    /// the build ships and never with the number of documents or findings they report on.
+    /// </summary>
+    public static int ConciseLineBudget(string workingDirectory)
+        => 4 + (2 * ShippedCheckIds(workingDirectory).Count);
+
     private static string ResolveExecutablePath()
     {
         var overridePath = Environment.GetEnvironmentVariable("HARNESS_CLI");

@@ -64,6 +64,12 @@ public sealed class RepositoryFixture : TemporaryDirectory
         return this;
     }
 
+    public RepositoryFixture Remove(string relativePath)
+    {
+        File.Delete(Absolute(relativePath));
+        return this;
+    }
+
     public RepositoryFixture WriteLines(string relativePath, int lineCount)
     {
         var builder = new StringBuilder();

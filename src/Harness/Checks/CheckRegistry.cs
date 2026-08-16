@@ -1,4 +1,5 @@
 using Harness.Checks.DotNet;
+using Harness.Checks.Web;
 
 namespace Harness.Checks;
 
@@ -11,5 +12,10 @@ internal static class CheckRegistry
         new DotNetFormatCheck(),
         new DotNetBuildCheck(),
         new DotNetTestCheck(),
+        new WebFormatCheck(),
+        new WebLintCheck(),
+        new WebTypecheckCheck(),
+        new WebTestCheck(),
+        new WebBuildCheck(),
     ];
 }
