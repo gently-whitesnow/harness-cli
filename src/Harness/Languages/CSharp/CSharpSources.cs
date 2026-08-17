@@ -1,6 +1,6 @@
 using Harness.Git;
 
-namespace Harness.Checks.CSharp;
+namespace Harness.Languages.CSharp;
 
 internal static class CSharpSources
 {

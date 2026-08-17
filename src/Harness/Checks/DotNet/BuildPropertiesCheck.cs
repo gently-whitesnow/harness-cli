@@ -1,44 +1,41 @@
+using System.Xml.Linq;
+
 namespace Harness.Checks.DotNet;
 
-internal sealed class BuildPropertiesCheck : IRepositoryCheck
+internal sealed class BuildPropertiesCheck : DotNetCheck
 {
-    private static readonly IReadOnlyDictionary<string, string> Required = new Dictionary<string, string>(StringComparer.Ordinal)
-    {
-        ["Nullable"] = "enable",
-        ["ImplicitUsings"] = "enable",
-        ["TreatWarningsAsErrors"] = "true",
-        ["EnableNETAnalyzers"] = "true",
-        ["AnalysisLevel"] = "latest-Recommended",
-        ["EnforceCodeStyleInBuild"] = "true",
-        ["Deterministic"] = "true",
-    };
+    private const string ContinuousIntegration = "ContinuousIntegrationBuild";
 
-    public string Id => "build-properties.dotnet";
-    public string Group => "build-properties";
-    public string Applicability => "dotnet";
-    public string Summary => "central hardened .NET build properties";
-    public string Explanation => BuildPropertiesExplanation.Text;
-
-    public CheckEvaluation Evaluate(CheckContext context)
-    {
-        var (projects, failure) = DotNetRepository.ReadProjects(context.Repository);
-        if (failure is not null)
+    private static readonly IReadOnlyDictionary<string, string> Required =
+        new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            return CheckEvaluation.Incomplete(failure);
-        }
+            ["Nullable"] = "enable",
+            ["ImplicitUsings"] = "enable",
+            ["TreatWarningsAsErrors"] = "true",
+            ["EnableNETAnalyzers"] = "true",
+            ["AnalysisLevel"] = "latest-Recommended",
+            ["EnforceCodeStyleInBuild"] = "true",
+            ["Deterministic"] = "true",
+        };
 
-        if (projects.Count == 0)
-        {
-            return CheckEvaluation.NotApplicable("no tracked SDK-style .NET projects were found");
-        }
+    public override string Id => "build-properties.dotnet";
 
+    public override string Group => "build-properties";
+
+    public override string Summary => "central hardened .NET build properties";
+
+    public override string Explanation => BuildPropertiesExplanation.Text;
+
+    protected override CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects)
+    {
         var findings = new List<Finding>();
         foreach (var project in projects)
         {
-            var (props, propsFailure) = DotNetRepository.ReadNearest(context.Repository, project.Path, "Directory.Build.props");
-            if (propsFailure is not null)
+            var (props, failure) = DotNetRepository.ReadNearest(
+                context.Repository, project.Path, "Directory.Build.props");
+            if (failure is not null)
             {
-                return CheckEvaluation.Incomplete(propsFailure);
+                return CheckEvaluation.Incomplete(failure);
             }
 
             if (props is null)
@@ -47,58 +44,75 @@ internal sealed class BuildPropertiesCheck : IRepositoryCheck
                 continue;
             }
 
-            foreach (var expected in Required)
-            {
-                var values = DotNetRepository.Elements(props, expected.Key).Select(DotNetRepository.Value).Where(value => value is not null).ToList();
-                if (!values.Any(value => string.Equals(value, expected.Value, StringComparison.OrdinalIgnoreCase)))
-                {
-                    findings.Add(Block(props.Path, $"must set {expected.Key} to {expected.Value} for '{project.Path}'"));
-                }
-
-                foreach (var value in values.Where(value => !string.Equals(
-                    value,
-                    expected.Value,
-                    StringComparison.OrdinalIgnoreCase)))
-                {
-                    findings.Add(Block(props.Path,
-                        $"sets {expected.Key} to conflicting value '{value}' for '{project.Path}'"));
-                }
-            }
-
-            var continuous = DotNetRepository.Elements(props, "ContinuousIntegrationBuild")
-                .Any(element => string.Equals(DotNetRepository.Value(element), "true", StringComparison.OrdinalIgnoreCase)
-                    && HasCondition(element));
-            if (!continuous)
-            {
-                findings.Add(Block(props.Path,
-                    $"must set ContinuousIntegrationBuild to true under a CI condition for '{project.Path}'"));
-            }
-
-
-            foreach (var value in DotNetRepository.Elements(props, "ContinuousIntegrationBuild")
-                .Select(DotNetRepository.Value)
-                .Where(value => value is not null && !string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)))
-            {
-                findings.Add(Block(props.Path,
-                    $"sets ContinuousIntegrationBuild to conflicting value '{value}' for '{project.Path}'"));
-            }
-
-            foreach (var expected in Required.Append(new KeyValuePair<string, string>("ContinuousIntegrationBuild", "true")))
-            {
-                foreach (var declaration in DotNetRepository.Elements(project, expected.Key))
-                {
-                    var value = DotNetRepository.Value(declaration);
-                    if (value is not null && !string.Equals(value, expected.Value, StringComparison.OrdinalIgnoreCase))
-                    {
-                        findings.Add(Block(project.Path,
-                            $"overrides central {expected.Key} with '{value}', weakening the repository baseline"));
-                    }
-                }
-            }
+            RequireProperties(props, project, findings);
+            RequireContinuousIntegration(props, project, findings);
+            RejectLocalOverrides(project, findings);
         }
 
         AddSharedTargetFrameworkFinding(projects, findings);
         return CheckEvaluation.From(findings);
+    }
+
+    private static void RequireProperties(DotNetFile props, DotNetFile project, List<Finding> findings)
+    {
+        foreach (var expected in Required)
+        {
+            var values = DotNetRepository.Elements(props, expected.Key)
+                .Select(DotNetRepository.Value)
+                .Where(value => value is not null)
+                .ToList();
+
+            if (!values.Any(value => Same(value, expected.Value)))
+            {
+                findings.Add(Block(
+                    props.Path, $"must set {expected.Key} to {expected.Value} for '{project.Path}'"));
+            }
+
+            foreach (var value in values.Where(value => !Same(value, expected.Value)))
+            {
+                findings.Add(Block(
+                    props.Path,
+                    $"sets {expected.Key} to conflicting value '{value}' for '{project.Path}'"));
+            }
+        }
+    }
+
+    private static void RequireContinuousIntegration(DotNetFile props, DotNetFile project, List<Finding> findings)
+    {
+        var declared = DotNetRepository.Elements(props, ContinuousIntegration).ToList();
+        if (!declared.Any(element => Same(DotNetRepository.Value(element), "true") && HasCondition(element)))
+        {
+            findings.Add(Block(
+                props.Path,
+                $"must set {ContinuousIntegration} to true under a CI condition for '{project.Path}'"));
+        }
+
+        foreach (var value in declared
+            .Select(DotNetRepository.Value)
+            .Where(value => value is not null && !Same(value, "true")))
+        {
+            findings.Add(Block(
+                props.Path,
+                $"sets {ContinuousIntegration} to conflicting value '{value}' for '{project.Path}'"));
+        }
+    }
+
+    private static void RejectLocalOverrides(DotNetFile project, List<Finding> findings)
+    {
+        var central = Required.Append(new KeyValuePair<string, string>(ContinuousIntegration, "true"));
+        foreach (var expected in central)
+        {
+            foreach (var declaration in DotNetRepository.Elements(project, expected.Key))
+            {
+                var value = DotNetRepository.Value(declaration);
+                if (value is not null && !Same(value, expected.Value))
+                {
+                    findings.Add(Block(
+                        project.Path,
+                        $"overrides central {expected.Key} with '{value}', weakening the repository baseline"));
+                }
+            }
+        }
     }
 
     private static void AddSharedTargetFrameworkFinding(IReadOnlyList<DotNetFile> projects, List<Finding> findings)
@@ -109,12 +123,7 @@ internal sealed class BuildPropertiesCheck : IRepositoryCheck
         }
 
         var declarations = projects
-            .Select(project => (Project: project, Values: DotNetRepository.Elements(project, "TargetFramework")
-                .Concat(DotNetRepository.Elements(project, "TargetFrameworks"))
-                .Select(DotNetRepository.Value)
-                .Where(value => value is not null)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList()))
+            .Select(project => (Project: project, Values: TargetFrameworksOf(project)))
             .ToList();
 
         if (declarations.All(entry => entry.Values.Count == 1)
@@ -122,16 +131,25 @@ internal sealed class BuildPropertiesCheck : IRepositoryCheck
         {
             foreach (var entry in declarations)
             {
-                findings.Add(Block(entry.Project.Path,
+                findings.Add(Block(
+                    entry.Project.Path,
                     $"repeats shared TargetFramework '{entry.Values[0]}'; move it to Directory.Build.props"));
             }
         }
     }
 
-    private static bool HasCondition(System.Xml.Linq.XElement element)
+    private static List<string?> TargetFrameworksOf(DotNetFile project)
+        => DotNetRepository.Elements(project, "TargetFramework")
+            .Concat(DotNetRepository.Elements(project, "TargetFrameworks"))
+            .Select(DotNetRepository.Value)
+            .Where(value => value is not null)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static bool HasCondition(XElement element)
         => !string.IsNullOrWhiteSpace(element.Attribute("Condition")?.Value)
             || !string.IsNullOrWhiteSpace(element.Parent?.Attribute("Condition")?.Value);
 
-    private static Finding Block(string location, string message)
-        => new(FindingSeverity.Blocking, location, message);
+    private static bool Same(string? value, string expected)
+        => string.Equals(value, expected, StringComparison.OrdinalIgnoreCase);
 }

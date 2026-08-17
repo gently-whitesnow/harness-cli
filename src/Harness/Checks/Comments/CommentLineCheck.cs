@@ -1,16 +1,17 @@
 using System.Globalization;
-using Harness.Checks.CSharp;
 using Harness.Config;
+using Harness.Languages;
+using Harness.Languages.CSharp;
 
 namespace Harness.Checks.Comments;
 
 internal sealed class CommentLineCheck : IRepositoryCheck
 {
-    public string Id => "comments.csharp";
+    public string Id => Language.CSharp.Qualify("comments");
 
     public string Group => "comments";
 
-    public string Applicability => "csharp";
+    public string Applicability => Language.CSharp.Key;
 
     public string Summary => "C# comment density limit";
 

@@ -6,8 +6,7 @@ internal sealed record MaintainabilitySettings(
     int MethodLines,
     int Branches,
     int ConstructorParameters,
-    int PublicMembers,
-    int ImportFanOut)
+    int PublicMembers)
 {
     public static MaintainabilitySettings Default { get; } = new(
         FileLines: 400,
@@ -15,6 +14,5 @@ internal sealed record MaintainabilitySettings(
         MethodLines: 60,
         Branches: 12,
         ConstructorParameters: 6,
-        PublicMembers: 25,
-        ImportFanOut: 20);
+        PublicMembers: 25);
 }

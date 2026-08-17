@@ -1,5 +1,5 @@
 using System.Text;
-using Harness.Checks;
+using Harness.Commits;
 using Harness.Git;
 
 namespace Harness.Config;
@@ -11,7 +11,7 @@ internal static class ConfigInitializer
         string repositoryPath,
         bool latest,
         CommitLanguage commitLanguage,
-        IReadOnlyList<IRepositoryCheck> checks)
+        IReadOnlyList<CheckDescriptor> checks)
     {
         var (repository, openFailure) = GitRepository.Open(repositoryPath);
         if (repository is null)
@@ -55,13 +55,13 @@ internal static class ConfigInitializer
     private static string Render(
         bool latest,
         CommitLanguage commitLanguage,
-        IReadOnlyList<IRepositoryCheck> checks)
+        IReadOnlyList<CheckDescriptor> checks)
     {
         var defaults = HarnessSettings.Default;
         var version = latest ? "\"latest\"" : HarnessConfig.CurrentVersion.ToString();
         var questions = checks
-            .Where(check => check.Group == HarnessConfig.FrameGroup)
-            .Select(check => check.Id[(HarnessConfig.FrameGroup.Length + 1)..])
+            .Where(check => check.AnswerKey is not null)
+            .Select(check => check.AnswerKey!)
             .ToList();
 
         var text = new StringBuilder();
@@ -87,8 +87,16 @@ internal static class ConfigInitializer
                   "methodLines": {{defaults.Maintainability.MethodLines}},
                   "branches": {{defaults.Maintainability.Branches}},
                   "constructorParameters": {{defaults.Maintainability.ConstructorParameters}},
-                  "publicMembers": {{defaults.Maintainability.PublicMembers}},
-                  "importFanOut": {{defaults.Maintainability.ImportFanOut}}
+                  "publicMembers": {{defaults.Maintainability.PublicMembers}}
+                },
+                "dependencies.csharp": {
+                  "externalImports": {{defaults.Dependencies.ExternalImports}},
+                  "outgoingReferences": {{defaults.Dependencies.OutgoingReferences}},
+                  "incomingReferences": {{defaults.Dependencies.IncomingReferences}}
+                },
+                "cohesion.csharp": {
+                  "minimumMembers": {{defaults.Cohesion.MinimumMembers}},
+                  "groups": {{defaults.Cohesion.Groups}}
                 },
                 "commits": {
                   "language": "{{new CommitSettings(commitLanguage, RequireSetup: true).Code}}",

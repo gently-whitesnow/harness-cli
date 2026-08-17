@@ -1,4 +1,4 @@
-using Harness.Config;
+using Harness.Commits;
 
 namespace Harness.Cli;
 

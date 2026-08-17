@@ -1,4 +1,5 @@
-using Harness.Checks.CSharp;
+using Harness.Languages;
+using Harness.Languages.CSharp;
 
 namespace Harness.Checks.Duplication;
 
@@ -19,11 +20,11 @@ internal sealed class DuplicationCheck : IRepositoryCheck
 
     private const int ShownLocations = 4;
 
-    public string Id => "duplication.csharp";
+    public string Id => Language.CSharp.Qualify("duplication");
 
     public string Group => "duplication";
 
-    public string Applicability => "csharp";
+    public string Applicability => Language.CSharp.Key;
 
     public string Summary => "C# cross-file lexical repetition";
 

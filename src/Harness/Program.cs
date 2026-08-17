@@ -24,7 +24,7 @@ switch (invocation.Kind)
             invocation.RepositoryPath,
             invocation.Latest,
             invocation.CommitLanguage,
-            checks);
+            CheckRegistry.Describe(checks));
         if (result.Failure is not null)
         {
             Console.Error.WriteLine(result.Failure);
@@ -198,7 +198,7 @@ static (GitRepository? Repository, HarnessConfig? Config, string? Failure) LoadR
         return (null, null, openFailure);
     }
 
-    var (config, configFailure) = HarnessConfig.Load(repository, checks);
+    var (config, configFailure) = HarnessConfig.Load(repository, CheckRegistry.Describe(checks));
     return config is null
         ? (repository, null, configFailure)
         : (repository, config, null);

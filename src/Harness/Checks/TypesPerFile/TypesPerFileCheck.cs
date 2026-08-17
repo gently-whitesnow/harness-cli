@@ -1,14 +1,15 @@
-using Harness.Checks.CSharp;
+using Harness.Languages;
+using Harness.Languages.CSharp;
 
 namespace Harness.Checks.TypesPerFile;
 
 internal sealed class TypesPerFileCheck : IRepositoryCheck
 {
-    public string Id => "types-per-file.csharp";
+    public string Id => Language.CSharp.Qualify("types-per-file");
 
     public string Group => "types-per-file";
 
-    public string Applicability => "csharp";
+    public string Applicability => Language.CSharp.Key;
 
     public string Summary => "one top-level C# class or record per file";
 
