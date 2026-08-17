@@ -10,11 +10,11 @@ namespace Harness.Checks;
 internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 {
     private const int LineLimit = DocumentationPolicyExplanation.LineLimit;
-    private const string RootDocument = "ROOT.md";
+    private const string RootDocument = "AGENTS.md";
     private const string ReadmeDocument = "README.md";
     private const string AdrDirectory = "adrs/";
 
-    private static readonly string[] AgentEntryPoints = ["AGENTS.md", "CLAUDE.md"];
+    private static readonly string[] AgentEntryPoints = ["CLAUDE.md"];
 
     public string Id => "docs.policy";
 
@@ -77,6 +77,15 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
                 return;
             }
 
+            if (entry.IsSymbolicLink)
+            {
+                Violation(
+                    RootDocument,
+                    "is a tracked symbolic link instead of the canonical document itself; "
+                        + "the agent entry points link to it, not the other way round");
+                return;
+            }
+
             EnforceLineLimit(entry);
         }
 
@@ -129,7 +138,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
                 findings.Add(new Finding(
                     FindingSeverity.Blocking,
                     entry.Path,
-                    "unexpected tracked Markdown; remove it, fold navigation into ROOT.md, "
+                    "unexpected tracked Markdown; remove it, fold navigation into AGENTS.md, "
                         + "or move durable rationale to adrs/"));
             }
         }

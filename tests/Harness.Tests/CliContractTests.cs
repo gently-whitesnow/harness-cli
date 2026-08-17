@@ -72,7 +72,7 @@ public sealed class CliContractTests
     [Fact]
     public void Skipped_checks_stay_visible_in_the_summary()
     {
-        using var repository = Fixtures.Compliant().WriteLines("ROOT.md", 400).Commit();
+        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 400).Commit();
 
         var run = HarnessCli.Run(repository.Path, "check", "--skip", "docs.policy");
 
@@ -84,7 +84,7 @@ public sealed class CliContractTests
     [Fact]
     public void A_run_in_which_nothing_ran_does_not_claim_the_repository_passed()
     {
-        using var repository = Fixtures.Compliant().WriteLines("ROOT.md", 400).Commit();
+        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 400).Commit();
 
         var run = HarnessCli.Run(
             repository.Path,
@@ -163,7 +163,7 @@ public sealed class CliContractTests
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("Rationale"), run.Output);
         Assert.True(run.OutputContains("Remediation"), run.Output);
-        Assert.True(run.OutputContains("ROOT.md"), run.Output);
+        Assert.True(run.OutputContains("AGENTS.md"), run.Output);
         Assert.True(run.OutputContains("150"), run.Output);
     }
 
@@ -207,7 +207,7 @@ public sealed class CliContractTests
     {
         using var repository = compliant
             ? Fixtures.Compliant()
-            : Fixtures.Compliant().WriteLines("ROOT.md", 400).WriteFile("docs/stale.md", "# Stale\n").Commit();
+            : Fixtures.Compliant().WriteLines("AGENTS.md", 400).WriteFile("docs/stale.md", "# Stale\n").Commit();
 
         var before = repository.TrackedState();
 

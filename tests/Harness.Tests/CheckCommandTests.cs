@@ -23,13 +23,13 @@ public sealed class CheckCommandTests
         var run = HarnessCli.Run(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("ROOT.md"), run.Output);
+        Assert.True(run.OutputContains("AGENTS.md"), run.Output);
     }
 
     [Fact]
     public void Root_document_at_the_line_limit_passes()
     {
-        using var repository = Fixtures.Compliant().WriteLines("ROOT.md", 150).Commit();
+        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 150).Commit();
 
         var run = HarnessCli.Run(repository.Path, "check");
 
@@ -39,7 +39,7 @@ public sealed class CheckCommandTests
     [Fact]
     public void Root_document_above_the_line_limit_is_a_violation()
     {
-        using var repository = Fixtures.Compliant().WriteLines("ROOT.md", 151).Commit();
+        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 151).Commit();
 
         var run = HarnessCli.Run(repository.Path, "check");
 
@@ -63,9 +63,8 @@ public sealed class CheckCommandTests
     public void Missing_readme_is_allowed()
     {
         using var repository = Fixtures.Framed()
-            .WriteFile("ROOT.md", "# Root\n")
-            .WriteSymbolicLink("AGENTS.md", "ROOT.md")
-            .WriteSymbolicLink("CLAUDE.md", "ROOT.md")
+            .WriteFile("AGENTS.md", "# Root\n")
+            .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
             .Commit();
 
         var run = HarnessCli.Run(repository.Path, "check");
@@ -76,8 +75,8 @@ public sealed class CheckCommandTests
     [Fact]
     public void A_tracked_document_deleted_from_the_working_tree_is_judged_by_its_staged_content()
     {
-        using var repository = Fixtures.Compliant().WriteLines("ROOT.md", 10).Commit();
-        File.Delete(repository.Absolute("ROOT.md"));
+        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 10).Commit();
+        File.Delete(repository.Absolute("AGENTS.md"));
 
         var run = HarnessCli.Run(repository.Path, "check");
 
@@ -92,11 +91,11 @@ public sealed class CheckCommandTests
         using var repository = Fixtures.Framed()
             .WriteFile("README.md", "# Overview\n")
             .Commit()
-            .WriteFile("ROOT.md", "# Root\n");
+            .WriteFile("AGENTS.md", "# Root\n");
 
         var run = HarnessCli.Run(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("ROOT.md"), run.Output);
+        Assert.True(run.OutputContains("AGENTS.md"), run.Output);
     }
 }

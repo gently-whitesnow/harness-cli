@@ -23,20 +23,18 @@ public static class Fixtures
 
     public static RepositoryFixture Compliant(Frame frame)
         => RepositoryFixture.CreateGitRepository()
-            .WriteFile("ROOT.md", "# Root\n\nNavigation.\n")
+            .WriteFile("AGENTS.md", "# Root\n\nNavigation.\n")
             .WriteFile("README.md", "# Overview\n")
-            .WriteSymbolicLink("AGENTS.md", "ROOT.md")
-            .WriteSymbolicLink("CLAUDE.md", "ROOT.md")
+            .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
             .WriteFile(".harness.json", frame.ToString())
             .Commit();
 
     /// <summary>A repository with no frame at all: the state every new repository starts in.</summary>
     public static RepositoryFixture WithoutAFrame()
         => RepositoryFixture.CreateGitRepository()
-            .WriteFile("ROOT.md", "# Root\n\nNavigation.\n")
+            .WriteFile("AGENTS.md", "# Root\n\nNavigation.\n")
             .WriteFile("README.md", "# Overview\n")
-            .WriteSymbolicLink("AGENTS.md", "ROOT.md")
-            .WriteSymbolicLink("CLAUDE.md", "ROOT.md")
+            .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
             .Commit();
 
     /// <summary>A repository whose frame is exactly the given text, valid or not.</summary>

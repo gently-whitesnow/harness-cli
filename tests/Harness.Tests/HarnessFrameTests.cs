@@ -66,8 +66,8 @@ public sealed class HarnessFrameTests
     }
 
     [Theory]
-    [InlineData("docs.policy", "ROOT.md", "", "must say why")]
-    [InlineData("nope", "ROOT.md", "because", "must name a check")]
+    [InlineData("docs.policy", "AGENTS.md", "", "must say why")]
+    [InlineData("nope", "AGENTS.md", "because", "must name a check")]
     public void Invalid_suppression_ends_the_run_as_incomplete(
         string check,
         string location,
@@ -126,7 +126,7 @@ public sealed class HarnessFrameTests
     public void A_check_turned_off_does_not_run_but_stays_visible()
     {
         using var repository = Fixtures.Compliant(Frame.Answering().Policy("docs.policy", "off"))
-            .WriteLines("ROOT.md", 400)
+            .WriteLines("AGENTS.md", 400)
             .Commit();
 
         var run = HarnessCli.Run(repository.Path, "check");
@@ -140,8 +140,8 @@ public sealed class HarnessFrameTests
     public void A_named_exception_clears_a_violation_and_stays_on_the_report()
     {
         using var repository = Fixtures
-            .Compliant(Frame.Answering().Suppressing("docs.policy", "ROOT.md", "split in IDP-142"))
-            .WriteLines("ROOT.md", 400)
+            .Compliant(Frame.Answering().Suppressing("docs.policy", "AGENTS.md", "split in IDP-142"))
+            .WriteLines("AGENTS.md", 400)
             .Commit();
 
         var run = HarnessCli.Run(repository.Path, "check", "--only", "docs.policy");
@@ -168,7 +168,7 @@ public sealed class HarnessFrameTests
     public void Reading_the_frame_does_not_modify_the_repository()
     {
         using var repository = Fixtures.Compliant(
-            Frame.Answering().Policy("frame", "required").Suppressing("docs.policy", "ROOT.md", "why not"));
+            Frame.Answering().Policy("frame", "required").Suppressing("docs.policy", "AGENTS.md", "why not"));
 
         var before = repository.TrackedState();
 
