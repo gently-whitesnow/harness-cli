@@ -1,5 +1,6 @@
 using Harness.Checks.Comments;
 using Harness.Checks.Duplication;
+using Harness.Checks.DotNet;
 using Harness.Checks.Frame;
 using Harness.Checks.Maintainability;
 using Harness.Checks.TypesPerFile;
@@ -25,6 +26,10 @@ internal static class CheckRegistry
         new TypesPerFileCheck(),
         new MaintainabilityCheck(),
         new DuplicationCheck(),
+
+        new BuildPropertiesCheck(),
+        new CentralPackagesCheck(),
+        new SolutionFormatCheck(),
 
         new UnitTestFrameCheck(),
         new IntegrationTestFrameCheck(),

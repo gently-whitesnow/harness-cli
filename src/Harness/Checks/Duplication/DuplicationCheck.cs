@@ -138,7 +138,7 @@ internal sealed class DuplicationCheck : IRepositoryCheck
         return expected is not null && group.All(occurrence => next(occurrence) == expected);
     }
 
-    private static IReadOnlyList<Finding> Report(List<Repetition> repetitions)
+    private static List<Finding> Report(List<Repetition> repetitions)
     {
         var findings = new List<Finding>();
 
@@ -209,7 +209,7 @@ internal sealed class DuplicationCheck : IRepositoryCheck
 
         public int Windows { get; }
 
-        public static IReadOnlyList<NormalizedFile> From(IReadOnlyList<CSharpSource> sources)
+        public static List<NormalizedFile> From(IReadOnlyList<CSharpSource> sources)
         {
             var identifiers = new Dictionary<string, int>(StringComparer.Ordinal);
             var files = new List<NormalizedFile>();

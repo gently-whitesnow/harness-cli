@@ -93,7 +93,7 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
         }
     }
 
-    private static IReadOnlyList<Finding> Report(
+    private static List<Finding> Report(
         List<Measurement> measurements,
         IReadOnlyList<MaintainabilityMetric> metrics)
     {

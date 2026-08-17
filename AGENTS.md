@@ -28,6 +28,11 @@ C#-проверки разделяют applicability `csharp`. Если весь
 "..." } }` делает их `NotApplicable`; точечно выключать каждую через policy не нужно.
 [ADR-0018](adrs/0018-csharp-applicability-and-one-type-per-file.md)
 
+.NET-проекты разделяют applicability `dotnet`. Харнес статически требует общий hardened
+`Directory.Build.props`, central package versions в ближайшем `Directory.Packages.props` и
+`.slnx` вместо `.sln`; он читает tracked XML, но не выполняет MSBuild evaluation.
+[ADR-0019](adrs/0019-dotnet-repository-policy.md)
+
 `version` числом фиксирует снимок вопросов; `"latest"` включает rolling-контракт. `harness
 init` создаёт все answer-ключи как нерешённые placeholders: исследуй репозиторий и замени
 каждый честным ответом. Если intent или применимость нельзя установить, спроси владельца;

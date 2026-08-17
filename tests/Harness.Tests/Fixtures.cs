@@ -66,4 +66,29 @@ public static class Fixtures
         }
 
         """;
+
+    public const string HardenedBuildProps =
+        """
+        <Project>
+          <PropertyGroup>
+            <Nullable>enable</Nullable>
+            <ImplicitUsings>enable</ImplicitUsings>
+            <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+            <EnableNETAnalyzers>true</EnableNETAnalyzers>
+            <AnalysisLevel>latest-Recommended</AnalysisLevel>
+            <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+            <Deterministic>true</Deterministic>
+            <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+          </PropertyGroup>
+        </Project>
+        """;
+
+    public const string SimpleSdkProject =
+        """
+        <Project Sdk="Microsoft.NET.Sdk">
+          <PropertyGroup>
+            <TargetFramework>net10.0</TargetFramework>
+          </PropertyGroup>
+        </Project>
+        """;
 }

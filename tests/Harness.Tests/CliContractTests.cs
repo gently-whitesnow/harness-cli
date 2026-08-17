@@ -216,7 +216,7 @@ public sealed class CliContractTests
             identifier => Assert.True(concise.OutputContains(identifier), concise.Output));
         Assert.Equal(
             HarnessCli.ShippedCheckIds(repository.Path).Count,
-            concise.Output.Split('\n').Count(line => line.StartsWith("✅", StringComparison.Ordinal)));
+            concise.Output.Split('\n').Count(line => line.StartsWith('✅') || line.StartsWith('➖')));
         Assert.False(concise.OutputContains("git evidence"), concise.Output);
         Assert.True(verbose.OutputContains("passed"), verbose.Output);
         Assert.True(verbose.OutputContains("git evidence"), verbose.Output);
@@ -235,7 +235,7 @@ public sealed class CliContractTests
 
         Assert.Equal(1, run.ExitCode);
         Assert.Contains(lines, line => line.StartsWith("❌ docs.policy", StringComparison.Ordinal)
-            && line.EndsWith("2", StringComparison.Ordinal));
+            && line.EndsWith('2'));
         Assert.Contains("Details: harness check --only <check-id> --verbose", lines);
         Assert.DoesNotContain(lines, line => line.StartsWith("Check ids: ", StringComparison.Ordinal));
         Assert.Equal(
@@ -262,9 +262,9 @@ public sealed class CliContractTests
         Assert.True(run.OutputContains("violation"), run.Output);
         Assert.DoesNotContain(
             run.Output.Split('\n'),
-            line => line.StartsWith("✅", StringComparison.Ordinal)
+            line => line.StartsWith('✅')
                 || line.StartsWith("⚠️", StringComparison.Ordinal)
-                || line.StartsWith("➖", StringComparison.Ordinal)
+                || line.StartsWith('➖')
                 || line.StartsWith("⏭️", StringComparison.Ordinal));
     }
 

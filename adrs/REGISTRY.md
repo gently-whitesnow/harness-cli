@@ -47,6 +47,9 @@
 - [ADR-0018](0018-csharp-applicability-and-one-type-per-file.md) — Все C#-проверки имеют
   общий applicability `csharp`; `types-per-file.csharp` блокирует второй верхнеуровневый
   `class` или `record` в одном authored-файле.
+- [ADR-0019](0019-dotnet-repository-policy.md) — Три blocking-проверки applicability
+  `dotnet` требуют hardened `Directory.Build.props`, Central Package Management через
+  ближайший `Directory.Packages.props` и `.slnx`, покрывающий authored-проекты.
 - [ADR-0015](0015-comment-density-is-a-blocking-source-policy.md) — `comments.csharp`
   падает при не менее чем 10 строках комментариев и доле выше 25% authored physical lines;
   это локальная source policy, а не универсальная оценка качества каждого комментария.

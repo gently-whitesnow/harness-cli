@@ -137,7 +137,7 @@ internal sealed record Invocation(
         return new Invocation(CommandKind.Explain, currentDirectory, [], [], false, false, arguments[0], null);
     }
 
-    private static IEnumerable<string> SplitIdentifiers(string value)
+    private static string[] SplitIdentifiers(string value)
         => value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static Invocation Usage(string currentDirectory, string? error)

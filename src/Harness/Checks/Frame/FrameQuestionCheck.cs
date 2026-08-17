@@ -74,7 +74,7 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
         them before choosing an answer.
         """;
 
-    private CheckEvaluation Located(FrameAnswer answer)
+    private static CheckEvaluation Located(FrameAnswer answer)
         => CheckEvaluation.Passed(
             $"repository answers present at {Locations(answer.Paths)}. These paths are navigation for readers; "
                 + "the harness does not inspect or fact-check them.");

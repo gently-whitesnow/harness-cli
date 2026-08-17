@@ -137,7 +137,7 @@ public sealed class InitCommandTests
     public void Invalid_init_arguments_show_usage_and_fail(params string[] arguments)
     {
         using var repository = RepositoryFixture.CreateGitRepository();
-        var command = new[] { "init" }.Concat(arguments).ToArray();
+        var command = arguments.Prepend("init").ToArray();
 
         var run = HarnessCli.Run(repository.Path, command);
 

@@ -14,3 +14,7 @@ indent_size = 2
 # A braced case block already carries its own indentation; indenting its contents
 # again buries the code that matters two levels deep.
 csharp_indent_case_contents_when_block = false
+
+[tests/**/*.cs]
+# Sentence-style xUnit names are the executable specification in this repository.
+dotnet_diagnostic.CA1707.severity = none
