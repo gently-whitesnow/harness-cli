@@ -29,11 +29,12 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           job reads the same frame.
 
         What it accepts
-          version       required; use 2 for a pinned question set or "latest" to follow
+          version       required; use 3 for a pinned question set or "latest" to follow
                         every question shipped by the installed harness.
           answers       one self-reported answer for every `frame` question in the selected
                         version, keyed without the `frame.` prefix.
-          policy        check or group identifier to `required`, `advisory` or `off`.
+          applicability shared analysis family (currently `csharp`) answered not applicable.
+          policy        exceptions to the default `required`: usually `advisory` or `off`.
           suppress      accepted findings, each naming `check`, `location` and `reason`.
 
         Why it is incomplete rather than a violation

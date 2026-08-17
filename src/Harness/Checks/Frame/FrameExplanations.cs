@@ -72,9 +72,9 @@ internal static class FrameExplanations
 
         {{specific}}
 
-        Remediation and raising the bar
-          Set "policy": { "{{HarnessConfig.FrameGroup}}.{{key}}": "required" } to turn an
-          absent answer into a violation. This changes acceptance of the answer; it does not
-          make the harness fact-check it. The harness never edits the frame.
+        Remediation and policy
+          Every applicable check is required by default, so an absent answer is a violation.
+          An explicit `advisory` policy override accepts the gap without hiding it; `off`
+          skips the question. Policy never makes the harness fact-check an answer.
         """;
 }

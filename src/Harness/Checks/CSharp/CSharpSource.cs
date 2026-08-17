@@ -8,8 +8,6 @@ internal enum MaskedContent
     CharacterLiteral,
 }
 
-internal sealed record MaskedRegion(int Start, int End, MaskedContent Content);
-
 /// <summary>
 /// C# reduced to code by replacing comments, literals and directives with spaces.
 /// Newlines and offsets survive, so findings still point to the original file.

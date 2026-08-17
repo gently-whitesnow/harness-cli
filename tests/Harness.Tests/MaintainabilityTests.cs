@@ -313,11 +313,10 @@ public sealed class MaintainabilityTests
     }
 
     private static RepositoryFixture SourceRepository(string path, string source, Frame? frame = null)
-        => Fixtures.Compliant(frame ?? Frame.Answering()).WriteFile(path, source).Commit();
-}
+        => Fixtures.Compliant(frame ?? Frame.AllPresent()).WriteFile(path, source).Commit();
 
-internal static class CSharp
-{
+    private static class CSharp
+    {
     public static string LongMethod(int statements)
         => $$"""
             namespace App;
@@ -619,5 +618,6 @@ internal static class CSharp
         }
 
         return text.ToString();
+    }
     }
 }

@@ -13,21 +13,12 @@ internal enum FrameAnswerKind
     NotApplicable,
 }
 
-internal sealed record FrameAnswer(
-    string Key,
-    FrameAnswerKind Kind,
-    IReadOnlyList<string> Paths,
-    string? Reason);
-
 internal enum CheckPolicy
 {
-    Default,
     Required,
     Advisory,
     Off,
 }
-
-internal sealed record Suppression(string Check, string Location, string Reason);
 
 /// <summary>
 /// The repository's own answers to the harness frame, how strictly each check is treated,
@@ -42,17 +33,19 @@ internal sealed class HarnessConfig
 {
     public const string FileName = ".harness.json";
 
-    private static readonly string[] TopLevelKeys = ["version", "answers", "settings", "policy", "suppress"];
+    private static readonly string[] TopLevelKeys =
+        ["version", "answers", "applicability", "settings", "policy", "suppress"];
 
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
 
-    private const int MinimumVersion = 2;
+    private const int MinimumVersion = 3;
 
     private HarnessConfig(
         int version,
         bool tracksLatest,
         IReadOnlyDictionary<string, FrameAnswer> answers,
         IReadOnlyDictionary<string, string> answerFailures,
+        IReadOnlyDictionary<string, ApplicabilityAnswer> applicability,
         HarnessSettings settings,
         IReadOnlyDictionary<string, CheckPolicy> policy,
         IReadOnlyList<Suppression> suppressions)
@@ -61,6 +54,7 @@ internal sealed class HarnessConfig
         TracksLatest = tracksLatest;
         Answers = answers;
         AnswerFailures = answerFailures;
+        Applicability = applicability;
         Settings = settings;
         Policy = policy;
         Suppressions = suppressions;
@@ -73,6 +67,8 @@ internal sealed class HarnessConfig
     public IReadOnlyDictionary<string, FrameAnswer> Answers { get; }
 
     public IReadOnlyDictionary<string, string> AnswerFailures { get; }
+
+    public IReadOnlyDictionary<string, ApplicabilityAnswer> Applicability { get; }
 
     public HarnessSettings Settings { get; }
 
@@ -96,8 +92,11 @@ internal sealed class HarnessConfig
             return byId;
         }
 
-        return Policy.TryGetValue(group, out var byGroup) ? byGroup : CheckPolicy.Default;
+        return Policy.TryGetValue(group, out var byGroup) ? byGroup : CheckPolicy.Required;
     }
+
+    public ApplicabilityAnswer? NotApplicable(string? key)
+        => key is not null && Applicability.TryGetValue(key, out var answer) ? answer : null;
 
     /// <summary>
     /// Reads the tracked config and validates its envelope before preserving per-answer results.
@@ -178,6 +177,12 @@ internal sealed class HarnessConfig
         }
 
         var selectors = Selectors(checks);
+        var (applicability, applicabilityFailure) = ReadApplicability(root, checks);
+        if (applicability is null)
+        {
+            return (null, applicabilityFailure);
+        }
+
         var (settings, settingsFailure) = HarnessSettingsReader.Read(root);
         if (settings is null)
         {
@@ -198,6 +203,7 @@ internal sealed class HarnessConfig
                 tracksLatest,
                 answers!,
                 answerFailures!,
+                applicability,
                 settings,
                 policy,
                 suppressions), null);
@@ -439,18 +445,74 @@ internal sealed class HarnessConfig
                 "required" => CheckPolicy.Required,
                 "advisory" => CheckPolicy.Advisory,
                 "off" => CheckPolicy.Off,
-                _ => CheckPolicy.Default,
+                _ => (CheckPolicy?)null,
             };
 
-            if (parsed == CheckPolicy.Default)
+            if (parsed is null)
             {
                 return (null, Failure($"'policy.{property.Name}' must be required, advisory or off"));
             }
 
-            policy[property.Name] = parsed;
+            policy[property.Name] = parsed.Value;
         }
 
         return (policy, null);
+    }
+
+    private static (Dictionary<string, ApplicabilityAnswer>? Applicability, string? Failure) ReadApplicability(
+        JsonElement root,
+        IReadOnlyList<IRepositoryCheck> checks)
+    {
+        var answers = new Dictionary<string, ApplicabilityAnswer>(StringComparer.Ordinal);
+        if (!root.TryGetProperty("applicability", out var declared))
+        {
+            return (answers, null);
+        }
+
+        if (declared.ValueKind != JsonValueKind.Object)
+        {
+            return (null, Failure("'applicability' must be an object"));
+        }
+
+        var known = checks.Select(check => check.Applicability).Where(key => key is not null).ToHashSet();
+        foreach (var property in declared.EnumerateObject())
+        {
+            var at = $"applicability.{property.Name}";
+            if (!known.Contains(property.Name))
+            {
+                return (null, Failure($"'{at}' is not an applicability this harness ships"));
+            }
+
+            if (property.Value.ValueKind != JsonValueKind.Object)
+            {
+                return (null, Failure($"'{at}' must be an object"));
+            }
+
+            foreach (var member in property.Value.EnumerateObject())
+            {
+                if (member.Name is not ("applicable" or "reason"))
+                {
+                    return (null, Failure($"'{at}.{member.Name}' is not a key this harness reads "
+                        + "(expected applicable, reason)"));
+                }
+            }
+
+            if (!property.Value.TryGetProperty("applicable", out var applicable)
+                || applicable.ValueKind != JsonValueKind.False)
+            {
+                return (null, Failure($"'{at}.applicable' must be false; omit the entry when it applies"));
+            }
+
+            var reason = ReadString(property.Value, "reason");
+            if (string.IsNullOrWhiteSpace(reason))
+            {
+                return (null, Failure($"'{at}.reason' must say why these checks do not apply"));
+            }
+
+            answers[property.Name] = new ApplicabilityAnswer(property.Name, reason.Trim());
+        }
+
+        return (answers, null);
     }
 
     private static (List<Suppression>? Suppressions, string? Failure) ReadSuppressions(
@@ -548,7 +610,7 @@ internal sealed class HarnessConfig
         A minimal .harness.json, committed at the repository root:
 
           {
-            "version": 2,
+            "version": 3,
             "answers": {
               "tests.unit": { "paths": ["tests/Unit"] },
               "tests.integration": { "present": false, "reason": "no external dependencies yet" },
@@ -558,6 +620,7 @@ internal sealed class HarnessConfig
               "build": { "paths": ["Repository.sln"] },
               "typecheck": { "applicable": false, "reason": "no web stack" }
             },
+            "applicability": {},
             "settings": {
               "comments.csharp": {
                 "minimumCommentLines": 10,

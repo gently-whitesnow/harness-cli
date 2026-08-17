@@ -10,8 +10,7 @@ public sealed class CheckCommandTests
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.Output.StartsWith("PASS WITH GAPS", StringComparison.Ordinal), run.Output);
-        Assert.True(run.OutputContains("readiness gap"), run.Output);
+        Assert.True(run.Output.StartsWith("PASS", StringComparison.Ordinal), run.Output);
     }
 
     [Fact]

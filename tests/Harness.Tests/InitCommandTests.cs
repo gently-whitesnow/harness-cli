@@ -33,13 +33,14 @@ public sealed class InitCommandTests
 
         using var document = JsonDocument.Parse(File.ReadAllText(path));
         var root = document.RootElement;
-        Assert.Equal(2, root.GetProperty("version").GetInt32());
+        Assert.Equal(3, root.GetProperty("version").GetInt32());
         Assert.Equal(
             Questions,
             root.GetProperty("answers").EnumerateObject().Select(answer => answer.Name));
         Assert.All(
             root.GetProperty("answers").EnumerateObject(),
             answer => Assert.Empty(answer.Value.EnumerateObject()));
+        Assert.Empty(root.GetProperty("applicability").EnumerateObject());
         Assert.Equal(10, root.GetProperty("settings")
             .GetProperty("comments.csharp").GetProperty("minimumCommentLines").GetInt32());
         Assert.Equal(400, root.GetProperty("settings")

@@ -2,10 +2,10 @@ namespace Harness.Tests;
 
 public static class Fixtures
 {
-    public static RepositoryFixture Compliant() => Compliant(Frame.Answering());
+    public static RepositoryFixture Compliant() => Compliant(Frame.AllPresent());
 
     public static RepositoryFixture Framed()
-        => RepositoryFixture.CreateGitRepository().WriteFile(".harness.json", Frame.Answering().ToString());
+        => RepositoryFixture.CreateGitRepository().WriteFile(".harness.json", Frame.AllPresent().ToString());
 
     public static RepositoryFixture Compliant(Frame frame)
         => RepositoryFixture.CreateGitRepository()

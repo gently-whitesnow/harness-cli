@@ -71,6 +71,7 @@ internal static class ConfigInitializer
         text.Append(
             $$"""
               },
+              "applicability": {},
               "settings": {
                 "comments.csharp": {
                   "minimumCommentLines": {{defaults.Comments.MinimumCommentLines}},

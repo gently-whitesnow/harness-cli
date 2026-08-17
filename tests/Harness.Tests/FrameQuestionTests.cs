@@ -31,9 +31,10 @@ public sealed class FrameQuestionTests
     }
 
     [Fact]
-    public void A_deliberate_absence_is_a_visible_readiness_gap()
+    public void Advisory_policy_keeps_a_deliberate_absence_as_a_visible_readiness_gap()
     {
-        using var repository = Fixtures.Compliant();
+        using var repository = Fixtures.Compliant(
+            Frame.Answering().Policy("frame.tests.architecture", "advisory"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.tests.architecture");
 
@@ -44,15 +45,15 @@ public sealed class FrameQuestionTests
     }
 
     [Fact]
-    public void Required_policy_turns_an_absent_answer_into_a_violation()
+    public void An_absent_answer_is_a_violation_by_default()
     {
         using var repository = Fixtures.Compliant(
-            Frame.Answering().Policy("frame.tests.unit", "required"));
+            Frame.Answering());
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.tests.unit");
 
         Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("sets this check to required"), run.Output);
+        Assert.True(run.OutputContains("required by default"), run.Output);
     }
 
     [Fact]

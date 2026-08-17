@@ -22,7 +22,9 @@ public sealed class Frame
 
     private string? settings;
 
-    private string version = "2";
+    private readonly Dictionary<string, string> applicability = new(StringComparer.Ordinal);
+
+    private string version = "3";
 
     /// <summary>A frame that answers "no" to every question.</summary>
     public static Frame Answering() => new();
@@ -69,6 +71,12 @@ public sealed class Frame
         return this;
     }
 
+    public Frame NotApplicableTo(string key, string reason = "fixture does not use this stack")
+    {
+        applicability[key] = $$"""{ "applicable": false, "reason": {{Quote(reason)}} }""";
+        return this;
+    }
+
     public Frame Settings(string body)
     {
         settings = body;
@@ -95,6 +103,14 @@ public sealed class Frame
             ",\n",
             answers.Select(entry => $"    {Quote(entry.Key)}: {entry.Value}")));
         text.Append("\n  }");
+
+        if (applicability.Count > 0)
+        {
+            text.Append(",\n  \"applicability\": {\n");
+            text.Append(string.Join(",\n", applicability.Select(entry =>
+                $"    {Quote(entry.Key)}: {entry.Value}")));
+            text.Append("\n  }");
+        }
 
         if (settings is not null)
         {

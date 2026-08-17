@@ -17,10 +17,16 @@ self-reported: адрес служит навигацией, а не доказ�
 "typecheck":   { "applicable": false, "reason": "нет web-стека" }    // вопрос не про нас
 ```
 
-`policy` задаёт строгость (`required` | `advisory` | `off`), `suppress` — именованные
-исключения с обязательным `reason`. `required` превращает ответ `present: false` в
-нарушение. Харнес валидирует полноту ответов, но не инспектирует их и не ищет опровержения.
-[ADR-0014](adrs/0014-frame-answers-are-self-reported.md)
+Каждая применимая проверка априори `required`. `policy` нужен только для явного смягчения
+до `advisory` или отключения через `off`; `suppress` — именованные исключения с обязательным
+`reason`. Поэтому ответ `present: false` по умолчанию становится нарушением. Харнес
+валидирует полноту ответов, но не инспектирует их и не ищет опровержения.
+[ADR-0017](adrs/0017-required-by-default.md)
+
+C#-проверки разделяют applicability `csharp`. Если весь этот анализ не относится к
+репозиторию, одна запись `"applicability": { "csharp": { "applicable": false, "reason":
+"..." } }` делает их `NotApplicable`; точечно выключать каждую через policy не нужно.
+[ADR-0018](adrs/0018-csharp-applicability-and-one-type-per-file.md)
 
 `version` числом фиксирует снимок вопросов; `"latest"` включает rolling-контракт. `harness
 init` создаёт все answer-ключи как нерешённые placeholders: исследуй репозиторий и замени
@@ -39,6 +45,7 @@ init` создаёт все answer-ключи как нерешённые placeh
     - `Checks/CSharp/` — общий лексический ридер C#: какие исходники анализируемы,
       маскирование комментариев и литералов, структура объявлений.
     - `Checks/Comments/` — blocking-порог плотности комментариев в authored C#.
+    - `Checks/TypesPerFile/` — blocking-правило: один верхнеуровневый class или record в файле.
     - `Checks/Maintainability/` — advisory-метрики hotspot'ов, измеряемые этим ридером.
     - `Checks/Duplication/` — нормализация токенов и построенный на ней advisory-отчёт
       о межфайловых повторах.

@@ -151,7 +151,7 @@ public sealed class CommentLineTests
     }
 
     private static RepositoryFixture SourceRepository(string source, Frame? frame = null)
-        => Fixtures.Compliant(frame ?? Frame.Answering()).WriteFile("src/App/Source.cs", source).Commit();
+        => Fixtures.Compliant(frame ?? Frame.AllPresent()).WriteFile("src/App/Source.cs", source).Commit();
 
     private static string Source(int commentLines, int codeLines)
         => string.Concat(Enumerable.Range(1, commentLines).Select(line => $"// reason {line}\n"))

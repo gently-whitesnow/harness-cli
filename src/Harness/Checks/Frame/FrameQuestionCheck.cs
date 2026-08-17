@@ -53,8 +53,7 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
                 $"repository answers present — \"{answer.Reason}\". The answer is self-reported and not "
                     + "fact-checked by the harness."),
             FrameAnswerKind.Absent => CheckEvaluation.ReadinessGap(
-                $"repository answers absent — \"{answer.Reason}\". Set this check to `required` in `policy` "
-                    + "once absence should stop being acceptable."),
+                $"repository answers absent — \"{answer.Reason}\"."),
             FrameAnswerKind.NotApplicable => CheckEvaluation.NotApplicable(
                 $"repository answers not applicable — \"{answer.Reason}\"."),
             _ => CheckEvaluation.Incomplete(

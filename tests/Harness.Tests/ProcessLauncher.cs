@@ -2,15 +2,6 @@ using System.Diagnostics;
 
 namespace Harness.Tests;
 
-/// <summary>Result of one process the tests started.</summary>
-public sealed record CliRun(int ExitCode, string StandardOutput, string StandardError)
-{
-    public string Output => StandardOutput + StandardError;
-
-    public bool OutputContains(string value)
-        => Output.Contains(value, StringComparison.Ordinal);
-}
-
 /// <summary>
 /// Starts a process, captures both streams and waits for it. Every test that reaches
 /// outside its own process — the harness, Git, the SDK — goes through here.

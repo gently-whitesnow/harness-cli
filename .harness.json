@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "answers": {
     "tests.unit": {
       "present": false,
@@ -27,6 +27,7 @@
       "reason": "нет web-стека; типы этого репозитория проверяет компилятор C# на сборке"
     }
   },
+  "applicability": {},
   "settings": {
     "comments.csharp": {
       "minimumCommentLines": 10,
@@ -43,8 +44,8 @@
     }
   },
   "policy": {
-    "docs.policy": "required",
-    "frame.tests.integration": "required",
+    "frame.tests.unit": "advisory",
+    "frame.tests.architecture": "advisory",
     "maintainability.csharp": "advisory",
     "duplication.csharp": "advisory"
   },

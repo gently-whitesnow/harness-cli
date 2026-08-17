@@ -24,6 +24,8 @@ internal sealed class DuplicationCheck : IRepositoryCheck
 
     public string Group => "duplication";
 
+    public string Applicability => "csharp";
+
     public string Summary => "C# cross-file lexical repetition";
 
     public string Explanation => DuplicationExplanation.Text;

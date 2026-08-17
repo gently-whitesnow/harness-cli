@@ -10,6 +10,8 @@ internal sealed class CommentLineCheck : IRepositoryCheck
 
     public string Group => "comments";
 
+    public string Applicability => "csharp";
+
     public string Summary => "C# comment density limit";
 
     public string Explanation => CommentLineExplanation.Text;

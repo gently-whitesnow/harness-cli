@@ -31,15 +31,15 @@ public sealed class HarnessFrameTests
     [Theory]
     [InlineData("{ not json", "not readable as JSON")]
     [InlineData("[]", "not a JSON object")]
-    [InlineData("{}", "'version' must be 2 or \"latest\"")]
-    [InlineData("""{ "version": 1 }""", "is no longer supported")]
-    [InlineData("""{ "version": 3 }""", "newer than this harness supports")]
-    [InlineData("""{ "version": "2" }""", "must be 2 or \"latest\"")]
-    [InlineData("""{ "version": "LATEST" }""", "must be 2 or \"latest\"")]
-    [InlineData("""{ "version": 2.5 }""", "must be 2 or \"latest\"")]
-    [InlineData("""{ "version": 2, "answers": [] }""", "'answers' must be an object")]
-    [InlineData("""{ "version": 2, "checks": {} }""", "not a key this harness reads")]
-    [InlineData("""{ "version": 2, "answers": { "tests": {} } }""", "not a question this harness asks")]
+    [InlineData("{}", "'version' must be 3 or \"latest\"")]
+    [InlineData("""{ "version": 2 }""", "is no longer supported")]
+    [InlineData("""{ "version": 4 }""", "newer than this harness supports")]
+    [InlineData("""{ "version": "3" }""", "must be 3 or \"latest\"")]
+    [InlineData("""{ "version": "LATEST" }""", "must be 3 or \"latest\"")]
+    [InlineData("""{ "version": 3.5 }""", "must be 3 or \"latest\"")]
+    [InlineData("""{ "version": 3, "answers": [] }""", "'answers' must be an object")]
+    [InlineData("""{ "version": 3, "checks": {} }""", "not a key this harness reads")]
+    [InlineData("""{ "version": 3, "answers": { "tests": {} } }""", "not a question this harness asks")]
     public void An_unsound_frame_ends_the_run_as_incomplete(string frame, string explanation)
     {
         using var repository = Fixtures.WithRawFrame(frame);
@@ -56,6 +56,25 @@ public sealed class HarnessFrameTests
     public void Invalid_policy_ends_the_run_as_incomplete(string selector, string value, string explanation)
     {
         using var repository = Fixtures.WithRawFrame(Frame.Answering().Policy(selector, value).ToString());
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains(explanation), run.Output);
+    }
+
+    [Theory]
+    [InlineData("typescript", """{ "applicable": false, "reason": "not used" }""", "not an applicability")]
+    [InlineData("csharp", """{ "applicable": true, "reason": "used" }""", "must be false")]
+    [InlineData("csharp", """{ "applicable": false }""", "must say why")]
+    public void Invalid_applicability_ends_the_run_as_incomplete(
+        string key,
+        string value,
+        string explanation)
+    {
+        var frame = Frame.AllPresent().ToString();
+        frame = frame[..^2] + $",\n  \"applicability\": {{ \"{key}\": {value} }}\n}}\n";
+        using var repository = Fixtures.WithRawFrame(frame);
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
@@ -137,7 +156,8 @@ public sealed class HarnessFrameTests
     [Fact]
     public void Latest_uses_the_current_question_set()
     {
-        using var repository = Fixtures.Compliant(Frame.Answering().Version("latest"));
+        using var repository = Fixtures.Compliant(
+            Frame.Answering().Version("latest").Policy("frame", "advisory"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame");
 
@@ -175,7 +195,7 @@ public sealed class HarnessFrameTests
     [Fact]
     public void A_check_turned_off_does_not_run_but_stays_visible()
     {
-        using var repository = Fixtures.Compliant(Frame.Answering().Policy("docs.policy", "off"))
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Policy("docs.policy", "off"))
             .WriteLines("AGENTS.md", 400)
             .Commit();
 
@@ -190,7 +210,7 @@ public sealed class HarnessFrameTests
     public void A_named_exception_clears_a_violation_and_stays_on_the_report()
     {
         using var repository = Fixtures
-            .Compliant(Frame.Answering().Suppressing("docs.policy", "AGENTS.md", "split in IDP-142"))
+            .Compliant(Frame.AllPresent().Suppressing("docs.policy", "AGENTS.md", "split in IDP-142"))
             .WriteLines("AGENTS.md", 400)
             .Commit();
 
@@ -205,7 +225,7 @@ public sealed class HarnessFrameTests
     public void An_exception_that_matched_nothing_is_reported_on_the_frame()
     {
         using var repository = Fixtures.Compliant(
-            Frame.Answering().Suppressing("docs.policy", "gone.md", "was fixed last quarter"));
+            Frame.AllPresent().Suppressing("docs.policy", "gone.md", "was fixed last quarter"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 

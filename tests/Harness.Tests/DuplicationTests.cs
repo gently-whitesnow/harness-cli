@@ -317,10 +317,9 @@ public sealed class DuplicationTests
 
         return repository.Commit();
     }
-}
 
-internal static class Duplicated
-{
+    private static class Duplicated
+    {
     public static string Block(string type, string field, string literal)
         => $$"""
             namespace App;
@@ -548,5 +547,6 @@ internal static class Duplicated
             }
 
             """;
+    }
     }
 }

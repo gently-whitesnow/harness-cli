@@ -5,49 +5,6 @@ using Harness.Git;
 
 namespace Harness.Engine;
 
-internal sealed record GateReport(
-    string Id,
-    string Summary,
-    CheckOutcome Outcome,
-    IReadOnlyList<Finding> Findings,
-    TimeSpan Duration,
-    string? OutcomeReason,
-    IReadOnlyList<SuppressedFinding> Suppressed);
-
-internal sealed record RunReport(
-    string? RepositoryPath,
-    IReadOnlyList<GateReport> Gates,
-    string? ToolError,
-    TimeSpan EvidenceDuration = default)
-{
-    public bool NothingWasVerified
-        => ToolError is not null || !Gates.Any(gate => gate.Outcome is CheckOutcome.Passed or CheckOutcome.Failed);
-
-    public bool HasReadinessGaps => Gates.Any(gate => gate.Outcome == CheckOutcome.ReadinessGap);
-
-    public int ExitCode
-    {
-        get
-        {
-            if (ToolError is not null || Gates.Any(gate => gate.Outcome == CheckOutcome.Incomplete))
-            {
-                return ExitCodes.Incomplete;
-            }
-
-            return Gates.Any(gate => gate.Outcome == CheckOutcome.Failed)
-                ? ExitCodes.Violation
-                : ExitCodes.Success;
-        }
-    }
-}
-
-internal static class ExitCodes
-{
-    public const int Success = 0;
-    public const int Violation = 1;
-    public const int Incomplete = 2;
-}
-
 /// <summary>
 /// Owns selection, ordering, execution, timing, policy, suppression and aggregation.
 /// Callers hand it a repository and selection options; they never assemble a run themselves.
@@ -88,7 +45,7 @@ internal static class GateEngine
         var gates = new List<GateReport>();
         foreach (var check in checks)
         {
-            var policy = config?.PolicyFor(check.Id, check.Group) ?? CheckPolicy.Default;
+            var policy = config?.PolicyFor(check.Id, check.Group) ?? CheckPolicy.Required;
             if (!IsSelected(check, only, skip) || policy == CheckPolicy.Off)
             {
                 gates.Add(Excluded(check, policy, skip.Any(selector => Matches(check, selector))));
@@ -96,7 +53,11 @@ internal static class GateEngine
             }
 
             var stopwatch = Stopwatch.StartNew();
-            var evaluation = Evaluate(check, context);
+            var disabled = config?.NotApplicable(check.Applicability);
+            var evaluation = disabled is null
+                ? Evaluate(check, context)
+                : CheckEvaluation.NotApplicable(
+                    $"{HarnessConfig.FileName} answers `{disabled.Key}` not applicable — \"{disabled.Reason}\".");
             stopwatch.Stop();
 
             gates.Add(Judge(check, evaluation, stopwatch.Elapsed, config, policy, used));
@@ -161,7 +122,7 @@ internal static class GateEngine
             case CheckPolicy.Required when outcome == CheckOutcome.ReadinessGap:
                 kept = [new Finding(FindingSeverity.Blocking, HarnessConfig.FileName, reason ?? "not satisfied")];
                 outcome = CheckOutcome.Failed;
-                reason = $"{HarnessConfig.FileName} sets this check to required.";
+                reason = "checks are required by default; use an advisory policy override to accept this gap.";
                 break;
         }
 
@@ -245,7 +206,8 @@ internal static class GateEngine
 
     private static bool Matches(IRepositoryCheck check, string selector)
         => string.Equals(check.Id, selector, StringComparison.Ordinal)
-            || string.Equals(check.Group, selector, StringComparison.Ordinal);
+            || string.Equals(check.Group, selector, StringComparison.Ordinal)
+            || string.Equals(check.Applicability, selector, StringComparison.Ordinal);
 
     private static List<string> UnknownSelectors(
         IReadOnlyList<string> only,

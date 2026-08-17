@@ -3,8 +3,6 @@ using Harness.Checks.CSharp;
 
 namespace Harness.Checks.Duplication;
 
-internal sealed record NormalizedLine(int Line, string Tokens, int TokenCount);
-
 /// <summary>
 /// Normalizes each physical C# line for lexical duplication: comments and directives vanish;
 /// literals and numbers become type-shaped tokens; keywords survive; identifiers become `n`;

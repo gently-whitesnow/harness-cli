@@ -9,26 +9,12 @@ internal enum DeclarationKind
     Method,
 }
 
-internal sealed class Declaration
+internal enum TypeForm
 {
-    public required DeclarationKind Kind { get; init; }
-
-    public required string Subject { get; init; }
-
-    public required int FirstLine { get; init; }
-
-    public int LastLine { get; set; }
-
-    public int ParameterCount { get; set; } = -1;
-
-    public int PublicMembers { get; set; }
-
-    public bool IsComplete => LastLine >= FirstLine;
+    Other,
+    Class,
+    Record,
 }
-
-internal sealed record CSharpStructure(IReadOnlyList<Declaration> Declarations, int UsingDirectives);
-
-internal sealed record MemberSignature(string Name, int ParameterList);
 
 /// <summary>
 /// Reads declarations out of masked C# by matching braces and reading the text that
@@ -206,11 +192,13 @@ internal sealed class CSharpStructureReader
     {
         CountPublicMember(parent, text);
 
-        if (TypeNameOf(text) is { } typeName)
+        if (TypeOf(text) is { } recognizedType)
         {
-            var type = Declare(DeclarationKind.Type, Qualify(typeName), index);
+            var type = Declare(DeclarationKind.Type, Qualify(recognizedType.Name), index);
             type.ParameterCount = ParameterCountOf(WithoutConstraintsAndBaseList(text));
-            return (type, typeName);
+            type.TypeForm = recognizedType.Form;
+            type.IsNestedType = typeDepth > 0;
+            return (type, recognizedType.Name);
         }
 
         if (parent.TypeName is null || SignatureOf(text) is not { } signature)
@@ -272,22 +260,30 @@ internal sealed class CSharpStructureReader
         return name.Length == 0 ? null : name;
     }
 
-    private static string? TypeNameOf(string text)
+    private static RecognizedType? TypeOf(string text)
     {
         var declaration = WithoutConstraintsAndBaseList(text);
         var end = declaration.AsSpan().IndexOfAny('(', '<', '[');
         var tokens = (end < 0 ? declaration : declaration[..end])
             .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
 
-        var keyword = Array.FindIndex(tokens, TypeKeywords.Contains);
-        if (keyword < 0)
+        var keywordIndex = Array.FindIndex(tokens, TypeKeywords.Contains);
+        if (keywordIndex < 0)
         {
             return null;
         }
 
         // `record class` and `record struct` place a second keyword before the name.
-        var name = tokens.Skip(keyword + 1).FirstOrDefault(token => !TypeKeywords.Contains(token));
-        return name is not null && IsIdentifier(name) ? name : null;
+        var keyword = tokens[keywordIndex];
+        var name = tokens.Skip(keywordIndex + 1).FirstOrDefault(token => !TypeKeywords.Contains(token));
+        if (name is null || !IsIdentifier(name))
+        {
+            return null;
+        }
+
+        return new RecognizedType(
+            name,
+            keyword == "record" ? TypeForm.Record : keyword == "class" ? TypeForm.Class : TypeForm.Other);
     }
 
     // Skipping groups without a preceding name prevents tuple return types from becoming
@@ -548,4 +544,6 @@ internal sealed class CSharpStructureReader
 
         public int PublicMembers { get; set; }
     }
+
+    private sealed record RecognizedType(string Name, TypeForm Form);
 }

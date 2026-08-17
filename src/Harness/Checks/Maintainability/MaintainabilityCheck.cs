@@ -4,10 +4,6 @@ using Harness.Git;
 
 namespace Harness.Checks.Maintainability;
 
-internal sealed record MaintainabilityMetric(string Name, int ComparisonPoint);
-
-internal sealed record Measurement(MaintainabilityMetric Metric, int Value, string Subject, string Location);
-
 /// <summary>
 /// Measures C# hotspots lexically and reports them as evidence. Every finding names the
 /// metric, the measured value, the comparison point, the subject and where to read it, so
@@ -26,6 +22,8 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
     public string Id => "maintainability.csharp";
 
     public string Group => "maintainability";
+
+    public string Applicability => "csharp";
 
     public string Summary => "C# maintainability hotspots";
 

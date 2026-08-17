@@ -2,40 +2,6 @@ using System.Text;
 
 namespace Harness.Tests;
 
-/// <summary>A disposable directory outside any repository.</summary>
-public class TemporaryDirectory : IDisposable
-{
-    protected TemporaryDirectory(string path) => Path = path;
-
-    public string Path { get; }
-
-    public static TemporaryDirectory Create() => new(CreatePath());
-
-    public string Absolute(string relativePath)
-        => System.IO.Path.Combine(Path, relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
-
-    public void Dispose()
-    {
-        GC.SuppressFinalize(this);
-        try
-        {
-            Directory.Delete(Path, recursive: true);
-        }
-        catch (DirectoryNotFoundException)
-        {
-        }
-    }
-
-    protected static string CreatePath()
-    {
-        var path = System.IO.Path.Combine(
-            System.IO.Path.GetTempPath(),
-            "harness-fixture-" + Guid.NewGuid().ToString("n"));
-        Directory.CreateDirectory(path);
-        return path;
-    }
-}
-
 /// <summary>
 /// A disposable Git repository on disk. Fixtures use real files, real symbolic links
 /// and a real Git index so the harness sees the same evidence it sees in production.

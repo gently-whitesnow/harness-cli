@@ -10,6 +10,8 @@
 ## Контракт результата
 <!-- Что харнес сообщает читателю и как это читает CI -->
 
+- [ADR-0017](0017-required-by-default.md) — Каждая применимая проверка априори `required`;
+  `policy` хранит только явные послабления `advisory`/`off`, а не перечисляет норму.
 - [ADR-0016](0016-versioned-frame-and-explicit-initialization.md) — Числовая `version`
   фиксирует снимок вопросов, `latest` следует за текущим; ошибка одного answer локальна,
   а `init` создаёт намеренно незавершённую рамку и не выдумывает ответы владельца.
@@ -42,6 +44,9 @@
 ## Анализ и отчёт
 <!-- Как измеряются и как подаются эвристические находки -->
 
+- [ADR-0018](0018-csharp-applicability-and-one-type-per-file.md) — Все C#-проверки имеют
+  общий applicability `csharp`; `types-per-file.csharp` блокирует второй верхнеуровневый
+  `class` или `record` в одном authored-файле.
 - [ADR-0015](0015-comment-density-is-a-blocking-source-policy.md) — `comments.csharp`
   падает при не менее чем 10 строках комментариев и доле выше 25% authored physical lines;
   это локальная source policy, а не универсальная оценка качества каждого комментария.
