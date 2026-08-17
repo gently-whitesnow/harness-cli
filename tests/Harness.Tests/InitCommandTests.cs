@@ -45,6 +45,11 @@ public sealed class InitCommandTests
             .GetProperty("comments.csharp").GetProperty("minimumCommentLines").GetInt32());
         Assert.Equal(400, root.GetProperty("settings")
             .GetProperty("maintainability.csharp").GetProperty("fileLines").GetInt32());
+        Assert.Equal("en", root.GetProperty("settings")
+            .GetProperty("commits").GetProperty("language").GetString());
+        Assert.True(root.GetProperty("settings")
+            .GetProperty("commits").GetProperty("requireSetup").GetBoolean());
+        Assert.Contains("harness-hooks", repository.Git("config", "--local", "--get", "core.hooksPath"));
         Assert.Empty(root.GetProperty("policy").EnumerateObject());
         Assert.Empty(root.GetProperty("suppress").EnumerateArray());
     }
@@ -62,11 +67,26 @@ public sealed class InitCommandTests
     }
 
     [Fact]
+    public void Init_selects_the_commit_language_and_installs_its_template()
+    {
+        using var repository = RepositoryFixture.CreateGitRepository();
+
+        var run = HarnessCli.Run(repository.Path, "init", "--language", "ru");
+
+        Assert.Equal(0, run.ExitCode);
+        using var document = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
+        Assert.Equal("ru", document.RootElement.GetProperty("settings")
+            .GetProperty("commits").GetProperty("language").GetString());
+        var template = repository.Git("config", "--local", "--get", "commit.template").Trim();
+        Assert.Contains("Контекст:", File.ReadAllText(template), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Initialized_frame_is_an_explicit_red_worklist_after_it_is_tracked()
     {
         using var repository = RepositoryFixture.CreateGitRepository();
         Assert.Equal(0, HarnessCli.Run(repository.Path, "init").ExitCode);
-        repository.Commit();
+        repository.CommitAs("chore(harness): initialize repository frame");
 
         var check = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame");
 
@@ -132,6 +152,7 @@ public sealed class InitCommandTests
 
     [Theory]
     [InlineData("--force")]
+    [InlineData("--language", "de")]
     [InlineData("--latest", "--latest")]
     [InlineData("one", "two")]
     public void Invalid_init_arguments_show_usage_and_fail(params string[] arguments)

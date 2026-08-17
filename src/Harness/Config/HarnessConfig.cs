@@ -634,6 +634,10 @@ internal sealed class HarnessConfig
                 "constructorParameters": 6,
                 "publicMembers": 25,
                 "importFanOut": 20
+              },
+              "commits": {
+                "language": "en",
+                "requireSetup": true
               }
             }
           }

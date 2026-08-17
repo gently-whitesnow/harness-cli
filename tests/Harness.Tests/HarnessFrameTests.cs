@@ -88,6 +88,8 @@ public sealed class HarnessFrameTests
     [InlineData("{ \"comments.csharp\": { \"percent\": 25 } }", "is not a setting")]
     [InlineData("{ \"comments.csharp\": { \"percentageLimit\": 101 } }", "must not exceed 100")]
     [InlineData("{ \"maintainability.csharp\": { \"methodLines\": -1 } }", "non-negative integer")]
+    [InlineData("{ \"commits\": { \"language\": \"de\" } }", "must be 'en' or 'ru'")]
+    [InlineData("{ \"commits\": { \"requireSetup\": \"yes\" } }", "must be true or false")]
     public void Invalid_settings_end_the_run_as_incomplete(string settings, string explanation)
     {
         using var repository = Fixtures.Compliant(Frame.Answering().Settings(settings));

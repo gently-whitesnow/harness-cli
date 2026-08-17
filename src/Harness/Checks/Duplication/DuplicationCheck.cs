@@ -1,5 +1,4 @@
 using Harness.Checks.CSharp;
-using Harness.Git;
 
 namespace Harness.Checks.Duplication;
 

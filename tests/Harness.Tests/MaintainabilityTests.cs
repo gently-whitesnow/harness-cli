@@ -317,8 +317,8 @@ public sealed class MaintainabilityTests
 
     private static class CSharp
     {
-    public static string LongMethod(int statements)
-        => $$"""
+        public static string LongMethod(int statements)
+            => $$"""
             namespace App;
 
             public static class Report
@@ -332,8 +332,8 @@ public sealed class MaintainabilityTests
 
             """;
 
-    public static string LongTupleReturningMethod(int statements)
-        => $$"""
+        public static string LongTupleReturningMethod(int statements)
+            => $$"""
             namespace App;
 
             public static class Report
@@ -347,8 +347,8 @@ public sealed class MaintainabilityTests
 
             """;
 
-    public static string LongMethodWithSplitSignature(int statements)
-        => $$"""
+        public static string LongMethodWithSplitSignature(int statements)
+            => $$"""
             namespace App;
 
             public static class Report
@@ -364,8 +364,8 @@ public sealed class MaintainabilityTests
 
             """;
 
-    public static string LongMethodAfterAwkwardLiterals(int statements)
-        => $$$$""""
+        public static string LongMethodAfterAwkwardLiterals(int statements)
+            => $$$$""""
             namespace App;
 
             public static class Report
@@ -394,8 +394,8 @@ public sealed class MaintainabilityTests
 
             """";
 
-    public static string NestedTypeWithLongMethod(int statements)
-        => $$"""
+        public static string NestedTypeWithLongMethod(int statements)
+            => $$"""
             namespace App;
 
             public static class Outer
@@ -412,8 +412,8 @@ public sealed class MaintainabilityTests
 
             """;
 
-    public const string BranchTokensOnlyInCommentsAndStrings =
-        """"
+        public const string BranchTokensOnlyInCommentsAndStrings =
+            """"
         namespace App;
 
         public static class Quiet
@@ -439,8 +439,8 @@ public sealed class MaintainabilityTests
 
         """";
 
-    public const string BranchingMethod =
-        """
+        public const string BranchingMethod =
+            """
         namespace App;
 
         public static class Router
@@ -491,8 +491,8 @@ public sealed class MaintainabilityTests
 
         """;
 
-    public const string WideRecord =
-        """
+        public const string WideRecord =
+            """
         namespace App;
 
         public sealed record Money(
@@ -506,8 +506,8 @@ public sealed class MaintainabilityTests
 
         """;
 
-    public const string WideConstructor =
-        """
+        public const string WideConstructor =
+            """
         namespace App;
 
         public sealed class Service
@@ -529,8 +529,8 @@ public sealed class MaintainabilityTests
 
         """;
 
-    public const string ExpressionBodiedMembers =
-        """
+        public const string ExpressionBodiedMembers =
+            """
         namespace App;
 
         public sealed record Point(int X, int Y)
@@ -555,8 +555,8 @@ public sealed class MaintainabilityTests
 
         """;
 
-    public const string UsingStatements =
-        """
+        public const string UsingStatements =
+            """
         using System.IO;
 
         namespace App;
@@ -575,49 +575,49 @@ public sealed class MaintainabilityTests
 
         """;
 
-    public static string WidePublicSurface(int members)
-    {
-        var text = new StringBuilder("namespace App;\n\npublic sealed class Facade\n{\n");
-        for (var index = 0; index < members; index++)
+        public static string WidePublicSurface(int members)
         {
-            text.Append("    public int Member").Append(index).Append("() => ").Append(index).Append(";\n");
+            var text = new StringBuilder("namespace App;\n\npublic sealed class Facade\n{\n");
+            for (var index = 0; index < members; index++)
+            {
+                text.Append("    public int Member").Append(index).Append("() => ").Append(index).Append(";\n");
+            }
+
+            return text.Append("}\n").ToString();
         }
 
-        return text.Append("}\n").ToString();
-    }
-
-    public static string ManyUsingDirectives(int imports)
-    {
-        var text = new StringBuilder();
-        for (var index = 0; index < imports; index++)
+        public static string ManyUsingDirectives(int imports)
         {
-            text.Append("using App.Area").Append(index).Append(";\n");
+            var text = new StringBuilder();
+            for (var index = 0; index < imports; index++)
+            {
+                text.Append("using App.Area").Append(index).Append(";\n");
+            }
+
+            return text.Append("\nnamespace App;\n\npublic static class Imports\n{\n}\n").ToString();
         }
 
-        return text.Append("\nnamespace App;\n\npublic static class Imports\n{\n}\n").ToString();
-    }
-
-    /// <summary>One type long enough to exceed both the file and the type comparison point.</summary>
-    public static string LargeType(int members)
-    {
-        var text = new StringBuilder("namespace App;\n\npublic static class Big\n{\n");
-        for (var index = 0; index < members; index++)
+        /// <summary>One type long enough to exceed both the file and the type comparison point.</summary>
+        public static string LargeType(int members)
         {
-            text.Append("    internal static int Value").Append(index).Append(" => ").Append(index).Append(";\n");
+            var text = new StringBuilder("namespace App;\n\npublic static class Big\n{\n");
+            for (var index = 0; index < members; index++)
+            {
+                text.Append("    internal static int Value").Append(index).Append(" => ").Append(index).Append(";\n");
+            }
+
+            return text.Append("}\n").ToString();
         }
 
-        return text.Append("}\n").ToString();
-    }
-
-    private static string Statements(int count)
-    {
-        var text = new StringBuilder();
-        for (var index = 0; index < count; index++)
+        private static string Statements(int count)
         {
-            text.Append("        total += ").Append(index).Append(";\n");
-        }
+            var text = new StringBuilder();
+            for (var index = 0; index < count; index++)
+            {
+                text.Append("        total += ").Append(index).Append(";\n");
+            }
 
-        return text.ToString();
-    }
+            return text.ToString();
+        }
     }
 }

@@ -320,8 +320,8 @@ public sealed class DuplicationTests
 
     private static class Duplicated
     {
-    public static string Block(string type, string field, string literal)
-        => $$"""
+        public static string Block(string type, string field, string literal)
+            => $$"""
             namespace App;
 
             public static class {{type}}
@@ -359,8 +359,8 @@ public sealed class DuplicationTests
 
             """;
 
-    public static string TruncatedBlock(string type, string field)
-        => $$"""
+        public static string TruncatedBlock(string type, string field)
+            => $$"""
             namespace App;
 
             public static class {{type}}
@@ -387,8 +387,8 @@ public sealed class DuplicationTests
 
             """;
 
-    public const string SameBlockTwiceInOneFile =
-        """
+        public const string SameBlockTwiceInOneFile =
+            """
         namespace App;
 
         public static class Twice
@@ -432,8 +432,8 @@ public sealed class DuplicationTests
 
         """;
 
-    public const string BlockQuotedInARawString =
-        """"
+        public const string BlockQuotedInARawString =
+            """"
         namespace App;
 
         public sealed record Snippet(string Text)
@@ -467,10 +467,10 @@ public sealed class DuplicationTests
 
         """";
 
-    public static string AwkwardLiteralsThenBlock(string type, string field, string literal)
-        => Block(type, field, literal).Replace(
-            "    public static int Compute(",
-            $$$$""""
+        public static string AwkwardLiteralsThenBlock(string type, string field, string literal)
+            => Block(type, field, literal).Replace(
+                "    public static int Compute(",
+                $$$$""""
                 public static string Interpolate(int a, int b)
                 {
                     var hole = $"{(a > b ? "left" : "right")} and {a switch { 0 => "zero", _ => "other" }}";
@@ -488,12 +488,12 @@ public sealed class DuplicationTests
 
                 public static int Compute(
             """",
-            StringComparison.Ordinal);
+                StringComparison.Ordinal);
 
-    public static string AwkwardCharactersThenBlock(string type, string field, string literal)
-        => Block(type, field, literal).Replace(
-            "    public static int Compute(",
-            """
+        public static string AwkwardCharactersThenBlock(string type, string field, string literal)
+            => Block(type, field, literal).Replace(
+                "    public static int Compute(",
+                """
                 private static readonly char[] Delimiters =
                 [
                     '"', '\'', '{', '}', '\\', '/', '#', '$', '@',
@@ -501,38 +501,38 @@ public sealed class DuplicationTests
 
                 public static int Compute(
             """,
-            StringComparison.Ordinal);
+                StringComparison.Ordinal);
 
-    public static string PropertyBag(string type, string owner)
-    {
-        var text = new StringBuilder($"namespace App;\n\npublic sealed class {type}\n{{\n");
-        foreach (var member in new[] { "Reference", "Opened", "Closed", "Note", "Category", "State" })
+        public static string PropertyBag(string type, string owner)
         {
-            text.Append("    public string ").Append(member).Append(" { get; init; } = string.Empty;\n\n");
+            var text = new StringBuilder($"namespace App;\n\npublic sealed class {type}\n{{\n");
+            foreach (var member in new[] { "Reference", "Opened", "Closed", "Note", "Category", "State" })
+            {
+                text.Append("    public string ").Append(member).Append(" { get; init; } = string.Empty;\n\n");
+            }
+
+            return text.Append("    public string ").Append(owner).Append(" { get; init; } = string.Empty;\n}\n")
+                .ToString();
         }
 
-        return text.Append("    public string ").Append(owner).Append(" { get; init; } = string.Empty;\n}\n")
-            .ToString();
-    }
-
-    public static string SmallRecord(string type, string first, string second)
-        => $$"""
+        public static string SmallRecord(string type, string first, string second)
+            => $$"""
             namespace App;
 
             public sealed record {{type}}(int {{first}}, int {{second}});
 
             """;
 
-    public static string DistinctBlock(int index, string side)
-    {
-        var call = "Sum(" + string.Join(", ", Enumerable.Repeat("seed", index + 1)) + ")";
-        var body = new StringBuilder();
-        for (var statement = 0; statement < 10; statement++)
+        public static string DistinctBlock(int index, string side)
         {
-            body.Append("        total += ").Append(call).Append(";\n");
-        }
+            var call = "Sum(" + string.Join(", ", Enumerable.Repeat("seed", index + 1)) + ")";
+            var body = new StringBuilder();
+            for (var statement = 0; statement < 10; statement++)
+            {
+                body.Append("        total += ").Append(call).Append(";\n");
+            }
 
-        return $$"""
+            return $$"""
             namespace App;
 
             public static class Block{{side}}{{index}}
@@ -547,6 +547,6 @@ public sealed class DuplicationTests
             }
 
             """;
-    }
+        }
     }
 }

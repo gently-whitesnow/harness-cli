@@ -1,6 +1,5 @@
 using Harness.Checks.CSharp;
 using Harness.Config;
-using Harness.Git;
 
 namespace Harness.Checks.Maintainability;
 

@@ -1,6 +1,7 @@
 using Harness.Checks.Comments;
-using Harness.Checks.Duplication;
+using Harness.Checks.Commits;
 using Harness.Checks.DotNet;
+using Harness.Checks.Duplication;
 using Harness.Checks.Frame;
 using Harness.Checks.Maintainability;
 using Harness.Checks.TypesPerFile;
@@ -22,6 +23,7 @@ internal static class CheckRegistry
         new HarnessConfigCheck(),
 
         new DocumentationPolicyCheck(),
+        new CommitSetupCheck(),
         new CommentLineCheck(),
         new TypesPerFileCheck(),
         new MaintainabilityCheck(),

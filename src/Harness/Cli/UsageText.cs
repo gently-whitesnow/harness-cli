@@ -11,7 +11,11 @@ internal static class UsageText
 
         Usage
           harness check [path] [--only <ids>] [--skip <ids>] [--verbose]
-          harness init [path] [--latest]
+          harness init [path] [--latest] [--language <en|ru>]
+          harness setup [path]
+          harness commit-message check <message-file>
+          harness commit-message template
+          harness commits check <base>..<head>
           harness explain <check-id>
           harness help
 
@@ -20,6 +24,7 @@ internal static class UsageText
           --skip <ids>   exclude the given check or group identifiers; they stay visible in the summary
           --verbose      show findings, reasons and timings
           --latest       make an initialized frame follow the newest question set
+          --language     language for human-written commit subjects and bodies
 
         Exit codes
           0  every selected applicable blocking check completed and passed

@@ -10,6 +10,7 @@ internal static class ConfigInitializer
     public static (string? Path, string? Failure) Create(
         string repositoryPath,
         bool latest,
+        CommitLanguage commitLanguage,
         IReadOnlyList<IRepositoryCheck> checks)
     {
         var (repository, openFailure) = GitRepository.Open(repositoryPath);
@@ -25,7 +26,7 @@ internal static class ConfigInitializer
             return (null, $"Refusing to overwrite existing '{path}'. Remove it explicitly before initializing.");
         }
 
-        var content = Render(latest, checks);
+        var content = Render(latest, commitLanguage, checks);
         try
         {
             using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
@@ -51,7 +52,10 @@ internal static class ConfigInitializer
                 HarnessConfig.FileName,
                 StringComparison.Ordinal));
 
-    private static string Render(bool latest, IReadOnlyList<IRepositoryCheck> checks)
+    private static string Render(
+        bool latest,
+        CommitLanguage commitLanguage,
+        IReadOnlyList<IRepositoryCheck> checks)
     {
         var defaults = HarnessSettings.Default;
         var version = latest ? "\"latest\"" : HarnessConfig.CurrentVersion.ToString();
@@ -85,6 +89,10 @@ internal static class ConfigInitializer
                   "constructorParameters": {{defaults.Maintainability.ConstructorParameters}},
                   "publicMembers": {{defaults.Maintainability.PublicMembers}},
                   "importFanOut": {{defaults.Maintainability.ImportFanOut}}
+                },
+                "commits": {
+                  "language": "{{new CommitSettings(commitLanguage, RequireSetup: true).Code}}",
+                  "requireSetup": true
                 }
               },
               "policy": {},

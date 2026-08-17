@@ -40,6 +40,9 @@
 - [ADR-0008](0008-the-harness-only-observes.md) — Харнес не правит tracked-контент, не
   ставит toolchain, не меняет lockfile. ADR-0016 вводит единственное opt-in исключение:
   `init` создаёт отсутствующий `.harness.json`, но не добавляет его в Git.
+- [ADR-0020](0020-commit-message-contract-and-clone-setup.md) — Conventional header и
+  структурированный локализованный body проверяются одним валидатором в hook и CI;
+  `setup` активирует clone-local hook/template, а `commits.setup` доказывает активацию.
 
 ## Анализ и отчёт
 <!-- Как измеряются и как подаются эвристические находки -->

@@ -63,6 +63,13 @@ public sealed class RepositoryFixture : TemporaryDirectory
         return this;
     }
 
+    public RepositoryFixture CommitAs(string message)
+    {
+        Git("add", "--all");
+        Git("commit", "--quiet", "--allow-empty", "--message", message);
+        return this;
+    }
+
     public string Git(params string[] arguments)
     {
         var run = ProcessLauncher.Run("git", arguments, Path);

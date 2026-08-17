@@ -34,6 +34,7 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           answers       one self-reported answer for every `frame` question in the selected
                         version, keyed without the `frame.` prefix.
           applicability shared analysis family (currently `csharp`) answered not applicable.
+          settings      thresholds and commit language/setup requirements.
           policy        exceptions to the default `required`: usually `advisory` or `off`.
           suppress      accepted findings, each naming `check`, `location` and `reason`.
 

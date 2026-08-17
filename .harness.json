@@ -17,7 +17,7 @@
     },
     "lint": {
       "present": true,
-      "reason": "TreatWarningsAsErrors и AOT-анализаторы включены в проекте, отдельного файла правил нет"
+      "reason": "анализаторы и EnforceCodeStyleInBuild включены централизованно; обязательные style-диагностики заданы в .editorconfig, все warnings становятся errors"
     },
     "build": {
       "paths": ["Harness.slnx"]
@@ -41,6 +41,10 @@
       "constructorParameters": 6,
       "publicMembers": 25,
       "importFanOut": 20
+    },
+    "commits": {
+      "language": "ru",
+      "requireSetup": true
     }
   },
   "policy": {

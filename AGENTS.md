@@ -39,6 +39,12 @@ init` создаёт все answer-ключи как нерешённые placeh
 не выдумывай положительный ответ и не закрывай инициализацию массовыми suppress. Осознанное
 отсутствие — `present: false` с причиной, а не suppress. [ADR-0016](adrs/0016-versioned-frame-and-explicit-initialization.md)
 
+`settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness
+setup` включает шаблон и `commit-msg` hook; `commits.setup` делает пропущенную подготовку
+видимой в обычном check. Для CI передавай явный диапазон в `harness commits check
+<base>..<head>`: hook допускает временный autosquash, публикуемый диапазон — нет.
+[ADR-0020](adrs/0020-commit-message-contract-and-clone-setup.md)
+
 ## Раскладка
 
 - `src/Harness` — сам CLI. NativeAOT, установленный .NET runtime в момент использования не нужен.
@@ -56,6 +62,7 @@ init` создаёт все answer-ключи как нерешённые placeh
       о межфайловых повторах.
   - `Git/` — безопасный вызов Git без shell и чтение evidence: tracked-записей, режимов
     файлов и целей символических ссылок.
+  - `Commits/` — Conventional header, локализованный body, шаблон и общий валидатор hook/CI.
 - `tests/Harness.Tests` — приёмочные тесты, которые гоняют скомпилированный исполняемый файл.
 - `adrs/` — долговременные решения; правила ниже ссылаются туда за обоснованием.
   Реестр — [`adrs/REGISTRY.md`](adrs/REGISTRY.md), шаблон — `adrs/.template.md`.
@@ -64,8 +71,12 @@ init` создаёт все answer-ключи как нерешённые placeh
 
 ```sh
 ./harness init /path/to/repository                 # создать незавершённую рамку
+./harness setup                                    # активировать hook и шаблон в этом клоне
+./harness commit-message template                  # показать шаблон выбранного языка
+./harness commits check <base>..<head>             # проверить диапазон для CI
 dotnet test                                        # полный набор, включая NativeAOT-публикацию
 dotnet build                                       # быстрая обратная связь
+dotnet format Harness.slnx --verify-no-changes --severity warn # формат и code style без правок
 dotnet publish src/Harness/Harness.csproj -c Release -r osx-arm64
 ./src/Harness/bin/Release/net10.0/osx-arm64/publish/harness check
 ```

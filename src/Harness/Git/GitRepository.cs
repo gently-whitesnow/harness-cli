@@ -30,6 +30,46 @@ internal sealed class GitRepository
 
     public IReadOnlyList<TrackedEntry> TrackedEntries { get; }
 
+    /// <summary>Reads commit messages in oldest-first order from an explicit revision range.</summary>
+    public (IReadOnlyList<(string ObjectId, string Message)>? Commits, string? Failure) ReadCommits(
+        string revisionRange)
+    {
+        if (string.IsNullOrWhiteSpace(revisionRange) || revisionRange.StartsWith('-'))
+        {
+            return (null, "The commit range must be a non-empty Git revision and must not start with '-'.");
+        }
+
+        var revisions = RunGit(["rev-list", "--reverse", revisionRange], RootPath);
+        if (revisions.Failure is not null)
+        {
+            return (null, revisions.Failure);
+        }
+
+        if (revisions.ExitCode != 0)
+        {
+            return (null, $"Could not resolve commit range '{revisionRange}' ({Summarize(revisions.StandardError)}).");
+        }
+
+        var commits = new List<(string ObjectId, string Message)>();
+        foreach (var objectId in revisions.StandardOutput.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var message = RunGit(["show", "-s", "--format=%B", objectId], RootPath);
+            if (message.Failure is not null)
+            {
+                return (null, message.Failure);
+            }
+
+            if (message.ExitCode != 0)
+            {
+                return (null, $"Could not read commit '{objectId}' ({Summarize(message.StandardError)}).");
+            }
+
+            commits.Add((objectId, message.StandardOutput));
+        }
+
+        return (commits, null);
+    }
+
     /// <summary>How long collecting the repository inventory took.</summary>
     public TimeSpan ReadDuration { get; }
 

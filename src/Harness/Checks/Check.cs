@@ -1,6 +1,3 @@
-using Harness.Config;
-using Harness.Git;
-
 namespace Harness.Checks;
 
 internal enum CheckOutcome
