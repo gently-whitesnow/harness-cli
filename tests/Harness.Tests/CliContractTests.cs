@@ -11,7 +11,7 @@ public sealed class CliContractTests
     {
         using var repository = Fixtures.Compliant();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.Run(repository.Path, "check", "--verbose");
 
         var durations = Regex.Matches(run.Output, @"\(([0-9.]+) ms\)")
             .Select(match => double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture))
@@ -31,7 +31,7 @@ public sealed class CliContractTests
         using var repository = Fixtures.Compliant();
         using var elsewhere = TemporaryDirectory.Create();
 
-        var run = HarnessCli.Run(elsewhere.Path, "check", repository.Path);
+        var run = HarnessCli.Run(elsewhere.Path, "check", repository.Path, "--verbose");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("docs.policy"), run.Output);
@@ -190,6 +190,22 @@ public sealed class CliContractTests
     }
 
     [Fact]
+    public void A_clean_success_is_one_line_and_verbose_restores_the_evidence()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent())
+            .WriteFile("src/App/Widget.cs", Fixtures.FormattedSource)
+            .Commit();
+
+        var concise = HarnessCli.Run(repository.Path, "check");
+        var verbose = HarnessCli.Run(repository.Path, "check", "--verbose");
+
+        Assert.Single(concise.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+        Assert.True(concise.Output.StartsWith("PASS  ", StringComparison.Ordinal), concise.Output);
+        Assert.True(verbose.OutputContains("passed"), verbose.Output);
+        Assert.True(verbose.OutputContains("git evidence"), verbose.Output);
+    }
+
+    [Fact]
     public void An_unusable_command_line_is_a_tool_error()
     {
         using var repository = Fixtures.Compliant();
@@ -197,7 +213,7 @@ public sealed class CliContractTests
         Assert.Equal(2, HarnessCli.Run(repository.Path).ExitCode);
         Assert.Equal(2, HarnessCli.Run(repository.Path, "inspect").ExitCode);
         Assert.Equal(2, HarnessCli.Run(repository.Path, "check", "--only").ExitCode);
-        Assert.Equal(2, HarnessCli.Run(repository.Path, "check", "--verbose").ExitCode);
+        Assert.Equal(2, HarnessCli.Run(repository.Path, "check", "--loud").ExitCode);
     }
 
     [Theory]

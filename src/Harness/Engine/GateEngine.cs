@@ -91,7 +91,7 @@ internal static class GateEngine
             var policy = config?.PolicyFor(check.Id, check.Group) ?? CheckPolicy.Default;
             if (!IsSelected(check, only, skip) || policy == CheckPolicy.Off)
             {
-                gates.Add(Excluded(check, policy));
+                gates.Add(Excluded(check, policy, skip.Any(selector => Matches(check, selector))));
                 continue;
             }
 
@@ -206,14 +206,19 @@ internal static class GateEngine
             && (string.Equals(suppression.Location, finding.Location, StringComparison.Ordinal)
                 || finding.Location.StartsWith(suppression.Location + "/", StringComparison.Ordinal));
 
-    private static GateReport Excluded(IRepositoryCheck check, CheckPolicy policy)
+    private static GateReport Excluded(
+        IRepositoryCheck check,
+        CheckPolicy policy,
+        bool explicitlySkipped)
         => new(
             check.Id,
             check.Summary,
             CheckOutcome.Skipped,
             [],
             TimeSpan.Zero,
-            policy == CheckPolicy.Off ? $"{HarnessConfig.FileName} turns this check off." : null,
+            policy == CheckPolicy.Off
+                ? $"{HarnessConfig.FileName} turns this check off."
+                : explicitlySkipped ? "excluded by --skip." : null,
             []);
 
     private static CheckEvaluation Evaluate(IRepositoryCheck check, CheckContext context)

@@ -10,13 +10,14 @@ internal static class UsageText
         harness — repository quality harness
 
         Usage
-          harness check [path] [--only <ids>] [--skip <ids>]
+          harness check [path] [--only <ids>] [--skip <ids>] [--verbose]
           harness explain <check-id>
           harness help
 
         Options
           --only <ids>   run only the given check or group identifiers (comma separated)
           --skip <ids>   exclude the given check or group identifiers; they stay visible in the summary
+          --verbose      show every check, finding, reason and timing
 
         Exit codes
           0  every selected applicable blocking check completed and passed

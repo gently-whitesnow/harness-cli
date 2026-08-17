@@ -40,21 +40,25 @@ internal sealed class HarnessConfig
 {
     public const string FileName = ".harness.json";
 
-    private static readonly string[] TopLevelKeys = ["version", "answers", "policy", "suppress"];
+    private static readonly string[] TopLevelKeys = ["version", "answers", "settings", "policy", "suppress"];
 
     private const int SupportedVersion = 2;
 
     private HarnessConfig(
         IReadOnlyDictionary<string, FrameAnswer> answers,
+        HarnessSettings settings,
         IReadOnlyDictionary<string, CheckPolicy> policy,
         IReadOnlyList<Suppression> suppressions)
     {
         Answers = answers;
+        Settings = settings;
         Policy = policy;
         Suppressions = suppressions;
     }
 
     public IReadOnlyDictionary<string, FrameAnswer> Answers { get; }
+
+    public HarnessSettings Settings { get; }
 
     public IReadOnlyDictionary<string, CheckPolicy> Policy { get; }
 
@@ -148,6 +152,12 @@ internal sealed class HarnessConfig
         }
 
         var selectors = Selectors(checks);
+        var (settings, settingsFailure) = HarnessSettingsReader.Read(root);
+        if (settings is null)
+        {
+            return (null, Failure(settingsFailure!));
+        }
+
         var (policy, policyFailure) = ReadPolicy(root, selectors);
         if (policy is null)
         {
@@ -157,7 +167,7 @@ internal sealed class HarnessConfig
         var (suppressions, suppressionFailure) = ReadSuppressions(root, selectors);
         return suppressions is null
             ? (null, suppressionFailure)
-            : (new HarnessConfig(answers, policy, suppressions), null);
+            : (new HarnessConfig(answers, settings, policy, suppressions), null);
     }
 
     private static (Dictionary<string, FrameAnswer>? Answers, string? Failure) ReadAnswers(
@@ -447,6 +457,21 @@ internal sealed class HarnessConfig
               "lint": { "present": true, "reason": "analyzers enabled in Directory.Build.props" },
               "build": { "paths": ["Repository.sln"] },
               "typecheck": { "applicable": false, "reason": "no web stack" }
+            },
+            "settings": {
+              "comments.csharp": {
+                "minimumCommentLines": 10,
+                "percentageLimit": 25
+              },
+              "maintainability.csharp": {
+                "fileLines": 400,
+                "typeLines": 300,
+                "methodLines": 60,
+                "branches": 12,
+                "constructorParameters": 6,
+                "publicMembers": 25,
+                "importFanOut": 20
+              }
             }
           }
 

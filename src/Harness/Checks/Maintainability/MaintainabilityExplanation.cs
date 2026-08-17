@@ -72,7 +72,8 @@ internal static class MaintainabilityExplanation
           The number a measurement is reported against is a comparison point, not a
           threshold and not a budget. It exists so a value has a scale; exceeding it is an
           invitation to look, and a deliberate, well-named 300-line state machine that
-          exceeds it is not a defect.
+          exceeds it is not a defect. Every comparison point is configured under
+          `settings.maintainability.csharp` in `.harness.json`.
 
         Remediation
           Read the subject at the reported location and decide. A refactor has its own

@@ -11,7 +11,7 @@ switch (invocation.Kind)
     {
         var report = GateEngine.Run(invocation.RepositoryPath, invocation.Only, invocation.Skip, checks);
         var writer = report.ExitCode == ExitCodes.Incomplete ? Console.Error : Console.Out;
-        writer.Write(ConsoleReport.Render(report));
+        writer.Write(ConsoleReport.Render(report, invocation.Verbose, invocation.Only.Count > 0));
         return report.ExitCode;
     }
 

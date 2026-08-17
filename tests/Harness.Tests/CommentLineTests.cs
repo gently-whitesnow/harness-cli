@@ -52,6 +52,19 @@ public sealed class CommentLineTests
     }
 
     [Fact]
+    public void Repository_settings_change_the_comment_policy()
+    {
+        using var repository = SourceRepository(
+            Source(commentLines: 10, codeLines: 29),
+            Frame.Answering().Settings(
+                """{ "comments.csharp": { "percentageLimit": 30, "minimumCommentLines": 11 } }"""));
+
+        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+    }
+
+    [Fact]
     public void Each_physical_line_with_a_comment_is_counted_once()
     {
         var source = Source(commentLines: 0, codeLines: 30)
@@ -133,12 +146,12 @@ public sealed class CommentLineTests
         Assert.True(run.OutputContains("commented-out code"), run.Output);
         Assert.True(run.OutputContains("TODO without a concrete issue"), run.Output);
         Assert.True(run.OutputContains("refactor names and structure"), run.Output);
-        Assert.True(run.OutputContains("at least 10"), run.Output);
-        Assert.True(run.OutputContains("exceed 25%"), run.Output);
+        Assert.True(run.OutputContains("minimumCommentLines"), run.Output);
+        Assert.True(run.OutputContains("percentageLimit"), run.Output);
     }
 
-    private static RepositoryFixture SourceRepository(string source)
-        => Fixtures.Compliant().WriteFile("src/App/Source.cs", source).Commit();
+    private static RepositoryFixture SourceRepository(string source, Frame? frame = null)
+        => Fixtures.Compliant(frame ?? Frame.Answering()).WriteFile("src/App/Source.cs", source).Commit();
 
     private static string Source(int commentLines, int codeLines)
         => string.Concat(Enumerable.Range(1, commentLines).Select(line => $"// reason {line}\n"))

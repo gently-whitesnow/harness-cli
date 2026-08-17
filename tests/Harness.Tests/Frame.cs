@@ -20,8 +20,22 @@ public sealed class Frame
 
     private readonly List<string> suppressions = [];
 
+    private string? settings;
+
     /// <summary>A frame that answers "no" to every question.</summary>
     public static Frame Answering() => new();
+
+    /// <summary>A frame with a positive answer to every question.</summary>
+    public static Frame AllPresent()
+    {
+        var frame = new Frame();
+        foreach (var question in Questions)
+        {
+            frame.Present(question, "fixture provides it");
+        }
+
+        return frame;
+    }
 
     public Frame Located(string question, params string[] paths)
         => With(question, $$"""{ "paths": [{{string.Join(", ", paths.Select(Quote))}}] }""");
@@ -53,6 +67,12 @@ public sealed class Frame
         return this;
     }
 
+    public Frame Settings(string body)
+    {
+        settings = body;
+        return this;
+    }
+
     public Frame Suppressing(string check, string location, string reason = "accepted for now")
     {
         suppressions.Add(
@@ -67,6 +87,11 @@ public sealed class Frame
             ",\n",
             answers.Select(entry => $"    {Quote(entry.Key)}: {entry.Value}")));
         text.Append("\n  }");
+
+        if (settings is not null)
+        {
+            text.Append(",\n  \"settings\": ").Append(settings);
+        }
 
         if (policy.Count > 0)
         {

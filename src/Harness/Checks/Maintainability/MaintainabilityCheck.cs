@@ -1,4 +1,5 @@
 using Harness.Checks.CSharp;
+using Harness.Config;
 using Harness.Git;
 
 namespace Harness.Checks.Maintainability;
@@ -18,25 +19,6 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
 {
     private const int ShownPerMetric = 5;
 
-    private static readonly MaintainabilityMetric FileLines = new("file logical lines", 400);
-    private static readonly MaintainabilityMetric TypeLines = new("type logical lines", 300);
-    private static readonly MaintainabilityMetric MethodLines = new("method logical lines", 60);
-    private static readonly MaintainabilityMetric Branches = new("lexical branch count", 12);
-    private static readonly MaintainabilityMetric ConstructorParameters = new("constructor parameter count", 6);
-    private static readonly MaintainabilityMetric PublicMembers = new("public declared members", 25);
-    private static readonly MaintainabilityMetric ImportFanOut = new("using directive fan-out", 20);
-
-    private static readonly MaintainabilityMetric[] Metrics =
-    [
-        FileLines,
-        TypeLines,
-        MethodLines,
-        Branches,
-        ConstructorParameters,
-        PublicMembers,
-        ImportFanOut,
-    ];
-
     // Longest first so `foreach` is not read as `for`.
     private static readonly string[] BranchKeywords =
         ["foreach", "while", "catch", "case", "when", "for", "if", "do"];
@@ -52,6 +34,8 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
     public CheckEvaluation Evaluate(CheckContext context)
     {
         var repository = context.Repository;
+        var metrics = new MetricSet(
+            context.Config?.Settings.Maintainability ?? MaintainabilitySettings.Default);
 
         var (sources, failure) = CSharpSources.Discover(repository);
         if (failure is not null)
@@ -67,18 +51,18 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
         var measurements = new List<Measurement>();
         foreach (var source in sources)
         {
-            Measure(source, measurements);
+            Measure(source, metrics, measurements);
         }
 
-        return CheckEvaluation.From(Report(measurements));
+        return CheckEvaluation.From(Report(measurements, metrics.All));
     }
 
-    private static void Measure(CSharpSource source, List<Measurement> measurements)
+    private static void Measure(CSharpSource source, MetricSet metrics, List<Measurement> measurements)
     {
         var structure = CSharpStructureReader.Read(source);
 
-        measurements.Add(new Measurement(FileLines, source.LogicalLines, source.Path, source.Path));
-        measurements.Add(new Measurement(ImportFanOut, structure.UsingDirectives, source.Path, source.Path));
+        measurements.Add(new Measurement(metrics.FileLines, source.LogicalLines, source.Path, source.Path));
+        measurements.Add(new Measurement(metrics.ImportFanOut, structure.UsingDirectives, source.Path, source.Path));
 
         foreach (var declaration in structure.Declarations)
         {
@@ -87,15 +71,15 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
 
             if (declaration.Kind == DeclarationKind.Type)
             {
-                measurements.Add(new Measurement(TypeLines, logicalLines, declaration.Subject, location));
+                measurements.Add(new Measurement(metrics.TypeLines, logicalLines, declaration.Subject, location));
                 measurements.Add(new Measurement(
-                    PublicMembers, declaration.PublicMembers, declaration.Subject, location));
+                    metrics.PublicMembers, declaration.PublicMembers, declaration.Subject, location));
             }
             else
             {
-                measurements.Add(new Measurement(MethodLines, logicalLines, declaration.Subject, location));
+                measurements.Add(new Measurement(metrics.MethodLines, logicalLines, declaration.Subject, location));
                 measurements.Add(new Measurement(
-                    Branches,
+                    metrics.Branches,
                     BranchCount(source.TextBetween(declaration.FirstLine, declaration.LastLine)),
                     declaration.Subject,
                     location));
@@ -106,16 +90,18 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
             if (declaration.ParameterCount >= 0)
             {
                 measurements.Add(new Measurement(
-                    ConstructorParameters, declaration.ParameterCount, declaration.Subject, location));
+                    metrics.ConstructorParameters, declaration.ParameterCount, declaration.Subject, location));
             }
         }
     }
 
-    private static IReadOnlyList<Finding> Report(List<Measurement> measurements)
+    private static IReadOnlyList<Finding> Report(
+        List<Measurement> measurements,
+        IReadOnlyList<MaintainabilityMetric> metrics)
     {
         var findings = new List<Finding>();
 
-        foreach (var metric in Metrics)
+        foreach (var metric in metrics)
         {
             var exceeded = measurements
                 .Where(measurement => ReferenceEquals(measurement.Metric, metric))
@@ -194,4 +180,37 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
 
     private static bool IsWordCharacter(char character)
         => char.IsLetterOrDigit(character) || character is '_' or '@';
+
+    private sealed class MetricSet
+    {
+        public MetricSet(MaintainabilitySettings settings)
+        {
+            FileLines = new("file logical lines", settings.FileLines);
+            TypeLines = new("type logical lines", settings.TypeLines);
+            MethodLines = new("method logical lines", settings.MethodLines);
+            Branches = new("lexical branch count", settings.Branches);
+            ConstructorParameters = new("constructor parameter count", settings.ConstructorParameters);
+            PublicMembers = new("public declared members", settings.PublicMembers);
+            ImportFanOut = new("using directive fan-out", settings.ImportFanOut);
+            All =
+            [
+                FileLines,
+                TypeLines,
+                MethodLines,
+                Branches,
+                ConstructorParameters,
+                PublicMembers,
+                ImportFanOut,
+            ];
+        }
+
+        public MaintainabilityMetric FileLines { get; }
+        public MaintainabilityMetric TypeLines { get; }
+        public MaintainabilityMetric MethodLines { get; }
+        public MaintainabilityMetric Branches { get; }
+        public MaintainabilityMetric ConstructorParameters { get; }
+        public MaintainabilityMetric PublicMembers { get; }
+        public MaintainabilityMetric ImportFanOut { get; }
+        public IReadOnlyList<MaintainabilityMetric> All { get; }
+    }
 }

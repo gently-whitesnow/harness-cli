@@ -66,6 +66,22 @@ public sealed class HarnessFrameTests
     }
 
     [Theory]
+    [InlineData("[]", "'settings' must be an object")]
+    [InlineData("{ \"comments\": {} }", "is not configurable")]
+    [InlineData("{ \"comments.csharp\": { \"percent\": 25 } }", "is not a setting")]
+    [InlineData("{ \"comments.csharp\": { \"percentageLimit\": 101 } }", "must not exceed 100")]
+    [InlineData("{ \"maintainability.csharp\": { \"methodLines\": -1 } }", "non-negative integer")]
+    public void Invalid_settings_end_the_run_as_incomplete(string settings, string explanation)
+    {
+        using var repository = Fixtures.Compliant(Frame.Answering().Settings(settings));
+
+        var run = HarnessCli.Run(repository.Path, "check");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains(explanation), run.Output);
+    }
+
+    [Theory]
     [InlineData("docs.policy", "AGENTS.md", "", "must say why")]
     [InlineData("nope", "AGENTS.md", "because", "must name a check")]
     public void Invalid_suppression_ends_the_run_as_incomplete(
@@ -129,7 +145,7 @@ public sealed class HarnessFrameTests
             .WriteLines("AGENTS.md", 400)
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.Run(repository.Path, "check", "--verbose");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("skipped"), run.Output);
@@ -157,7 +173,7 @@ public sealed class HarnessFrameTests
         using var repository = Fixtures.Compliant(
             Frame.Answering().Suppressing("docs.policy", "gone.md", "was fixed last quarter"));
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.Run(repository.Path, "check", "--verbose");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("matched nothing in this run"), run.Output);

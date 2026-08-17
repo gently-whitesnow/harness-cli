@@ -16,8 +16,8 @@
       "paths": [".editorconfig"]
     },
     "lint": {
-      "paths": ["src/Harness/Harness.csproj"],
-      "reason": "TreatWarningsAsErrors и AOT-анализаторы включены в самом проекте, отдельного файла правил нет"
+      "present": true,
+      "reason": "TreatWarningsAsErrors и AOT-анализаторы включены в проекте, отдельного файла правил нет"
     },
     "build": {
       "paths": ["Harness.slnx"]
@@ -26,5 +26,27 @@
       "applicable": false,
       "reason": "нет web-стека; типы этого репозитория проверяет компилятор C# на сборке"
     }
-  }
+  },
+  "settings": {
+    "comments.csharp": {
+      "minimumCommentLines": 10,
+      "percentageLimit": 25
+    },
+    "maintainability.csharp": {
+      "fileLines": 400,
+      "typeLines": 300,
+      "methodLines": 60,
+      "branches": 12,
+      "constructorParameters": 6,
+      "publicMembers": 25,
+      "importFanOut": 20
+    }
+  },
+  "policy": {
+    "docs.policy": "required",
+    "frame.tests.integration": "required",
+    "maintainability.csharp": "advisory",
+    "duplication.csharp": "advisory"
+  },
+  "suppress": []
 }

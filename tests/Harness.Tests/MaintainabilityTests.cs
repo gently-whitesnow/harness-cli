@@ -243,6 +243,20 @@ public sealed class MaintainabilityTests
     }
 
     [Fact]
+    public void Repository_settings_change_maintainability_comparison_points()
+    {
+        using var repository = SourceRepository(
+            "src/App/Report.cs",
+            CSharp.LongMethod(70),
+            Frame.Answering().Settings(
+                """{ "maintainability.csharp": { "methodLines": 100 } }"""));
+
+        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+
+        Assert.False(run.OutputContains("method logical lines"), run.Output);
+    }
+
+    [Fact]
     public void Every_documented_metric_is_reachable_from_one_repository()
     {
         using var repository = Fixtures.Compliant()
@@ -298,8 +312,8 @@ public sealed class MaintainabilityTests
         Assert.True(run.OutputContains("not a compiler control-flow graph"), run.Output);
     }
 
-    private static RepositoryFixture SourceRepository(string path, string source)
-        => Fixtures.Compliant().WriteFile(path, source).Commit();
+    private static RepositoryFixture SourceRepository(string path, string source, Frame? frame = null)
+        => Fixtures.Compliant(frame ?? Frame.Answering()).WriteFile(path, source).Commit();
 }
 
 internal static class CSharp

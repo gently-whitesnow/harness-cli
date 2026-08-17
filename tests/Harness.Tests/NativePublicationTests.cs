@@ -22,7 +22,7 @@ public sealed class NativePublicationTests
         using var compliant = Fixtures.Compliant();
         var passing = RunPublished(executable, compliant.Path);
         Assert.Equal(0, passing.ExitCode);
-        Assert.True(passing.OutputContains("docs.policy"), passing.Output);
+        Assert.True(passing.Output.StartsWith("PASS WITH GAPS", StringComparison.Ordinal), passing.Output);
 
         using var violating = Fixtures.Compliant().WriteLines("AGENTS.md", 400).Commit();
         var failing = RunPublished(executable, violating.Path);

@@ -6,13 +6,12 @@ using Harness.Engine;
 namespace Harness.Cli;
 
 /// <summary>
-/// Renders a run concisely: overall result first, then the information that changes the
-/// reader's next action — blocking violations, advisory findings, incomplete and skipped
-/// checks — and the cost of every gate.
+/// Renders a run concisely: overall result first, then only the information that changes the
+/// reader's next action. Verbose output also includes successful checks and timings.
 /// </summary>
 internal static class ConsoleReport
 {
-    public static string Render(RunReport report)
+    public static string Render(RunReport report, bool verbose, bool focused)
     {
         var text = new StringBuilder();
 
@@ -25,7 +24,14 @@ internal static class ConsoleReport
 
         text.Append(Headline(report)).Append("  ").Append(report.RepositoryPath).Append('\n');
 
-        foreach (var gate in report.Gates)
+        if (!verbose && !focused && report.ExitCode == ExitCodes.Success)
+        {
+            AppendSuccessSummary(text, report);
+            return text.ToString();
+        }
+
+        var visibleGates = report.Gates.Where(gate => verbose || ShouldShow(gate, focused)).ToList();
+        foreach (var gate in visibleGates)
         {
             text.Append("\n  ")
                 .Append(Label(gate.Outcome).PadRight(15))
@@ -45,10 +51,97 @@ internal static class ConsoleReport
             AppendSuppressed(text, gate.Suppressed);
         }
 
-        text.Append("\n  git evidence  (").Append(FormatDuration(report.EvidenceDuration)).Append(")\n");
-        text.Append("\nRun `harness explain <check-id>` for rationale and remediation.\n");
+        if (verbose)
+        {
+            text.Append("\n  git evidence  (").Append(FormatDuration(report.EvidenceDuration)).Append(")\n");
+        }
+
+        if (visibleGates.Count > 0)
+        {
+            text.Append("\nRun `harness explain <check-id>` for rationale and remediation.\n");
+        }
+
         return text.ToString();
     }
+
+    private static void AppendSuccessSummary(StringBuilder text, RunReport report)
+    {
+        var advisoryGates = report.Gates
+            .Select(gate => (gate.Id, Count: gate.Findings.Count(finding =>
+                finding.Severity == FindingSeverity.Advisory)))
+            .Where(gate => gate.Count > 0)
+            .ToList();
+        var readinessGaps = report.Gates
+            .Where(gate => gate.Outcome == CheckOutcome.ReadinessGap)
+            .Select(gate => gate.Id)
+            .ToList();
+        var notApplicable = report.Gates
+            .Where(gate => gate.Outcome == CheckOutcome.NotApplicable)
+            .Select(gate => gate.Id)
+            .ToList();
+        var excluded = report.Gates
+            .Where(gate => gate.Outcome == CheckOutcome.Skipped && gate.OutcomeReason is not null)
+            .Select(gate => gate.Id)
+            .ToList();
+        var suppressed = report.Gates.Sum(gate => gate.Suppressed.Count);
+
+        AppendCountedSummary(text, "advisory findings", advisoryGates);
+        AppendNamedSummary(text, "readiness gaps", readinessGaps);
+        AppendNamedSummary(text, "not applicable", notApplicable);
+        AppendNamedSummary(text, "skipped", excluded);
+
+        if (suppressed > 0)
+        {
+            text.Append("  ").Append(suppressed).Append(" suppressed findings\n");
+        }
+
+        if (advisoryGates.Count > 0 || readinessGaps.Count > 0 || notApplicable.Count > 0
+            || excluded.Count > 0 || suppressed > 0)
+        {
+            text.Append("  Run with --verbose for details.\n");
+        }
+    }
+
+    private static void AppendCountedSummary(
+        StringBuilder text,
+        string label,
+        IReadOnlyList<(string Id, int Count)> gates)
+    {
+        if (gates.Count == 0)
+        {
+            return;
+        }
+
+        text.Append("  ")
+            .Append(gates.Sum(gate => gate.Count))
+            .Append(' ')
+            .Append(label)
+            .Append(": ")
+            .Append(string.Join(", ", gates.Select(gate => $"{gate.Id} ({gate.Count})")))
+            .Append('\n');
+    }
+
+    private static void AppendNamedSummary(StringBuilder text, string label, IReadOnlyList<string> identifiers)
+    {
+        if (identifiers.Count > 0)
+        {
+            text.Append("  ")
+                .Append(identifiers.Count)
+                .Append(' ')
+                .Append(label)
+                .Append(": ")
+                .Append(string.Join(", ", identifiers))
+                .Append('\n');
+        }
+    }
+
+    private static bool ShouldShow(GateReport gate, bool focused)
+        => gate.Outcome switch
+        {
+            CheckOutcome.Passed => focused || gate.Findings.Count > 0 || gate.Suppressed.Count > 0,
+            CheckOutcome.Skipped => gate.OutcomeReason is not null,
+            _ => true,
+        };
 
     /// <summary>
     /// Findings the repository has accepted in writing. They are printed with the sentence

@@ -10,7 +10,8 @@ public sealed class CheckCommandTests
         var run = HarnessCli.Run(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("docs.policy"), run.Output);
+        Assert.True(run.Output.StartsWith("PASS WITH GAPS", StringComparison.Ordinal), run.Output);
+        Assert.True(run.OutputContains("readiness gaps"), run.Output);
     }
 
     [Fact]

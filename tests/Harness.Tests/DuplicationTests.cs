@@ -121,7 +121,7 @@ public sealed class DuplicationTests
             ("src/App/Invoice.cs", Duplicated.PropertyBag("Invoice", "Supplier")),
             ("src/App/Patient.cs", Duplicated.PropertyBag("Patient", "Clinic")));
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.Run(repository.Path, "check", "--verbose");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("lexically repeated"), run.Output);

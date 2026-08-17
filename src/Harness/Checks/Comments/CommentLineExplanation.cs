@@ -2,11 +2,8 @@ namespace Harness.Checks.Comments;
 
 internal static class CommentLineExplanation
 {
-    public const int MinimumCommentLines = 10;
-    public const int PercentageLimit = 25;
-
-    public static readonly string Text =
-        $"""
+    public const string Text =
+        """
         Rationale
           Comments are useful when they preserve information the code cannot express. They
           become a parallel narrative when they restate names and control flow, and that
@@ -15,8 +12,8 @@ internal static class CommentLineExplanation
           claim that every comment below the limit is useful.
 
         Rule
-          A file violates the rule when it has at least {MinimumCommentLines} physical comment
-          lines and they exceed {PercentageLimit}% of its authored physical lines. An authored
+          A file violates the rule when it reaches the configured `minimumCommentLines` and
+          comments exceed the configured `percentageLimit` of authored physical lines. An authored
           line is a non-empty line carrying code, a string continuation or a comment. A line
           carrying both code and a comment appears once in the denominator and once in the
           comment numerator.
@@ -46,8 +43,9 @@ internal static class CommentLineExplanation
           This is a lexical count, not a judgement of whether prose is true or valuable.
           Comments inside interpolation holes are covered by the containing string region
           and are not counted; a preprocessor directive line is masked as one directive,
-          including any trailing comment. The {MinimumCommentLines}-line floor and
-          {PercentageLimit}% threshold are repository policy, not industry constants. A file
+          including any trailing comment. Both values live under
+          `settings.comments.csharp` in `.harness.json`; they are repository policy, not
+          industry constants. A file
           with an unusually dense set of indispensable comments can use
           `policy.comments.csharp`, or a named `suppress` exception with a reason.
 
