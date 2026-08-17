@@ -5,8 +5,6 @@ using Harness.Config;
 
 namespace Harness.Git;
 
-internal sealed record CommitHookStatus(bool Ready, string Description);
-
 /// <summary>Installs and inspects the opt-in, clone-local commit message integration.</summary>
 internal static class CommitHookSetup
 {
