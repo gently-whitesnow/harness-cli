@@ -31,17 +31,15 @@ public sealed class HarnessFrameTests
     [Theory]
     [InlineData("{ not json", "not readable as JSON")]
     [InlineData("[]", "not a JSON object")]
-    [InlineData("{}", "'version' must be 2")]
-    [InlineData("""{ "version": 1 }""", "'version' must be 2")]
+    [InlineData("{}", "'version' must be 2 or \"latest\"")]
+    [InlineData("""{ "version": 1 }""", "is no longer supported")]
+    [InlineData("""{ "version": 3 }""", "newer than this harness supports")]
+    [InlineData("""{ "version": "2" }""", "must be 2 or \"latest\"")]
+    [InlineData("""{ "version": "LATEST" }""", "must be 2 or \"latest\"")]
+    [InlineData("""{ "version": 2.5 }""", "must be 2 or \"latest\"")]
     [InlineData("""{ "version": 2, "answers": [] }""", "'answers' must be an object")]
     [InlineData("""{ "version": 2, "checks": {} }""", "not a key this harness reads")]
     [InlineData("""{ "version": 2, "answers": { "tests": {} } }""", "not a question this harness asks")]
-    [InlineData("""{ "version": 2, "answers": { "format": { "present": true } } }""", "needs a non-empty 'reason'")]
-    [InlineData("""{ "version": 2, "answers": { "format": { "paths": [] } } }""", "is empty")]
-    [InlineData("""{ "version": 2, "answers": { "format": { "paths": [".x"], "present": true } } }""", "already an answer")]
-    [InlineData("""{ "version": 2, "answers": { "format": { "applicable": false } } }""", "why the question does not apply")]
-    [InlineData("""{ "version": 2, "answers": { "format": { "hint": 1 } } }""", "not a key this harness reads")]
-    [InlineData("""{ "version": 2, "answers": {} }""", "does not answer")]
     public void An_unsound_frame_ends_the_run_as_incomplete(string frame, string explanation)
     {
         using var repository = Fixtures.WithRawFrame(frame);
@@ -100,7 +98,7 @@ public sealed class HarnessFrameTests
     }
 
     [Fact]
-    public void A_missing_answer_invalidates_the_whole_frame()
+    public void A_missing_answer_is_local_to_its_question()
     {
         using var repository = Fixtures.Compliant(Frame.Answering().Silent("tests.unit"));
 
@@ -108,7 +106,43 @@ public sealed class HarnessFrameTests
 
         Assert.Equal(2, run.ExitCode);
         Assert.True(run.OutputContains("answers.tests.unit"), run.Output);
-        Assert.False(run.OutputContains("repository answers absent"), run.Output);
+        Assert.True(run.OutputContains("harness.config"), run.Output);
+        Assert.True(run.OutputContains("outcome: passed"), run.Output);
+        Assert.True(run.OutputContains("repository answers absent"), run.Output);
+        Assert.True(run.OutputContains("owner's intent is unclear"), run.Output);
+        Assert.Equal(1, run.Output.Split("outcome: incomplete", StringSplitOptions.None).Length - 1);
+    }
+
+    [Theory]
+    [InlineData("""{ "present": true }""", "needs a non-empty 'reason'")]
+    [InlineData("""{ "paths": [] }""", "is empty")]
+    [InlineData("""{ "paths": [".x"], "present": true }""", "already an answer")]
+    [InlineData("""{ "applicable": false }""", "why the question does not apply")]
+    [InlineData("""{ "hint": 1 }""", "not a key this harness reads")]
+    public void A_malformed_answer_is_local_to_its_question(string answer, string explanation)
+    {
+        using var repository = Fixtures.Compliant(Frame.Answering().With("format", answer));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains(explanation), run.Output);
+        Assert.True(run.OutputContains("harness.config"), run.Output);
+        Assert.True(run.OutputContains("repository answers absent"), run.Output);
+        Assert.True(run.OutputContains("\"format\": { \"paths\":"), run.Output);
+        Assert.True(run.OutputContains("Do not invent a positive answer"), run.Output);
+        Assert.Equal(1, run.Output.Split("outcome: incomplete", StringSplitOptions.None).Length - 1);
+    }
+
+    [Fact]
+    public void Latest_uses_the_current_question_set()
+    {
+        using var repository = Fixtures.Compliant(Frame.Answering().Version("latest"));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("repository answers absent"), run.Output);
     }
 
     [Fact]

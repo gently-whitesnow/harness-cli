@@ -49,7 +49,7 @@ internal static class ConsoleReport
             text.Append("\n  git evidence  (").Append(FormatDuration(report.EvidenceDuration)).Append(")\n");
         }
 
-        if (report.Gates.Any(gate => gate.Outcome == CheckOutcome.Failed))
+        if (report.Gates.Any(gate => gate.Outcome is CheckOutcome.Failed or CheckOutcome.Incomplete))
         {
             text.Append("\nDetails: harness check --only <check-id> --verbose\n");
             text.Append("harness check [path] [--only <ids>] [--skip <ids>] [--verbose]\n");

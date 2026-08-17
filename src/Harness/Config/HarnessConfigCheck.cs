@@ -29,9 +29,10 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           job reads the same frame.
 
         What it accepts
-          version       required; must be 2.
-          answers       one self-reported answer for every `frame` question, keyed without
-                        the `frame.` prefix.
+          version       required; use 2 for a pinned question set or "latest" to follow
+                        every question shipped by the installed harness.
+          answers       one self-reported answer for every `frame` question in the selected
+                        version, keyed without the `frame.` prefix.
           policy        check or group identifier to `required`, `advisory` or `off`.
           suppress      accepted findings, each naming `check`, `location` and `reason`.
 
@@ -41,9 +42,11 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           (exit 2), which is distinct from having proved a violation (exit 1).
 
         Remediation
-          Commit a {HarnessConfig.FileName} at the repository root and track it. The harness
-          never writes the file and never assumes an answer on the repository's behalf.
-          Every missing or malformed answer names the exact key at fault.
+          Run `harness init` to create an unresolved {HarnessConfig.FileName} scaffold at the
+          repository root. It does not overwrite an existing file or stage the new one. The
+          repository owner or their agent must investigate and answer each question before
+          committing it; the harness never assumes an answer on their behalf. Every missing
+          or malformed answer names the exact key at fault.
 
         {HarnessConfig.Template}
         """;
@@ -59,6 +62,12 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
         {
             $"{config.Answers.Count} answer{(config.Answers.Count == 1 ? "" : "s")}",
         };
+
+        if (config.AnswerFailures.Count > 0)
+        {
+            parts.Add(
+                $"{config.AnswerFailures.Count} answer{(config.AnswerFailures.Count == 1 ? "" : "s")} to complete");
+        }
 
         if (config.Policy.Count > 0)
         {

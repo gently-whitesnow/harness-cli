@@ -11,6 +11,7 @@ internal static class UsageText
 
         Usage
           harness check [path] [--only <ids>] [--skip <ids>] [--verbose]
+          harness init [path] [--latest]
           harness explain <check-id>
           harness help
 
@@ -18,6 +19,7 @@ internal static class UsageText
           --only <ids>   run one check, or the given check/group identifiers (comma separated)
           --skip <ids>   exclude the given check or group identifiers; they stay visible in the summary
           --verbose      show findings, reasons and timings
+          --latest       make an initialized frame follow the newest question set
 
         Exit codes
           0  every selected applicable blocking check completed and passed

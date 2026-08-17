@@ -22,6 +22,12 @@ self-reported: адрес служит навигацией, а не доказ�
 нарушение. Харнес валидирует полноту ответов, но не инспектирует их и не ищет опровержения.
 [ADR-0014](adrs/0014-frame-answers-are-self-reported.md)
 
+`version` числом фиксирует снимок вопросов; `"latest"` включает rolling-контракт. `harness
+init` создаёт все answer-ключи как нерешённые placeholders: исследуй репозиторий и замени
+каждый честным ответом. Если intent или применимость нельзя установить, спроси владельца;
+не выдумывай положительный ответ и не закрывай инициализацию массовыми suppress. Осознанное
+отсутствие — `present: false` с причиной, а не suppress. [ADR-0016](adrs/0016-versioned-frame-and-explicit-initialization.md)
+
 ## Раскладка
 
 - `src/Harness` — сам CLI. NativeAOT, установленный .NET runtime в момент использования не нужен.
@@ -45,6 +51,7 @@ self-reported: адрес служит навигацией, а не доказ�
 ## Команды
 
 ```sh
+./harness init /path/to/repository                 # создать незавершённую рамку
 dotnet test                                        # полный набор, включая NativeAOT-публикацию
 dotnet build                                       # быстрая обратная связь
 dotnet publish src/Harness/Harness.csproj -c Release -r osx-arm64

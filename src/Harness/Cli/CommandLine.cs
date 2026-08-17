@@ -4,6 +4,7 @@ namespace Harness.Cli;
 internal enum CommandKind
 {
     Check,
+    Init,
     Explain,
     Help,
     Usage,
@@ -19,6 +20,7 @@ internal sealed record Invocation(
     IReadOnlyList<string> Only,
     IReadOnlyList<string> Skip,
     bool Verbose,
+    bool Latest,
     string? CheckId,
     string? Error)
 {
@@ -35,9 +37,10 @@ internal sealed record Invocation(
         return command switch
         {
             "check" => ParseCheck(rest, currentDirectory),
+            "init" => ParseInit(rest, currentDirectory),
             "explain" => ParseExplain(rest, currentDirectory),
             "help" or "--help" or "-h" => new Invocation(
-                CommandKind.Help, currentDirectory, [], [], false, null, null),
+                CommandKind.Help, currentDirectory, [], [], false, false, null, null),
             _ => Usage(currentDirectory, $"Unknown command '{command}'."),
         };
     }
@@ -86,7 +89,42 @@ internal sealed record Invocation(
         }
 
         var repositoryPath = Path.GetFullPath(path ?? currentDirectory, currentDirectory);
-        return new Invocation(CommandKind.Check, repositoryPath, only, skip, verbose, null, null);
+        return new Invocation(CommandKind.Check, repositoryPath, only, skip, verbose, false, null, null);
+    }
+
+    private static Invocation ParseInit(List<string> arguments, string currentDirectory)
+    {
+        var latest = false;
+        string? path = null;
+
+        foreach (var argument in arguments)
+        {
+            if (argument == "--latest")
+            {
+                if (latest)
+                {
+                    return Usage(currentDirectory, "--latest may only be given once.");
+                }
+
+                latest = true;
+                continue;
+            }
+
+            if (argument.StartsWith('-'))
+            {
+                return Usage(currentDirectory, $"Unknown option '{argument}'.");
+            }
+
+            if (path is not null)
+            {
+                return Usage(currentDirectory, "Only one repository path may be given.");
+            }
+
+            path = argument;
+        }
+
+        var repositoryPath = Path.GetFullPath(path ?? currentDirectory, currentDirectory);
+        return new Invocation(CommandKind.Init, repositoryPath, [], [], false, latest, null, null);
     }
 
     private static Invocation ParseExplain(List<string> arguments, string currentDirectory)
@@ -96,12 +134,12 @@ internal sealed record Invocation(
             return Usage(currentDirectory, "explain requires exactly one check identifier.");
         }
 
-        return new Invocation(CommandKind.Explain, currentDirectory, [], [], false, arguments[0], null);
+        return new Invocation(CommandKind.Explain, currentDirectory, [], [], false, false, arguments[0], null);
     }
 
     private static IEnumerable<string> SplitIdentifiers(string value)
         => value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static Invocation Usage(string currentDirectory, string? error)
-        => new(CommandKind.Usage, currentDirectory, [], [], false, null, error);
+        => new(CommandKind.Usage, currentDirectory, [], [], false, false, null, error);
 }

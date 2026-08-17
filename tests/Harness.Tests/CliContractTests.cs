@@ -81,6 +81,17 @@ public sealed class CliContractTests
     }
 
     [Fact]
+    public void Incomplete_checks_offer_a_verbose_details_command_in_compact_output()
+    {
+        using var repository = Fixtures.Compliant(Frame.Answering().Silent("tests.architecture"));
+
+        var run = HarnessCli.Run(repository.Path, "check");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains("Details: harness check --only <check-id> --verbose"), run.Output);
+    }
+
+    [Fact]
     public void A_run_in_which_nothing_ran_does_not_claim_the_repository_passed()
     {
         using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 400).Commit();

@@ -11,6 +11,10 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
 
     protected abstract string Subject { get; }
 
+    internal string AnswerKey => Key;
+
+    internal abstract int IntroducedIn { get; }
+
     public string Id => $"{HarnessConfig.FrameGroup}.{Key}";
 
     public string Group => HarnessConfig.FrameGroup;
@@ -26,6 +30,19 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
             return CheckEvaluation.Incomplete(
                 $"the harness frame could not be read, so this repository's answer about {Subject} is unknown: "
                     + context.ConfigFailure);
+        }
+
+        if (!context.Config.IncludesQuestion(IntroducedIn))
+        {
+            return CheckEvaluation.Skipped(
+                $"`answers.{Key}` was introduced in harness frame version {IntroducedIn}; "
+                    + $"this repository pins version {context.Config.Version}.");
+        }
+
+        var failure = context.Config.AnswerFailure(Key);
+        if (failure is not null)
+        {
+            return CheckEvaluation.Incomplete(AnswerRemediation(failure));
         }
 
         var answer = context.Config.Answered(Key);
@@ -44,6 +61,19 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
                 $"the validated harness frame has no answer for `answers.{Key}`; this is an internal error."),
         };
     }
+
+    private string AnswerRemediation(string failure)
+        => $$"""
+        {{failure}}
+        Investigate the repository before answering `answers.{{Key}}`. Choose the form that states what is true:
+          "{{Key}}": { "paths": ["path/to/capability"] }
+          "{{Key}}": { "present": true, "reason": "where or how it is provided" }
+          "{{Key}}": { "present": false, "reason": "why it is currently absent" }
+          "{{Key}}": { "applicable": false, "reason": "why this question does not apply" }
+        Run `harness explain frame.{{Key}}` for the question's intent. Do not invent a positive answer or use
+        `suppress` to bypass an unanswered frame question. If the repository owner's intent is unclear, ask
+        them before choosing an answer.
+        """;
 
     private CheckEvaluation Located(FrameAnswer answer)
         => CheckEvaluation.Passed(

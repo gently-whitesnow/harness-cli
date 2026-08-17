@@ -2,6 +2,7 @@ namespace Harness.Checks.Frame;
 
 internal sealed class UnitTestFrameCheck : FrameQuestionCheck
 {
+    internal override int IntroducedIn => 2;
     protected override string Key => "tests.unit";
     protected override string Subject => "unit tests";
     public override string Summary => "repository answer about unit tests";
@@ -10,6 +11,7 @@ internal sealed class UnitTestFrameCheck : FrameQuestionCheck
 
 internal sealed class IntegrationTestFrameCheck : FrameQuestionCheck
 {
+    internal override int IntroducedIn => 2;
     protected override string Key => "tests.integration";
     protected override string Subject => "integration tests";
     public override string Summary => "repository answer about integration tests";
@@ -18,6 +20,7 @@ internal sealed class IntegrationTestFrameCheck : FrameQuestionCheck
 
 internal sealed class ArchitectureFrameCheck : FrameQuestionCheck
 {
+    internal override int IntroducedIn => 2;
     protected override string Key => "tests.architecture";
     protected override string Subject => "architecture rules";
     public override string Summary => "repository answer about architecture rules";
@@ -26,6 +29,7 @@ internal sealed class ArchitectureFrameCheck : FrameQuestionCheck
 
 internal sealed class FormatFrameCheck : FrameQuestionCheck
 {
+    internal override int IntroducedIn => 2;
     protected override string Key => "format";
     protected override string Subject => "source formatting";
     public override string Summary => "repository answer about source formatting";
@@ -34,6 +38,7 @@ internal sealed class FormatFrameCheck : FrameQuestionCheck
 
 internal sealed class LintFrameCheck : FrameQuestionCheck
 {
+    internal override int IntroducedIn => 2;
     protected override string Key => "lint";
     protected override string Subject => "static analysis";
     public override string Summary => "repository answer about static analysis";
@@ -42,6 +47,7 @@ internal sealed class LintFrameCheck : FrameQuestionCheck
 
 internal sealed class BuildFrameCheck : FrameQuestionCheck
 {
+    internal override int IntroducedIn => 2;
     protected override string Key => "build";
     protected override string Subject => "the build entry point";
     public override string Summary => "repository answer about its build entry point";
@@ -50,6 +56,7 @@ internal sealed class BuildFrameCheck : FrameQuestionCheck
 
 internal sealed class TypecheckFrameCheck : FrameQuestionCheck
 {
+    internal override int IntroducedIn => 2;
     protected override string Key => "typecheck";
     protected override string Subject => "ahead-of-time type checking";
     public override string Summary => "repository answer about type checking";

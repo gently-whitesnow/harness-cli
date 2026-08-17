@@ -22,6 +22,8 @@ public sealed class Frame
 
     private string? settings;
 
+    private string version = "2";
+
     /// <summary>A frame that answers "no" to every question.</summary>
     public static Frame Answering() => new();
 
@@ -73,6 +75,12 @@ public sealed class Frame
         return this;
     }
 
+    public Frame Version(string value)
+    {
+        version = value == "latest" ? Quote(value) : value;
+        return this;
+    }
+
     public Frame Suppressing(string check, string location, string reason = "accepted for now")
     {
         suppressions.Add(
@@ -82,7 +90,7 @@ public sealed class Frame
 
     public override string ToString()
     {
-        var text = new StringBuilder("{\n  \"version\": 2,\n  \"answers\": {\n");
+        var text = new StringBuilder($"{{\n  \"version\": {version},\n  \"answers\": {{\n");
         text.Append(string.Join(
             ",\n",
             answers.Select(entry => $"    {Quote(entry.Key)}: {entry.Value}")));

@@ -47,6 +47,9 @@ internal sealed record CheckEvaluation(
     public static CheckEvaluation Incomplete(string reason)
         => new(CheckOutcome.Incomplete, [], reason);
 
+    public static CheckEvaluation Skipped(string reason)
+        => new(CheckOutcome.Skipped, [], reason);
+
     public static CheckEvaluation NotApplicable(string reason)
         => new(CheckOutcome.NotApplicable, [], reason);
 

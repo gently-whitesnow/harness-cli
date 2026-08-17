@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Harness.Checks;
+using Harness.Checks.Frame;
 using Harness.Git;
 
 namespace Harness.Config;
@@ -33,8 +34,9 @@ internal sealed record Suppression(string Check, string Location, string Reason)
 /// and which findings it has consciously accepted and why.
 /// </summary>
 /// <remarks>
-/// Answers are self-reported. The harness validates that every question was answered and
-/// reports the answer, but it neither inspects an address nor searches Git for a contradiction.
+/// Answers are self-reported. The harness validates each question independently and reports
+/// local answer problems on that question, but it neither inspects an address nor searches Git
+/// for a contradiction.
 /// </remarks>
 internal sealed class HarnessConfig
 {
@@ -42,21 +44,35 @@ internal sealed class HarnessConfig
 
     private static readonly string[] TopLevelKeys = ["version", "answers", "settings", "policy", "suppress"];
 
-    private const int SupportedVersion = 2;
+    public const int CurrentVersion = 2;
+
+    private const int MinimumVersion = 2;
 
     private HarnessConfig(
+        int version,
+        bool tracksLatest,
         IReadOnlyDictionary<string, FrameAnswer> answers,
+        IReadOnlyDictionary<string, string> answerFailures,
         HarnessSettings settings,
         IReadOnlyDictionary<string, CheckPolicy> policy,
         IReadOnlyList<Suppression> suppressions)
     {
+        Version = version;
+        TracksLatest = tracksLatest;
         Answers = answers;
+        AnswerFailures = answerFailures;
         Settings = settings;
         Policy = policy;
         Suppressions = suppressions;
     }
 
+    public int Version { get; }
+
+    public bool TracksLatest { get; }
+
     public IReadOnlyDictionary<string, FrameAnswer> Answers { get; }
+
+    public IReadOnlyDictionary<string, string> AnswerFailures { get; }
 
     public HarnessSettings Settings { get; }
 
@@ -66,6 +82,12 @@ internal sealed class HarnessConfig
 
     public FrameAnswer? Answered(string key)
         => Answers.TryGetValue(key, out var answer) ? answer : null;
+
+    public string? AnswerFailure(string key)
+        => AnswerFailures.TryGetValue(key, out var failure) ? failure : null;
+
+    public bool IncludesQuestion(int introducedIn)
+        => TracksLatest || introducedIn <= Version;
 
     public CheckPolicy PolicyFor(string checkId, string group)
     {
@@ -78,10 +100,11 @@ internal sealed class HarnessConfig
     }
 
     /// <summary>
-    /// Reads and fully validates the tracked config. An untracked config does not exist for
+    /// Reads the tracked config and validates its envelope before preserving per-answer results.
+    /// An untracked config does not exist for
     /// the harness, the same as any untracked file: what verifies a repository has to be
-    /// part of it. Every failure names what to fix rather than degrading to a default,
-    /// because a frame that silently assumes an answer is not a frame.
+    /// part of it. Every failure names what to fix rather than degrading to a default;
+    /// answer failures stay local, while failures that make policy unreliable remain global.
     /// </summary>
     public static (HarnessConfig? Config, string? Failure) Load(
         GitRepository repository,
@@ -138,15 +161,18 @@ internal sealed class HarnessConfig
             }
         }
 
-        if (!root.TryGetProperty("version", out var version)
-            || version.ValueKind != JsonValueKind.Number
-            || version.GetInt32() != SupportedVersion)
+        var (configVersion, tracksLatest, versionFailure) = ReadVersion(root);
+        if (versionFailure is not null)
         {
-            return Invalid($"'version' must be {SupportedVersion}");
+            return Invalid(versionFailure);
         }
 
-        var (answers, answerFailure) = ReadAnswers(root, QuestionKeys(checks));
-        if (answers is null)
+        var (answers, answerFailures, answerFailure) = ReadAnswers(
+            root,
+            Questions(checks),
+            configVersion,
+            tracksLatest);
+        if (answerFailure is not null)
         {
             return (null, answerFailure);
         }
@@ -167,45 +193,117 @@ internal sealed class HarnessConfig
         var (suppressions, suppressionFailure) = ReadSuppressions(root, selectors);
         return suppressions is null
             ? (null, suppressionFailure)
-            : (new HarnessConfig(answers, settings, policy, suppressions), null);
+            : (new HarnessConfig(
+                configVersion,
+                tracksLatest,
+                answers!,
+                answerFailures!,
+                settings,
+                policy,
+                suppressions), null);
     }
 
-    private static (Dictionary<string, FrameAnswer>? Answers, string? Failure) ReadAnswers(
+    private static (int Version, bool TracksLatest, string? Failure) ReadVersion(JsonElement root)
+    {
+        if (!root.TryGetProperty("version", out var declared))
+        {
+            return (default, false, $"'version' must be {CurrentVersion} or \"latest\"");
+        }
+
+        if (declared.ValueKind == JsonValueKind.String
+            && string.Equals(declared.GetString(), "latest", StringComparison.Ordinal))
+        {
+            return (CurrentVersion, true, null);
+        }
+
+        if (declared.ValueKind != JsonValueKind.Number || !declared.TryGetInt32(out var version))
+        {
+            return (default, false, $"'version' must be {CurrentVersion} or \"latest\"");
+        }
+
+        if (version > CurrentVersion)
+        {
+            return (default, false, $"'version' is {version}, newer than this harness supports "
+                + $"(latest is {CurrentVersion}); update the harness before checking this repository");
+        }
+
+        if (version < MinimumVersion)
+        {
+            return (default, false, $"'version' {version} is no longer supported; "
+                + $"use {CurrentVersion} or \"latest\"");
+        }
+
+        return (version, false, null);
+    }
+
+    private static (
+        Dictionary<string, FrameAnswer>? Answers,
+        Dictionary<string, string>? AnswerFailures,
+        string? Failure) ReadAnswers(
         JsonElement root,
-        IReadOnlyList<string> knownKeys)
+        IReadOnlyList<FrameQuestion> questions,
+        int version,
+        bool tracksLatest)
     {
         if (!root.TryGetProperty("answers", out var declared))
         {
-            return (null, Failure("'answers' must be an object containing every question this harness asks"));
+            return (null, null, Failure("'answers' must be an object containing every question this harness asks"));
         }
 
         if (declared.ValueKind != JsonValueKind.Object)
         {
-            return (null, Failure("'answers' must be an object"));
+            return (null, null, Failure("'answers' must be an object"));
         }
 
+        var knownKeys = questions.Select(question => question.Key).ToList();
         var answers = new Dictionary<string, FrameAnswer>(StringComparer.Ordinal);
+        var answerFailures = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var property in declared.EnumerateObject())
         {
-            if (!knownKeys.Contains(property.Name, StringComparer.Ordinal))
+            var question = questions.FirstOrDefault(candidate => candidate.Key == property.Name);
+            if (question is null)
             {
-                return (null, Failure($"'answers.{property.Name}' is not a question this harness asks "
+                return (null, null, Failure($"'answers.{property.Name}' is not a question this harness asks "
                     + $"(expected {string.Join(", ", knownKeys)})"));
+            }
+
+            // A pinned version is a schema snapshot, not merely a minimum required set.
+            // Rejecting later fields catches accidental partial upgrades in either direction.
+            if (!tracksLatest && question.IntroducedIn > version)
+            {
+                return (null, null, Failure($"'answers.{property.Name}' belongs to version "
+                    + $"{question.IntroducedIn}, but this repository pins version {version}"));
             }
 
             var (answer, failure) = ReadAnswer(property.Name, property.Value);
             if (answer is null)
             {
-                return (null, failure);
+                answerFailures[property.Name] = LocalAnswerFailure(failure!);
+                continue;
             }
 
             answers[property.Name] = answer;
         }
 
-        var missing = knownKeys.Where(key => !answers.ContainsKey(key)).ToList();
-        return missing.Count == 0
-            ? (answers, null)
-            : (null, Failure($"'answers' does not answer {string.Join(", ", missing.Select(key => $"'answers.{key}'"))}"));
+        foreach (var question in questions.Where(question => tracksLatest || question.IntroducedIn <= version))
+        {
+            if (!answers.ContainsKey(question.Key) && !answerFailures.ContainsKey(question.Key))
+            {
+                answerFailures[question.Key] = $"'{FileName}' has an incomplete answer: "
+                    + $"'answers.{question.Key}' is missing.";
+            }
+        }
+
+        return (answers, answerFailures, null);
+    }
+
+    private static string LocalAnswerFailure(string failure)
+    {
+        var globalPrefix = $"'{FileName}' is not a valid harness frame: ";
+        var detail = failure.StartsWith(globalPrefix, StringComparison.Ordinal)
+            ? failure[globalPrefix.Length..]
+            : failure;
+        return $"'{FileName}' has an invalid answer: {detail}";
     }
 
     /// <summary>
@@ -421,11 +519,13 @@ internal sealed class HarnessConfig
             ? value.GetString()
             : null;
 
-    private static List<string> QuestionKeys(IReadOnlyList<IRepositoryCheck> checks)
+    private static List<FrameQuestion> Questions(IReadOnlyList<IRepositoryCheck> checks)
         => checks
-            .Where(check => check.Group == FrameGroup)
-            .Select(check => check.Id[(FrameGroup.Length + 1)..])
+            .OfType<FrameQuestionCheck>()
+            .Select(check => new FrameQuestion(check.AnswerKey, check.IntroducedIn))
             .ToList();
+
+    private sealed record FrameQuestion(string Key, int IntroducedIn);
 
     public const string FrameGroup = "frame";
 

@@ -1,5 +1,6 @@
 using Harness.Checks;
 using Harness.Cli;
+using Harness.Config;
 using Harness.Engine;
 
 var invocation = Invocation.Parse(args, Directory.GetCurrentDirectory());
@@ -13,6 +14,25 @@ switch (invocation.Kind)
         var writer = report.ExitCode == ExitCodes.Incomplete ? Console.Error : Console.Out;
         writer.Write(ConsoleReport.Render(report, invocation.Verbose, invocation.Only.Count > 0));
         return report.ExitCode;
+    }
+
+    case CommandKind.Init:
+    {
+        var result = ConfigInitializer.Create(
+            invocation.RepositoryPath,
+            invocation.Latest,
+            checks);
+        if (result.Failure is not null)
+        {
+            Console.Error.WriteLine(result.Failure);
+            return ExitCodes.Incomplete;
+        }
+
+        Console.WriteLine($"Created '{result.Path}'.");
+        Console.WriteLine(
+            "Review every answer; ask the repository owner when intent is unclear rather than suppressing the work.");
+        Console.WriteLine("Track the file, then run `harness check --verbose`.");
+        return ExitCodes.Success;
     }
 
     case CommandKind.Explain:
