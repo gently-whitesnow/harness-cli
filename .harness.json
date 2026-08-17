@@ -30,7 +30,7 @@
   "settings": {
     "comments.csharp": {
       "minimumCommentLines": 10,
-      "percentageLimit": 25
+      "percentageLimit": 15
     },
     "maintainability.csharp": {
       "fileLines": 400,

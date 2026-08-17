@@ -26,7 +26,7 @@ public sealed class DuplicationTests
     {
         using var repository = Fixtures.Compliant();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("not applicable"), run.Output);
@@ -40,7 +40,7 @@ public sealed class DuplicationTests
             ("src/App/First.cs", Duplicated.Block("First", "seed", "first")),
             ("src/App/Second.cs", Duplicated.Block("Second", "start", "second")));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains(Check), run.Output);
         Assert.True(run.OutputContains("normalized lines"), run.Output);
@@ -55,7 +55,7 @@ public sealed class DuplicationTests
             ("src/App/First.cs", Duplicated.Block("First", "seed", "first")),
             ("src/App/Second.cs", Duplicated.Block("Second", "start", "second")));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(1, Occurrences(run.Output, "normalized lines"));
     }
@@ -68,7 +68,7 @@ public sealed class DuplicationTests
             ("src/App/Second.cs", Duplicated.Block("Second", "start", "second")),
             ("src/App/Third.cs", Duplicated.TruncatedBlock("Third", "origin")));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("occurs 3 times"), run.Output);
         Assert.True(run.OutputContains("src/App/Third.cs:"), run.Output);
@@ -80,7 +80,7 @@ public sealed class DuplicationTests
     {
         using var repository = Repository(("src/App/Twice.cs", Duplicated.SameBlockTwiceInOneFile));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("normalized lines"), run.Output);
@@ -93,7 +93,7 @@ public sealed class DuplicationTests
             ("src/App/First.cs", Duplicated.Block("First", "seed", "first")),
             ("src/App/Snippet.cs", Duplicated.BlockQuotedInARawString));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("normalized lines"), run.Output);
@@ -106,7 +106,7 @@ public sealed class DuplicationTests
             ("src/App/First.cs", Duplicated.AwkwardCharactersThenBlock("First", "seed", "first")),
             ("src/App/Second.cs", Duplicated.Block("Second", "start", "second")));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("src/App/First.cs:"), run.Output);
@@ -121,7 +121,7 @@ public sealed class DuplicationTests
             ("src/App/Invoice.cs", Duplicated.PropertyBag("Invoice", "Supplier")),
             ("src/App/Patient.cs", Duplicated.PropertyBag("Patient", "Clinic")));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--verbose");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("lexically repeated"), run.Output);
@@ -136,7 +136,7 @@ public sealed class DuplicationTests
             ("src/App/Money.cs", Duplicated.SmallRecord("Money", "Amount", "Currency")),
             ("src/App/Point.cs", Duplicated.SmallRecord("Point", "Left", "Right")));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("normalized lines"), run.Output);
@@ -149,7 +149,7 @@ public sealed class DuplicationTests
             ("src/App/First.cs", Duplicated.AwkwardLiteralsThenBlock("First", "seed", "first")),
             ("src/App/Second.cs", Duplicated.Block("Second", "start", "second")));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("src/App/First.cs:"), run.Output);
         Assert.True(run.OutputContains("src/App/Second.cs:"), run.Output);
@@ -166,7 +166,7 @@ public sealed class DuplicationTests
             .WriteFile("src/App/Marked.cs", "// <auto-generated />\n" + Duplicated.Block("Fifth", "root", "fifth"))
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("not applicable"), run.Output);
@@ -179,7 +179,7 @@ public sealed class DuplicationTests
             ("src/App/First.cs", Duplicated.Block("First", "seed", "first")),
             ("src/App/Second.cs", Duplicated.Block("Second", "start", "second")));
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("advisory"), run.Output);
@@ -192,7 +192,7 @@ public sealed class DuplicationTests
             ("src/App/First.cs", Duplicated.Block("First", "seed", "first")),
             ("src/App/Second.cs", Duplicated.Block("Second", "start", "second")));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("lexical"), run.Output);
     }
@@ -208,7 +208,7 @@ public sealed class DuplicationTests
 
         using var committed = repository.Commit();
 
-        var run = HarnessCli.Run(committed.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(committed.Path, "check", "--only", Check);
 
         AssertBoundedOutput(run, committed.Path);
         Assert.True(run.OutputContains("24"), run.Output);
@@ -227,7 +227,7 @@ public sealed class DuplicationTests
 
         using var committed = repository.Commit();
 
-        var run = HarnessCli.Run(committed.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(committed.Path, "check", "--only", Check);
 
         AssertBoundedOutput(run, committed.Path);
         Assert.True(run.OutputContains("8 repeated blocks"), run.Output);
@@ -241,7 +241,7 @@ public sealed class DuplicationTests
             ("src/App/Second.cs", Duplicated.Block("Second", "start", "second")));
         var before = repository.TrackedState();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains(" ms)"), run.Output);
         Assert.Equal(before, repository.TrackedState());

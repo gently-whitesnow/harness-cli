@@ -55,7 +55,7 @@ public sealed class CliContractTests
         var run = HarnessCli.Run(repository.Path, "check", "--only", "docs.policy");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("passed"), run.Output);
+        Assert.True(run.OutputContains("✅ docs.policy"), run.Output);
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public sealed class CliContractTests
         var run = HarnessCli.Run(repository.Path, "check", "--only", "docs");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("passed"), run.Output);
+        Assert.True(run.OutputContains("✅ docs.policy"), run.Output);
     }
 
     [Fact]
@@ -77,8 +77,7 @@ public sealed class CliContractTests
         var run = HarnessCli.Run(repository.Path, "check", "--skip", "docs.policy");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("skipped"), run.Output);
-        Assert.True(run.OutputContains("docs.policy"), run.Output);
+        Assert.True(run.OutputContains("⏭️ docs.policy"), run.Output);
     }
 
     [Fact]
@@ -107,6 +106,7 @@ public sealed class CliContractTests
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("docs.policy"), run.Output);
         Assert.True(run.OutputContains("group docs"), run.Output);
+        Assert.True(run.OutputContains("C# comment density limit"), run.Output);
     }
 
     [Fact]
@@ -190,7 +190,7 @@ public sealed class CliContractTests
     }
 
     [Fact]
-    public void A_clean_success_is_one_line_and_verbose_restores_the_evidence()
+    public void Check_lists_every_status_and_verbose_restores_the_evidence()
     {
         using var repository = Fixtures.Compliant(Frame.AllPresent())
             .WriteFile("src/App/Widget.cs", Fixtures.FormattedSource)
@@ -199,10 +199,62 @@ public sealed class CliContractTests
         var concise = HarnessCli.Run(repository.Path, "check");
         var verbose = HarnessCli.Run(repository.Path, "check", "--verbose");
 
-        Assert.Single(concise.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries));
         Assert.True(concise.Output.StartsWith("PASS  ", StringComparison.Ordinal), concise.Output);
+        Assert.All(
+            HarnessCli.ShippedCheckIds(repository.Path),
+            identifier => Assert.True(concise.OutputContains(identifier), concise.Output));
+        Assert.Equal(
+            HarnessCli.ShippedCheckIds(repository.Path).Count,
+            concise.Output.Split('\n').Count(line => line.StartsWith("✅", StringComparison.Ordinal)));
+        Assert.False(concise.OutputContains("git evidence"), concise.Output);
         Assert.True(verbose.OutputContains("passed"), verbose.Output);
         Assert.True(verbose.OutputContains("git evidence"), verbose.Output);
+    }
+
+    [Fact]
+    public void A_failed_status_ends_with_its_finding_count_and_a_focused_verbose_command()
+    {
+        using var repository = Fixtures.Compliant()
+            .WriteLines("AGENTS.md", 151)
+            .WriteFile("docs/stale.md", "# Stale\n")
+            .Commit();
+
+        var run = HarnessCli.Run(repository.Path, "check");
+        var lines = run.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains(lines, line => line.StartsWith("❌ docs.policy", StringComparison.Ordinal)
+            && line.EndsWith("2", StringComparison.Ordinal));
+        Assert.Contains("Details: harness check --only <check-id> --verbose", lines);
+        Assert.DoesNotContain(lines, line => line.StartsWith("Check ids: ", StringComparison.Ordinal));
+        Assert.Equal(
+            "harness check [path] [--only <ids>] [--skip <ids>] [--verbose]",
+            lines[^1]);
+        Assert.False(run.OutputContains("violation"), run.Output);
+    }
+
+    [Fact]
+    public void A_single_check_can_be_run_with_verbose_findings()
+    {
+        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 151).Commit();
+
+        var run = HarnessCli.Run(
+            repository.Path,
+            "check",
+            "--only",
+            "docs.policy",
+            "--verbose");
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.True(run.OutputContains("❌ docs.policy"), run.Output);
+        Assert.True(run.OutputContains("docs.policy"), run.Output);
+        Assert.True(run.OutputContains("violation"), run.Output);
+        Assert.DoesNotContain(
+            run.Output.Split('\n'),
+            line => line.StartsWith("✅", StringComparison.Ordinal)
+                || line.StartsWith("⚠️", StringComparison.Ordinal)
+                || line.StartsWith("➖", StringComparison.Ordinal)
+                || line.StartsWith("⏭️", StringComparison.Ordinal));
     }
 
     [Fact]

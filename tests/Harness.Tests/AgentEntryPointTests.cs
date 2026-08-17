@@ -11,7 +11,7 @@ public sealed class AgentEntryPointTests
             .WriteSymbolicLink("CLAUDE.md", "./AGENTS.md")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
     }
@@ -23,7 +23,7 @@ public sealed class AgentEntryPointTests
             .WriteFile("AGENTS.md", "# Root\n")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("CLAUDE.md"), run.Output);
@@ -36,7 +36,7 @@ public sealed class AgentEntryPointTests
         File.Delete(repository.Absolute("CLAUDE.md"));
         repository.WriteFile("CLAUDE.md", "# Root\n").Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("CLAUDE.md"), run.Output);
@@ -52,7 +52,7 @@ public sealed class AgentEntryPointTests
             .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("AGENTS.md"), run.Output);
@@ -68,7 +68,7 @@ public sealed class AgentEntryPointTests
             .WriteSymbolicLink("CLAUDE.md", "NAVIGATION.md")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("CLAUDE.md"), run.Output);
@@ -83,7 +83,7 @@ public sealed class AgentEntryPointTests
             .WriteSymbolicLink("CLAUDE.md", "docs/AGENTS.md")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("CLAUDE.md"), run.Output);
@@ -98,7 +98,7 @@ public sealed class AgentEntryPointTests
             .Commit();
         repository.WriteSymbolicLink("CLAUDE.md", repository.Absolute("AGENTS.md")).Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("CLAUDE.md"), run.Output);
@@ -114,7 +114,7 @@ public sealed class AgentEntryPointTests
             .WriteSymbolicLink("CLAUDE.md", "README.md")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("CLAUDE.md"), run.Output);

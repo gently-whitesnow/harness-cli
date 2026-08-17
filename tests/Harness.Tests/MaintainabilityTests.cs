@@ -11,7 +11,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = Fixtures.Compliant();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("not applicable"), run.Output);
@@ -23,7 +23,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Report.cs", CSharp.LongMethod(70));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains(Check), run.Output);
         Assert.True(run.OutputContains("method logical lines 75 exceeds"), run.Output);
@@ -37,7 +37,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Report.cs", CSharp.LongTupleReturningMethod(70));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("App.Report.Compute"), run.Output);
         Assert.False(run.OutputContains("App.Report.static"), run.Output);
@@ -49,7 +49,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Report.cs", CSharp.LongMethod(70));
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("advisory"), run.Output);
@@ -60,7 +60,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Report.cs", CSharp.LongMethodWithSplitSignature(70));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("src/App/Report.cs:5"), run.Output);
     }
@@ -70,7 +70,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Quiet.cs", CSharp.BranchTokensOnlyInCommentsAndStrings);
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("src/App/Quiet.cs"), run.Output);
@@ -81,7 +81,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Router.cs", CSharp.BranchingMethod);
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("lexical branch count"), run.Output);
         Assert.True(run.OutputContains("App.Router.Route"), run.Output);
@@ -92,7 +92,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Money.cs", CSharp.WideRecord);
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("constructor parameter count 7 exceeds"), run.Output);
         Assert.True(run.OutputContains("App.Money"), run.Output);
@@ -103,7 +103,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Service.cs", CSharp.WideConstructor);
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("constructor parameter count"), run.Output);
         Assert.True(run.OutputContains("App.Service"), run.Output);
@@ -114,7 +114,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Facade.cs", CSharp.WidePublicSurface(30));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("public declared members 30 exceeds"), run.Output);
         Assert.True(run.OutputContains("App.Facade"), run.Output);
@@ -125,7 +125,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Imports.cs", CSharp.ManyUsingDirectives(25));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("using directive fan-out 25 exceeds"), run.Output);
     }
@@ -135,7 +135,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Stream.cs", CSharp.UsingStatements);
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("using directive fan-out"), run.Output);
@@ -146,7 +146,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Big.cs", CSharp.LargeType(420));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("file logical lines"), run.Output);
         Assert.True(run.OutputContains("type logical lines"), run.Output);
@@ -158,7 +158,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Outer.cs", CSharp.NestedTypeWithLongMethod(70));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("App.Outer.Inner.Compute"), run.Output);
     }
@@ -168,7 +168,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Compact.cs", CSharp.ExpressionBodiedMembers);
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("src/App/Compact.cs"), run.Output);
@@ -179,7 +179,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = SourceRepository("src/App/Report.cs", CSharp.LongMethodAfterAwkwardLiterals(70));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("App.Report.Compute"), run.Output);
         Assert.False(run.OutputContains("App.Report.Interpolate"), run.Output);
@@ -196,7 +196,7 @@ public sealed class MaintainabilityTests
             .WriteFile("src/App/Marked.cs", "// <auto-generated />\n" + CSharp.LongMethod(70))
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("not applicable"), run.Output);
@@ -207,7 +207,7 @@ public sealed class MaintainabilityTests
     {
         using var repository = Fixtures.Compliant().WriteFile("src/App/Report.cs", CSharp.LongMethod(70));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("not applicable"), run.Output);
     }
@@ -223,7 +223,7 @@ public sealed class MaintainabilityTests
 
         using var committed = repository.Commit();
 
-        var run = HarnessCli.Run(committed.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(committed.Path, "check", "--only", Check);
 
         var lines = run.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         Assert.True(lines.Length <= 20, run.Output);
@@ -236,7 +236,7 @@ public sealed class MaintainabilityTests
         using var repository = SourceRepository("src/App/Report.cs", CSharp.LongMethod(70));
         var before = repository.TrackedState();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains(" ms)"), run.Output);
         Assert.Equal(before, repository.TrackedState());
@@ -251,7 +251,7 @@ public sealed class MaintainabilityTests
             Frame.Answering().Settings(
                 """{ "maintainability.csharp": { "methodLines": 100 } }"""));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.False(run.OutputContains("method logical lines"), run.Output);
     }
@@ -268,7 +268,7 @@ public sealed class MaintainabilityTests
             .WriteFile("src/App/Imports.cs", CSharp.ManyUsingDirectives(25))
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         foreach (var metric in new[]

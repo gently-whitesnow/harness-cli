@@ -15,14 +15,21 @@ internal static class UsageText
           harness help
 
         Options
-          --only <ids>   run only the given check or group identifiers (comma separated)
+          --only <ids>   run one check, or the given check/group identifiers (comma separated)
           --skip <ids>   exclude the given check or group identifiers; they stay visible in the summary
-          --verbose      show every check, finding, reason and timing
+          --verbose      show findings, reasons and timings
 
         Exit codes
           0  every selected applicable blocking check completed and passed
           1  a selected applicable blocking check proved a violation
           2  verification could not be completed reliably
+
+        Statuses
+          ✅  passed
+          ⚠️  passed with findings or has a readiness gap
+          ❌  failed or incomplete
+          ➖  not applicable
+          ⏭️  skipped
 
         """;
 

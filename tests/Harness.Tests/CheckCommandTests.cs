@@ -7,11 +7,11 @@ public sealed class CheckCommandTests
     {
         using var repository = Fixtures.Compliant();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.Output.StartsWith("PASS WITH GAPS", StringComparison.Ordinal), run.Output);
-        Assert.True(run.OutputContains("readiness gaps"), run.Output);
+        Assert.True(run.OutputContains("readiness gap"), run.Output);
     }
 
     [Fact]
@@ -21,7 +21,7 @@ public sealed class CheckCommandTests
             .WriteFile("README.md", "# Overview\n")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("AGENTS.md"), run.Output);
@@ -32,7 +32,7 @@ public sealed class CheckCommandTests
     {
         using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 150).Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
     }
@@ -42,7 +42,7 @@ public sealed class CheckCommandTests
     {
         using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 151).Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("151"), run.Output);
@@ -54,7 +54,7 @@ public sealed class CheckCommandTests
     {
         using var repository = Fixtures.Compliant().WriteLines("README.md", 151).Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("README.md"), run.Output);
@@ -68,7 +68,7 @@ public sealed class CheckCommandTests
             .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
     }
@@ -79,7 +79,7 @@ public sealed class CheckCommandTests
         using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 10).Commit();
         File.Delete(repository.Absolute("AGENTS.md"));
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         // The staged content is still readable evidence, so this is neither a violation
         // of the line limit nor an unverifiable run.
@@ -94,7 +94,7 @@ public sealed class CheckCommandTests
             .Commit()
             .WriteFile("AGENTS.md", "# Root\n");
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("AGENTS.md"), run.Output);

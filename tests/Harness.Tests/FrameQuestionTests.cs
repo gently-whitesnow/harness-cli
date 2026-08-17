@@ -8,7 +8,7 @@ public sealed class FrameQuestionTests
     {
         using var repository = Fixtures.Compliant(Frame.Answering().Located("tests.unit", "tests/Unit"));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "frame.tests.unit");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.tests.unit");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("repository answers present"), run.Output);
@@ -22,7 +22,7 @@ public sealed class FrameQuestionTests
         using var repository = Fixtures.Compliant(
             Frame.Answering().Present("lint", "analyzers are enabled in project files"));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "frame.lint");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.lint");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("passed"), run.Output);
@@ -35,7 +35,7 @@ public sealed class FrameQuestionTests
     {
         using var repository = Fixtures.Compliant();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "frame.tests.architecture");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.tests.architecture");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("readiness gap"), run.Output);
@@ -49,7 +49,7 @@ public sealed class FrameQuestionTests
         using var repository = Fixtures.Compliant(
             Frame.Answering().Policy("frame.tests.unit", "required"));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "frame.tests.unit");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.tests.unit");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("sets this check to required"), run.Output);
@@ -60,7 +60,7 @@ public sealed class FrameQuestionTests
     {
         using var repository = Fixtures.Compliant(Frame.Answering().NotApplicable("typecheck"));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "frame.typecheck");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.typecheck");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("not applicable"), run.Output);
@@ -77,7 +77,7 @@ public sealed class FrameQuestionTests
             .WriteFile("package.json", Fixtures.PreviouslyRecognizedWebManifest)
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "frame");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame");
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("violation"), run.Output);

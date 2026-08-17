@@ -5,10 +5,7 @@ using Harness.Engine;
 
 namespace Harness.Cli;
 
-/// <summary>
-/// Renders a run concisely: overall result first, then only the information that changes the
-/// reader's next action. Verbose output also includes successful checks and timings.
-/// </summary>
+/// <summary>Renders a complete scan as compact status rows, with evidence on demand.</summary>
 internal static class ConsoleReport
 {
     public static string Render(RunReport report, bool verbose, bool focused)
@@ -24,31 +21,27 @@ internal static class ConsoleReport
 
         text.Append(Headline(report)).Append("  ").Append(report.RepositoryPath).Append('\n');
 
-        if (!verbose && !focused && report.ExitCode == ExitCodes.Success)
-        {
-            AppendSuccessSummary(text, report);
-            return text.ToString();
-        }
+        var visibleGates = (focused
+            ? report.Gates.Where(gate => gate.Outcome != CheckOutcome.Skipped || gate.OutcomeReason is not null)
+            : report.Gates).ToList();
+        var identifierWidth = visibleGates.Count == 0
+            ? 0
+            : Math.Max("CHECK ID".Length, visibleGates.Max(gate => gate.Id.Length)) + 2;
 
-        var visibleGates = report.Gates.Where(gate => verbose || ShouldShow(gate, focused)).ToList();
-        foreach (var gate in visibleGates)
+        if (visibleGates.Count > 0)
         {
-            text.Append("\n  ")
-                .Append(Label(gate.Outcome).PadRight(15))
-                .Append(gate.Id)
-                .Append("  ")
-                .Append(gate.Summary)
-                .Append("  (")
-                .Append(FormatDuration(gate.Duration))
-                .Append(")\n");
-
-            if (gate.OutcomeReason is not null)
+            text.Append("   ").Append("CHECK ID".PadRight(identifierWidth)).Append("FINDINGS");
+            if (verbose)
             {
-                text.Append("      ").Append(gate.OutcomeReason).Append('\n');
+                text.Append("  TIME");
             }
 
-            AppendFindings(text, gate.Findings);
-            AppendSuppressed(text, gate.Suppressed);
+            text.Append('\n');
+        }
+
+        foreach (var gate in visibleGates)
+        {
+            AppendGate(text, gate, verbose, identifierWidth);
         }
 
         if (verbose)
@@ -56,103 +49,74 @@ internal static class ConsoleReport
             text.Append("\n  git evidence  (").Append(FormatDuration(report.EvidenceDuration)).Append(")\n");
         }
 
-        if (visibleGates.Count > 0)
+        if (report.Gates.Any(gate => gate.Outcome == CheckOutcome.Failed))
         {
-            text.Append("\nRun `harness explain <check-id>` for rationale and remediation.\n");
+            text.Append("\nDetails: harness check --only <check-id> --verbose\n");
+            text.Append("harness check [path] [--only <ids>] [--skip <ids>] [--verbose]\n");
         }
 
         return text.ToString();
     }
 
-    private static void AppendSuccessSummary(StringBuilder text, RunReport report)
+    private static void AppendGate(StringBuilder text, GateReport gate, bool verbose, int identifierWidth)
     {
-        var advisoryGates = report.Gates
-            .Select(gate => (gate.Id, Count: gate.Findings.Count(finding =>
-                finding.Severity == FindingSeverity.Advisory)))
-            .Where(gate => gate.Count > 0)
-            .ToList();
-        var readinessGaps = report.Gates
-            .Where(gate => gate.Outcome == CheckOutcome.ReadinessGap)
-            .Select(gate => gate.Id)
-            .ToList();
-        var notApplicable = report.Gates
-            .Where(gate => gate.Outcome == CheckOutcome.NotApplicable)
-            .Select(gate => gate.Id)
-            .ToList();
-        var excluded = report.Gates
-            .Where(gate => gate.Outcome == CheckOutcome.Skipped && gate.OutcomeReason is not null)
-            .Select(gate => gate.Id)
-            .ToList();
-        var suppressed = report.Gates.Sum(gate => gate.Suppressed.Count);
+        text.Append(Status(gate)).Append(' ');
+        text.Append(gate.Id.PadRight(identifierWidth))
+            .Append(IssueCount(gate).ToString(CultureInfo.InvariantCulture).PadLeft("FINDINGS".Length));
 
-        AppendCountedSummary(text, "advisory findings", advisoryGates);
-        AppendNamedSummary(text, "readiness gaps", readinessGaps);
-        AppendNamedSummary(text, "not applicable", notApplicable);
-        AppendNamedSummary(text, "skipped", excluded);
-
-        if (suppressed > 0)
+        if (verbose)
         {
-            text.Append("  ").Append(suppressed).Append(" suppressed findings\n");
+            text.Append("  ").Append(FormatDuration(gate.Duration));
         }
 
-        if (advisoryGates.Count > 0 || readinessGaps.Count > 0 || notApplicable.Count > 0
-            || excluded.Count > 0 || suppressed > 0)
-        {
-            text.Append("  Run with --verbose for details.\n");
-        }
-    }
+        text.Append('\n');
 
-    private static void AppendCountedSummary(
-        StringBuilder text,
-        string label,
-        IReadOnlyList<(string Id, int Count)> gates)
-    {
-        if (gates.Count == 0)
+        if (!verbose)
         {
             return;
         }
 
-        text.Append("  ")
-            .Append(gates.Sum(gate => gate.Count))
-            .Append(' ')
-            .Append(label)
-            .Append(": ")
-            .Append(string.Join(", ", gates.Select(gate => $"{gate.Id} ({gate.Count})")))
-            .Append('\n');
-    }
+        text.Append("    outcome: ").Append(Label(gate.Outcome)).Append('\n');
 
-    private static void AppendNamedSummary(StringBuilder text, string label, IReadOnlyList<string> identifiers)
-    {
-        if (identifiers.Count > 0)
+        if (gate.OutcomeReason is not null)
         {
-            text.Append("  ")
-                .Append(identifiers.Count)
-                .Append(' ')
-                .Append(label)
-                .Append(": ")
-                .Append(string.Join(", ", identifiers))
-                .Append('\n');
+            text.Append("    ").Append(gate.OutcomeReason).Append('\n');
         }
+
+        AppendFindings(text, gate.Findings);
+        AppendSuppressed(text, gate.Suppressed);
     }
 
-    private static bool ShouldShow(GateReport gate, bool focused)
+    private static string Status(GateReport gate)
         => gate.Outcome switch
         {
-            CheckOutcome.Passed => focused || gate.Findings.Count > 0 || gate.Suppressed.Count > 0,
-            CheckOutcome.Skipped => gate.OutcomeReason is not null,
-            _ => true,
+            CheckOutcome.Passed when gate.Findings.Count == 0 && gate.Suppressed.Count == 0 => "✅",
+            CheckOutcome.Passed => "⚠️",
+            CheckOutcome.Failed => "❌",
+            CheckOutcome.Incomplete => "❌",
+            CheckOutcome.ReadinessGap => "⚠️",
+            CheckOutcome.NotApplicable => "➖",
+            _ => "⏭️",
         };
 
-    /// <summary>
-    /// Findings the repository has accepted in writing. They are printed with the sentence
-    /// that accepted them, because an exception nobody sees is indistinguishable from a
-    /// check that was never written.
-    /// </summary>
+    private static int IssueCount(GateReport gate)
+    {
+        var reported = gate.Findings.Count + gate.Suppressed.Count;
+        if (reported > 0)
+        {
+            return reported;
+        }
+
+        return gate.Outcome is CheckOutcome.Failed or CheckOutcome.Incomplete or CheckOutcome.ReadinessGap
+            ? 1
+            : 0;
+    }
+
     private static void AppendSuppressed(StringBuilder text, IReadOnlyList<SuppressedFinding> suppressed)
     {
         foreach (var entry in suppressed)
         {
-            text.Append("      suppressed  ")
+            text.Append("    suppressed  ")
                 .Append(entry.Finding.Location)
                 .Append(": ")
                 .Append(entry.Finding.Message)
@@ -162,11 +126,6 @@ internal static class ConsoleReport
         }
     }
 
-    /// <summary>
-    /// Findings that repeat the same message are reported once with their locations, and
-    /// long location lists are truncated with a count, so a repository with many similar
-    /// findings still produces output an agent can read.
-    /// </summary>
     private static void AppendFindings(StringBuilder text, IReadOnlyList<Finding> findings)
     {
         const int shownLocations = 5;
@@ -181,7 +140,7 @@ internal static class ConsoleReport
             var shown = string.Join(", ", locations.Take(shownLocations));
             var remaining = locations.Count - Math.Min(locations.Count, shownLocations);
 
-            text.Append("      ")
+            text.Append("    ")
                 .Append(group.Key.Severity == FindingSeverity.Blocking ? "violation" : "advisory ")
                 .Append("  ")
                 .Append(shown);
@@ -195,10 +154,6 @@ internal static class ConsoleReport
         }
     }
 
-    /// <summary>
-    /// A run in which nothing was actually verified is never reported as PASS: selection
-    /// may legitimately narrow a run, but it must not read as a green repository.
-    /// </summary>
     private static string Headline(RunReport report)
         => report.ExitCode switch
         {

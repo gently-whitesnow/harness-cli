@@ -9,7 +9,7 @@ public sealed class CommentLineTests
     {
         using var repository = Fixtures.Compliant();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("not applicable"), run.Output);
@@ -20,7 +20,7 @@ public sealed class CommentLineTests
     {
         using var repository = SourceRepository(Source(commentLines: 10, codeLines: 30));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
     }
@@ -30,7 +30,7 @@ public sealed class CommentLineTests
     {
         using var repository = SourceRepository(Source(commentLines: 10, codeLines: 29));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("10 of 39 authored physical lines"), run.Output);
@@ -46,7 +46,7 @@ public sealed class CommentLineTests
     {
         using var repository = SourceRepository(Source(commentLines: 9, codeLines: 1));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
     }
@@ -59,7 +59,7 @@ public sealed class CommentLineTests
             Frame.Answering().Settings(
                 """{ "comments.csharp": { "percentageLimit": 30, "minimumCommentLines": 11 } }"""));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
     }
@@ -73,7 +73,7 @@ public sealed class CommentLineTests
             + "       ten */ public int Value => 1; // still ten\n";
         using var repository = SourceRepository(source);
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
     }
@@ -85,7 +85,7 @@ public sealed class CommentLineTests
             Enumerable.Repeat("public string Value => \"// not a comment /* either */\";\n", 30));
         using var repository = SourceRepository(source);
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
     }
@@ -97,7 +97,7 @@ public sealed class CommentLineTests
             + "public class Quiet { }\n";
         using var repository = SourceRepository(source);
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
     }
@@ -110,7 +110,7 @@ public sealed class CommentLineTests
             + CodeLines(29);
         using var repository = SourceRepository(source);
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("10 of 39 authored physical lines"), run.Output);
@@ -126,7 +126,7 @@ public sealed class CommentLineTests
             .Commit()
             .WriteFile("src/App/Untracked.cs", Source(commentLines: 10, codeLines: 1));
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("not applicable"), run.Output);

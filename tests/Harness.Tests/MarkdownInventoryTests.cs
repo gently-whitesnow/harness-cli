@@ -23,7 +23,7 @@ public sealed class MarkdownInventoryTests
             .WriteFile("docs/old-specification.md", "# Stale\n")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("violation"), run.Output);
@@ -37,7 +37,7 @@ public sealed class MarkdownInventoryTests
             .WriteFile("services/billing/adrs/0001-queue.md", "# Decision\n")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("services/billing/adrs/0001-queue.md"), run.Output);
@@ -51,7 +51,7 @@ public sealed class MarkdownInventoryTests
             .WriteFile("docs/old-specification.md", "# Stale\n")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "docs.policy");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "docs.policy");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("advisory"), run.Output);
@@ -66,7 +66,7 @@ public sealed class MarkdownInventoryTests
             .WriteFile("docs/old-specification.md", "# Stale\n")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "docs.policy");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "docs.policy");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("suppressed"), run.Output);
@@ -98,7 +98,7 @@ public sealed class MarkdownInventoryTests
         using var repository = Fixtures.Compliant()
             .WriteFile("scratch/notes.md", "# Notes\n");
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("scratch/notes.md"), run.Output);
@@ -113,7 +113,7 @@ public sealed class MarkdownInventoryTests
             .WriteFile("src/Service/obj/notes.md", "# Build output\n")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("left-pad"), run.Output);
@@ -129,7 +129,7 @@ public sealed class MarkdownInventoryTests
             .WriteFile("contracts/event.schema.json", "{}\n")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("openapi.yaml"), run.Output);
