@@ -293,7 +293,6 @@ public sealed class MaintainabilityTests
 
         var run = HarnessCli.Run(repository.Path, "explain", Check);
 
-        Assert.True(run.OutputContains("not semantic coupling"), run.Output);
         Assert.True(run.OutputContains("not a dependency count"), run.Output);
         Assert.True(run.OutputContains("not a compiler control-flow graph"), run.Output);
     }

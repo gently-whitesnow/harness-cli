@@ -35,15 +35,13 @@ internal static class MaintainabilityExplanation
                                       `while`, `do`, `case`, `catch`, `when`, `&&`, `||`
                                       and `??` inside the member
           constructor parameter count parameters of a declared constructor, or of a
-                                      primary constructor on a class or record
+                                      primary constructor on a class; a positional record
+                                      declares the shape of its data and is not counted
           public declared members     declarations beginning with `public` directly inside
                                       one type body
-          using directive fan-out     `using` directives outside any type in one file
 
         Names
-          The names above are the whole claim. `using directive fan-out` counts import
-          directives and is not semantic coupling: it says nothing about which types are
-          used, how often, or in which direction. `constructor parameter count` counts
+          The names above are the whole claim. `constructor parameter count` counts
           parameters and is not a dependency count: a parameter may be a value, an option
           or an already-grouped context. `lexical branch count` counts tokens; it is
           not a compiler control-flow graph, and has no notion of reachability, of paths

@@ -136,6 +136,7 @@ public sealed class DependenciesTests
         Assert.True(run.OutputContains("Why a cycle is blocking"), run.Output);
         Assert.True(run.OutputContains("Limits"), run.Output);
         Assert.True(run.OutputContains("Possible damage"), run.Output);
+        Assert.True(run.OutputContains("not semantic coupling"), run.Output);
     }
 
     private static RepositoryFixture Cycle(Frame? frame = null)

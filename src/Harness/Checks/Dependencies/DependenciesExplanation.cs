@@ -49,7 +49,10 @@ internal static class DependenciesExplanation
           resolved outgoing type refs   how many distinct declared types one type names.
           resolved incoming type refs   how many distinct declared types name it.
           external import fan-out       imports of one file that name no namespace or type
-                                        declared in this repository.
+                                        declared in this repository. It counts import
+                                        directives and is not semantic coupling: it says
+                                        nothing about which types are used, how often, or
+                                        in which direction.
 
         Why a cycle is blocking
           A cycle is the one finding here that is proved rather than estimated: every edge
