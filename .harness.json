@@ -10,7 +10,7 @@
     },
     "tests.architecture": {
       "present": false,
-      "reason": "структурные решения держатся ревью ADR, а не исполняемым ассертом; исполняемая проверка — следующий заход вместе со связанностью"
+      "reason": "цикл модулей теперь доказывает сам харнес (ADR-0021), но правила слоёв и направления зависимостей здесь по-прежнему держатся ревью ADR, а не исполняемым ассертом"
     },
     "format": {
       "paths": [".editorconfig"]
@@ -39,8 +39,16 @@
       "methodLines": 60,
       "branches": 12,
       "constructorParameters": 6,
-      "publicMembers": 25,
-      "importFanOut": 20
+      "publicMembers": 25
+    },
+    "dependencies.csharp": {
+      "externalImports": 20,
+      "outgoingReferences": 15,
+      "incomingReferences": 20
+    },
+    "cohesion.csharp": {
+      "minimumMembers": 6,
+      "groups": 1
     },
     "commits": {
       "language": "ru",
@@ -53,5 +61,11 @@
     "maintainability.csharp": "advisory",
     "duplication.csharp": "advisory"
   },
-  "suppress": []
+  "suppress": [
+    {
+      "check": "dependencies.csharp",
+      "location": "src/Harness/Checks/CheckRegistry.cs",
+      "reason": "реестр по определению называет каждую поставляемую проверку; высокий исходящий fan-out здесь — это его работа, а не связанность, которую надо снижать"
+    }
+  ]
 }

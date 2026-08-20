@@ -1,9 +1,22 @@
 using System.Text.Json;
+using Harness.Commits;
+using Harness.Languages;
 
 namespace Harness.Config;
 
+/// <summary>
+/// Reads every comparison point a repository is allowed to move. A setting the harness does
+/// not read is a failure and not a silent no-op: a number nobody applies is worse than none,
+/// because the repository believes it has been configured.
+/// </summary>
 internal static class HarnessSettingsReader
 {
+    private static readonly string Comments = Language.CSharp.Qualify("comments");
+    private static readonly string Maintainability = Language.CSharp.Qualify("maintainability");
+    private static readonly string Dependencies = Language.CSharp.Qualify("dependencies");
+    private static readonly string Cohesion = Language.CSharp.Qualify("cohesion");
+    private const string Commits = "commits";
+
     public static (HarnessSettings? Settings, string? Failure) Read(JsonElement root)
     {
         if (!root.TryGetProperty("settings", out var declared))
@@ -16,7 +29,7 @@ internal static class HarnessSettingsReader
             return (null, "'settings' must be an object");
         }
 
-        var known = new[] { "comments.csharp", "maintainability.csharp", "commits" };
+        string[] known = [Comments, Maintainability, Dependencies, Cohesion, Commits];
         foreach (var property in declared.EnumerateObject())
         {
             if (!known.Contains(property.Name, StringComparer.Ordinal))
@@ -26,7 +39,18 @@ internal static class HarnessSettingsReader
             }
         }
 
-        var (comments, commentFailure) = ReadComments(declared);
+        return Assemble(declared);
+    }
+
+    private static (HarnessSettings? Settings, string? Failure) Assemble(JsonElement declared)
+    {
+        var defaults = HarnessSettings.Default;
+        var (comments, commentFailure) = ReadSection(
+            declared,
+            Comments,
+            ["minimumCommentLines", "percentageLimit"],
+            [defaults.Comments.MinimumCommentLines, defaults.Comments.PercentageLimit],
+            [null, 100]);
         if (comments is null)
         {
             return (null, commentFailure);
@@ -38,94 +62,76 @@ internal static class HarnessSettingsReader
             return (null, maintainabilityFailure);
         }
 
+        var (dependencies, dependencyFailure) = ReadDependencies(declared);
+        if (dependencies is null)
+        {
+            return (null, dependencyFailure);
+        }
+
+        var (cohesion, cohesionFailure) = ReadSection(
+            declared,
+            Cohesion,
+            ["minimumMembers", "groups"],
+            [defaults.Cohesion.MinimumMembers, defaults.Cohesion.Groups]);
+        if (cohesion is null)
+        {
+            return (null, cohesionFailure);
+        }
+
         var (commits, commitFailure) = ReadCommits(declared);
         return commits is null
             ? (null, commitFailure)
-            : (new HarnessSettings(comments, maintainability, commits), null);
+            : (new HarnessSettings(
+                new CommentSettings(comments[0], comments[1]),
+                maintainability,
+                dependencies,
+                new CohesionSettings(cohesion[0], cohesion[1]),
+                commits), null);
     }
 
-    private static (CommentSettings? Settings, string? Failure) ReadComments(JsonElement settings)
+    private static (MaintainabilitySettings? Settings, string? Failure) ReadMaintainability(JsonElement declared)
     {
-        const string section = "comments.csharp";
-        if (!settings.TryGetProperty(section, out var declared))
-        {
-            return (CommentSettings.Default, null);
-        }
-
-        var known = new[] { "minimumCommentLines", "percentageLimit" };
-        var failure = ValidateObject(declared, section, known);
-        if (failure is not null)
-        {
-            return (null, failure);
-        }
-
-        var defaults = CommentSettings.Default;
-        var (minimum, minimumFailure) = ReadInt(
-            declared, section, known[0], defaults.MinimumCommentLines);
-        if (minimumFailure is not null)
-        {
-            return (null, minimumFailure);
-        }
-
-        var (percentage, percentageFailure) = ReadInt(
-            declared, section, known[1], defaults.PercentageLimit, maximum: 100);
-        return percentageFailure is null
-            ? (new CommentSettings(minimum, percentage), null)
-            : (null, percentageFailure);
-    }
-
-    private static (MaintainabilitySettings? Settings, string? Failure) ReadMaintainability(
-        JsonElement settings)
-    {
-        const string section = "maintainability.csharp";
-        if (!settings.TryGetProperty(section, out var declared))
-        {
-            return (MaintainabilitySettings.Default, null);
-        }
-
-        var known = new[]
-        {
-            "fileLines", "typeLines", "methodLines", "branches", "constructorParameters",
-            "publicMembers", "importFanOut",
-        };
-        var failure = ValidateObject(declared, section, known);
-        if (failure is not null)
-        {
-            return (null, failure);
-        }
-
         var defaults = MaintainabilitySettings.Default;
-        var fallback = new[]
-        {
-            defaults.FileLines, defaults.TypeLines, defaults.MethodLines, defaults.Branches,
-            defaults.ConstructorParameters, defaults.PublicMembers, defaults.ImportFanOut,
-        };
-        var values = new int[known.Length];
-        for (var index = 0; index < known.Length; index++)
-        {
-            var (value, valueFailure) = ReadInt(declared, section, known[index], fallback[index]);
-            if (valueFailure is not null)
+        var (values, failure) = ReadSection(
+            declared,
+            Maintainability,
+            ["fileLines", "typeLines", "methodLines", "branches", "constructorParameters", "publicMembers"],
+            [
+                defaults.FileLines, defaults.TypeLines, defaults.MethodLines,
+                defaults.Branches, defaults.ConstructorParameters, defaults.PublicMembers,
+            ],
+            moved: new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                return (null, valueFailure);
-            }
+                ["importFanOut"] = $"settings.{Dependencies}.externalImports",
+            });
 
-            values[index] = value;
-        }
+        return values is null
+            ? (null, failure)
+            : (new MaintainabilitySettings(values[0], values[1], values[2], values[3], values[4], values[5]), null);
+    }
 
-        return (new MaintainabilitySettings(
-            values[0], values[1], values[2], values[3], values[4], values[5], values[6]), null);
+    private static (DependencySettings? Settings, string? Failure) ReadDependencies(JsonElement declared)
+    {
+        var defaults = DependencySettings.Default;
+        var (values, failure) = ReadSection(
+            declared,
+            Dependencies,
+            ["externalImports", "outgoingReferences", "incomingReferences"],
+            [defaults.ExternalImports, defaults.OutgoingReferences, defaults.IncomingReferences]);
+
+        return values is null
+            ? (null, failure)
+            : (new DependencySettings(values[0], values[1], values[2]), null);
     }
 
     private static (CommitSettings? Settings, string? Failure) ReadCommits(JsonElement settings)
     {
-        const string section = "commits";
-        if (!settings.TryGetProperty(section, out var declared))
+        if (!settings.TryGetProperty(Commits, out var declared))
         {
             return (CommitSettings.Default, null);
         }
 
-        var known = new[] { "language", "requireSetup" };
-        var failure = ValidateObject(declared, section, known);
+        var failure = ValidateObject(declared, Commits, ["language", "requireSetup"], null);
         if (failure is not null)
         {
             return (null, failure);
@@ -157,10 +163,46 @@ internal static class HarnessSettingsReader
         return (new CommitSettings(language, requireSetup), null);
     }
 
+    private static (int[]? Values, string? Failure) ReadSection(
+        JsonElement settings,
+        string section,
+        string[] known,
+        int[] fallback,
+        int?[]? maximum = null,
+        IReadOnlyDictionary<string, string>? moved = null)
+    {
+        if (!settings.TryGetProperty(section, out var declared))
+        {
+            return (fallback, null);
+        }
+
+        var failure = ValidateObject(declared, section, known, moved);
+        if (failure is not null)
+        {
+            return (null, failure);
+        }
+
+        var values = new int[known.Length];
+        for (var index = 0; index < known.Length; index++)
+        {
+            var (value, valueFailure) = ReadInt(
+                declared, section, known[index], fallback[index], maximum?[index]);
+            if (valueFailure is not null)
+            {
+                return (null, valueFailure);
+            }
+
+            values[index] = value;
+        }
+
+        return (values, null);
+    }
+
     private static string? ValidateObject(
         JsonElement declared,
         string section,
-        IReadOnlyList<string> known)
+        IReadOnlyList<string> known,
+        IReadOnlyDictionary<string, string>? moved)
     {
         if (declared.ValueKind != JsonValueKind.Object)
         {
@@ -169,6 +211,12 @@ internal static class HarnessSettingsReader
 
         foreach (var property in declared.EnumerateObject())
         {
+            if (moved is not null && moved.TryGetValue(property.Name, out var destination))
+            {
+                return $"'settings.{section}.{property.Name}' is now '{destination}'; "
+                    + "the measurement moved together with the check that reads it";
+            }
+
             if (!known.Contains(property.Name, StringComparer.Ordinal))
             {
                 return $"'settings.{section}.{property.Name}' is not a setting this check reads "
@@ -184,7 +232,7 @@ internal static class HarnessSettingsReader
         string section,
         string name,
         int fallback,
-        int? maximum = null)
+        int? maximum)
     {
         if (!declared.TryGetProperty(name, out var value))
         {

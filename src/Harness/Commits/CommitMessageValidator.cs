@@ -1,4 +1,3 @@
-using Harness.Config;
 
 namespace Harness.Commits;
 

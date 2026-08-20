@@ -38,7 +38,7 @@ internal static class GateEngine
             return new RunReport(repositoryPath, [], failure);
         }
 
-        var (config, configFailure) = HarnessConfig.Load(repository, checks);
+        var (config, configFailure) = HarnessConfig.Load(repository, CheckRegistry.Describe(checks));
         var context = new CheckContext(repository, config, configFailure);
         var used = new HashSet<Suppression>();
 
@@ -164,8 +164,17 @@ internal static class GateEngine
     private static bool Covers(Suppression suppression, IRepositoryCheck check, Finding finding)
         => (string.Equals(suppression.Check, check.Id, StringComparison.Ordinal)
                 || string.Equals(suppression.Check, check.Group, StringComparison.Ordinal))
-            && (string.Equals(suppression.Location, finding.Location, StringComparison.Ordinal)
-                || finding.Location.StartsWith(suppression.Location + "/", StringComparison.Ordinal));
+            && CoversLocation(suppression.Location, finding.Location);
+
+    /// <summary>
+    /// An accepted location covers the file or directory named, and any line inside it. An
+    /// exception that had to name a line number would expire on the next edit above it, which
+    /// would make writing one down pointless.
+    /// </summary>
+    private static bool CoversLocation(string accepted, string found)
+        => string.Equals(accepted, found, StringComparison.Ordinal)
+            || found.StartsWith(accepted + "/", StringComparison.Ordinal)
+            || found.StartsWith(accepted + ":", StringComparison.Ordinal);
 
     private static GateReport Excluded(
         IRepositoryCheck check,

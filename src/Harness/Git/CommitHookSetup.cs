@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text;
 using Harness.Commits;
-using Harness.Config;
 
 namespace Harness.Git;
 

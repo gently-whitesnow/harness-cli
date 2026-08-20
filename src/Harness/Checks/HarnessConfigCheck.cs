@@ -1,6 +1,6 @@
-using Harness.Checks;
+using Harness.Config;
 
-namespace Harness.Config;
+namespace Harness.Checks;
 
 /// <summary>
 /// Whether the repository has a harness frame at all, and whether it is internally sound.

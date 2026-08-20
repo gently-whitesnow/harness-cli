@@ -1,5 +1,5 @@
 using System.Text;
-using Harness.Checks.CSharp;
+using Harness.Languages.CSharp;
 
 namespace Harness.Checks.Duplication;
 

@@ -1,44 +1,68 @@
+using Harness.Checks.Cohesion;
 using Harness.Checks.Comments;
 using Harness.Checks.Commits;
+using Harness.Checks.Dependencies;
 using Harness.Checks.DotNet;
 using Harness.Checks.Duplication;
 using Harness.Checks.Frame;
 using Harness.Checks.Maintainability;
 using Harness.Checks.TypesPerFile;
 using Harness.Config;
+using Harness.Languages.CSharp;
 
 namespace Harness.Checks;
 
 /// <summary>The checks this version of the harness ships, in execution order.</summary>
 /// <remarks>
-/// The frame is read first, because every frame question reads it. Then the two analyses
-/// the harness performs itself — the things that drift between repositories and that no
-/// repository's own pipeline measures the same way. Then the frame's questions, which are
-/// the same for every repository this tool is pointed at.
+/// The frame is read first, because every frame question reads it. Then the analyses the
+/// harness performs itself, which drift between repositories and which no repository's own
+/// pipeline measures the same way. Then the frame's questions, the same for every repository.
 /// </remarks>
 internal static class CheckRegistry
 {
-    public static readonly IReadOnlyList<IRepositoryCheck> All =
-    [
-        new HarnessConfigCheck(),
+    public static readonly IReadOnlyList<IRepositoryCheck> All = Shipped();
 
-        new DocumentationPolicyCheck(),
-        new CommitSetupCheck(),
-        new CommentLineCheck(),
-        new TypesPerFileCheck(),
-        new MaintainabilityCheck(),
-        new DuplicationCheck(),
+    /// <summary>One reader is shared, so the tracked C# is discovered and read once a run.</summary>
+    private static IReadOnlyList<IRepositoryCheck> Shipped()
+    {
+        var csharp = new CSharpSources();
+        var analyzer = new CSharpAnalyzer(csharp);
 
-        new BuildPropertiesCheck(),
-        new CentralPackagesCheck(),
-        new SolutionFormatCheck(),
+        return
+        [
+            new HarnessConfigCheck(),
 
-        new UnitTestFrameCheck(),
-        new IntegrationTestFrameCheck(),
-        new ArchitectureFrameCheck(),
-        new FormatFrameCheck(),
-        new LintFrameCheck(),
-        new BuildFrameCheck(),
-        new TypecheckFrameCheck(),
-    ];
+            new DocumentationPolicyCheck(),
+            new CommitSetupCheck(),
+            new CommentLineCheck(csharp),
+            new TypesPerFileCheck(csharp),
+            new DependenciesCheck(analyzer),
+            new CohesionCheck(analyzer),
+            new MaintainabilityCheck(csharp),
+            new DuplicationCheck(csharp),
+
+            new BuildPropertiesCheck(),
+            new CentralPackagesCheck(),
+            new SolutionFormatCheck(),
+
+            new UnitTestFrameCheck(),
+            new IntegrationTestFrameCheck(),
+            new ArchitectureFrameCheck(),
+            new FormatFrameCheck(),
+            new LintFrameCheck(),
+            new BuildFrameCheck(),
+            new TypecheckFrameCheck(),
+        ];
+    }
+
+    /// <summary>How the frame sees the shipped checks, so it never has to reach for one.</summary>
+    public static IReadOnlyList<CheckDescriptor> Describe(IReadOnlyList<IRepositoryCheck> checks)
+        => checks
+            .Select(check => new CheckDescriptor(
+                check.Id,
+                check.Group,
+                check.Applicability,
+                (check as FrameQuestionCheck)?.AnswerKey,
+                (check as FrameQuestionCheck)?.IntroducedIn ?? 0))
+            .ToList();
 }
