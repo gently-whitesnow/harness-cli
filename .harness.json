@@ -46,6 +46,10 @@
       "outgoingReferences": 15,
       "incomingReferences": 20
     },
+    "cohesion.csharp": {
+      "minimumMembers": 6,
+      "groups": 1
+    },
     "commits": {
       "language": "ru",
       "requireSetup": true
