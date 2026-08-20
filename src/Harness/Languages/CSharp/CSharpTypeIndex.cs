@@ -3,9 +3,8 @@ using Harness.Structure;
 namespace Harness.Languages.CSharp;
 
 /// <summary>
-/// The names the repository itself declares. This closed vocabulary is what makes resolution
-/// possible without a compiler: a name that matches nothing here belongs to the framework or
-/// to a package, and is counted as an import rather than guessed at.
+/// The names the repository itself declares — a closed vocabulary that makes resolution
+/// possible without a compiler: a name matching nothing here is an import, not a guess.
 /// </summary>
 internal sealed class CSharpTypeIndex
 {
@@ -37,9 +36,8 @@ internal sealed class CSharpTypeIndex
 
     /// <summary>
     /// Which declaration a name refers to, following the order C# itself uses: the containing
-    /// namespace, then the namespaces that enclose it, then what the file imports. A name
-    /// that survives all three with more than one candidate is reported as unresolved rather
-    /// than attributed to a guess.
+    /// namespace, then the namespaces that enclose it, then what the file imports. A name left
+    /// with more than one candidate is reported as unresolved rather than attributed to a guess.
     /// </summary>
     public (TypeNode? Target, bool Ambiguous) Resolve(
         string name,
