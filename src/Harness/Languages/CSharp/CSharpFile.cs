@@ -1,8 +1,18 @@
 namespace Harness.Languages.CSharp;
 
-internal sealed record CSharpFile(CSharpSource Source, CSharpStructure Structure)
+/// <summary>
+/// One tracked C# file, read once. The declarations are parsed on first ask, so a run that
+/// only measures text does not pay for structure nobody looked at.
+/// </summary>
+internal sealed class CSharpFile(CSharpSource source)
 {
-    public string Path => Source.Path;
+    private CSharpStructure? structure;
+
+    public CSharpSource Source => source;
+
+    public string Path => source.Path;
+
+    public CSharpStructure Structure => structure ??= CSharpStructureReader.Read(source);
 
     public IEnumerable<Declaration> Types
         => Structure.Declarations.Where(declaration => declaration.Kind == DeclarationKind.Type);

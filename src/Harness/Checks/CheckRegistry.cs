@@ -20,31 +20,40 @@ namespace Harness.Checks;
 /// </remarks>
 internal static class CheckRegistry
 {
-    public static readonly IReadOnlyList<IRepositoryCheck> All =
-    [
-        new HarnessConfigCheck(),
+    public static readonly IReadOnlyList<IRepositoryCheck> All = Shipped();
 
-        new DocumentationPolicyCheck(),
-        new CommitSetupCheck(),
-        new CommentLineCheck(),
-        new TypesPerFileCheck(),
-        new DependenciesCheck(new CSharpAnalyzer()),
-        new CohesionCheck(new CSharpAnalyzer()),
-        new MaintainabilityCheck(),
-        new DuplicationCheck(),
+    /// <summary>One reader is shared, so the tracked C# is discovered and read once a run.</summary>
+    private static IReadOnlyList<IRepositoryCheck> Shipped()
+    {
+        var csharp = new CSharpSources();
+        var analyzer = new CSharpAnalyzer(csharp);
 
-        new BuildPropertiesCheck(),
-        new CentralPackagesCheck(),
-        new SolutionFormatCheck(),
+        return
+        [
+            new HarnessConfigCheck(),
 
-        new UnitTestFrameCheck(),
-        new IntegrationTestFrameCheck(),
-        new ArchitectureFrameCheck(),
-        new FormatFrameCheck(),
-        new LintFrameCheck(),
-        new BuildFrameCheck(),
-        new TypecheckFrameCheck(),
-    ];
+            new DocumentationPolicyCheck(),
+            new CommitSetupCheck(),
+            new CommentLineCheck(csharp),
+            new TypesPerFileCheck(csharp),
+            new DependenciesCheck(analyzer),
+            new CohesionCheck(analyzer),
+            new MaintainabilityCheck(csharp),
+            new DuplicationCheck(csharp),
+
+            new BuildPropertiesCheck(),
+            new CentralPackagesCheck(),
+            new SolutionFormatCheck(),
+
+            new UnitTestFrameCheck(),
+            new IntegrationTestFrameCheck(),
+            new ArchitectureFrameCheck(),
+            new FormatFrameCheck(),
+            new LintFrameCheck(),
+            new BuildFrameCheck(),
+            new TypecheckFrameCheck(),
+        ];
+    }
 
     /// <summary>How the frame sees the shipped checks, so it never has to reach for one.</summary>
     public static IReadOnlyList<CheckDescriptor> Describe(IReadOnlyList<IRepositoryCheck> checks)

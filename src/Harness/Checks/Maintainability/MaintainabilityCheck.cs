@@ -12,7 +12,7 @@ namespace Harness.Checks.Maintainability;
 /// Nothing here is blocking: approximate analysis does not get to impose architectural
 /// taste on a repository.
 /// </summary>
-internal sealed class MaintainabilityCheck : IRepositoryCheck
+internal sealed class MaintainabilityCheck(CSharpSources sources) : IRepositoryCheck
 {
     private const int ShownPerMetric = 5;
 
@@ -32,37 +32,35 @@ internal sealed class MaintainabilityCheck : IRepositoryCheck
 
     public CheckEvaluation Evaluate(CheckContext context)
     {
-        var repository = context.Repository;
         var metrics = new MetricSet(
             context.Config?.Settings.Maintainability ?? MaintainabilitySettings.Default);
 
-        var (sources, failure) = CSharpSources.Discover(repository);
+        var (files, failure) = sources.Read(context.Repository);
         if (failure is not null)
         {
             return CheckEvaluation.Incomplete(failure);
         }
 
-        if (sources.Count == 0)
+        if (files.Count == 0)
         {
             return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
         }
 
         var measurements = new List<Measurement>();
-        foreach (var source in sources)
+        foreach (var file in files)
         {
-            Measure(source, metrics, measurements);
+            Measure(file, metrics, measurements);
         }
 
         return CheckEvaluation.From(MetricReport.Exceeding(measurements, metrics.All, ShownPerMetric));
     }
 
-    private static void Measure(CSharpSource source, MetricSet metrics, List<Measurement> measurements)
+    private static void Measure(CSharpFile file, MetricSet metrics, List<Measurement> measurements)
     {
-        var structure = CSharpStructureReader.Read(source);
-
+        var source = file.Source;
         measurements.Add(new Measurement(metrics.FileLines, source.LogicalLines, source.Path, source.Path));
 
-        foreach (var declaration in structure.Declarations)
+        foreach (var declaration in file.Structure.Declarations)
         {
             var location = source.Path + ":" + declaration.FirstLine;
             var logicalLines = source.LogicalLinesBetween(declaration.FirstLine, declaration.LastLine);

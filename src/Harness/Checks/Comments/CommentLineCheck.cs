@@ -5,7 +5,7 @@ using Harness.Languages.CSharp;
 
 namespace Harness.Checks.Comments;
 
-internal sealed class CommentLineCheck : IRepositoryCheck
+internal sealed class CommentLineCheck(CSharpSources sources) : IRepositoryCheck
 {
     public string Id => Language.CSharp.Qualify("comments");
 
@@ -20,18 +20,19 @@ internal sealed class CommentLineCheck : IRepositoryCheck
     public CheckEvaluation Evaluate(CheckContext context)
     {
         var settings = context.Config?.Settings.Comments ?? CommentSettings.Default;
-        var (sources, failure) = CSharpSources.Discover(context.Repository);
+        var (files, failure) = sources.Read(context.Repository);
         if (failure is not null)
         {
             return CheckEvaluation.Incomplete(failure);
         }
 
-        if (sources.Count == 0)
+        if (files.Count == 0)
         {
             return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
         }
 
-        var findings = sources
+        var findings = files
+            .Select(file => file.Source)
             .Where(source => ExceedsLimit(source, settings))
             .Select(source => new Finding(
                 FindingSeverity.Blocking,

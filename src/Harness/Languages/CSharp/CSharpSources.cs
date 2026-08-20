@@ -2,14 +2,34 @@ using Harness.Git;
 
 namespace Harness.Languages.CSharp;
 
-internal static class CSharpSources
+/// <summary>
+/// The tracked C# a repository ships, discovered and read once for the whole run. Every C#
+/// check asks the same question of the same files, and reading them once per check would
+/// spend the work again for an answer that cannot have changed. What is handed out is read
+/// only, so sharing it shares a reading and not a state.
+/// </summary>
+internal sealed class CSharpSources
 {
     public const string NothingToAnalyze =
         "no tracked C# source outside generated and build-output locations";
 
     private static readonly string[] GeneratedSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
 
-    public static (IReadOnlyList<CSharpSource> Sources, string? Failure) Discover(GitRepository repository)
+    private GitRepository? read;
+    private (IReadOnlyList<CSharpFile> Files, string? Failure) result;
+
+    public (IReadOnlyList<CSharpFile> Files, string? Failure) Read(GitRepository repository)
+    {
+        if (!ReferenceEquals(read, repository))
+        {
+            result = Discover(repository);
+            read = repository;
+        }
+
+        return result;
+    }
+
+    private static (IReadOnlyList<CSharpFile> Files, string? Failure) Discover(GitRepository repository)
     {
         var candidates = repository.TrackedEntries
             .Where(entry => entry.Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
@@ -18,7 +38,7 @@ internal static class CSharpSources
                 entry.Path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)))
             .OrderBy(entry => entry.Path, StringComparer.Ordinal);
 
-        var sources = new List<CSharpSource>();
+        var files = new List<CSharpFile>();
         foreach (var entry in candidates)
         {
             var (text, failure) = repository.ReadTrackedText(entry);
@@ -29,11 +49,11 @@ internal static class CSharpSources
 
             if (!IsGeneratedContent(text))
             {
-                sources.Add(CSharpSource.Read(entry.Path, text));
+                files.Add(new CSharpFile(CSharpSource.Read(entry.Path, text)));
             }
         }
 
-        return (sources, null);
+        return (files, null);
     }
 
     // Generated markers are conventionally emitted at the start of a file.

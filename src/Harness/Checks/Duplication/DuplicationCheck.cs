@@ -9,7 +9,7 @@ namespace Harness.Checks.Duplication;
 /// same once names and literals are removed, which is a reason to look and never a proof
 /// that the two behave alike. Nothing here is blocking.
 /// </summary>
-internal sealed class DuplicationCheck : IRepositoryCheck
+internal sealed class DuplicationCheck(CSharpSources sources) : IRepositoryCheck
 {
     private const int WindowLines = 8;
 
@@ -32,20 +32,19 @@ internal sealed class DuplicationCheck : IRepositoryCheck
 
     public CheckEvaluation Evaluate(CheckContext context)
     {
-        var repository = context.Repository;
-
-        var (sources, failure) = CSharpSources.Discover(repository);
+        var (files, failure) = sources.Read(context.Repository);
         if (failure is not null)
         {
             return CheckEvaluation.Incomplete(failure);
         }
 
-        if (sources.Count == 0)
+        if (files.Count == 0)
         {
             return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
         }
 
-        return CheckEvaluation.From(Report(Repetitions(NormalizedFile.From(sources))));
+        return CheckEvaluation.From(
+            Report(Repetitions(NormalizedFile.From(files.Select(file => file.Source).ToList()))));
     }
 
     private static List<Repetition> Repetitions(IReadOnlyList<NormalizedFile> files)
