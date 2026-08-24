@@ -30,6 +30,11 @@ jobs:
 
   # NativeAOT does not cross-compile between operating systems or C libraries, so every
   # runtime identifier is published on a machine that matches it.
+  #
+  # The matrix follows demonstrated need, not the set of platforms .NET can target: an
+  # artifact nobody runs still has to keep working, and nobody notices when it stops. These
+  # three cover the machines in use — Apple Silicon — and any x64 CI container, whichever C
+  # library its base image uses. Adding a runtime identifier back is one entry.
   build:
     needs: verify
     strategy:
@@ -38,17 +43,10 @@ jobs:
         include:
           - rid: osx-arm64
             runner: macos-14
-          - rid: osx-x64
-            runner: macos-13
           - rid: linux-x64
             runner: ubuntu-24.04
-          - rid: linux-arm64
-            runner: ubuntu-24.04-arm
           - rid: linux-musl-x64
             runner: ubuntu-24.04
-            musl: true
-          - rid: linux-musl-arm64
-            runner: ubuntu-24.04-arm
             musl: true
     runs-on: ${{ matrix.runner }}
     steps:
@@ -116,14 +114,12 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      # Docker names architectures amd64 and arm64; .NET names them x64 and arm64.
-      - name: Lay out the binaries by Docker architecture
+      # Docker names this architecture amd64; .NET names it x64.
+      - name: Lay out the binary by Docker architecture
         run: |
-          mkdir -p image/amd64 image/arm64
+          mkdir -p image/amd64
           tar -xzf artifacts/harness-linux-musl-x64.tar.gz -C image/amd64
-          tar -xzf artifacts/harness-linux-musl-arm64.tar.gz -C image/arm64
 
-      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
@@ -140,7 +136,7 @@ jobs:
           major="${VERSION%%.*}"
           minor="${VERSION%.*}"
           docker buildx build \
-            --platform linux/amd64,linux/arm64 \
+            --platform linux/amd64 \
             --tag "$image:$VERSION" \
             --tag "$image:$minor" \
             --tag "$image:$major" \
