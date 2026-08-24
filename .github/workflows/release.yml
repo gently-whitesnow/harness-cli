@@ -1,0 +1,148 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # The release number is declared once, in Version.props. A tag that disagrees with it would
+  # ship a binary reporting a version nobody can install, so it never gets built.
+  verify:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.declared.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: declared
+        run: |
+          version=$(sed -n 's|.*<HarnessVersion>\(.*\)</HarnessVersion>.*|\1|p' Version.props)
+          tagged="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tagged" ]; then
+            echo "Version.props declares '$version' but the tag is '$tagged'." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  # NativeAOT does not cross-compile between operating systems or C libraries, so every
+  # runtime identifier is published on a machine that matches it.
+  build:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: osx-arm64
+            runner: macos-14
+          - rid: osx-x64
+            runner: macos-13
+          - rid: linux-x64
+            runner: ubuntu-24.04
+          - rid: linux-arm64
+            runner: ubuntu-24.04-arm
+          - rid: linux-musl-x64
+            runner: ubuntu-24.04
+            musl: true
+          - rid: linux-musl-arm64
+            runner: ubuntu-24.04-arm
+            musl: true
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        if: ${{ !matrix.musl }}
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install the native toolchain
+        if: ${{ startsWith(matrix.rid, 'linux-') && !matrix.musl }}
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      - name: Publish
+        if: ${{ !matrix.musl }}
+        run: dotnet publish src/Harness/Harness.csproj -c Release -r ${{ matrix.rid }} -o out
+
+      # A musl build has to happen against musl. The SDK image supplies it, which also keeps
+      # the runner free of an Alpine container that the checkout action cannot run in.
+      - name: Publish against musl
+        if: ${{ matrix.musl }}
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src mcr.microsoft.com/dotnet/sdk:10.0-alpine sh -c \
+            "apk add --no-cache clang build-base zlib-dev && \
+             dotnet publish src/Harness/Harness.csproj -c Release -r ${{ matrix.rid }} -o /src/out"
+
+      - name: Package
+        run: |
+          archive="harness-${{ matrix.rid }}.tar.gz"
+          tar -czf "$archive" -C out harness
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum "$archive" | cut -d' ' -f1 > "$archive.sha256"
+          else
+            shasum -a 256 "$archive" | cut -d' ' -f1 > "$archive.sha256"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: harness-${{ matrix.rid }}
+          path: harness-${{ matrix.rid }}.tar.gz*
+
+  publish:
+    needs: [verify, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" artifacts/* --repo "$GITHUB_REPOSITORY" --generate-notes
+
+  image:
+    needs: [verify, build]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      # Docker names architectures amd64 and arm64; .NET names them x64 and arm64.
+      - name: Lay out the binaries by Docker architecture
+        run: |
+          mkdir -p image/amd64 image/arm64
+          tar -xzf artifacts/harness-linux-musl-x64.tar.gz -C image/amd64
+          tar -xzf artifacts/harness-linux-musl-arm64.tar.gz -C image/arm64
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER}/harness"
+          major="${VERSION%%.*}"
+          minor="${VERSION%.*}"
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --tag "$image:$VERSION" \
+            --tag "$image:$minor" \
+            --tag "$image:$major" \
+            --tag "$image:latest" \
+            --push .

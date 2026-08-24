@@ -50,24 +50,12 @@ public sealed class NativePublicationTests
                 "--runtime", RuntimeInformation.RuntimeIdentifier,
                 "--output", outputDirectory,
             ],
-            RepositoryRoot());
+            Release.RepositoryRoot());
 
         Assert.True(publication.ExitCode == 0, "NativeAOT publication failed:\n" + publication.Output);
 
         var executable = Path.Combine(outputDirectory, "harness");
         Assert.True(File.Exists(executable), "Published executable not found:\n" + publication.Output);
         return (executable, publication.Output);
-    }
-
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Harness.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new InvalidOperationException("Could not locate the solution directory.");
     }
 }

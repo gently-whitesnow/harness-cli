@@ -6,7 +6,8 @@ internal sealed record RunReport(
     string? RepositoryPath,
     IReadOnlyList<GateReport> Gates,
     string? ToolError,
-    TimeSpan EvidenceDuration = default)
+    TimeSpan EvidenceDuration = default,
+    string? Pin = null)
 {
     public bool NothingWasVerified
         => ToolError is not null || !Gates.Any(gate => gate.Outcome is CheckOutcome.Passed or CheckOutcome.Failed);

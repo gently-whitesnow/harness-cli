@@ -4,6 +4,7 @@ using Harness.Commits;
 using Harness.Config;
 using Harness.Engine;
 using Harness.Git;
+using Harness.Versioning;
 
 var invocation = Invocation.Parse(args, Directory.GetCurrentDirectory());
 var checks = CheckRegistry.All;
@@ -52,6 +53,38 @@ switch (invocation.Kind)
         Console.WriteLine(
             "Review every answer; ask the repository owner when intent is unclear rather than suppressing the work.");
         Console.WriteLine("Track the file, then run `harness check --verbose`.");
+        return ExitCodes.Success;
+    }
+
+    case CommandKind.Upgrade:
+    {
+        var (repository, config, failure) = LoadRepository(invocation.RepositoryPath, checks);
+        if (repository is null || config is null)
+        {
+            Console.Error.WriteLine(failure);
+            return ExitCodes.Incomplete;
+        }
+
+        var target = HarnessVersion.Current;
+        if (invocation.Operand is not null && !HarnessVersion.TryParse(invocation.Operand, out target))
+        {
+            Console.Error.WriteLine($"'{invocation.Operand}' is not a harness release, such as 1.1.0.");
+            return ExitCodes.Incomplete;
+        }
+
+        var (report, upgradeFailure) = FrameUpgrade.Raise(
+            repository,
+            config,
+            CheckRegistry.Describe(checks),
+            target,
+            invocation.DryRun);
+        if (report is null)
+        {
+            Console.Error.WriteLine(upgradeFailure);
+            return ExitCodes.Incomplete;
+        }
+
+        Console.Write(report);
         return ExitCodes.Success;
     }
 
@@ -172,6 +205,12 @@ switch (invocation.Kind)
         Console.WriteLine(check.Explanation);
         return ExitCodes.Success;
     }
+
+    case CommandKind.Version:
+        Console.WriteLine($"harness {HarnessVersion.Current}");
+        Console.WriteLine(
+            $"Reproduces repositories pinned from {HarnessVersion.Minimum} to {HarnessVersion.Current}.");
+        return ExitCodes.Success;
 
     case CommandKind.Help:
         Console.Write(UsageText.For(checks));

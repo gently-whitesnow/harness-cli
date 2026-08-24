@@ -33,7 +33,7 @@ public sealed class InitCommandTests
 
         using var document = JsonDocument.Parse(File.ReadAllText(path));
         var root = document.RootElement;
-        Assert.Equal(3, root.GetProperty("version").GetInt32());
+        Assert.Equal(Release.Current, root.GetProperty("version").GetString());
         Assert.Equal(
             Questions,
             root.GetProperty("answers").EnumerateObject().Select(answer => answer.Name));

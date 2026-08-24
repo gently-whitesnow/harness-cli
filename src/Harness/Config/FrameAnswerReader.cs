@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Harness.Versioning;
 
 namespace Harness.Config;
 
@@ -15,7 +16,7 @@ internal static class FrameAnswerReader
         string? Failure) Read(
         JsonElement root,
         IReadOnlyList<CheckDescriptor> questions,
-        int version,
+        HarnessVersion version,
         bool tracksLatest)
     {
         if (!root.TryGetProperty("answers", out var declared))
@@ -40,7 +41,7 @@ internal static class FrameAnswerReader
             }
         }
 
-        foreach (var question in questions.Where(question => tracksLatest || question.IntroducedIn <= version))
+        foreach (var question in questions.Where(question => tracksLatest || question.Since <= version))
         {
             if (!answers.ContainsKey(question.AnswerKey!) && !failures.ContainsKey(question.AnswerKey!))
             {
@@ -55,7 +56,7 @@ internal static class FrameAnswerReader
     private static string? Accept(
         JsonProperty property,
         IReadOnlyList<CheckDescriptor> questions,
-        int version,
+        HarnessVersion version,
         bool tracksLatest,
         Dictionary<string, FrameAnswer> answers,
         Dictionary<string, string> failures)
@@ -67,12 +68,12 @@ internal static class FrameAnswerReader
                 + $"(expected {string.Join(", ", questions.Select(candidate => candidate.AnswerKey))})");
         }
 
-        // A pinned version is a schema snapshot, not merely a minimum required set.
+        // A pinned release is a contract snapshot, not merely a minimum required set.
         // Rejecting later fields catches accidental partial upgrades in either direction.
-        if (!tracksLatest && question.IntroducedIn > version)
+        if (!tracksLatest && question.Since > version)
         {
-            return ConfigJson.Failure($"'answers.{property.Name}' belongs to version "
-                + $"{question.IntroducedIn}, but this repository pins version {version}");
+            return ConfigJson.Failure($"'answers.{property.Name}' was introduced in harness "
+                + $"{question.Since}, but this repository pins {version}");
         }
 
         var (answer, failure) = ReadAnswer(property.Name, property.Value);

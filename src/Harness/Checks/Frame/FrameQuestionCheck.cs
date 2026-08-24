@@ -13,8 +13,6 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
 
     internal string AnswerKey => Key;
 
-    internal abstract int IntroducedIn { get; }
-
     public string Id => $"{HarnessConfig.FrameGroup}.{Key}";
 
     public string Group => HarnessConfig.FrameGroup;
@@ -30,13 +28,6 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
             return CheckEvaluation.Incomplete(
                 $"the harness frame could not be read, so this repository's answer about {Subject} is unknown: "
                     + context.ConfigFailure);
-        }
-
-        if (!context.Config.IncludesQuestion(IntroducedIn))
-        {
-            return CheckEvaluation.Skipped(
-                $"`answers.{Key}` was introduced in harness frame version {IntroducedIn}; "
-                    + $"this repository pins version {context.Config.Version}.");
         }
 
         var failure = context.Config.AnswerFailure(Key);

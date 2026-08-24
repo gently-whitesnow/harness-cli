@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Harness.Git;
+using Harness.Versioning;
 
 namespace Harness.Config;
 
@@ -34,14 +35,10 @@ internal sealed record HarnessConfig
 
     public const string FrameGroup = "frame";
 
-    public const int CurrentVersion = 3;
-
-    private const int MinimumVersion = 3;
-
     private static readonly string[] TopLevelKeys =
         ["version", "answers", "applicability", "settings", "policy", "suppress"];
 
-    public required int Version { get; init; }
+    public required HarnessVersion Version { get; init; }
 
     public required bool TracksLatest { get; init; }
 
@@ -63,8 +60,9 @@ internal sealed record HarnessConfig
     public string? AnswerFailure(string key)
         => AnswerFailures.TryGetValue(key, out var failure) ? failure : null;
 
-    public bool IncludesQuestion(int introducedIn)
-        => TracksLatest || introducedIn <= Version;
+    /// <summary>Whether the pinned release already shipped the thing introduced in <paramref name="since"/>.</summary>
+    public bool Includes(HarnessVersion since)
+        => TracksLatest || since <= Version;
 
     public CheckPolicy PolicyFor(string checkId, string group)
     {
@@ -150,7 +148,7 @@ internal sealed record HarnessConfig
     private static (HarnessConfig? Config, string? Failure) Assemble(
         JsonElement root,
         IReadOnlyList<CheckDescriptor> checks,
-        int version,
+        HarnessVersion version,
         bool tracksLatest)
     {
         var (answers, answerFailures, answerFailure) = FrameAnswerReader.Read(
@@ -198,34 +196,43 @@ internal sealed record HarnessConfig
             }, null);
     }
 
-    private static (int Version, bool TracksLatest, string? Failure) ReadVersion(JsonElement root)
+    /// <summary>
+    /// The pinned release is the whole contract: which questions are asked, which checks run
+    /// and which defaults they use. A binary may be newer than the pin and then reproduces the
+    /// pinned release; it may never be older, because it cannot know what it does not ship.
+    /// </summary>
+    private static (HarnessVersion Version, bool TracksLatest, string? Failure) ReadVersion(JsonElement root)
     {
-        if (!root.TryGetProperty("version", out var declared))
+        if (!root.TryGetProperty("version", out var declared) || declared.ValueKind != JsonValueKind.String)
         {
-            return (default, false, $"'version' must be {CurrentVersion} or \"latest\"");
+            return (default, false, Expected);
         }
 
-        if (declared.ValueKind == JsonValueKind.String
-            && string.Equals(declared.GetString(), "latest", StringComparison.Ordinal))
+        var text = declared.GetString();
+        if (string.Equals(text, "latest", StringComparison.Ordinal))
         {
-            return (CurrentVersion, true, null);
+            return (HarnessVersion.Current, true, null);
         }
 
-        if (declared.ValueKind != JsonValueKind.Number || !declared.TryGetInt32(out var version))
+        if (!HarnessVersion.TryParse(text, out var version))
         {
-            return (default, false, $"'version' must be {CurrentVersion} or \"latest\"");
+            return (default, false, Expected);
         }
 
-        if (version > CurrentVersion)
+        if (version > HarnessVersion.Current)
         {
-            return (default, false, $"'version' is {version}, newer than this harness supports "
-                + $"(latest is {CurrentVersion}); update the harness before checking this repository");
+            return (default, false, $"'version' pins harness {version}, which is newer than this binary "
+                + $"({HarnessVersion.Current}); update the harness before checking this repository");
         }
 
-        return version < MinimumVersion
-            ? (default, false, $"'version' {version} is no longer supported; use {CurrentVersion} or \"latest\"")
+        return version < HarnessVersion.Minimum
+            ? (default, false, $"'version' pins harness {version}, which this binary no longer reproduces "
+                + $"(the oldest it knows is {HarnessVersion.Minimum}); raise the pin with `harness upgrade`")
             : (version, false, null);
     }
+
+    private static string Expected
+        => $"'version' must be a harness release such as \"{HarnessVersion.Current}\", or \"latest\"";
 
     private static List<string> Selectors(IReadOnlyList<CheckDescriptor> checks)
         => checks.Select(check => check.Id)
@@ -242,7 +249,7 @@ internal sealed record HarnessConfig
         A minimal .harness.json, committed at the repository root:
 
           {
-            "version": 3,
+            "version": "1.0.0",
             "answers": {
               "tests.unit": { "paths": ["tests/Unit"] },
               "tests.integration": { "present": false, "reason": "no external dependencies yet" },

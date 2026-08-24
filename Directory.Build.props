@@ -1,6 +1,10 @@
 <Project>
 
+  <Import Project="$(MSBuildThisFileDirectory)Version.props" />
+
   <PropertyGroup>
+    <Version>$(HarnessVersion)</Version>
+
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
