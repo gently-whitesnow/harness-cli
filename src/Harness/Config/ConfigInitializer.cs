@@ -1,6 +1,7 @@
 using System.Text;
 using Harness.Commits;
 using Harness.Git;
+using Harness.Versioning;
 
 namespace Harness.Config;
 
@@ -58,14 +59,14 @@ internal static class ConfigInitializer
         IReadOnlyList<CheckDescriptor> checks)
     {
         var defaults = HarnessSettings.Default;
-        var version = latest ? "\"latest\"" : HarnessConfig.CurrentVersion.ToString();
+        var version = latest ? "latest" : HarnessVersion.Current.ToString();
         var questions = checks
             .Where(check => check.AnswerKey is not null)
             .Select(check => check.AnswerKey!)
             .ToList();
 
         var text = new StringBuilder();
-        text.Append("{\n  \"version\": ").Append(version).Append(",\n  \"answers\": {\n");
+        text.Append("{\n  \"version\": \"").Append(version).Append("\",\n  \"answers\": {\n");
         for (var index = 0; index < questions.Count; index++)
         {
             text.Append("    \"").Append(questions[index]).Append("\": {}");

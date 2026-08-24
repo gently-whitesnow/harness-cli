@@ -52,6 +52,12 @@ internal static class GateEngine
                 continue;
             }
 
+            if (config is not null && !config.Includes(check.Since))
+            {
+                gates.Add(NewerThanPin(check, config));
+                continue;
+            }
+
             var stopwatch = Stopwatch.StartNew();
             var disabled = config?.NotApplicable(check.Applicability);
             var evaluation = disabled is null
@@ -67,8 +73,12 @@ internal static class GateEngine
             repository.RootPath,
             WithStaleSuppressions(gates, config, used),
             ToolError: null,
-            repository.ReadDuration);
+            repository.ReadDuration,
+            Pin(config));
     }
+
+    private static string? Pin(HarnessConfig? config)
+        => config is null ? null : config.TracksLatest ? "latest" : config.Version.ToString();
 
     private static GateReport Judge(
         IRepositoryCheck check,
@@ -175,6 +185,21 @@ internal static class GateEngine
         => string.Equals(accepted, found, StringComparison.Ordinal)
             || found.StartsWith(accepted + "/", StringComparison.Ordinal)
             || found.StartsWith(accepted + ":", StringComparison.Ordinal);
+
+    /// <summary>
+    /// A check the pinned release did not ship. Taking a newer binary therefore cannot add a
+    /// finding on its own: the repository decides when to take one on, in a reviewable commit.
+    /// </summary>
+    private static GateReport NewerThanPin(IRepositoryCheck check, HarnessConfig config)
+        => new(
+            check.Id,
+            check.Summary,
+            CheckOutcome.Skipped,
+            [],
+            TimeSpan.Zero,
+            $"introduced in harness {check.Since}; this repository pins {config.Version}. "
+                + "Run `harness upgrade` to take it on.",
+            []);
 
     private static GateReport Excluded(
         IRepositoryCheck check,

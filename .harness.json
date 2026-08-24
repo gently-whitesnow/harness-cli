@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": "1.0.0",
   "answers": {
     "tests.unit": {
       "present": false,

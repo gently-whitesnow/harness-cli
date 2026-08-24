@@ -24,7 +24,7 @@ public sealed class Frame
 
     private readonly Dictionary<string, string> applicability = new(StringComparer.Ordinal);
 
-    private string version = "3";
+    private string version = Quote(Release.Current);
 
     /// <summary>A frame that answers "no" to every question.</summary>
     public static Frame Answering() => new();
@@ -83,9 +83,10 @@ public sealed class Frame
         return this;
     }
 
+    /// <summary>Pins the frame to a release, or to the moving "latest" marker.</summary>
     public Frame Version(string value)
     {
-        version = value == "latest" ? Quote(value) : value;
+        version = Quote(value);
         return this;
     }
 

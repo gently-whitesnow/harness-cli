@@ -44,11 +44,18 @@ C#-проверки разделяют applicability `csharp`. Если весь
 `.slnx` вместо `.sln`; он читает tracked XML, но не выполняет MSBuild evaluation.
 [ADR-0019](adrs/0019-dotnet-repository-policy.md)
 
-`version` числом фиксирует снимок вопросов; `"latest"` включает rolling-контракт. `harness
-init` создаёт все answer-ключи как нерешённые placeholders: исследуй репозиторий и замени
-каждый честным ответом. Если intent или применимость нельзя установить, спроси владельца;
-не выдумывай положительный ответ и не закрывай инициализацию массовыми suppress. Осознанное
-отсутствие — `present: false` с причиной, а не suppress. [ADR-0016](adrs/0016-versioned-frame-and-explicit-initialization.md)
+`version` — строка релиза харнеса (`"1.0.0"`) и единственная версия в конфиге: она фиксирует
+вопросы, проверки и дефолтные пороги. Бинарь не старше пина исполняет закреплённый релиз,
+поэтому обновление бинаря само по себе не добавляет находок; новую проверку включает только
+`harness upgrade`, правящий tracked-файл. Проверка новее пина показывается как skipped, пин
+новее бинаря делает прогон incomplete. Каждая новая проверка несёт `Since` со своим релизом.
+[ADR-0023](adrs/0023-release-version-as-the-verification-contract.md)
+
+`"latest"` включает rolling-контракт. `harness init` создаёт все answer-ключи как нерешённые
+placeholders: исследуй репозиторий и замени каждый честным ответом. Если intent или
+применимость нельзя установить, спроси владельца; не выдумывай положительный ответ и не
+закрывай инициализацию массовыми suppress. Осознанное отсутствие — `present: false` с
+причиной, а не suppress. [ADR-0016](adrs/0016-versioned-frame-and-explicit-initialization.md)
 
 `settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness
 setup` включает шаблон и `commit-msg` hook; `commits.setup` делает пропущенную подготовку
@@ -60,6 +67,7 @@ setup` включает шаблон и `commit-msg` hook; `commits.setup` де�
 
 - `src/Harness` — сам CLI. NativeAOT, установленный .NET runtime в момент использования не нужен.
   - `Cli/` — разбор командной строки, usage, компактный консольный отчёт.
+  - `Versioning/` — релиз как значение: разбор, сравнение и граница поддерживаемых пинов.
   - `Config/` — чтение и полная валидация `.harness.json`: ответы, политика, исключения.
   - `Engine/` — движок: селекция, порядок, тайминг, политика, исключения, коды возврата.
   - `Structure/` — язык-нейтральное ядро: типы, рёбра с уровнем доказательности, границы
@@ -87,7 +95,9 @@ setup` включает шаблон и `commit-msg` hook; `commits.setup` де�
 ## Команды
 
 ```sh
+./harness version                                  # релиз бинаря и диапазон пинов
 ./harness init /path/to/repository                 # создать незавершённую рамку
+./harness upgrade --dry-run                        # что включит подъём пина, ничего не записывая
 ./harness setup                                    # активировать hook и шаблон в этом клоне
 ./harness commit-message template                  # показать шаблон выбранного языка
 ./harness commits check <base>..<head>             # проверить диапазон для CI

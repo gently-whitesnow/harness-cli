@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using Harness.Checks;
 using Harness.Engine;
+using Harness.Versioning;
 
 namespace Harness.Cli;
 
@@ -20,6 +21,13 @@ internal static class ConsoleReport
         }
 
         text.Append(Headline(report)).Append("  ").Append(report.RepositoryPath).Append('\n');
+        text.Append("  harness ").Append(HarnessVersion.Current);
+        if (report.Pin is not null)
+        {
+            text.Append(" · repository pins ").Append(report.Pin);
+        }
+
+        text.Append('\n');
 
         var visibleGates = (focused
             ? report.Gates.Where(gate => gate.Outcome != CheckOutcome.Skipped || gate.OutcomeReason is not null)

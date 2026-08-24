@@ -29,8 +29,10 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           job reads the same frame.
 
         What it accepts
-          version       required; use 3 for a pinned question set or "latest" to follow
-                        every question shipped by the installed harness.
+          version       required; the harness release this repository is pinned to, such as
+                        "1.0.0", or "latest" to follow the installed binary. The pin selects
+                        the questions asked and the checks that run, so a newer binary
+                        reproduces it rather than adding to it.
           answers       one self-reported answer for every `frame` question in the selected
                         version, keyed without the `frame.` prefix.
           applicability shared analysis family (currently `csharp`) answered not applicable.

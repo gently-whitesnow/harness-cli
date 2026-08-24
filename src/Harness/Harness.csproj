@@ -11,4 +11,32 @@
     <StripSymbols>true</StripSymbols>
   </PropertyGroup>
 
+  <!-- Default source exclusions follow BaseIntermediateOutputPath, so a build that redirects
+       it elsewhere would glob whatever an in-tree build left behind. Sources come from the
+       project, never from an output directory. -->
+  <ItemGroup>
+    <Compile Remove="bin/**" />
+    <Compile Remove="obj/**" />
+  </ItemGroup>
+
+  <!-- The release number reaches the binary as a compiled constant rather than an assembly
+       attribute read back through reflection, which ADR-0009 rules out. -->
+  <Target Name="GenerateHarnessBuild" BeforeTargets="BeforeCompile">
+    <PropertyGroup>
+      <HarnessBuildFile>$(IntermediateOutputPath)HarnessBuild.g.cs</HarnessBuildFile>
+    </PropertyGroup>
+    <ItemGroup>
+      <HarnessBuildLine Include="namespace Harness.Versioning%3B" />
+      <HarnessBuildLine Include="internal static class HarnessBuild" />
+      <HarnessBuildLine Include="{" />
+      <HarnessBuildLine Include="    public const string Version = &quot;$(HarnessVersion)&quot;%3B" />
+      <HarnessBuildLine Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(HarnessBuildFile)" Lines="@(HarnessBuildLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(HarnessBuildFile)" />
+      <FileWrites Include="$(HarnessBuildFile)" />
+    </ItemGroup>
+  </Target>
+
 </Project>
