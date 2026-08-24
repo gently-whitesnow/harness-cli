@@ -36,7 +36,7 @@ internal sealed record HarnessConfig
     public const string FrameGroup = "frame";
 
     private static readonly string[] TopLevelKeys =
-        ["version", "answers", "applicability", "settings", "policy", "suppress"];
+        ["version", "answers", "applicability", "settings", "policy", "suppress", "overrides"];
 
     public required HarnessVersion Version { get; init; }
 
@@ -53,6 +53,8 @@ internal sealed record HarnessConfig
     public required IReadOnlyDictionary<string, CheckPolicy> Policy { get; init; }
 
     public required IReadOnlyList<Suppression> Suppressions { get; init; }
+
+    public required IReadOnlyList<PathOverride> Overrides { get; init; }
 
     public FrameAnswer? Answered(string key)
         => Answers.TryGetValue(key, out var answer) ? answer : null;
@@ -181,8 +183,15 @@ internal sealed record HarnessConfig
         }
 
         var (suppressions, suppressionFailure) = PolicyReader.ReadSuppressions(root, selectors);
-        return suppressions is null
-            ? (null, suppressionFailure)
+        if (suppressions is null)
+        {
+            return (null, suppressionFailure);
+        }
+
+        var (overrides, overrideFailure) = OverrideReader.Read(
+            root, tracksLatest || OverrideReader.Since <= version);
+        return overrides is null
+            ? (null, overrideFailure)
             : (new HarnessConfig
             {
                 Version = version,
@@ -193,6 +202,7 @@ internal sealed record HarnessConfig
                 Settings = settings,
                 Policy = policy,
                 Suppressions = suppressions,
+                Overrides = overrides,
             }, null);
     }
 

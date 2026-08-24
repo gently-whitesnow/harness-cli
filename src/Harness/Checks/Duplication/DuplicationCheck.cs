@@ -1,3 +1,4 @@
+using Harness.Config;
 using Harness.Languages;
 using Harness.Languages.CSharp;
 
@@ -43,8 +44,18 @@ internal sealed class DuplicationCheck(CSharpSources sources) : IRepositoryCheck
             return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
         }
 
+        // An excluded file is out of the comparison entirely, so a repetition between an
+        // excluded file and a kept one does not surface as a half-reported group.
+        var analyzed = files
+            .Where(file => !OverrideResolution.Disables(context.Config, Id, file.Source.Path))
+            .ToList();
+        if (analyzed.Count == 0)
+        {
+            return CheckEvaluation.NotApplicable(OverrideResolution.EverythingExcluded);
+        }
+
         return CheckEvaluation.From(
-            Report(Repetitions(NormalizedFile.From(files.Select(file => file.Source).ToList()))));
+            Report(Repetitions(NormalizedFile.From(analyzed.Select(file => file.Source).ToList()))));
     }
 
     private static List<Repetition> Repetitions(IReadOnlyList<NormalizedFile> files)

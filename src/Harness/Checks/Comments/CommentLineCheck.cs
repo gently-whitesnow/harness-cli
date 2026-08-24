@@ -19,7 +19,6 @@ internal sealed class CommentLineCheck(CSharpSources sources) : IRepositoryCheck
 
     public CheckEvaluation Evaluate(CheckContext context)
     {
-        var settings = context.Config?.Settings.Comments ?? CommentSettings.Default;
         var (files, failure) = sources.Read(context.Repository);
         if (failure is not null)
         {
@@ -31,15 +30,25 @@ internal sealed class CommentLineCheck(CSharpSources sources) : IRepositoryCheck
             return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
         }
 
-        var findings = files
+        var analyzed = files
             .Select(file => file.Source)
-            .Where(source => ExceedsLimit(source, settings))
-            .Select(source => new Finding(
+            .Where(source => !OverrideResolution.Disables(context.Config, Id, source.Path))
+            .ToList();
+        if (analyzed.Count == 0)
+        {
+            return CheckEvaluation.NotApplicable(OverrideResolution.EverythingExcluded);
+        }
+
+        var findings = analyzed
+            .Select(source => (Source: source,
+                Settings: OverrideResolution.CommentsFor(context.Config, Id, source.Path)))
+            .Where(entry => ExceedsLimit(entry.Source, entry.Settings))
+            .Select(entry => new Finding(
                 FindingSeverity.Blocking,
-                source.Path,
-                $"{source.CommentLines} of {source.AuthoredLines} authored physical lines are comments "
-                    + $"({Percentage(source)}%), above the {settings.PercentageLimit}% limit "
-                    + $"after the minimum of {settings.MinimumCommentLines} comment lines; "
+                entry.Source.Path,
+                $"{entry.Source.CommentLines} of {entry.Source.AuthoredLines} authored physical lines "
+                    + $"are comments ({Percentage(entry.Source)}%), above the {entry.Settings.PercentageLimit}% "
+                    + $"limit after the minimum of {entry.Settings.MinimumCommentLines} comment lines; "
                     + "keep comments only for a non-obvious reason, "
                     + "invariant, workaround, or required public API contract, and express the rest in names "
                     + "and structure"))

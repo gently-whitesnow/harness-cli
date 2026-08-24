@@ -32,9 +32,6 @@ internal sealed class MaintainabilityCheck(CSharpSources sources) : IRepositoryC
 
     public CheckEvaluation Evaluate(CheckContext context)
     {
-        var metrics = new MetricSet(
-            context.Config?.Settings.Maintainability ?? MaintainabilitySettings.Default);
-
         var (files, failure) = sources.Read(context.Repository);
         if (failure is not null)
         {
@@ -46,13 +43,45 @@ internal sealed class MaintainabilityCheck(CSharpSources sources) : IRepositoryC
             return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
         }
 
-        var measurements = new List<Measurement>();
-        foreach (var file in files)
+        var analyzed = files
+            .Where(file => !OverrideResolution.Disables(context.Config, Id, file.Source.Path))
+            .ToList();
+        if (analyzed.Count == 0)
         {
-            Measure(file, metrics, measurements);
+            return CheckEvaluation.NotApplicable(OverrideResolution.EverythingExcluded);
         }
 
-        return CheckEvaluation.From(MetricReport.Exceeding(measurements, metrics.All, ShownPerMetric));
+        var reference = new MetricSet(
+            context.Config?.Settings.Maintainability ?? MaintainabilitySettings.Default);
+        var sets = new Dictionary<MaintainabilitySettings, MetricSet>();
+        var measurements = new List<Measurement>();
+        foreach (var file in analyzed)
+        {
+            Measure(file, MetricsFor(context, file, reference, sets), measurements);
+        }
+
+        return CheckEvaluation.From(MetricReport.Exceeding(measurements, reference.All, ShownPerMetric));
+    }
+
+    /// <summary>Files sharing effective settings share one metric set, override or not.</summary>
+    private MetricSet MetricsFor(
+        CheckContext context,
+        CSharpFile file,
+        MetricSet reference,
+        Dictionary<MaintainabilitySettings, MetricSet> sets)
+    {
+        var settings = OverrideResolution.MaintainabilityFor(context.Config, Id, file.Source.Path);
+        if (settings == reference.Settings)
+        {
+            return reference;
+        }
+
+        if (!sets.TryGetValue(settings, out var metrics))
+        {
+            sets[settings] = metrics = new MetricSet(settings);
+        }
+
+        return metrics;
     }
 
     private static void Measure(CSharpFile file, MetricSet metrics, List<Measurement> measurements)
@@ -154,6 +183,7 @@ internal sealed class MaintainabilityCheck(CSharpSources sources) : IRepositoryC
     {
         public MetricSet(MaintainabilitySettings settings)
         {
+            Settings = settings;
             FileLines = new("file logical lines", settings.FileLines);
             TypeLines = new("type logical lines", settings.TypeLines);
             MethodLines = new("method logical lines", settings.MethodLines);
@@ -170,6 +200,8 @@ internal sealed class MaintainabilityCheck(CSharpSources sources) : IRepositoryC
                 PublicMembers,
             ];
         }
+
+        public MaintainabilitySettings Settings { get; }
 
         public Metric FileLines { get; }
         public Metric TypeLines { get; }

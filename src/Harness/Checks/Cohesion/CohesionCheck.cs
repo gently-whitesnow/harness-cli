@@ -37,24 +37,40 @@ internal sealed class CohesionCheck(ILanguageAnalyzer analyzer) : IRepositoryChe
             return CheckEvaluation.NotApplicable(analyzer.NothingToAnalyze);
         }
 
+        var analyzed = types
+            .Where(type => !OverrideResolution.Disables(context.Config, Id, type.Path))
+            .ToList();
+        if (analyzed.Count == 0)
+        {
+            return CheckEvaluation.NotApplicable(OverrideResolution.EverythingExcluded);
+        }
+
         var settings = context.Config?.Settings.Cohesion ?? CohesionSettings.Default;
         var metric = new Metric("independent member groups", settings.Groups);
 
         return CheckEvaluation.From(
-            MetricReport.Exceeding(Measure(types, metric, settings), [metric], Shown));
+            MetricReport.Exceeding(Measure(context, analyzed, metric), [metric], Shown));
     }
 
     /// <summary>
     /// A type with no state cannot lack cohesion in the sense measured here, and a type with
-    /// few members says nothing either way. Both are left out rather than counted as ones.
+    /// few members says nothing either way; both are left out rather than counted as ones.
     /// </summary>
-    private static List<Measurement> Measure(
+    private List<Measurement> Measure(
+        CheckContext context,
         IReadOnlyList<TypeCohesion> types,
-        Metric metric,
-        CohesionSettings settings)
+        Metric metric)
         => types
-            .Where(type => type.StateMembers > 0 && type.Members.Count >= settings.MinimumMembers)
-            .Select(type => new Measurement(
-                metric, MemberComponents.Of(type.Members).Count, type.Subject, type.Location))
+            .Select(type => (Type: type,
+                Settings: OverrideResolution.CohesionFor(context.Config, Id, type.Path)))
+            .Where(entry => entry.Type.StateMembers > 0
+                && entry.Type.Members.Count >= entry.Settings.MinimumMembers)
+            .Select(entry => new Measurement(
+                entry.Settings.Groups == metric.ComparisonPoint
+                    ? metric
+                    : metric with { ComparisonPoint = entry.Settings.Groups },
+                MemberComponents.Of(entry.Type.Members).Count,
+                entry.Type.Subject,
+                entry.Type.Location))
             .ToList();
 }

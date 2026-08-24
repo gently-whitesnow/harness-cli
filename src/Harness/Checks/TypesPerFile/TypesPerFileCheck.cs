@@ -1,3 +1,4 @@
+using Harness.Config;
 using Harness.Languages;
 using Harness.Languages.CSharp;
 
@@ -28,8 +29,16 @@ internal sealed class TypesPerFileCheck(CSharpSources sources) : IRepositoryChec
             return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
         }
 
+        var analyzed = files
+            .Where(file => !OverrideResolution.Disables(context.Config, Id, file.Path))
+            .ToList();
+        if (analyzed.Count == 0)
+        {
+            return CheckEvaluation.NotApplicable(OverrideResolution.EverythingExcluded);
+        }
+
         var findings = new List<Finding>();
-        foreach (var file in files)
+        foreach (var file in analyzed)
         {
             var declarations = file.Types
                 .Where(declaration => !declaration.IsNestedType)

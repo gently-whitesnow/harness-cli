@@ -20,6 +20,8 @@ public sealed class Frame
 
     private readonly List<string> suppressions = [];
 
+    private readonly List<string> overrides = [];
+
     private string? settings;
 
     private readonly Dictionary<string, string> applicability = new(StringComparer.Ordinal);
@@ -97,6 +99,13 @@ public sealed class Frame
         return this;
     }
 
+    /// <summary>Adds one override entry verbatim, including one the reader should reject.</summary>
+    public Frame Overriding(string entry)
+    {
+        overrides.Add(entry);
+        return this;
+    }
+
     public override string ToString()
     {
         var text = new StringBuilder($"{{\n  \"version\": {version},\n  \"answers\": {{\n");
@@ -131,6 +140,13 @@ public sealed class Frame
         {
             text.Append(",\n  \"suppress\": [\n");
             text.Append(string.Join(",\n", suppressions.Select(entry => $"    {entry}")));
+            text.Append("\n  ]");
+        }
+
+        if (overrides.Count > 0)
+        {
+            text.Append(",\n  \"overrides\": [\n");
+            text.Append(string.Join(",\n", overrides.Select(entry => $"    {entry}")));
             text.Append("\n  ]");
         }
 

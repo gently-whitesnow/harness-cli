@@ -26,6 +26,9 @@
   на каждый вопрос в tracked `.harness.json`; `paths` — навигация, не доказательство.
   Харнес валидирует полноту и форму, но не инспектирует ответы и не ищет опровержения в Git.
   Заменяет [ADR-0012](0012-declaration-with-an-address-of-proof.md).
+- [ADR-0024](0024-path-scoped-overrides.md) — `overrides` перенастраивает норму path-scoped
+  проверки для glob-зоны (`settings`) или исключает зону из анализа (`off`); `reason`
+  обязателен, суть — норма зоны, а не принятие находки, и этим отличается от `suppress`.
 - [ADR-0013](0013-a-named-exception-is-written-down-and-printed.md) — Рамка обязательна:
   нет или невалиден `.harness.json` — `Incomplete`. Исключение называет `check`, `location`
   и непустой `reason`, печатается строкой `suppressed`, а протухшее — advisory-находка.
