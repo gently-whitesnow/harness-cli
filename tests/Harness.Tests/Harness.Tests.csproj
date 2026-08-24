@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <!-- The compiled CLI process is the only test seam: the reference exists to
+       build the executable and locate it, not to call into its types. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/Harness/Harness.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- Default location of the executable under test; HARNESS_CLI overrides it so the
+       same suite can be pointed at a published NativeAOT binary. -->
+  <PropertyGroup>
+    <HarnessCliPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../src/Harness/bin/$(Configuration)/$(TargetFramework)/harness'))</HarnessCliPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>HarnessCliPath</_Parameter1>
+      <_Parameter2>$(HarnessCliPath)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

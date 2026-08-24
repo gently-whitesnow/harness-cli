@@ -1,0 +1,71 @@
+{
+  "version": 3,
+  "answers": {
+    "tests.unit": {
+      "present": false,
+      "reason": "ADR-0001: единственный тестовый шов — скомпилированный процесс CLI, поэтому юнит-тестов на internal-типы здесь нет намеренно"
+    },
+    "tests.integration": {
+      "paths": ["tests/Harness.Tests"]
+    },
+    "tests.architecture": {
+      "present": false,
+      "reason": "цикл модулей теперь доказывает сам харнес (ADR-0021), но правила слоёв и направления зависимостей здесь по-прежнему держатся ревью ADR, а не исполняемым ассертом"
+    },
+    "format": {
+      "paths": [".editorconfig"]
+    },
+    "lint": {
+      "present": true,
+      "reason": "анализаторы и EnforceCodeStyleInBuild включены централизованно; обязательные style-диагностики заданы в .editorconfig, все warnings становятся errors"
+    },
+    "build": {
+      "paths": ["Harness.slnx"]
+    },
+    "typecheck": {
+      "applicable": false,
+      "reason": "нет web-стека; типы этого репозитория проверяет компилятор C# на сборке"
+    }
+  },
+  "applicability": {},
+  "settings": {
+    "comments.csharp": {
+      "minimumCommentLines": 10,
+      "percentageLimit": 15
+    },
+    "maintainability.csharp": {
+      "fileLines": 400,
+      "typeLines": 300,
+      "methodLines": 60,
+      "branches": 12,
+      "constructorParameters": 6,
+      "publicMembers": 25
+    },
+    "dependencies.csharp": {
+      "externalImports": 20,
+      "outgoingReferences": 15,
+      "incomingReferences": 20
+    },
+    "cohesion.csharp": {
+      "minimumMembers": 6,
+      "groups": 1
+    },
+    "commits": {
+      "language": "ru",
+      "requireSetup": true
+    }
+  },
+  "policy": {
+    "frame.tests.unit": "advisory",
+    "frame.tests.architecture": "advisory",
+    "maintainability.csharp": "advisory",
+    "duplication.csharp": "advisory"
+  },
+  "suppress": [
+    {
+      "check": "dependencies.csharp",
+      "location": "src/Harness/Checks/CheckRegistry.cs",
+      "reason": "реестр по определению называет каждую поставляемую проверку; высокий исходящий fan-out здесь — это его работа, а не связанность, которую надо снижать"
+    }
+  ]
+}
