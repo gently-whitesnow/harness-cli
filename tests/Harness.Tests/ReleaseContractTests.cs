@@ -52,7 +52,7 @@ public sealed class ReleaseContractTests
     [Fact]
     public void Upgrade_previews_the_new_pin_before_it_writes_one()
     {
-        var newer = BuildStampedAs("1.1.0");
+        var newer = BuildStampedAs("1.2.0");
         using var repository = Fixtures.Compliant();
         var frame = repository.Absolute(".harness.json");
 
@@ -60,7 +60,7 @@ public sealed class ReleaseContractTests
 
         Assert.Equal(0, preview.ExitCode);
         Assert.Contains(
-            $"Would raise .harness.json from {Release.Current} to 1.1.0",
+            $"Would raise .harness.json from {Release.Current} to 1.2.0",
             preview.Output,
             StringComparison.Ordinal);
         Assert.Contains("Nothing was written.", preview.Output, StringComparison.Ordinal);
@@ -70,10 +70,10 @@ public sealed class ReleaseContractTests
 
         Assert.Equal(0, raised.ExitCode);
         Assert.Contains(
-            $"Raised .harness.json from {Release.Current} to 1.1.0",
+            $"Raised .harness.json from {Release.Current} to 1.2.0",
             raised.Output,
             StringComparison.Ordinal);
-        Assert.Contains("\"version\": \"1.1.0\"", File.ReadAllText(frame), StringComparison.Ordinal);
+        Assert.Contains("\"version\": \"1.2.0\"", File.ReadAllText(frame), StringComparison.Ordinal);
     }
 
     /// <summary>A binary that does not ship the pinned release refuses rather than guessing.</summary>
