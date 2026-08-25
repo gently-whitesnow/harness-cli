@@ -58,7 +58,8 @@ placeholders: исследуй репозиторий и замени кажды
 причиной, а не suppress. [ADR-0016](adrs/0016-versioned-frame-and-explicit-initialization.md)
 
 `settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness
-setup` включает шаблон и `commit-msg` hook; `commits.setup` делает пропущенную подготовку
+setup` включает шаблон и `commit-msg` hook в общем каталоге клона, поэтому одна подготовка
+покрывает и все его worktree; `commits.setup` делает пропущенную подготовку
 видимой в обычном check. Для CI передавай явный диапазон в `harness commits check
 <base>..<head>`: hook допускает временный autosquash, публикуемый диапазон — нет.
 [ADR-0020](adrs/0020-commit-message-contract-and-clone-setup.md)
