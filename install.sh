@@ -5,7 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh | sh
 #
 # Environment:
-#   HARNESS_VERSION      release to install, such as 1.2.0 (default: the latest release)
+#   HARNESS_VERSION      release to install, such as 1.2.1 (default: the latest release)
 #   HARNESS_INSTALL_DIR  where to put the binary (default: ~/.local/bin)
 #   HARNESS_NO_SETUP     set to any value to skip `harness setup` in the current clone
 set -eu
