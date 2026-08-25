@@ -12,7 +12,7 @@ Partially superseded by [ADR-0011](0011-the-harness-does-not-run-the-repository-
 
 Пользователь выбрал zero-config `check` для первой итерации: scripts должны жить в CLI, а
 manifest появится позже только там, где convention не хватает. Первым workload служит
-`services-platform`, поэтому v0 начинает со стандартной evidence его стеков — solution и
+пилотный .NET/web-монорепозиторий, поэтому v0 начинает со стандартной evidence его стеков — solution и
 projects для .NET, manifest, scripts и lockfile для web — и оставляет расширение открытым.
 
 Tracked manifest харнеса мог бы быть воспроизводимым источником намерения; он не отвергнут,
@@ -44,7 +44,7 @@ Evidence, не выделяющая ровно один план, даёт `Inco
 ### Negative / Risks
 
 - Монорепо без корневого манифеста и с несколькими `package.json` не проверяется совсем:
-  на services-platform план нашёлся только потому, что `apps/web/package.json` — единственный.
+  в пилотном корпусе план нашёлся только потому, что вложенный `package.json` — единственный.
 - Список распознаваемых lockfile (`npm`, `pnpm`, `yarn`, `bun`) живёт в харнесе; менеджер
   вне списка делает surface неоднозначным.
 - Custom command, intentional exception или невыводимая граница модулей не помещаются в эту

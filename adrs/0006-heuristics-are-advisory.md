@@ -6,14 +6,14 @@ Accepted; enforcement superseded by [ADR-0027](0027-required-findings-are-blocki
 
 ## Context
 
-Исходная идея выросла из двух copy-and-fork Python scripts в `services-platform`: около 890
+Исходная идея выросла из двух copy-and-fork Python scripts в пилотном монорепозитории: около 890
 строк maintainability analysis и 436 строк duplication analysis. Публичные материалы
 называли это «связанностью и связностью», но разбор реализации показал более узкие факты:
 logical LOC, lexical branch tokens, constructor parameters, public members, `using` fan-out
 и нормализованные окна строк. Ca/Ce, instability, cohesion и semantic dependency graph там
 не рассчитывались.
 
-На актуальном на момент исследования `services-platform` legacy maintainability scan
+На актуальном на момент исследования пилотном срезе legacy maintainability scan
 проверил 406 C#-файлов без blocking violations, а duplication scan нашёл 434 window groups
 и остался advisory. Пользователь решил, что модель должна оценивать уместность рефакторинга,
 а будущий manifest — хранить явное исключение, например для generated file. Manifest в v0

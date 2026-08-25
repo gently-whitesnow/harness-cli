@@ -14,7 +14,7 @@ Superseded by [ADR-0012](0012-declaration-with-an-address-of-proof.md). Отло
 такой результат нельзя превращать в error или утверждение об отсутствии capability. В
 будущем manifest сможет явно закрепить evidence.
 
-`services-platform` подтвердил ограничение: .NET architecture tests используют
+Пилотный .NET/web-монорепозиторий подтвердил ограничение: architecture tests используют
 распознаваемый `NetArchTest`, а frontend — Steiger, которого первоначальный каталог evidence
 не знал. От числового AI-readiness score пользователь отказался в пользу перечня capabilities
 с доказательствами.
