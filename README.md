@@ -16,8 +16,22 @@ sudo. Никакого .NET runtime для запуска не нужно. То�
 Внутри репозитория с `.harness.json` скрипт заодно выполняет `harness setup`, который
 активирует commit-шаблон и `commit-msg` hook этого клона.
 
-`HARNESS_VERSION=1.2.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог,
-`HARNESS_NO_SETUP=1` отключает подготовку клона.
+Для disposable-контейнера или installer-задачи бинарь можно оставить внутри клона:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh \
+  | sh -s -- --scope clone
+```
+
+`--scope clone` атомарно устанавливает его в
+`$(git rev-parse --git-common-dir)/harness/bin/harness`, под lock-файлом защищает две
+параллельные установки и обязательно выполняет `harness setup`. Hook получает стабильный
+абсолютный путь к этому бинарю, поэтому продолжает работать после завершения контейнера и
+остаётся общим для всех linked worktree клона. User-каталоги и tracked-файлы этот режим не
+меняет.
+
+`HARNESS_VERSION=1.2.1` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
 

@@ -40,7 +40,7 @@ internal static class CommitHookSetup
             return (new CommitHookStatus(false, "commit.template is not configured for this clone"), null);
         }
 
-        var expectedHook = HookContent(Environment.ProcessPath);
+        var expectedHook = HookContent(ExecutablePath());
         var expectedTemplate = TemplateContent(settings);
         if (!FileMatches(paths.HookPath, expectedHook))
         {
@@ -81,7 +81,7 @@ internal static class CommitHookSetup
         try
         {
             Directory.CreateDirectory(paths.HooksDirectory);
-            WriteManaged(paths.HookPath, HookContent(Environment.ProcessPath));
+            WriteManaged(paths.HookPath, HookContent(ExecutablePath()));
             WriteManaged(paths.TemplatePath, TemplateContent(settings));
             if (!OperatingSystem.IsWindows())
             {
@@ -180,13 +180,18 @@ internal static class CommitHookSetup
         File.WriteAllText(path, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
-    private static string HookContent(string? executablePath)
+    private static string ExecutablePath()
     {
-        if (string.IsNullOrWhiteSpace(executablePath))
+        if (string.IsNullOrWhiteSpace(Environment.ProcessPath))
         {
             throw new InvalidOperationException("The harness executable path is unavailable.");
         }
 
+        return Path.GetFullPath(Environment.ProcessPath);
+    }
+
+    private static string HookContent(string executablePath)
+    {
         return $"#!/bin/sh\n{Marker}\nexec {ShellQuote(executablePath)} commit-message check --allow-fixup \"$1\"\n";
     }
 
