@@ -18,9 +18,7 @@ public sealed class CohesionTests
     [Fact]
     public void A_type_holding_two_groups_that_share_no_state_is_reported()
     {
-        using var repository = SourceRepository("src/App/Mixed.cs", CSharp.TwoGroups);
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+        var run = RunSource("src/App/Mixed.cs", CSharp.TwoGroups);
 
         Assert.True(run.OutputContains("independent member groups 2 exceeds"), run.Output);
         Assert.True(run.OutputContains("App.Mixed"), run.Output);
@@ -29,9 +27,7 @@ public sealed class CohesionTests
     [Fact]
     public void A_finding_here_is_advisory_and_does_not_fail_the_run()
     {
-        using var repository = SourceRepository("src/App/Mixed.cs", CSharp.TwoGroups);
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+        var run = RunSource("src/App/Mixed.cs", CSharp.TwoGroups);
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("advisory"), run.Output);
@@ -40,9 +36,7 @@ public sealed class CohesionTests
     [Fact]
     public void A_type_whose_members_all_reach_the_same_state_is_not_reported()
     {
-        using var repository = SourceRepository("src/App/Counter.cs", CSharp.OneGroup);
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+        var run = RunSource("src/App/Counter.cs", CSharp.OneGroup);
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("independent member groups"), run.Output);
@@ -51,9 +45,7 @@ public sealed class CohesionTests
     [Fact]
     public void A_type_that_holds_no_state_is_not_measured()
     {
-        using var repository = SourceRepository("src/App/Helpers.cs", CSharp.NoState);
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+        var run = RunSource("src/App/Helpers.cs", CSharp.NoState);
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("independent member groups"), run.Output);
@@ -62,9 +54,7 @@ public sealed class CohesionTests
     [Fact]
     public void A_type_with_too_few_members_says_nothing_either_way()
     {
-        using var repository = SourceRepository("src/App/Pair.cs", CSharp.TwoSmallGroups);
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+        var run = RunSource("src/App/Pair.cs", CSharp.TwoSmallGroups);
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("independent member groups"), run.Output);
@@ -98,6 +88,12 @@ public sealed class CohesionTests
 
     private static RepositoryFixture SourceRepository(string path, string source)
         => Fixtures.Compliant(Frame.AllPresent()).WriteFile(path, source).Commit();
+
+    private static CliRun RunSource(string path, string source)
+    {
+        using var repository = SourceRepository(path, source);
+        return HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+    }
 
     private static class CSharp
     {

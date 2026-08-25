@@ -1,39 +1,15 @@
 using System.Globalization;
 using Harness.Config;
-using Harness.Languages;
 using Harness.Languages.CSharp;
 
 namespace Harness.Checks.Comments;
 
-internal sealed class CommentLineCheck(CSharpSources sources) : IRepositoryCheck
+internal sealed class CommentLineCheck(CSharpSources sources)
+    : CSharpSourceCheck(sources, "comments", "C# comment density limit", CommentLineExplanation.Text)
 {
-    public string Id => Language.CSharp.Qualify("comments");
-
-    public string Group => "comments";
-
-    public string Applicability => Language.CSharp.Key;
-
-    /// <summary>The corpus is every tracked C# source, not a file this check reports missing.</summary>
-    public IReadOnlyList<EvidenceFile> Evidence => [];
-
-    public string Summary => "C# comment density limit";
-
-    public string Explanation => CommentLineExplanation.Text;
-
-    public CheckEvaluation Evaluate(CheckContext context)
+    protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
     {
         var settings = context.Config?.Settings.Comments ?? CommentSettings.Default;
-        var (files, failure) = sources.Read(context.Repository);
-        if (failure is not null)
-        {
-            return CheckEvaluation.Incomplete(failure);
-        }
-
-        if (files.Count == 0)
-        {
-            return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
-        }
-
         var findings = files
             .Select(file => file.Source)
             .Where(source => ExceedsLimit(source, settings))

@@ -45,6 +45,10 @@ public sealed class InitCommandTests
             .GetProperty("comments.csharp").GetProperty("minimumCommentLines").GetInt32());
         Assert.Equal(400, root.GetProperty("settings")
             .GetProperty("maintainability.csharp").GetProperty("fileLines").GetInt32());
+        Assert.Equal(8, root.GetProperty("settings")
+            .GetProperty("duplication.csharp").GetProperty("windowLines").GetInt32());
+        Assert.Equal(24, root.GetProperty("settings")
+            .GetProperty("duplication.csharp").GetProperty("minimumTokens").GetInt32());
         Assert.Equal("en", root.GetProperty("settings")
             .GetProperty("commits").GetProperty("language").GetString());
         Assert.True(root.GetProperty("settings")

@@ -1,6 +1,5 @@
 using Harness.Checks.Metrics;
 using Harness.Config;
-using Harness.Languages;
 using Harness.Languages.CSharp;
 
 namespace Harness.Checks.Maintainability;
@@ -12,7 +11,12 @@ namespace Harness.Checks.Maintainability;
 /// Nothing here is blocking: approximate analysis does not get to impose architectural
 /// taste on a repository.
 /// </summary>
-internal sealed class MaintainabilityCheck(CSharpSources sources) : IRepositoryCheck
+internal sealed class MaintainabilityCheck(CSharpSources sources)
+    : CSharpSourceCheck(
+        sources,
+        "maintainability",
+        "C# maintainability hotspots",
+        MaintainabilityExplanation.Text)
 {
     private const int ShownPerMetric = 5;
 
@@ -20,33 +24,10 @@ internal sealed class MaintainabilityCheck(CSharpSources sources) : IRepositoryC
     private static readonly string[] BranchKeywords =
         ["foreach", "while", "catch", "case", "when", "for", "if", "do"];
 
-    public string Id => Language.CSharp.Qualify("maintainability");
-
-    public string Group => "maintainability";
-
-    public string Applicability => Language.CSharp.Key;
-
-    public IReadOnlyList<EvidenceFile> Evidence => [];
-
-    public string Summary => "C# maintainability hotspots";
-
-    public string Explanation => MaintainabilityExplanation.Text;
-
-    public CheckEvaluation Evaluate(CheckContext context)
+    protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
     {
         var metrics = new MetricSet(
             context.Config?.Settings.Maintainability ?? MaintainabilitySettings.Default);
-
-        var (files, failure) = sources.Read(context.Repository);
-        if (failure is not null)
-        {
-            return CheckEvaluation.Incomplete(failure);
-        }
-
-        if (files.Count == 0)
-        {
-            return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
-        }
 
         var measurements = new List<Measurement>();
         foreach (var file in files)

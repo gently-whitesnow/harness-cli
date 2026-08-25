@@ -37,11 +37,12 @@ internal static class DuplicationExplanation
                                     formatting do not affect a match
 
         Unit of comparison
-          The unit is a window of 8 consecutive normalized lines carrying at least 24
-          tokens in total. Two windows repeat when their token sequences are identical.
-          Windows below that token count are not compared at all: eight lines of braces,
-          `return`s and closing parentheses are identical in every file and are not
-          something anyone can extract.
+          The unit is a configurable window of consecutive normalized lines carrying a
+          configurable minimum number of tokens in total. The defaults are 8 lines and 24
+          tokens. Two windows repeat when their token sequences are identical. Windows
+          below the token count are not compared at all: lines of braces, `return`s and
+          closing parentheses are identical in every file and are not something anyone can
+          extract.
 
           A repetition is reported once, not once per window. When a group of matching
           windows is found it is grown line by line, backwards and forwards, for as long
@@ -66,7 +67,7 @@ internal static class DuplicationExplanation
           The reader is lexical. An interpolation hole is masked with the literal that
           contains it, so code written inside one is not compared. Structurally identical
           code that differs by one token — an added argument, a different operator — does
-          not match, and a repetition shorter than 8 normalized lines is not reported at
+          not match, and a repetition shorter than the configured window is not reported at
           all. Conditional compilation is not evaluated: directives are removed and every
           branch of the source is read.
 
@@ -92,6 +93,8 @@ internal static class DuplicationExplanation
           belong to different layers or bounded contexts, when they are tests whose
           explicitness is the point, or when the shared abstraction would need a parameter
           for every difference. Engineering judgement decides here; the harness supplies
-          the evidence and will not edit the code.
+          the evidence and will not edit the code. Tune `settings.duplication.csharp.windowLines`
+          and `minimumTokens` when the repository's ordinary explicit patterns make the
+          defaults noisy; use `policy` only when the whole measurement is unwanted.
         """;
 }

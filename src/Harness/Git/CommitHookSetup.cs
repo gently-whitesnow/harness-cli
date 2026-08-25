@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using Harness.Commits;
 
@@ -131,7 +130,7 @@ internal static class CommitHookSetup
             return (null, result.Failure ?? "Git did not report its metadata directory.");
         }
 
-        var gitDirectory = Path.GetFullPath(Path.Combine(rootPath, result.Output.Trim()));
+        var gitDirectory = Path.GetFullPath(Path.Combine(rootPath, result.StandardOutput.Trim()));
         var hooksDirectory = Path.Combine(gitDirectory, "harness-hooks");
         return (new HookPaths(
             hooksDirectory,
@@ -149,9 +148,9 @@ internal static class CommitHookSetup
 
         return result.ExitCode switch
         {
-            0 => (result.Output.Trim(), null),
+            0 => (result.StandardOutput.Trim(), null),
             1 => (null, null),
-            _ => (null, $"Could not read local Git setting '{key}': {result.Error.Trim()}"),
+            _ => (null, $"Could not read local Git setting '{key}': {result.StandardError.Trim()}"),
         };
     }
 
@@ -160,41 +159,11 @@ internal static class CommitHookSetup
         var result = RunGit(rootPath, ["config", "--local", key, value]);
         return result.Failure ?? (result.ExitCode == 0
             ? null
-            : $"Could not set local Git setting '{key}': {result.Error.Trim()}");
+            : $"Could not set local Git setting '{key}': {result.StandardError.Trim()}");
     }
 
-    private static GitResult RunGit(string rootPath, IReadOnlyList<string> arguments)
-    {
-        var startInfo = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = rootPath,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        try
-        {
-            using var process = Process.Start(startInfo);
-            if (process is null)
-            {
-                return new GitResult(-1, "", "", "Could not start Git.");
-            }
-
-            var output = process.StandardOutput.ReadToEndAsync();
-            var error = process.StandardError.ReadToEndAsync();
-            process.WaitForExit();
-            return new GitResult(process.ExitCode, output.Result, error.Result, null);
-        }
-        catch (Exception exception)
-        {
-            return new GitResult(-1, "", "", $"Could not run Git: {exception.Message}");
-        }
-    }
+    private static GitCommandResult RunGit(string rootPath, IReadOnlyList<string> arguments)
+        => GitCommand.Run(arguments, rootPath);
 
     private static void WriteManaged(string path, string content)
     {
@@ -238,5 +207,4 @@ internal static class CommitHookSetup
 
     private sealed record HookPaths(string HooksDirectory, string HookPath, string TemplatePath);
 
-    private sealed record GitResult(int ExitCode, string Output, string Error, string? Failure);
 }

@@ -50,7 +50,7 @@ internal static class CSharpDeclarationSyntax
                 break;
             }
 
-            var close = CloseOfBracket(header, index);
+            var close = CSharpBrackets.CloseOf(header, index);
             if (close < 0)
             {
                 break;
@@ -208,48 +208,7 @@ internal static class CSharpDeclarationSyntax
         => ParameterCountOf(text, TopLevelIndexOf(text, "(", 0));
 
     public static int ParameterCountOf(string text, int open)
-    {
-        if (open < 0)
-        {
-            return -1;
-        }
-
-        var parameters = 1;
-        var depth = 0;
-        var angle = 0;
-        for (var index = open + 1; index < text.Length; index++)
-        {
-            var character = text[index];
-            if (character is ')' or ']' or '}')
-            {
-                if (depth == 0)
-                {
-                    return text[(open + 1)..index].Trim().Length == 0 ? 0 : parameters;
-                }
-
-                depth--;
-            }
-            else if (character is '(' or '[' or '{')
-            {
-                depth++;
-            }
-            else if (character == '<')
-            {
-                // Generic arguments carry commas that are not parameter separators.
-                angle++;
-            }
-            else if (character == '>' && angle > 0 && text[index - 1] is not ('=' or '-'))
-            {
-                angle--;
-            }
-            else if (character == ',' && depth == 0 && angle == 0)
-            {
-                parameters++;
-            }
-        }
-
-        return -1;
-    }
+        => CSharpParameterList.Count(text, open);
 
     public static string WithoutConstraints(string text)
     {
@@ -373,21 +332,4 @@ internal static class CSharpDeclarationSyntax
         return text.Length;
     }
 
-    private static int CloseOfBracket(string text, int open)
-    {
-        var depth = 0;
-        for (var index = open; index < text.Length; index++)
-        {
-            if (text[index] == '[')
-            {
-                depth++;
-            }
-            else if (text[index] == ']' && --depth == 0)
-            {
-                return index;
-            }
-        }
-
-        return -1;
-    }
 }

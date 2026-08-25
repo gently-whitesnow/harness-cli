@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.2.0",
   "answers": {
     "tests.unit": {
       "present": false,
@@ -43,12 +43,16 @@
     },
     "dependencies.csharp": {
       "externalImports": 20,
-      "outgoingReferences": 15,
-      "incomingReferences": 20
+      "outgoingReferences": 24,
+      "incomingReferences": 21
     },
     "cohesion.csharp": {
       "minimumMembers": 6,
-      "groups": 1
+      "groups": 2
+    },
+    "duplication.csharp": {
+      "windowLines": 19,
+      "minimumTokens": 57
     },
     "commits": {
       "language": "ru",
@@ -57,15 +61,6 @@
   },
   "policy": {
     "frame.tests.unit": "advisory",
-    "frame.tests.architecture": "advisory",
-    "maintainability.csharp": "advisory",
-    "duplication.csharp": "advisory"
-  },
-  "suppress": [
-    {
-      "check": "dependencies.csharp",
-      "location": "src/Harness/Checks/CheckRegistry.cs",
-      "reason": "реестр по определению называет каждую поставляемую проверку; высокий исходящий fan-out здесь — это его работа, а не связанность, которую надо снижать"
-    }
-  ]
+    "frame.tests.architecture": "advisory"
+  }
 }

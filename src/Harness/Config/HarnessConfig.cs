@@ -282,6 +282,10 @@ internal sealed record HarnessConfig
                 "minimumMembers": 6,
                 "groups": 1
               },
+              "duplication.csharp": {
+                "windowLines": 8,
+                "minimumTokens": 24
+              },
               "commits": {
                 "language": "en",
                 "requireSetup": true
