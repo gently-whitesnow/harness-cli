@@ -9,7 +9,8 @@ namespace Harness.Checks.Dependencies;
 /// Reads the dependency graph a repository declares about itself and reports two different
 /// kinds of thing. A cycle between modules is proved: every edge of it stands in a position
 /// the language allows nothing but a type, and every name in it resolves to exactly one
-/// declaration, so the run fails. The counts around it are approximate and stay advisory.
+/// declaration, so the check itself marks it blocking. The counts around it are approximate
+/// and originate as advisory evidence; the repository policy decides whether they block.
 /// </summary>
 internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer)
     : LanguageAnalyzerCheck(analyzer, "dependencies", "dependencies between modules and types")

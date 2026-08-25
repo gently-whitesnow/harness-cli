@@ -129,8 +129,16 @@ public sealed class InstallerTests
     }
 
     private static RepositoryFixture Repository()
-        => Fixtures.Compliant(Frame.AllPresent().Settings(
-            """{ "commits": { "language": "en", "requireSetup": true } }"""));
+        => RepositoryFixture.CreateGitRepository()
+            .WriteFile("AGENTS.md", "# Root\n\nNavigation.\n")
+            .WriteFile("README.md", "# Overview\n")
+            .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
+            .WriteFile(
+                ".harness.json",
+                Frame.AllPresent()
+                    .Settings("""{ "commits": { "language": "en", "requireSetup": true } }""")
+                    .ToString())
+            .Commit();
 
     private static string Clone(string source, string destination)
     {

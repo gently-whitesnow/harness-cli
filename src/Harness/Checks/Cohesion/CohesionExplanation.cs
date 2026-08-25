@@ -50,8 +50,9 @@ internal static class CohesionExplanation
         Possible damage
           Splitting a type to satisfy this count adds a file, a name and an indirection, and
           it can separate two things that are read together every time they are read at all.
-          Nothing here is blocking, and a finding that does not survive a look at the type
-          costs only the reading.
+          A finding that does not survive a look at the type should be tuned, suppressed with
+          a reason, or left visible under an explicit advisory policy while it is reviewed.
+          Required is the default repository policy, so an unresolved finding blocks the run.
 
         Comparison points
           `settings.cohesion.csharp.minimumMembers` is how many members a type must declare

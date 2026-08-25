@@ -53,7 +53,8 @@ architecture) при этом сознательно остаётся работ
 `module dependency cycle`: набор модулей, достижимых друг из друга. Все счётные метрики
 (`resolved outgoing type references`, `resolved incoming type references`,
 `external import fan-out`, `independent member groups`) остаются advisory, как требует
-ADR-0006.
+ADR-0006. Их итоговое влияние на прогон определяет repository policy по ADR-0027:
+`required` блокирует оставшуюся находку, `advisory` явно смягчает её.
 
 Имя модуля вложено в имя объемлющего модуля. Ссылка между модулем и модулем внутри него —
 не зависимость, а содержание: реестр, который собирает объявленное собственным поддеревом, и

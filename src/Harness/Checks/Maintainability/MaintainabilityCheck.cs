@@ -8,8 +8,9 @@ namespace Harness.Checks.Maintainability;
 /// Measures C# hotspots lexically and reports them as evidence. Every finding names the
 /// metric, the measured value, the comparison point, the subject and where to read it, so
 /// an agent can decide whether a refactor is warranted without re-deriving the numbers.
-/// Nothing here is blocking: approximate analysis does not get to impose architectural
-/// taste on a repository.
+/// Findings originate as advisory evidence: approximate analysis does not claim universal
+/// architectural truth. Required repository policy nevertheless enforces its configured
+/// comparison points; advisory policy is the explicit migration state.
 /// </summary>
 internal sealed class MaintainabilityCheck(CSharpSources sources)
     : CSharpSourceCheck(

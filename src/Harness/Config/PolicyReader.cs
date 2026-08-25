@@ -3,10 +3,10 @@ using System.Text.Json;
 namespace Harness.Config;
 
 /// <summary>
-/// Reads the three ways a repository softens the default: an applicability that switches a
-/// whole family off, a policy that lowers a check, and a named exception that accepts one
-/// finding. Every one of them has to name something this harness ships, and every one that
-/// speaks without an address has to say why.
+/// Reads repository overrides around the default: applicability switches a whole family off,
+/// policy softens or disables a check, and a named exception accepts one finding. Every
+/// one of them has to name something this harness ships, and every one that speaks without an
+/// address has to say why.
 /// </summary>
 internal static class PolicyReader
 {

@@ -102,6 +102,7 @@ public sealed class DuplicationTests
     public void Awkward_character_literals_do_not_desynchronize_the_comparison()
     {
         using var repository = Repository(
+            Frame.AllPresent().Policy(Check, "advisory"),
             ("src/App/First.cs", DuplicationSources.AwkwardCharactersThenBlock("First", "seed", "first")),
             ("src/App/Second.cs", DuplicationSources.Block("Second", "start", "second")));
 
@@ -117,6 +118,7 @@ public sealed class DuplicationTests
     public void Unrelated_templates_of_the_same_shape_are_reported_only_as_a_lexical_match()
     {
         using var repository = Repository(
+            Frame.AllPresent().Policy(Check, "advisory"),
             ("src/App/Invoice.cs", DuplicationSources.PropertyBag("Invoice", "Supplier")),
             ("src/App/Patient.cs", DuplicationSources.PropertyBag("Patient", "Clinic")));
 
@@ -203,6 +205,7 @@ public sealed class DuplicationTests
     public void Duplication_findings_are_advisory_and_do_not_fail_the_run()
     {
         using var repository = Repository(
+            Frame.AllPresent().Policy(Check, "advisory"),
             ("src/App/First.cs", DuplicationSources.Block("First", "seed", "first")),
             ("src/App/Second.cs", DuplicationSources.Block("Second", "start", "second")));
 

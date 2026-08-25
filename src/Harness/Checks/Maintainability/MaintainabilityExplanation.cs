@@ -8,9 +8,9 @@ internal static class MaintainabilityExplanation
         Rationale
           Size, branching and surface area are the cheapest observable signals that a piece
           of C# is becoming expensive to change. They are signals, not verdicts: the gate
-          measures them, names them precisely and stops there. Every finding is advisory
-          and never produces exit code 1, because an approximate measurement must not
-          impose one architectural taste on every repository.
+          measures them and names them precisely. Findings originate as advisory evidence,
+          while the default required repository policy makes every unresolved finding
+          blocking. A repository paying down known findings can opt into advisory policy.
 
         Discovery
           Every Git-tracked `.cs` file is analyzed. Generated, vendored and build-output
@@ -63,14 +63,14 @@ internal static class MaintainabilityExplanation
           the wrong subject or line, and a value can be inflated by code the metric counts
           against the wrong member. Check the reported location before acting: a refactor
           driven by a misread measurement changes working code for no reason, and it does
-          so with the confidence of a number. Nothing here is blocking, so a finding that
-          does not survive that check costs only the reading.
+          so with the confidence of a number. A finding that does not survive that check
+          should be tuned or suppressed with a reason instead of driving a harmful refactor.
 
         Comparison points
-          The number a measurement is reported against is a comparison point, not a
-          threshold and not a budget. It exists so a value has a scale; exceeding it is an
-          invitation to look, and a deliberate, well-named 300-line state machine that
-          exceeds it is not a defect. Every comparison point is configured under
+          The number a measurement is reported against is a configurable comparison point.
+          Exceeding it is a fact the required policy enforces, not proof of a semantic defect:
+          a deliberate, well-named 300-line state machine may instead need a named exception
+          or a better repository setting. Every comparison point is configured under
           `settings.maintainability.csharp` in `.harness.json`.
 
         Remediation

@@ -51,6 +51,19 @@ public sealed class HarnessFrameTests
         Assert.True(run.OutputContains(explanation), run.Output);
     }
 
+    [Fact]
+    public void A_focused_check_cannot_bypass_an_unsound_frame()
+    {
+        using var repository = Fixtures.WithRawFrame("{}");
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "maintainability.csharp");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains("harness.config"), run.Output);
+        Assert.True(run.OutputContains("'version' must be a harness release"), run.Output);
+        Assert.False(run.OutputContains("maintainability.csharp"), run.Output);
+    }
+
     [Theory]
     [InlineData("docs.plicy", "off", "not a check or group this harness ships")]
     [InlineData("docs.policy", "lenient", "must be required, advisory or off")]
@@ -234,7 +247,7 @@ public sealed class HarnessFrameTests
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
-        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("matched nothing in this run"), run.Output);
         Assert.True(run.OutputContains("was fixed last quarter"), run.Output);
     }

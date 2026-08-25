@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Harness.Checks;
 using Harness.Config;
 using Harness.Git;
+using Harness.Versioning;
 
 namespace Harness.Engine;
 
@@ -16,20 +17,18 @@ namespace Harness.Engine;
 /// </remarks>
 internal static class GateEngine
 {
+    private static readonly HarnessVersion RequiredFindingsSince = new(1, 3, 0);
+
     public static RunReport Run(
         string repositoryPath,
         IReadOnlyList<string> only,
         IReadOnlyList<string> skip,
         IReadOnlyList<IRepositoryCheck> checks)
     {
-        var unknown = UnknownSelectors(only, skip, checks);
-        if (unknown.Count > 0)
+        var invalidSelection = InvalidSelectionReport(only, skip, checks);
+        if (invalidSelection is not null)
         {
-            return new RunReport(
-                RepositoryPath: null,
-                Gates: [],
-                ToolError: $"Unknown check identifier: {string.Join(", ", unknown)}. "
-                    + $"Known identifiers: {string.Join(", ", checks.Select(check => check.Id))}.");
+            return invalidSelection;
         }
 
         var (repository, failure) = GitRepository.Open(repositoryPath);
@@ -39,6 +38,12 @@ internal static class GateEngine
         }
 
         var (config, configFailure) = HarnessConfig.Load(repository, CheckRegistry.Describe(checks));
+        var invalidConfig = InvalidConfigReport(repository, config, configFailure, checks);
+        if (invalidConfig is not null)
+        {
+            return invalidConfig;
+        }
+
         var used = new HashSet<Suppression>();
         var unexplained = new HashSet<EvidenceFile>();
 
@@ -82,6 +87,54 @@ internal static class GateEngine
             repository.ReadDuration,
             Pin(config),
             UntrackedEvidence(repository, unexplained));
+    }
+
+    private static RunReport? InvalidSelectionReport(
+        IReadOnlyList<string> only,
+        IReadOnlyList<string> skip,
+        IReadOnlyList<IRepositoryCheck> checks)
+    {
+        var unknown = UnknownSelectors(only, skip, checks);
+        return unknown.Count == 0
+            ? null
+            : new RunReport(
+                RepositoryPath: null,
+                Gates: [],
+                ToolError: $"Unknown check identifier: {string.Join(", ", unknown)}. "
+                    + $"Known identifiers: {string.Join(", ", checks.Select(check => check.Id))}.");
+    }
+
+    private static RunReport? InvalidConfigReport(
+        GitRepository repository,
+        HarnessConfig? config,
+        string? configFailure,
+        IReadOnlyList<IRepositoryCheck> checks)
+    {
+        var configCheck = checks.FirstOrDefault(check => check.Id == "harness.config");
+        if (config is not null || configFailure is null || configCheck is null)
+        {
+            return null;
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        var evaluation = Evaluate(
+            configCheck,
+            new CheckContext(repository, config, configFailure, configCheck));
+        stopwatch.Stop();
+
+        return new RunReport(
+            repository.RootPath,
+            [Judge(
+                configCheck,
+                evaluation,
+                stopwatch.Elapsed,
+                config,
+                CheckPolicy.Required,
+                [])],
+            ToolError: null,
+            repository.ReadDuration,
+            Pin(config),
+            UntrackedEvidence(repository, configCheck.Evidence.ToHashSet()));
     }
 
     /// <summary>
@@ -159,6 +212,11 @@ internal static class GateEngine
 
         switch (policy)
         {
+            case CheckPolicy.Required when ShouldRequireFindings(kept, config):
+                (kept, reason) = Require(kept, outcome, reason);
+                outcome = CheckOutcome.Failed;
+                break;
+
             case CheckPolicy.Advisory when outcome == CheckOutcome.Failed:
                 kept = kept
                     .Select(finding => finding with { Severity = FindingSeverity.Advisory })
@@ -180,6 +238,20 @@ internal static class GateEngine
         return new GateReport(check.Id, check.Summary, outcome, kept, duration, reason, suppressed);
     }
 
+    private static (List<Finding> Findings, string? Reason) Require(
+        List<Finding> findings,
+        CheckOutcome previousOutcome,
+        string? previousReason)
+    {
+        var reason = previousOutcome == CheckOutcome.Passed
+            ? "checks are required by default, so every reported finding is a blocking violation; "
+                + "use an advisory policy override while the repository is paying down known findings."
+            : previousReason;
+        return (findings
+            .Select(finding => finding with { Severity = FindingSeverity.Blocking })
+            .ToList(), reason);
+    }
+
     /// <summary>
     /// An exception that never matched anything is reported on the frame itself. Stale
     /// exceptions accumulate silently otherwise, and a list of accepted findings nobody has
@@ -196,14 +268,24 @@ internal static class GateEngine
             return gates;
         }
 
+        var policy = config!.PolicyFor("harness.config", "harness");
+        var required = policy == CheckPolicy.Required && UsesRequiredFindingContract(config);
+        var severity = required
+            ? FindingSeverity.Blocking
+            : FindingSeverity.Advisory;
+
         return gates
             .Select(gate => gate.Id != "harness.config" || gate.Outcome != CheckOutcome.Passed
                 ? gate
                 : gate with
                 {
+                    Outcome = required ? CheckOutcome.Failed : gate.Outcome,
+                    OutcomeReason = required
+                        ? "checks are required by default, so a stale named exception is a blocking violation."
+                        : gate.OutcomeReason,
                     Findings = stale
                         .Select(suppression => new Finding(
-                            FindingSeverity.Advisory,
+                            severity,
                             HarnessConfig.FileName,
                             $"the exception for `{suppression.Check}` at {suppression.Location} matched nothing in "
                                 + $"this run (\"{suppression.Reason}\"); the finding it accepted may be gone."))
@@ -211,6 +293,12 @@ internal static class GateEngine
                 })
             .ToList();
     }
+
+    private static bool UsesRequiredFindingContract(HarnessConfig? config)
+        => config?.Includes(RequiredFindingsSince) == true;
+
+    private static bool ShouldRequireFindings(List<Finding> findings, HarnessConfig? config)
+        => findings.Count > 0 && UsesRequiredFindingContract(config);
 
     private static bool Covers(Suppression suppression, IRepositoryCheck check, Finding finding)
         => (string.Equals(suppression.Check, check.Id, StringComparison.Ordinal)
