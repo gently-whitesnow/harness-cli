@@ -167,7 +167,7 @@ internal sealed record HarnessConfig
             return (null, applicabilityFailure);
         }
 
-        var (settings, settingsFailure) = HarnessSettingsReader.Read(root);
+        var (settings, settingsFailure) = HarnessSettingsReader.Read(root, version);
         if (settings is null)
         {
             return (null, ConfigJson.Failure(settingsFailure!));
@@ -263,7 +263,7 @@ internal sealed record HarnessConfig
             "settings": {
               "comments.csharp": {
                 "minimumCommentLines": 10,
-                "percentageLimit": 25
+                "percentageLimit": 8
               },
               "maintainability.csharp": {
                 "fileLines": 400,
@@ -280,11 +280,11 @@ internal sealed record HarnessConfig
               },
               "cohesion.csharp": {
                 "minimumMembers": 6,
-                "groups": 1
+                "groups": 2
               },
               "duplication.csharp": {
-                "windowLines": 8,
-                "minimumTokens": 24
+                "windowLines": 30,
+                "minimumTokens": 90
               },
               "commits": {
                 "language": "en",

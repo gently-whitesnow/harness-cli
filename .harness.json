@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
+  "version": "1.4.0",
   "answers": {
     "tests.unit": {
       "present": false,
@@ -51,8 +51,8 @@
       "groups": 2
     },
     "duplication.csharp": {
-      "windowLines": 19,
-      "minimumTokens": 57
+      "windowLines": 30,
+      "minimumTokens": 90
     },
     "commits": {
       "language": "ru",

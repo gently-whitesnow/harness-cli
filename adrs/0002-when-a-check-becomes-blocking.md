@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-При разборе `services-platform` обнаружились два разных класса гейтов. Formatting, build и
+При разборе пилотного монорепозитория обнаружились два разных класса гейтов. Formatting, build и
 tests имеют внешний инструмент с однозначным pass/fail. Копируемые maintainability и
 duplication scripts были приближёнными: legacy duplication scan нашёл 434 группы и оставил
 репозиторий зелёным, потому что многие группы требовали человеческой интерпретации.

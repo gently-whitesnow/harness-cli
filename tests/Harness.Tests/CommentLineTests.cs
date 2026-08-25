@@ -18,7 +18,7 @@ public sealed class CommentLineTests
     [Fact]
     public void A_file_at_the_percentage_limit_passes()
     {
-        using var repository = SourceRepository(Source(commentLines: 10, codeLines: 30));
+        using var repository = SourceRepository(Source(commentLines: 10, codeLines: 115));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
@@ -28,17 +28,29 @@ public sealed class CommentLineTests
     [Fact]
     public void A_file_above_the_percentage_limit_is_a_blocking_violation_with_remediation()
     {
-        using var repository = SourceRepository(Source(commentLines: 10, codeLines: 29));
+        using var repository = SourceRepository(Source(commentLines: 10, codeLines: 114));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("10 of 39 authored physical lines"), run.Output);
-        Assert.True(run.OutputContains("25.6%"), run.Output);
-        Assert.True(run.OutputContains("25% limit"), run.Output);
+        Assert.True(run.OutputContains("10 of 124 authored physical lines"), run.Output);
+        Assert.True(run.OutputContains("8.1%"), run.Output);
+        Assert.True(run.OutputContains("8% limit"), run.Output);
         Assert.True(run.OutputContains("minimum of 10"), run.Output);
         Assert.True(run.OutputContains("non-obvious reason"), run.Output);
         Assert.True(run.OutputContains("names and structure"), run.Output);
+    }
+
+    [Fact]
+    public void A_pin_before_the_recalibration_keeps_the_25_percent_default()
+    {
+        using var repository = SourceRepository(
+            Source(commentLines: 10, codeLines: 90),
+            Frame.AllPresent().Version("1.3.0"));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
     }
 
     [Fact]
@@ -67,7 +79,7 @@ public sealed class CommentLineTests
     [Fact]
     public void Each_physical_line_with_a_comment_is_counted_once()
     {
-        var source = Source(commentLines: 0, codeLines: 30)
+        var source = Source(commentLines: 0, codeLines: 116)
             + "    /* one\n"
             + new string('\n', 8)
             + "       ten */ public int Value => 1; // still ten\n";

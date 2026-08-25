@@ -43,11 +43,15 @@ public sealed class InitCommandTests
         Assert.Empty(root.GetProperty("applicability").EnumerateObject());
         Assert.Equal(10, root.GetProperty("settings")
             .GetProperty("comments.csharp").GetProperty("minimumCommentLines").GetInt32());
+        Assert.Equal(8, root.GetProperty("settings")
+            .GetProperty("comments.csharp").GetProperty("percentageLimit").GetInt32());
         Assert.Equal(400, root.GetProperty("settings")
             .GetProperty("maintainability.csharp").GetProperty("fileLines").GetInt32());
-        Assert.Equal(8, root.GetProperty("settings")
+        Assert.Equal(2, root.GetProperty("settings")
+            .GetProperty("cohesion.csharp").GetProperty("groups").GetInt32());
+        Assert.Equal(30, root.GetProperty("settings")
             .GetProperty("duplication.csharp").GetProperty("windowLines").GetInt32());
-        Assert.Equal(24, root.GetProperty("settings")
+        Assert.Equal(90, root.GetProperty("settings")
             .GetProperty("duplication.csharp").GetProperty("minimumTokens").GetInt32());
         Assert.Equal("en", root.GetProperty("settings")
             .GetProperty("commits").GetProperty("language").GetString());

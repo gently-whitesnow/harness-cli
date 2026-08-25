@@ -5,6 +5,26 @@ namespace Harness.Tests;
 /// <summary>C# written so that two files repeat a block the normalizer can recognize.</summary>
 internal static class DuplicationSources
 {
+    public static string ShortBlock(string type, string field)
+        => $$"""
+        namespace App;
+
+        public static class {{type}}
+        {
+            public static int Compute(int {{field}})
+            {
+                var total = {{field}};
+                total += 1;
+                total += 2;
+                total += 3;
+                total += 4;
+                total += 5;
+                return total;
+            }
+        }
+
+        """;
+
     public static string Block(string type, string field, string literal)
         => $$"""
         namespace App;
@@ -29,6 +49,23 @@ internal static class DuplicationSources
                     }
 
                     total += item + {{field}};
+                }
+
+                foreach (var item in Items)
+                {
+                    if (item % 2 == 0)
+                    {
+                        total += item;
+                        continue;
+                    }
+
+                    if (item > total)
+                    {
+                        total -= item;
+                        continue;
+                    }
+
+                    total += item * 3;
                 }
 
                 Log("{{literal}}");

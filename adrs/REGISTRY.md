@@ -69,9 +69,11 @@
 - [ADR-0019](0019-dotnet-repository-policy.md) — Три blocking-проверки applicability
   `dotnet` требуют hardened `Directory.Build.props`, Central Package Management через
   ближайший `Directory.Packages.props` и `.slnx`, покрывающий authored-проекты.
-- [ADR-0015](0015-comment-density-is-a-blocking-source-policy.md) — `comments.csharp`
-  падает при не менее чем 10 строках комментариев и доле выше 25% authored physical lines;
-  это локальная source policy, а не универсальная оценка качества каждого комментария.
+- [ADR-0028](0028-recalibrated-csharp-defaults.md) — Начиная с 1.4.0 дефолты C#-эвристик:
+  comments `10/8`, cohesion `6/2`, duplication `30/90`; старые pins получают прежние
+  значения. Заменяет порог comments из ADR-0015.
+- [ADR-0015](0015-comment-density-is-a-blocking-source-policy.md) — Историческое правило
+  comments `10/25`, заменённое ADR-0028 начиная с контракта 1.4.0.
 - [ADR-0006](0006-heuristics-are-advisory.md) — Лексические метрики исходно advisory и
   называются формулой, а не свойством, которое из формулы не следует. Их enforcement
   пересмотрен ADR-0027. `explain` содержит формулу, пределы и вид false positive.

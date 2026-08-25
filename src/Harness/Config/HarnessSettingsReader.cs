@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Harness.Commits;
 using Harness.Languages;
+using Harness.Versioning;
 
 namespace Harness.Config;
 
@@ -18,11 +19,12 @@ internal static class HarnessSettingsReader
     private static readonly string Duplication = Language.CSharp.Qualify("duplication");
     private const string Commits = "commits";
 
-    public static (HarnessSettings? Settings, string? Failure) Read(JsonElement root)
+    public static (HarnessSettings? Settings, string? Failure) Read(JsonElement root, HarnessVersion version)
     {
+        var defaults = HarnessSettings.For(version);
         if (!root.TryGetProperty("settings", out var declared))
         {
-            return (HarnessSettings.Default, null);
+            return (defaults, null);
         }
 
         if (declared.ValueKind != JsonValueKind.Object)
@@ -40,12 +42,13 @@ internal static class HarnessSettingsReader
             }
         }
 
-        return Assemble(declared);
+        return Assemble(declared, defaults);
     }
 
-    private static (HarnessSettings? Settings, string? Failure) Assemble(JsonElement declared)
+    private static (HarnessSettings? Settings, string? Failure) Assemble(
+        JsonElement declared,
+        HarnessSettings defaults)
     {
-        var defaults = HarnessSettings.Default;
         var (comments, commentFailure) = ReadSection(
             declared,
             Comments,
@@ -57,13 +60,13 @@ internal static class HarnessSettingsReader
             return (null, commentFailure);
         }
 
-        var (maintainability, maintainabilityFailure) = ReadMaintainability(declared);
+        var (maintainability, maintainabilityFailure) = ReadMaintainability(declared, defaults.Maintainability);
         if (maintainability is null)
         {
             return (null, maintainabilityFailure);
         }
 
-        var (dependencies, dependencyFailure) = ReadDependencies(declared);
+        var (dependencies, dependencyFailure) = ReadDependencies(declared, defaults.Dependencies);
         if (dependencies is null)
         {
             return (null, dependencyFailure);
@@ -94,7 +97,7 @@ internal static class HarnessSettingsReader
             return (null, $"'settings.{Duplication}.windowLines' must be a positive integer");
         }
 
-        var (commits, commitFailure) = ReadCommits(declared);
+        var (commits, commitFailure) = ReadCommits(declared, defaults.Commits);
         return commits is null
             ? (null, commitFailure)
             : (new HarnessSettings(
@@ -106,9 +109,10 @@ internal static class HarnessSettingsReader
                 commits), null);
     }
 
-    private static (MaintainabilitySettings? Settings, string? Failure) ReadMaintainability(JsonElement declared)
+    private static (MaintainabilitySettings? Settings, string? Failure) ReadMaintainability(
+        JsonElement declared,
+        MaintainabilitySettings defaults)
     {
-        var defaults = MaintainabilitySettings.Default;
         var (values, failure) = ReadSection(
             declared,
             Maintainability,
@@ -127,9 +131,10 @@ internal static class HarnessSettingsReader
             : (new MaintainabilitySettings(values[0], values[1], values[2], values[3], values[4], values[5]), null);
     }
 
-    private static (DependencySettings? Settings, string? Failure) ReadDependencies(JsonElement declared)
+    private static (DependencySettings? Settings, string? Failure) ReadDependencies(
+        JsonElement declared,
+        DependencySettings defaults)
     {
-        var defaults = DependencySettings.Default;
         var (values, failure) = ReadSection(
             declared,
             Dependencies,
@@ -141,11 +146,13 @@ internal static class HarnessSettingsReader
             : (new DependencySettings(values[0], values[1], values[2]), null);
     }
 
-    private static (CommitSettings? Settings, string? Failure) ReadCommits(JsonElement settings)
+    private static (CommitSettings? Settings, string? Failure) ReadCommits(
+        JsonElement settings,
+        CommitSettings defaults)
     {
         if (!settings.TryGetProperty(Commits, out var declared))
         {
-            return (CommitSettings.Default, null);
+            return (defaults, null);
         }
 
         var failure = ValidateObject(declared, Commits, ["language", "requireSetup"], null);
@@ -154,7 +161,7 @@ internal static class HarnessSettingsReader
             return (null, failure);
         }
 
-        var language = CommitLanguage.English;
+        var language = defaults.Language;
         if (declared.TryGetProperty("language", out var declaredLanguage))
         {
             var value = declaredLanguage.ValueKind == JsonValueKind.String ? declaredLanguage.GetString() : null;
@@ -166,7 +173,7 @@ internal static class HarnessSettingsReader
             language = value == "ru" ? CommitLanguage.Russian : CommitLanguage.English;
         }
 
-        var requireSetup = false;
+        var requireSetup = defaults.RequireSetup;
         if (declared.TryGetProperty("requireSetup", out var declaredRequirement))
         {
             if (declaredRequirement.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
