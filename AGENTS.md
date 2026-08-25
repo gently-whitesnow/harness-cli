@@ -63,6 +63,11 @@ setup` включает шаблон и `commit-msg` hook; `commits.setup` де�
 <base>..<head>`: hook допускает временный autosquash, публикуемый диапазон — нет.
 [ADR-0020](adrs/0020-commit-message-contract-and-clone-setup.md)
 
+Доказательство — только tracked-файл: созданный, но не добавленный в индекс файл харнес не
+видит, и находка от этого не меняется. Находка вправе назвать искомые пути, и тогда отчёт
+печатает для них строку `not in the index` с указанием `git add`; второй вызов Git делается
+только при такой находке. [ADR-0026](adrs/0026-untracked-evidence-is-named-in-the-report.md)
+
 ## Раскладка
 
 - `src/Harness` — сам CLI. NativeAOT, установленный .NET runtime в момент использования не нужен.

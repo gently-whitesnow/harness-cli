@@ -35,18 +35,32 @@ internal static class DotNetRepository
         string fileName)
     {
         var tracked = repository.TrackedEntries.ToDictionary(entry => entry.Path, StringComparer.Ordinal);
-        var directory = Directory(projectPath);
-        while (true)
+        foreach (var candidate in Candidates(projectPath, fileName))
         {
-            var candidate = directory.Length == 0 ? fileName : $"{directory}/{fileName}";
             if (tracked.TryGetValue(candidate, out var entry))
             {
                 return ReadXml(repository, entry);
             }
+        }
 
+        return (null, null);
+    }
+
+    /// <summary>
+    /// Every path <see cref="ReadNearest"/> looks at, from the project's own directory up to
+    /// the repository root. A finding about a missing file names them all, so the report can
+    /// say which of them the author has already written without staging.
+    /// </summary>
+    public static IReadOnlyList<string> Candidates(string projectPath, string fileName)
+    {
+        var candidates = new List<string>();
+        var directory = Directory(projectPath);
+        while (true)
+        {
+            candidates.Add(directory.Length == 0 ? fileName : $"{directory}/{fileName}");
             if (directory.Length == 0)
             {
-                return (null, null);
+                return candidates;
             }
 
             directory = Directory(directory);

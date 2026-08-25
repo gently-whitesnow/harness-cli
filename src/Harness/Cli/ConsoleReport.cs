@@ -52,10 +52,17 @@ internal static class ConsoleReport
             AppendGate(text, gate, verbose, identifierWidth);
         }
 
+        var untracked = report.UntrackedEvidence ?? [];
         if (verbose)
         {
             text.Append("\n  git evidence  (").Append(FormatDuration(report.EvidenceDuration)).Append(")\n");
         }
+        else if (untracked.Count > 0)
+        {
+            text.Append("\n  git evidence\n");
+        }
+
+        AppendUntracked(text, untracked);
 
         if (report.Gates.Any(gate => gate.Outcome is CheckOutcome.Failed or CheckOutcome.Incomplete))
         {
@@ -132,6 +139,33 @@ internal static class ConsoleReport
                 .Append(entry.Suppression.Reason)
                 .Append('\n');
         }
+    }
+
+    /// <summary>
+    /// Names the files a finding looked for that exist on disk without being tracked. The
+    /// finding itself stands: Git is what the harness, a reviewer and CI all read. What
+    /// changes is that "you have not written it" stops being the only reading of the report.
+    /// </summary>
+    private static void AppendUntracked(StringBuilder text, IReadOnlyList<string> untracked)
+    {
+        const int shownPaths = 5;
+
+        if (untracked.Count == 0)
+        {
+            return;
+        }
+
+        text.Append("    not in the index  ").Append(string.Join(", ", untracked.Take(shownPaths)));
+
+        var remaining = untracked.Count - Math.Min(untracked.Count, shownPaths);
+        if (remaining > 0)
+        {
+            text.Append(" and ").Append(remaining).Append(" more (").Append(untracked.Count).Append(" total)");
+        }
+
+        text.Append('\n');
+        text.Append("    a check looked for these paths and found them in the working tree only; "
+            + "run `git add`\n    on them, because an untracked file is evidence for nobody.\n");
     }
 
     private static void AppendFindings(StringBuilder text, IReadOnlyList<Finding> findings)

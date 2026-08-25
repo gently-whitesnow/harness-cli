@@ -32,7 +32,8 @@ internal sealed class SolutionFormatCheck : DotNetCheck
             {
                 findings.Add(Block(
                     projects[0].Path,
-                    $"repository has {projects.Count} SDK-style projects but no tracked .slnx solution"));
+                    $"repository has {projects.Count} SDK-style projects but no tracked .slnx solution",
+                    ["*.slnx"]));
             }
 
             return CheckEvaluation.From(findings);

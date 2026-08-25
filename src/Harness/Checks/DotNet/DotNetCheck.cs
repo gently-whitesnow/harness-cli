@@ -32,6 +32,6 @@ internal abstract class DotNetCheck : IRepositoryCheck
 
     protected abstract CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects);
 
-    protected static Finding Block(string location, string message)
-        => new(FindingSeverity.Blocking, location, message);
+    protected static Finding Block(string location, string message, IReadOnlyList<string>? expected = null)
+        => new(FindingSeverity.Blocking, location, message, expected);
 }

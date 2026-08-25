@@ -36,7 +36,9 @@ internal sealed class CentralPackagesCheck : DotNetCheck
             if (packages is null)
             {
                 findings.Add(Block(
-                    project.Path, "has PackageReference items but no tracked Directory.Packages.props"));
+                    project.Path,
+                    "has PackageReference items but no tracked Directory.Packages.props",
+                    DotNetRepository.Candidates(project.Path, "Directory.Packages.props")));
                 continue;
             }
 

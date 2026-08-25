@@ -40,7 +40,10 @@ internal sealed class BuildPropertiesCheck : DotNetCheck
 
             if (props is null)
             {
-                findings.Add(Block(project.Path, "is not covered by a tracked Directory.Build.props"));
+                findings.Add(Block(
+                    project.Path,
+                    "is not covered by a tracked Directory.Build.props",
+                    DotNetRepository.Candidates(project.Path, "Directory.Build.props")));
                 continue;
             }
 
