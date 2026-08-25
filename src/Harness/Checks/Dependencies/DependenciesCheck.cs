@@ -11,7 +11,8 @@ namespace Harness.Checks.Dependencies;
 /// the language allows nothing but a type, and every name in it resolves to exactly one
 /// declaration, so the run fails. The counts around it are approximate and stay advisory.
 /// </summary>
-internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer) : IRepositoryCheck
+internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer)
+    : LanguageAnalyzerCheck(analyzer, "dependencies", "dependencies between modules and types")
 {
     private const int ShownPerMetric = 5;
 
@@ -19,21 +20,11 @@ internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer) : IRepositor
 
     private const int ShownEdges = 4;
 
-    public string Id => analyzer.Language.Qualify("dependencies");
+    public override string Explanation => DependenciesExplanation.Text;
 
-    public string Group => "dependencies";
-
-    public string Applicability => analyzer.Language.Key;
-
-    public IReadOnlyList<EvidenceFile> Evidence => [];
-
-    public string Summary => $"{analyzer.Language.Name} dependencies between modules and types";
-
-    public string Explanation => DependenciesExplanation.Text;
-
-    public CheckEvaluation Evaluate(CheckContext context)
+    public override CheckEvaluation Evaluate(CheckContext context)
     {
-        var (graph, failure) = analyzer.ReadGraph(context.Repository);
+        var (graph, failure) = Analyzer.ReadGraph(context.Repository);
         if (graph is null)
         {
             return CheckEvaluation.Incomplete(failure!);
@@ -41,7 +32,7 @@ internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer) : IRepositor
 
         if (graph.Types.Count == 0)
         {
-            return CheckEvaluation.NotApplicable(analyzer.NothingToAnalyze);
+            return CheckEvaluation.NotApplicable(Analyzer.NothingToAnalyze);
         }
 
         var settings = context.Config?.Settings.Dependencies ?? DependencySettings.Default;
