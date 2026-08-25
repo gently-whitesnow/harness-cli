@@ -99,6 +99,10 @@ internal static class ConfigInitializer
                   "minimumMembers": {{defaults.Cohesion.MinimumMembers}},
                   "groups": {{defaults.Cohesion.Groups}}
                 },
+                "duplication.csharp": {
+                  "windowLines": {{defaults.Duplication.WindowLines}},
+                  "minimumTokens": {{defaults.Duplication.MinimumTokens}}
+                },
                 "commits": {
                   "language": "{{new CommitSettings(commitLanguage, RequireSetup: true).Code}}",
                   "requireSetup": true

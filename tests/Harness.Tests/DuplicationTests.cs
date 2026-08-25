@@ -142,6 +142,34 @@ public sealed class DuplicationTests
     }
 
     [Fact]
+    public void Repository_settings_can_require_a_longer_repeated_window()
+    {
+        using var repository = Repository(
+            Frame.AllPresent().Settings("""{ "duplication.csharp": { "windowLines": 100 } }"""),
+            ("src/App/First.cs", DuplicationSources.Block("First", "seed", "first")),
+            ("src/App/Second.cs", DuplicationSources.Block("Second", "start", "second")));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.False(run.OutputContains("normalized lines"), run.Output);
+    }
+
+    [Fact]
+    public void Repository_settings_can_require_a_denser_repeated_window()
+    {
+        using var repository = Repository(
+            Frame.AllPresent().Settings("""{ "duplication.csharp": { "minimumTokens": 1000 } }"""),
+            ("src/App/First.cs", DuplicationSources.Block("First", "seed", "first")),
+            ("src/App/Second.cs", DuplicationSources.Block("Second", "start", "second")));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.False(run.OutputContains("normalized lines"), run.Output);
+    }
+
+    [Fact]
     public void Awkward_literals_do_not_hide_the_repetition_that_follows_them()
     {
         using var repository = Repository(
@@ -307,8 +335,11 @@ public sealed class DuplicationTests
     }
 
     private static RepositoryFixture Repository(params (string Path, string Source)[] sources)
+        => Repository(Frame.AllPresent(), sources);
+
+    private static RepositoryFixture Repository(Frame frame, params (string Path, string Source)[] sources)
     {
-        var repository = Fixtures.Compliant();
+        var repository = Fixtures.Compliant(frame);
         foreach (var (path, source) in sources)
         {
             repository.WriteFile(path, source);

@@ -1,3 +1,4 @@
+using Harness.Config;
 using Harness.Languages.CSharp;
 
 namespace Harness.Checks.Duplication;
@@ -15,18 +16,16 @@ internal sealed class DuplicationCheck(CSharpSources sources)
         "C# cross-file lexical repetition",
         DuplicationExplanation.Text)
 {
-    private const int WindowLines = 19;
-
-    // Density rejects punctuation-only shapes that ordinary C# repeats everywhere.
-    private const int MinimumWindowTokens = 3 * WindowLines;
-
     private const int ShownBlocks = 5;
 
     private const int ShownLocations = 4;
 
     protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
-        => CheckEvaluation.From(
-            Report(Repetitions(NormalizedFile.From(files.Select(file => file.Source).ToList()))));
+    {
+        var settings = context.Config?.Settings.Duplication ?? DuplicationSettings.Default;
+        return CheckEvaluation.From(Report(Repetitions(NormalizedFile.From(
+            files.Select(file => file.Source).ToList(), settings))));
+    }
 
     private static List<Repetition> Repetitions(IReadOnlyList<NormalizedFile> files)
     {
@@ -92,7 +91,7 @@ internal sealed class DuplicationCheck(CSharpSources sources)
             offset--;
         }
 
-        var length = WindowLines - offset;
+        var length = group[0].File.WindowLines - offset;
         while (Agree(group, occurrence => occurrence.File.LineAt(occurrence.Start + offset + length)))
         {
             length++;
@@ -169,13 +168,21 @@ internal sealed class DuplicationCheck(CSharpSources sources)
 
         private readonly bool[] spent;
 
-        private NormalizedFile(string path, IReadOnlyList<NormalizedLine> lines, int[] ids)
+        private readonly int minimumTokens;
+
+        private NormalizedFile(
+            string path,
+            IReadOnlyList<NormalizedLine> lines,
+            int[] ids,
+            DuplicationSettings settings)
         {
             Path = path;
             this.ids = ids;
             this.lines = lines;
+            WindowLines = settings.WindowLines;
+            minimumTokens = settings.MinimumTokens;
 
-            Windows = Math.Max(0, ids.Length - WindowLines + 1);
+            Windows = Math.Max(0, ids.Length - settings.WindowLines + 1);
             spent = new bool[Math.Max(Windows, 1)];
 
             tokensUpTo = new int[lines.Count + 1];
@@ -189,7 +196,11 @@ internal sealed class DuplicationCheck(CSharpSources sources)
 
         public int Windows { get; }
 
-        public static List<NormalizedFile> From(IReadOnlyList<CSharpSource> sources)
+        public int WindowLines { get; }
+
+        public static List<NormalizedFile> From(
+            IReadOnlyList<CSharpSource> sources,
+            DuplicationSettings settings)
         {
             var identifiers = new Dictionary<string, int>(StringComparer.Ordinal);
             var files = new List<NormalizedFile>();
@@ -208,14 +219,14 @@ internal sealed class DuplicationCheck(CSharpSources sources)
                     ids[line] = id;
                 }
 
-                files.Add(new NormalizedFile(source.Path, lines, ids));
+                files.Add(new NormalizedFile(source.Path, lines, ids, settings));
             }
 
             return files;
         }
 
         public bool IsComparable(int start)
-            => tokensUpTo[start + WindowLines] - tokensUpTo[start] >= MinimumWindowTokens;
+            => tokensUpTo[start + WindowLines] - tokensUpTo[start] >= minimumTokens;
 
         public bool IsSpent(int start) => spent[start];
 

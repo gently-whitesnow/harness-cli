@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "answers": {
     "tests.unit": {
       "present": false,
@@ -49,6 +49,10 @@
     "cohesion.csharp": {
       "minimumMembers": 6,
       "groups": 2
+    },
+    "duplication.csharp": {
+      "windowLines": 19,
+      "minimumTokens": 57
     },
     "commits": {
       "language": "ru",
