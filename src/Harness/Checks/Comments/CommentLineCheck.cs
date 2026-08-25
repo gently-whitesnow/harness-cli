@@ -13,6 +13,9 @@ internal sealed class CommentLineCheck(CSharpSources sources) : IRepositoryCheck
 
     public string Applicability => Language.CSharp.Key;
 
+    /// <summary>The corpus is every tracked C# source, not a file this check reports missing.</summary>
+    public IReadOnlyList<EvidenceFile> Evidence => [];
+
     public string Summary => "C# comment density limit";
 
     public string Explanation => CommentLineExplanation.Text;

@@ -20,6 +20,10 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 
     public string Group => "docs";
 
+    /// <summary>The four names this policy knows; the rest of the Markdown is judged as a corpus.</summary>
+    public IReadOnlyList<EvidenceFile> Evidence =>
+        [new(RootDocument), new(AgentEntryPoint), new(ReadmeDocument), new(SkillDocument)];
+
     public string Summary => "Markdown documentation policy";
 
     public string Explanation => DocumentationPolicyExplanation.Text;
@@ -72,10 +76,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
         {
             if (!tracked.TryGetValue(RootDocument, out var entry))
             {
-                Violation(
-                    RootDocument,
-                    "required canonical root instruction document is not tracked by Git",
-                    [RootDocument]);
+                Violation(RootDocument, "required canonical root instruction document is not tracked by Git");
                 return;
             }
 
@@ -86,10 +87,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
         {
             if (!tracked.TryGetValue(AgentEntryPoint, out var entry))
             {
-                Violation(
-                    AgentEntryPoint,
-                    $"required Git symbolic link to {RootDocument} is not tracked by Git",
-                    [AgentEntryPoint]);
+                Violation(AgentEntryPoint, $"required Git symbolic link to {RootDocument} is not tracked by Git");
                 return;
             }
 
@@ -215,7 +213,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 
             if (!tracked.TryGetValue(resolved, out var targetEntry))
             {
-                Violation(path, $"is a broken symbolic link: '{target}' is not tracked by Git", [resolved]);
+                Violation(path, $"is a broken symbolic link: '{target}' is not tracked by Git");
                 return;
             }
 
@@ -232,7 +230,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
             // root; only a nested entry point can point at a sibling that is not there.
             if (resolved != RootDocument && !tracked.ContainsKey(resolved))
             {
-                Violation(path, $"is a broken symbolic link: no {RootDocument} is tracked beside it", [resolved]);
+                Violation(path, $"is a broken symbolic link: no {RootDocument} is tracked beside it");
             }
         }
 
@@ -299,8 +297,8 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
             return text[^1] == '\n' ? lineCount : lineCount + 1;
         }
 
-        private void Violation(string location, string message, IReadOnlyList<string>? expected = null)
-            => findings.Add(new Finding(FindingSeverity.Blocking, location, message, expected));
+        private void Violation(string location, string message)
+            => findings.Add(new Finding(FindingSeverity.Blocking, location, message));
 
         private void RecordEvidenceGap(string? failure)
             => evidenceGap ??= failure ?? "Git evidence could not be read.";

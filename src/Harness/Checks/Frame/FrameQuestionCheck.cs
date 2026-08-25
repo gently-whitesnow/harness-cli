@@ -17,6 +17,9 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
 
     public string Group => HarnessConfig.FrameGroup;
 
+    /// <summary>A frame question is answered in the frame; it looks up no file of its own.</summary>
+    public IReadOnlyList<EvidenceFile> Evidence => [];
+
     public abstract string Summary { get; }
 
     public abstract string Explanation { get; }

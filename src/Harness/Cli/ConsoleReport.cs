@@ -142,9 +142,9 @@ internal static class ConsoleReport
     }
 
     /// <summary>
-    /// Names the files a finding looked for that exist on disk without being tracked. The
-    /// finding itself stands: Git is what the harness, a reviewer and CI all read. What
-    /// changes is that "you have not written it" stops being the only reading of the report.
+    /// Names the files the run reads as evidence that exist on disk without being tracked. The
+    /// verdict itself stands: Git is what the harness, a reviewer and CI all read. What changes
+    /// is that "you have not written it" stops being the only reading of the report.
     /// </summary>
     private static void AppendUntracked(StringBuilder text, IReadOnlyList<string> untracked)
     {
@@ -164,8 +164,8 @@ internal static class ConsoleReport
         }
 
         text.Append('\n');
-        text.Append("    a check looked for these paths and found them in the working tree only; "
-            + "run `git add`\n    on them, because an untracked file is evidence for nobody.\n");
+        text.Append("    the run reads files with these names as evidence and Git does not see them; "
+            + "run\n    `git add` on them, because an untracked file is evidence for nobody.\n");
     }
 
     private static void AppendFindings(StringBuilder text, IReadOnlyList<Finding> findings)

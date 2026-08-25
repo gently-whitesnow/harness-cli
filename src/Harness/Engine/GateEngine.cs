@@ -39,8 +39,8 @@ internal static class GateEngine
         }
 
         var (config, configFailure) = HarnessConfig.Load(repository, CheckRegistry.Describe(checks));
-        var context = new CheckContext(repository, config, configFailure);
         var used = new HashSet<Suppression>();
+        var unexplained = new HashSet<EvidenceFile>();
 
         var gates = new List<GateReport>();
         foreach (var check in checks)
@@ -61,43 +61,50 @@ internal static class GateEngine
             var stopwatch = Stopwatch.StartNew();
             var disabled = config?.NotApplicable(check.Applicability);
             var evaluation = disabled is null
-                ? Evaluate(check, context)
+                ? Evaluate(check, new CheckContext(repository, config, configFailure, check))
                 : CheckEvaluation.NotApplicable(
                     $"{HarnessConfig.FileName} answers `{disabled.Key}` not applicable — \"{disabled.Reason}\".");
             stopwatch.Stop();
 
-            gates.Add(Judge(check, evaluation, stopwatch.Elapsed, config, policy, used));
+            var gate = Judge(check, evaluation, stopwatch.Elapsed, config, policy, used);
+            gates.Add(gate);
+
+            if (disabled is null && LeftSomethingUnexplained(gate))
+            {
+                unexplained.UnionWith(check.Evidence);
+            }
         }
 
-        var reported = WithStaleSuppressions(gates, config, used);
         return new RunReport(
             repository.RootPath,
-            reported,
+            WithStaleSuppressions(gates, config, used),
             ToolError: null,
             repository.ReadDuration,
             Pin(config),
-            UntrackedEvidence(repository, reported));
+            UntrackedEvidence(repository, unexplained));
     }
 
     /// <summary>
-    /// Findings name the tracked evidence they looked for and did not find. When such a path
-    /// exists in the working tree without being in the index, the run says so: "never written"
-    /// and "written but never staged" read identically otherwise, and the second is the normal
-    /// state of a repository being brought under the harness. The verdict is untouched — an
-    /// untracked file is evidence for nobody — only the report learns what to suggest.
-    /// Git is asked only when a finding named something, so a run with nothing to explain
-    /// does not pay for the answer.
+    /// Whether the check ended with a question open, and so with a place where a file Git
+    /// cannot see may be the reason. A clean pass explains itself; an excluded check and one
+    /// the repository answered not applicable asked nothing and are left out by the caller.
     /// </summary>
-    private static List<string> UntrackedEvidence(GitRepository repository, List<GateReport> gates)
-    {
-        var expected = gates
-            .SelectMany(gate => gate.Findings)
-            .Where(finding => finding.Expected is not null)
-            .SelectMany(finding => finding.Expected!)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
+    private static bool LeftSomethingUnexplained(GateReport gate)
+        => gate.Findings.Count > 0
+            || gate.Outcome is CheckOutcome.Failed
+                or CheckOutcome.Incomplete
+                or CheckOutcome.ReadinessGap
+                or CheckOutcome.NotApplicable;
 
-        if (expected.Count == 0)
+    /// <summary>
+    /// Named evidence that is in the working tree and not in the index. Otherwise "never
+    /// written" and "written but never staged" read identically, and the second is the
+    /// ordinary state of a repository being brought under the harness. The verdict is
+    /// untouched; Git is asked once, and only when a question stayed open.
+    /// </summary>
+    private static List<string> UntrackedEvidence(GitRepository repository, HashSet<EvidenceFile> evidence)
+    {
+        if (evidence.Count == 0)
         {
             return [];
         }
@@ -106,16 +113,10 @@ internal static class GateEngine
         return untracked is null
             ? []
             : untracked
-                .Where(path => expected.Any(candidate => Names(candidate, path)))
+                .Where(path => evidence.Any(file => file.Matches(path)))
                 .Order(StringComparer.Ordinal)
                 .ToList();
     }
-
-    /// <summary>A finding names either an exact path or a `*`-prefixed suffix such as `*.slnx`.</summary>
-    private static bool Names(string expected, string path)
-        => expected.StartsWith('*')
-            ? path.EndsWith(expected[1..], StringComparison.Ordinal)
-            : string.Equals(expected, path, StringComparison.Ordinal);
 
     private static string? Pin(HarnessConfig? config)
         => config is null ? null : config.TracksLatest ? "latest" : config.Version.ToString();

@@ -5,16 +5,21 @@ namespace Harness.Checks.DotNet;
 
 internal static class DotNetRepository
 {
-    private static readonly string[] ProjectExtensions = [".csproj", ".fsproj", ".vbproj"];
+    /// <summary>
+    /// The project files themselves. Without a tracked one there is nothing to judge, so every
+    /// .NET policy reads them and names them as the evidence it needs.
+    /// </summary>
+    public static readonly IReadOnlyList<EvidenceFile> ProjectFiles =
+        [new("*.csproj"), new("*.fsproj"), new("*.vbproj")];
 
-    public static (IReadOnlyList<DotNetFile> Projects, string? Failure) ReadProjects(GitRepository repository)
+    public static (IReadOnlyList<DotNetFile> Projects, string? Failure) ReadProjects(CheckContext context)
     {
         var projects = new List<DotNetFile>();
-        foreach (var entry in repository.TrackedEntries
-            .Where(entry => ProjectExtensions.Contains(System.IO.Path.GetExtension(entry.Path), StringComparer.OrdinalIgnoreCase))
+        foreach (var entry in ProjectFiles
+            .SelectMany(context.Tracked)
             .Where(entry => !RepositoryLocations.IsGenerated(entry.Path)))
         {
-            var (file, failure) = ReadXml(repository, entry);
+            var (file, failure) = ReadXml(context.Repository, entry);
             if (failure is not null)
             {
                 return ([], failure);
@@ -30,41 +35,12 @@ internal static class DotNetRepository
     }
 
     public static (DotNetFile? File, string? Failure) ReadNearest(
-        GitRepository repository,
+        CheckContext context,
         string projectPath,
-        string fileName)
+        EvidenceFile file)
     {
-        var tracked = repository.TrackedEntries.ToDictionary(entry => entry.Path, StringComparer.Ordinal);
-        foreach (var candidate in Candidates(projectPath, fileName))
-        {
-            if (tracked.TryGetValue(candidate, out var entry))
-            {
-                return ReadXml(repository, entry);
-            }
-        }
-
-        return (null, null);
-    }
-
-    /// <summary>
-    /// Every path <see cref="ReadNearest"/> looks at, from the project's own directory up to
-    /// the repository root. A finding about a missing file names them all, so the report can
-    /// say which of them the author has already written without staging.
-    /// </summary>
-    public static IReadOnlyList<string> Candidates(string projectPath, string fileName)
-    {
-        var candidates = new List<string>();
-        var directory = Directory(projectPath);
-        while (true)
-        {
-            candidates.Add(directory.Length == 0 ? fileName : $"{directory}/{fileName}");
-            if (directory.Length == 0)
-            {
-                return candidates;
-            }
-
-            directory = Directory(directory);
-        }
+        var entry = context.Nearest(file, projectPath);
+        return entry is null ? (null, null) : ReadXml(context.Repository, entry);
     }
 
     public static IEnumerable<XElement> Elements(DotNetFile file, string localName)

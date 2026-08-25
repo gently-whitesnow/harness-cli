@@ -26,6 +26,8 @@ internal sealed class MaintainabilityCheck(CSharpSources sources) : IRepositoryC
 
     public string Applicability => Language.CSharp.Key;
 
+    public IReadOnlyList<EvidenceFile> Evidence => [];
+
     public string Summary => "C# maintainability hotspots";
 
     public string Explanation => MaintainabilityExplanation.Text;

@@ -64,9 +64,11 @@ setup` включает шаблон и `commit-msg` hook; `commits.setup` де�
 [ADR-0020](adrs/0020-commit-message-contract-and-clone-setup.md)
 
 Доказательство — только tracked-файл: созданный, но не добавленный в индекс файл харнес не
-видит, и находка от этого не меняется. Находка вправе назвать искомые пути, и тогда отчёт
-печатает для них строку `not in the index` с указанием `git add`; второй вызов Git делается
-только при такой находке. [ADR-0026](adrs/0026-untracked-evidence-is-named-in-the-report.md)
+видит, и вердикт от этого не меняется. Проверка обязана назвать в `Evidence` файлы, которые
+читает по имени, и спрашивать инвентарь только через `context.Tracked`/`context.Nearest`:
+необъявленное чтение — `Incomplete`. Отчёт печатает `not in the index` для объявленных имён,
+лежащих в рабочем дереве без `git add`, если проверка оставила вопрос открытым.
+[ADR-0026](adrs/0026-untracked-evidence-is-named-in-the-report.md)
 
 ## Раскладка
 

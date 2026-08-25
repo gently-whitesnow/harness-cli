@@ -6,6 +6,8 @@ internal sealed class BuildPropertiesCheck : DotNetCheck
 {
     private const string ContinuousIntegration = "ContinuousIntegrationBuild";
 
+    private static readonly EvidenceFile BuildProps = new("Directory.Build.props");
+
     private static readonly IReadOnlyDictionary<string, string> Required =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -26,13 +28,14 @@ internal sealed class BuildPropertiesCheck : DotNetCheck
 
     public override string Explanation => BuildPropertiesExplanation.Text;
 
+    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [BuildProps];
+
     protected override CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects)
     {
         var findings = new List<Finding>();
         foreach (var project in projects)
         {
-            var (props, failure) = DotNetRepository.ReadNearest(
-                context.Repository, project.Path, "Directory.Build.props");
+            var (props, failure) = DotNetRepository.ReadNearest(context, project.Path, BuildProps);
             if (failure is not null)
             {
                 return CheckEvaluation.Incomplete(failure);
@@ -40,10 +43,7 @@ internal sealed class BuildPropertiesCheck : DotNetCheck
 
             if (props is null)
             {
-                findings.Add(Block(
-                    project.Path,
-                    "is not covered by a tracked Directory.Build.props",
-                    DotNetRepository.Candidates(project.Path, "Directory.Build.props")));
+                findings.Add(Block(project.Path, "is not covered by a tracked Directory.Build.props"));
                 continue;
             }
 

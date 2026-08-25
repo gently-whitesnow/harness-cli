@@ -203,6 +203,12 @@ switch (invocation.Kind)
         Console.WriteLine($"{check.Id}  {check.Summary}  (group {check.Group})");
         Console.WriteLine();
         Console.WriteLine(check.Explanation);
+        Console.WriteLine();
+        Console.WriteLine("Named evidence");
+        Console.WriteLine(check.Evidence.Count == 0
+            ? "  none — this check reports no named file as missing."
+            : "  " + string.Join(", ", check.Evidence.Select(file => file.Name))
+                + "\n  A run says when a file with such a name is in the working tree but not in the index.");
         return ExitCodes.Success;
     }
 

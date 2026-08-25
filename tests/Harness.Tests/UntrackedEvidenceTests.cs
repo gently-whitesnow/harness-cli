@@ -96,6 +96,56 @@ public sealed class UntrackedEvidenceTests
         Assert.True(run.OutputContains("not in the index  AGENTS.md"), run.Output);
     }
 
+    /// <summary>
+    /// The first thing every repository does: `harness init` writes the frame and deliberately
+    /// leaves it unstaged. The frame carries no finding — the run is incomplete — so only a
+    /// declaration made by the check itself can explain it.
+    /// </summary>
+    [Fact]
+    public void An_unstaged_frame_written_by_init_is_named()
+    {
+        using var repository = Fixtures.WithoutAFrame();
+
+        HarnessCli.Run(repository.Path, "init");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "harness.config");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains("not in the index  .harness.json"), run.Output);
+    }
+
+    /// <summary>
+    /// An outcome of "not applicable" hides the same trap: a project nobody staged looks
+    /// exactly like a repository that has no .NET projects at all.
+    /// </summary>
+    [Fact]
+    public void An_unstaged_project_is_named_although_nothing_was_applicable()
+    {
+        using var repository = Fixtures.Compliant()
+            .WriteFile("src/App/App.csproj", Fixtures.SimpleSdkProject);
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "build-properties.dotnet");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("no tracked SDK-style .NET projects"), run.Output);
+        Assert.True(run.OutputContains("not in the index  src/App/App.csproj"), run.Output);
+    }
+
+    /// <summary>
+    /// The declaration is required of every check and printed, so a check that reports a file
+    /// as missing cannot answer this question silently or leave the answer invisible.
+    /// </summary>
+    [Fact]
+    public void Every_shipped_check_states_its_named_evidence()
+    {
+        using var repository = Fixtures.Compliant();
+
+        foreach (var id in HarnessCli.ShippedCheckIds(repository.Path))
+        {
+            var explain = HarnessCli.Run(repository.Path, "explain", id);
+            Assert.True(explain.OutputContains("Named evidence"), explain.Output);
+        }
+    }
+
     private const string Project =
         """
         <Project Sdk="Microsoft.NET.Sdk">
