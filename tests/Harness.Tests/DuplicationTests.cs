@@ -147,6 +147,26 @@ public sealed class DuplicationTests
         Assert.False(run.OutputContains("normalized lines"), run.Output);
     }
 
+    [Theory]
+    [InlineData("1.3.0", 1, true)]
+    [InlineData(null, 0, false)]
+    public void The_default_window_follows_the_repository_pin(
+        string? version,
+        int expectedExitCode,
+        bool expectedFinding)
+    {
+        var frame = version is null ? Frame.AllPresent() : Frame.AllPresent().Version(version);
+        using var repository = Repository(
+            frame,
+            ("src/App/First.cs", DuplicationSources.ShortBlock("First", "seed")),
+            ("src/App/Second.cs", DuplicationSources.ShortBlock("Second", "start")));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(expectedExitCode, run.ExitCode);
+        Assert.Equal(expectedFinding, run.OutputContains("lexically repeated block"));
+    }
+
     [Fact]
     public void Repository_settings_can_require_a_longer_repeated_window()
     {

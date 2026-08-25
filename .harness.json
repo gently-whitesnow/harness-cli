@@ -62,17 +62,5 @@
   "policy": {
     "frame.tests.unit": "advisory",
     "frame.tests.architecture": "advisory"
-  },
-  "suppress": [
-    {
-      "check": "dependencies.csharp",
-      "location": "tests/Harness.Tests/Fixtures.cs",
-      "reason": "общая фабрика приёмочных репозиториев намеренно используется всей process-level suite"
-    },
-    {
-      "check": "dependencies.csharp",
-      "location": "tests/Harness.Tests/HarnessCli.cs",
-      "reason": "единый process-level драйвер CLI намеренно используется всеми приёмочными проверками"
-    }
-  ]
+  }
 }
