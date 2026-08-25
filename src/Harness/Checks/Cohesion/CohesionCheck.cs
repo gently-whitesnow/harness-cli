@@ -10,25 +10,16 @@ namespace Harness.Checks.Cohesion;
 /// more than one such group. It is advisory and stays advisory: a type can hold two unrelated
 /// groups on purpose, and no lexical reader can tell that apart from an accident.
 /// </summary>
-internal sealed class CohesionCheck(ILanguageAnalyzer analyzer) : IRepositoryCheck
+internal sealed class CohesionCheck(ILanguageAnalyzer analyzer)
+    : LanguageAnalyzerCheck(analyzer, "cohesion", "types that hold unrelated groups of members")
 {
     private const int Shown = 5;
 
-    public string Id => analyzer.Language.Qualify("cohesion");
+    public override string Explanation => CohesionExplanation.Text;
 
-    public string Group => "cohesion";
-
-    public string Applicability => analyzer.Language.Key;
-
-    public IReadOnlyList<EvidenceFile> Evidence => [];
-
-    public string Summary => $"{analyzer.Language.Name} types that hold unrelated groups of members";
-
-    public string Explanation => CohesionExplanation.Text;
-
-    public CheckEvaluation Evaluate(CheckContext context)
+    public override CheckEvaluation Evaluate(CheckContext context)
     {
-        var (types, failure) = analyzer.ReadCohesion(context.Repository);
+        var (types, failure) = Analyzer.ReadCohesion(context.Repository);
         if (types is null)
         {
             return CheckEvaluation.Incomplete(failure!);
@@ -36,7 +27,7 @@ internal sealed class CohesionCheck(ILanguageAnalyzer analyzer) : IRepositoryChe
 
         if (types.Count == 0)
         {
-            return CheckEvaluation.NotApplicable(analyzer.NothingToAnalyze);
+            return CheckEvaluation.NotApplicable(Analyzer.NothingToAnalyze);
         }
 
         var settings = context.Config?.Settings.Cohesion ?? CohesionSettings.Default;

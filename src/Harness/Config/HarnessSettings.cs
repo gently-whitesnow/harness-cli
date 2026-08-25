@@ -7,6 +7,7 @@ internal sealed record HarnessSettings(
     MaintainabilitySettings Maintainability,
     DependencySettings Dependencies,
     CohesionSettings Cohesion,
+    DuplicationSettings Duplication,
     CommitSettings Commits)
 {
     public static HarnessSettings Default { get; } = new(
@@ -14,5 +15,6 @@ internal sealed record HarnessSettings(
         MaintainabilitySettings.Default,
         DependencySettings.Default,
         CohesionSettings.Default,
+        DuplicationSettings.Default,
         CommitSettings.Default);
 }

@@ -1,35 +1,16 @@
-using Harness.Languages;
 using Harness.Languages.CSharp;
 
 namespace Harness.Checks.TypesPerFile;
 
-internal sealed class TypesPerFileCheck(CSharpSources sources) : IRepositoryCheck
+internal sealed class TypesPerFileCheck(CSharpSources sources)
+    : CSharpSourceCheck(
+        sources,
+        "types-per-file",
+        "one top-level C# class or record per file",
+        TypesPerFileExplanation.Text)
 {
-    public string Id => Language.CSharp.Qualify("types-per-file");
-
-    public string Group => "types-per-file";
-
-    public string Applicability => Language.CSharp.Key;
-
-    public IReadOnlyList<EvidenceFile> Evidence => [];
-
-    public string Summary => "one top-level C# class or record per file";
-
-    public string Explanation => TypesPerFileExplanation.Text;
-
-    public CheckEvaluation Evaluate(CheckContext context)
+    protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
     {
-        var (files, failure) = sources.Read(context.Repository);
-        if (failure is not null)
-        {
-            return CheckEvaluation.Incomplete(failure);
-        }
-
-        if (files.Count == 0)
-        {
-            return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
-        }
-
         var findings = new List<Finding>();
         foreach (var file in files)
         {

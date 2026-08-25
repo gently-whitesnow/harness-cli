@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Harness.Git;
 
 /// <summary>
@@ -10,13 +8,6 @@ namespace Harness.Git;
 /// </summary>
 internal sealed class GitRepository
 {
-    private sealed record GitResult(
-        int ExitCode,
-        string StandardOutput,
-        string StandardError,
-        TimeSpan Duration,
-        string? Failure);
-
     private readonly Dictionary<string, string> blobs = new(StringComparer.Ordinal);
 
     private IReadOnlyList<string>? untracked;
@@ -221,49 +212,8 @@ internal sealed class GitRepository
         return (entries, null);
     }
 
-    /// <summary>Runs Git directly, without a shell, and captures evidence or a launch failure.</summary>
-    private static GitResult RunGit(IReadOnlyList<string> arguments, string workingDirectory)
-    {
-        var startInfo = new ProcessStartInfo("git")
-        {
-            WorkingDirectory = workingDirectory,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        var stopwatch = Stopwatch.StartNew();
-        try
-        {
-            using var process = Process.Start(startInfo);
-            if (process is null)
-            {
-                return new GitResult(-1, "", "", stopwatch.Elapsed, "Could not start Git.");
-            }
-
-            var standardOutput = process.StandardOutput.ReadToEndAsync();
-            var standardError = process.StandardError.ReadToEndAsync();
-            process.WaitForExit();
-            stopwatch.Stop();
-
-            return new GitResult(
-                process.ExitCode,
-                standardOutput.Result,
-                standardError.Result,
-                stopwatch.Elapsed,
-                Failure: null);
-        }
-        catch (Exception exception)
-        {
-            stopwatch.Stop();
-            return new GitResult(-1, "", "", stopwatch.Elapsed, $"Could not run Git: {exception.Message}");
-        }
-    }
+    private static GitCommandResult RunGit(IReadOnlyList<string> arguments, string workingDirectory)
+        => GitCommand.Run(arguments, workingDirectory);
 
     private static string Summarize(string standardError)
     {

@@ -15,6 +15,7 @@ internal static class HarnessSettingsReader
     private static readonly string Maintainability = Language.CSharp.Qualify("maintainability");
     private static readonly string Dependencies = Language.CSharp.Qualify("dependencies");
     private static readonly string Cohesion = Language.CSharp.Qualify("cohesion");
+    private static readonly string Duplication = Language.CSharp.Qualify("duplication");
     private const string Commits = "commits";
 
     public static (HarnessSettings? Settings, string? Failure) Read(JsonElement root)
@@ -29,7 +30,7 @@ internal static class HarnessSettingsReader
             return (null, "'settings' must be an object");
         }
 
-        string[] known = [Comments, Maintainability, Dependencies, Cohesion, Commits];
+        string[] known = [Comments, Maintainability, Dependencies, Cohesion, Duplication, Commits];
         foreach (var property in declared.EnumerateObject())
         {
             if (!known.Contains(property.Name, StringComparer.Ordinal))
@@ -78,6 +79,21 @@ internal static class HarnessSettingsReader
             return (null, cohesionFailure);
         }
 
+        var (duplication, duplicationFailure) = ReadSection(
+            declared,
+            Duplication,
+            ["windowLines", "minimumTokens"],
+            [defaults.Duplication.WindowLines, defaults.Duplication.MinimumTokens]);
+        if (duplication is null)
+        {
+            return (null, duplicationFailure);
+        }
+
+        if (duplication[0] == 0)
+        {
+            return (null, $"'settings.{Duplication}.windowLines' must be a positive integer");
+        }
+
         var (commits, commitFailure) = ReadCommits(declared);
         return commits is null
             ? (null, commitFailure)
@@ -86,6 +102,7 @@ internal static class HarnessSettingsReader
                 maintainability,
                 dependencies,
                 new CohesionSettings(cohesion[0], cohesion[1]),
+                new DuplicationSettings(duplication[0], duplication[1]),
                 commits), null);
     }
 

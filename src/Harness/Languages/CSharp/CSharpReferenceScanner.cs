@@ -188,23 +188,7 @@ internal sealed class CSharpReferenceScanner
     }
 
     private int BracketEnd(int open)
-    {
-        var text = source.Masked;
-        var depth = 0;
-        for (var index = open; index < text.Length; index++)
-        {
-            if (text[index] == '[')
-            {
-                depth++;
-            }
-            else if (text[index] == ']' && --depth == 0)
-            {
-                return index;
-            }
-        }
-
-        return -1;
-    }
+        => CSharpBrackets.CloseOf(source.Masked, open);
 
     private bool StartsLine(int index)
     {
