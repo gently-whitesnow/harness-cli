@@ -50,6 +50,20 @@ public sealed class CohesionTests
     }
 
     [Fact]
+    public void A_pin_before_the_required_finding_contract_keeps_the_advisory_verdict()
+    {
+        using var repository = Fixtures
+            .Compliant(Frame.AllPresent().Version("1.2.1"))
+            .WriteFile("src/App/Mixed.cs", CSharp.TwoGroups)
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("advisory"), run.Output);
+    }
+
+    [Fact]
     public void A_type_whose_members_all_reach_the_same_state_is_not_reported()
     {
         var run = RunSource("src/App/Counter.cs", CSharp.OneGroup);

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Harness.Checks;
 using Harness.Config;
 using Harness.Git;
+using Harness.Versioning;
 
 namespace Harness.Engine;
 
@@ -16,6 +17,8 @@ namespace Harness.Engine;
 /// </remarks>
 internal static class GateEngine
 {
+    private static readonly HarnessVersion RequiredFindingsSince = new(1, 3, 0);
+
     public static RunReport Run(
         string repositoryPath,
         IReadOnlyList<string> only,
@@ -209,7 +212,7 @@ internal static class GateEngine
 
         switch (policy)
         {
-            case CheckPolicy.Required when kept.Count > 0:
+            case CheckPolicy.Required when ShouldRequireFindings(kept, config):
                 (kept, reason) = Require(kept, outcome, reason);
                 outcome = CheckOutcome.Failed;
                 break;
@@ -266,7 +269,8 @@ internal static class GateEngine
         }
 
         var policy = config!.PolicyFor("harness.config", "harness");
-        var severity = policy == CheckPolicy.Required
+        var required = policy == CheckPolicy.Required && UsesRequiredFindingContract(config);
+        var severity = required
             ? FindingSeverity.Blocking
             : FindingSeverity.Advisory;
 
@@ -275,8 +279,8 @@ internal static class GateEngine
                 ? gate
                 : gate with
                 {
-                    Outcome = policy == CheckPolicy.Required ? CheckOutcome.Failed : gate.Outcome,
-                    OutcomeReason = policy == CheckPolicy.Required
+                    Outcome = required ? CheckOutcome.Failed : gate.Outcome,
+                    OutcomeReason = required
                         ? "checks are required by default, so a stale named exception is a blocking violation."
                         : gate.OutcomeReason,
                     Findings = stale
@@ -289,6 +293,12 @@ internal static class GateEngine
                 })
             .ToList();
     }
+
+    private static bool UsesRequiredFindingContract(HarnessConfig? config)
+        => config?.Includes(RequiredFindingsSince) == true;
+
+    private static bool ShouldRequireFindings(List<Finding> findings, HarnessConfig? config)
+        => findings.Count > 0 && UsesRequiredFindingContract(config);
 
     private static bool Covers(Suppression suppression, IRepositoryCheck check, Finding finding)
         => (string.Equals(suppression.Check, check.Id, StringComparison.Ordinal)
