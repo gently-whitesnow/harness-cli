@@ -39,7 +39,7 @@ internal static class DuplicationExplanation
 
         Unit of comparison
           The unit is a configurable window of consecutive normalized lines carrying a
-          configurable minimum number of tokens in total. The defaults are 8 lines and 24
+          configurable minimum number of tokens in total. The defaults are 30 lines and 90
           tokens. Two windows repeat when their token sequences are identical. Windows
           below the token count are not compared at all: lines of braces, `return`s and
           closing parentheses are identical in every file and are not something anyone can

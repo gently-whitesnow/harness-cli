@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0028](0028-recalibrated-csharp-defaults.md).
 
 ## Context
 

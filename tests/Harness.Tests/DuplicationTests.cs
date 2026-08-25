@@ -63,6 +63,8 @@ public sealed class DuplicationTests
     public void A_third_shorter_copy_never_makes_the_same_lines_be_reported_twice()
     {
         using var repository = Repository(
+            Frame.AllPresent().Settings(
+                """{ "duplication.csharp": { "windowLines": 8, "minimumTokens": 24 } }"""),
             ("src/App/First.cs", DuplicationSources.Block("First", "seed", "first")),
             ("src/App/Second.cs", DuplicationSources.Block("Second", "start", "second")),
             ("src/App/Third.cs", DuplicationSources.TruncatedBlock("Third", "origin")));
@@ -118,7 +120,9 @@ public sealed class DuplicationTests
     public void Unrelated_templates_of_the_same_shape_are_reported_only_as_a_lexical_match()
     {
         using var repository = Repository(
-            Frame.AllPresent().Policy(Check, "advisory"),
+            Frame.AllPresent()
+                .Policy(Check, "advisory")
+                .Settings("""{ "duplication.csharp": { "windowLines": 8, "minimumTokens": 24 } }"""),
             ("src/App/Invoice.cs", DuplicationSources.PropertyBag("Invoice", "Supplier")),
             ("src/App/Patient.cs", DuplicationSources.PropertyBag("Patient", "Clinic")));
 
@@ -247,7 +251,8 @@ public sealed class DuplicationTests
     [Fact]
     public void Many_repeated_blocks_stay_bounded_and_report_the_rest_as_a_count()
     {
-        var repository = Fixtures.Compliant();
+        var repository = Fixtures.Compliant(Frame.AllPresent().Settings(
+            """{ "duplication.csharp": { "windowLines": 8, "minimumTokens": 24 } }"""));
         for (var index = 0; index < 8; index++)
         {
             repository

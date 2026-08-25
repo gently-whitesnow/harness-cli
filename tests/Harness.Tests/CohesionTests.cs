@@ -16,11 +16,11 @@ public sealed class CohesionTests
     }
 
     [Fact]
-    public void A_type_holding_two_groups_that_share_no_state_is_reported()
+    public void A_type_holding_three_groups_that_share_no_state_is_reported()
     {
-        var run = RunSource("src/App/Mixed.cs", CSharp.TwoGroups);
+        var run = RunSource("src/App/Mixed.cs", CSharp.ThreeGroups);
 
-        Assert.True(run.OutputContains("independent member groups 2 exceeds"), run.Output);
+        Assert.True(run.OutputContains("independent member groups 3 exceeds"), run.Output);
         Assert.True(run.OutputContains("App.Mixed"), run.Output);
     }
 
@@ -29,7 +29,7 @@ public sealed class CohesionTests
     {
         using var repository = Fixtures
             .Compliant(Frame.AllPresent().Policy(Check, "advisory"))
-            .WriteFile("src/App/Mixed.cs", CSharp.TwoGroups)
+            .WriteFile("src/App/Mixed.cs", CSharp.ThreeGroups)
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
@@ -41,12 +41,35 @@ public sealed class CohesionTests
     [Fact]
     public void Required_policy_turns_an_advisory_finding_into_a_violation()
     {
-        var run = RunSource("src/App/Mixed.cs", CSharp.TwoGroups);
+        var run = RunSource("src/App/Mixed.cs", CSharp.ThreeGroups);
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("outcome: failed"), run.Output);
         Assert.True(run.OutputContains("required by default"), run.Output);
         Assert.True(run.OutputContains("violation"), run.Output);
+    }
+
+    [Fact]
+    public void Two_groups_pass_the_recalibrated_default()
+    {
+        var run = RunSource("src/App/Mixed.cs", CSharp.TwoGroups);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.False(run.OutputContains("independent member groups"), run.Output);
+    }
+
+    [Fact]
+    public void A_pin_before_the_recalibration_keeps_one_group_as_the_comparison_point()
+    {
+        using var repository = Fixtures
+            .Compliant(Frame.AllPresent().Version("1.3.0"))
+            .WriteFile("src/App/Mixed.cs", CSharp.TwoGroups)
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.True(run.OutputContains("independent member groups 2 exceeds"), run.Output);
     }
 
     [Fact]
@@ -94,7 +117,8 @@ public sealed class CohesionTests
     public void The_number_of_members_a_type_must_have_is_configurable()
     {
         using var repository = Fixtures
-            .Compliant(Frame.AllPresent().Settings("""{ "cohesion.csharp": { "minimumMembers": 3 } }"""))
+            .Compliant(Frame.AllPresent().Settings(
+                """{ "cohesion.csharp": { "minimumMembers": 3, "groups": 1 } }"""))
             .WriteFile("src/App/Pair.cs", CSharp.TwoSmallGroups)
             .Commit();
 
@@ -127,6 +151,31 @@ public sealed class CohesionTests
 
     private static class CSharp
     {
+        public const string ThreeGroups =
+            """
+        namespace App;
+
+        public sealed class Mixed
+        {
+            private int left;
+            private int right;
+            private int center;
+
+            public int AddLeft(int value) => left + value;
+
+            public int ReadLeft() => left;
+
+            public int AddRight(int value) => right + value;
+
+            public int ReadRight() => right;
+
+            public int AddCenter(int value) => center + value;
+
+            public int ReadCenter() => center;
+        }
+
+        """;
+
         public const string TwoGroups =
             """
         namespace App;
