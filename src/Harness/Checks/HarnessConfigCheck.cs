@@ -44,8 +44,8 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
                         version, keyed without the `frame.` prefix.
           applicability shared analysis family (currently `csharp`) answered not applicable.
           settings      thresholds and commit language/setup requirements.
-          policy        overrides to the default `required`: `strict` promotes every finding
-                        to blocking, `advisory` softens violations, and `off` skips a check.
+          policy        exceptions to the default `required`: `advisory` keeps findings visible
+                        without blocking, and `off` skips a check.
           suppress      accepted findings, each naming `check`, `location` and `reason`.
 
         Why it is incomplete rather than a violation

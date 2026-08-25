@@ -75,7 +75,7 @@ public sealed class DependenciesTests
     [Fact]
     public void Import_fan_out_counts_imports_from_outside_the_repository()
     {
-        using var repository = Fixtures.Compliant()
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Policy(Check, "advisory"))
             .WriteFile("src/App/Imports.cs", CSharp.ManyImports(25))
             .Commit();
 

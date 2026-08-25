@@ -7,7 +7,9 @@ namespace Harness.Checks.Duplication;
 /// Finds C# that repeats across files after normalization, and reports each repetition once
 /// with every place it occurs. The evidence is lexical: it proves that two regions read the
 /// same once names and literals are removed, which is a reason to look and never a proof
-/// that the two behave alike. Nothing here is blocking.
+/// that the two behave alike. Findings originate as advisory evidence; required repository
+/// policy enforces the configured window, while advisory policy leaves it visible during
+/// migration.
 /// </summary>
 internal sealed class DuplicationCheck(CSharpSources sources)
     : CSharpSourceCheck(

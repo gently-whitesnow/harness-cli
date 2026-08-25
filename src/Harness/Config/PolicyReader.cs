@@ -4,7 +4,7 @@ namespace Harness.Config;
 
 /// <summary>
 /// Reads repository overrides around the default: applicability switches a whole family off,
-/// policy strengthens or softens a check, and a named exception accepts one finding. Every
+/// policy softens or disables a check, and a named exception accepts one finding. Every
 /// one of them has to name something this harness ships, and every one that speaks without an
 /// address has to say why.
 /// </summary>
@@ -103,7 +103,6 @@ internal static class PolicyReader
             var parsed = value switch
             {
                 "required" => CheckPolicy.Required,
-                "strict" => CheckPolicy.Strict,
                 "advisory" => CheckPolicy.Advisory,
                 "off" => CheckPolicy.Off,
                 _ => (CheckPolicy?)null,
@@ -112,7 +111,7 @@ internal static class PolicyReader
             if (parsed is null)
             {
                 return (null, ConfigJson.Failure(
-                    $"'policy.{property.Name}' must be required, strict, advisory or off"));
+                    $"'policy.{property.Name}' must be required, advisory or off"));
             }
 
             policy[property.Name] = parsed.Value;

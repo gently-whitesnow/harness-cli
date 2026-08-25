@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Accepted; enforcement superseded by [ADR-0027](0027-required-findings-are-blocking.md).
 
 ## Context
 

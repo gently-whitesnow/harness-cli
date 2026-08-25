@@ -66,7 +66,7 @@ public sealed class HarnessFrameTests
 
     [Theory]
     [InlineData("docs.plicy", "off", "not a check or group this harness ships")]
-    [InlineData("docs.policy", "lenient", "must be required, strict, advisory or off")]
+    [InlineData("docs.policy", "lenient", "must be required, advisory or off")]
     public void Invalid_policy_ends_the_run_as_incomplete(string selector, string value, string explanation)
     {
         using var repository = Fixtures.WithRawFrame(Frame.Answering().Policy(selector, value).ToString());
@@ -247,7 +247,7 @@ public sealed class HarnessFrameTests
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
-        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("matched nothing in this run"), run.Output);
         Assert.True(run.OutputContains("was fixed last quarter"), run.Output);
     }

@@ -6,9 +6,8 @@ using Harness.Structure;
 namespace Harness.Checks.Cohesion;
 
 /// <summary>
-/// Splits each type into groups of members that share state and reports the types that hold
-/// more than one such group. It is advisory and stays advisory: a type can hold two unrelated
-/// groups on purpose, and no lexical reader can tell that apart from an accident.
+/// Reports types whose members form unrelated state groups. Findings originate as advisory
+/// evidence; required repository policy enforces the limit unless migration is advisory.
 /// </summary>
 internal sealed class CohesionCheck(ILanguageAnalyzer analyzer)
     : LanguageAnalyzerCheck(analyzer, "cohesion", "types that hold unrelated groups of members")

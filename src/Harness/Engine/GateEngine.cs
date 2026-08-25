@@ -209,13 +209,9 @@ internal static class GateEngine
 
         switch (policy)
         {
-            case CheckPolicy.Strict when kept.Count > 0:
-                kept = kept
-                    .Select(finding => finding with { Severity = FindingSeverity.Blocking })
-                    .ToList();
+            case CheckPolicy.Required when kept.Count > 0:
+                (kept, reason) = Require(kept, outcome, reason);
                 outcome = CheckOutcome.Failed;
-                reason = $"{HarnessConfig.FileName} sets this check to strict, so every reported finding is a "
-                    + "blocking violation.";
                 break;
 
             case CheckPolicy.Advisory when outcome == CheckOutcome.Failed:
@@ -229,7 +225,7 @@ internal static class GateEngine
 
             // The repository has committed to this one, so an open question is no longer an
             // acceptable state for it.
-            case CheckPolicy.Required or CheckPolicy.Strict when outcome == CheckOutcome.ReadinessGap:
+            case CheckPolicy.Required when outcome == CheckOutcome.ReadinessGap:
                 kept = [new Finding(FindingSeverity.Blocking, HarnessConfig.FileName, reason ?? "not satisfied")];
                 outcome = CheckOutcome.Failed;
                 reason = "checks are required by default; use an advisory policy override to accept this gap.";
@@ -237,6 +233,20 @@ internal static class GateEngine
         }
 
         return new GateReport(check.Id, check.Summary, outcome, kept, duration, reason, suppressed);
+    }
+
+    private static (List<Finding> Findings, string? Reason) Require(
+        List<Finding> findings,
+        CheckOutcome previousOutcome,
+        string? previousReason)
+    {
+        var reason = previousOutcome == CheckOutcome.Passed
+            ? "checks are required by default, so every reported finding is a blocking violation; "
+                + "use an advisory policy override while the repository is paying down known findings."
+            : previousReason;
+        return (findings
+            .Select(finding => finding with { Severity = FindingSeverity.Blocking })
+            .ToList(), reason);
     }
 
     /// <summary>
@@ -255,14 +265,23 @@ internal static class GateEngine
             return gates;
         }
 
+        var policy = config!.PolicyFor("harness.config", "harness");
+        var severity = policy == CheckPolicy.Required
+            ? FindingSeverity.Blocking
+            : FindingSeverity.Advisory;
+
         return gates
             .Select(gate => gate.Id != "harness.config" || gate.Outcome != CheckOutcome.Passed
                 ? gate
                 : gate with
                 {
+                    Outcome = policy == CheckPolicy.Required ? CheckOutcome.Failed : gate.Outcome,
+                    OutcomeReason = policy == CheckPolicy.Required
+                        ? "checks are required by default, so a stale named exception is a blocking violation."
+                        : gate.OutcomeReason,
                     Findings = stale
                         .Select(suppression => new Finding(
-                            FindingSeverity.Advisory,
+                            severity,
                             HarnessConfig.FileName,
                             $"the exception for `{suppression.Check}` at {suppression.Location} matched nothing in "
                                 + $"this run (\"{suppression.Reason}\"); the finding it accepted may be gone."))

@@ -38,7 +38,7 @@ internal static class MetricReport
             yield return new Finding(
                 FindingSeverity.Advisory,
                 measurement.Location,
-                $"{metric.Name} {measurement.Value} exceeds the advisory comparison point "
+                $"{metric.Name} {measurement.Value} exceeds the configured comparison point "
                     + $"of {metric.ComparisonPoint} in {measurement.Subject}");
         }
 
@@ -47,7 +47,7 @@ internal static class MetricReport
             yield return new Finding(
                 FindingSeverity.Advisory,
                 exceeded[shown].Location,
-                $"{metric.Name}: {exceeded.Count} subjects exceed the advisory comparison point "
+                $"{metric.Name}: {exceeded.Count} subjects exceed the configured comparison point "
                     + $"of {metric.ComparisonPoint}; the {shown} largest are listed above");
         }
     }

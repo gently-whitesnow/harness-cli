@@ -8,9 +8,10 @@ internal static class DuplicationExplanation
         Rationale
           The same structure written out in several files is the cheapest observable sign
           that an abstraction is missing, or that one was copied instead of called. The
-          gate finds where that happened and stops there. Every finding is advisory and
-          never produces exit code 1: a lexical match is a reason to read two places, not
-          a proof that they mean the same thing.
+          gate finds where that happened and stops there. Findings originate as advisory
+          evidence because a lexical match is a reason to read two places, not proof that
+          they mean the same thing. The default required repository policy nevertheless
+          blocks every unresolved match; advisory is an explicit migration state.
 
         Discovery
           Every Git-tracked `.cs` file is analyzed. Generated, vendored and build-output
@@ -83,8 +84,8 @@ internal static class DuplicationExplanation
           Extracting a shared helper from two blocks that only look alike couples two
           things that had no reason to change together, and every later change to one of
           them then arrives as a parameter or a flag on the shared helper. That is worse
-          than the repetition it removed. Nothing here is blocking, so a finding that does
-          not survive reading costs only the reading.
+          than the repetition it removed. A match that does not survive reading should be
+          tuned or suppressed with a reason instead of forcing the wrong abstraction.
 
         Remediation
           Open both locations before deciding anything. Extract when the two blocks encode
@@ -95,6 +96,7 @@ internal static class DuplicationExplanation
           for every difference. Engineering judgement decides here; the harness supplies
           the evidence and will not edit the code. Tune `settings.duplication.csharp.windowLines`
           and `minimumTokens` when the repository's ordinary explicit patterns make the
-          defaults noisy; use `policy` only when the whole measurement is unwanted.
+          defaults noisy; use advisory policy temporarily while known matches are paid down,
+          or `off` only when the whole measurement is unwanted.
         """;
 }

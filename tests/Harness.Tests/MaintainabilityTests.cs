@@ -45,7 +45,10 @@ public sealed class MaintainabilityTests
     [Fact]
     public void Maintainability_findings_are_advisory_and_do_not_fail_the_run()
     {
-        using var repository = SourceRepository("src/App/Report.cs", MaintainabilitySources.LongMethod(70));
+        using var repository = SourceRepository(
+            "src/App/Report.cs",
+            MaintainabilitySources.LongMethod(70),
+            Frame.AllPresent().Policy(Check, "advisory"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
@@ -247,7 +250,7 @@ public sealed class MaintainabilityTests
     [Fact]
     public void Every_documented_metric_is_reachable_from_one_repository()
     {
-        using var repository = Fixtures.Compliant()
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Policy(Check, "advisory"))
             .WriteFile("src/App/Big.cs", MaintainabilitySources.LargeType(420))
             .WriteFile("src/App/Report.cs", MaintainabilitySources.LongMethod(70))
             .WriteFile("src/App/Router.cs", MaintainabilitySources.BranchingMethod)

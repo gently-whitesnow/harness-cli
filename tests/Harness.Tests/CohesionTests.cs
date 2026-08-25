@@ -27,25 +27,25 @@ public sealed class CohesionTests
     [Fact]
     public void A_finding_here_is_advisory_and_does_not_fail_the_run()
     {
-        var run = RunSource("src/App/Mixed.cs", CSharp.TwoGroups);
+        using var repository = Fixtures
+            .Compliant(Frame.AllPresent().Policy(Check, "advisory"))
+            .WriteFile("src/App/Mixed.cs", CSharp.TwoGroups)
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("advisory"), run.Output);
     }
 
     [Fact]
-    public void Strict_policy_turns_an_advisory_finding_into_a_violation()
+    public void Required_policy_turns_an_advisory_finding_into_a_violation()
     {
-        using var repository = Fixtures
-            .Compliant(Frame.AllPresent().Policy(Check, "strict"))
-            .WriteFile("src/App/Mixed.cs", CSharp.TwoGroups)
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+        var run = RunSource("src/App/Mixed.cs", CSharp.TwoGroups);
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("outcome: failed"), run.Output);
-        Assert.True(run.OutputContains("sets this check to strict"), run.Output);
+        Assert.True(run.OutputContains("required by default"), run.Output);
         Assert.True(run.OutputContains("violation"), run.Output);
     }
 
