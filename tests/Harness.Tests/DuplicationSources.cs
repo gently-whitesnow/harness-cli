@@ -61,13 +61,24 @@ internal static class DuplicationSources
                         continue;
                     }
 
-                    break;
+                    if (item < 0)
+                    {
+                        total -= item;
+                        continue;
+                    }
+
+                    total += item + {{field}};
                 }
 
+                Log("truncated");
                 return total;
             }
 
             private static int[] Items => [1, 2, 3];
+
+            private static void Log(string message)
+            {
+            }
         }
 
         """;
@@ -191,7 +202,11 @@ internal static class DuplicationSources
     public static string PropertyBag(string type, string owner)
     {
         var text = new StringBuilder($"namespace App;\n\npublic sealed class {type}\n{{\n");
-        foreach (var member in new[] { "Reference", "Opened", "Closed", "Note", "Category", "State" })
+        foreach (var member in new[]
+        {
+            "Reference", "Opened", "Closed", "Note", "Category", "State", "Priority", "Region",
+            "Owner", "Team", "Channel", "Sequence", "Label", "Description", "Kind",
+        })
         {
             text.Append("    public string ").Append(member).Append(" { get; init; } = string.Empty;\n\n");
         }

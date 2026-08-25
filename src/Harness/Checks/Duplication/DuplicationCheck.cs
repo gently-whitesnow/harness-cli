@@ -1,4 +1,3 @@
-using Harness.Languages;
 using Harness.Languages.CSharp;
 
 namespace Harness.Checks.Duplication;
@@ -9,9 +8,14 @@ namespace Harness.Checks.Duplication;
 /// same once names and literals are removed, which is a reason to look and never a proof
 /// that the two behave alike. Nothing here is blocking.
 /// </summary>
-internal sealed class DuplicationCheck(CSharpSources sources) : IRepositoryCheck
+internal sealed class DuplicationCheck(CSharpSources sources)
+    : CSharpSourceCheck(
+        sources,
+        "duplication",
+        "C# cross-file lexical repetition",
+        DuplicationExplanation.Text)
 {
-    private const int WindowLines = 8;
+    private const int WindowLines = 19;
 
     // Density rejects punctuation-only shapes that ordinary C# repeats everywhere.
     private const int MinimumWindowTokens = 3 * WindowLines;
@@ -20,34 +24,9 @@ internal sealed class DuplicationCheck(CSharpSources sources) : IRepositoryCheck
 
     private const int ShownLocations = 4;
 
-    public string Id => Language.CSharp.Qualify("duplication");
-
-    public string Group => "duplication";
-
-    public string Applicability => Language.CSharp.Key;
-
-    public IReadOnlyList<EvidenceFile> Evidence => [];
-
-    public string Summary => "C# cross-file lexical repetition";
-
-    public string Explanation => DuplicationExplanation.Text;
-
-    public CheckEvaluation Evaluate(CheckContext context)
-    {
-        var (files, failure) = sources.Read(context.Repository);
-        if (failure is not null)
-        {
-            return CheckEvaluation.Incomplete(failure);
-        }
-
-        if (files.Count == 0)
-        {
-            return CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze);
-        }
-
-        return CheckEvaluation.From(
+    protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
+        => CheckEvaluation.From(
             Report(Repetitions(NormalizedFile.From(files.Select(file => file.Source).ToList()))));
-    }
 
     private static List<Repetition> Repetitions(IReadOnlyList<NormalizedFile> files)
     {

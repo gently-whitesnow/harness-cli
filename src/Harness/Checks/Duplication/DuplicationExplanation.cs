@@ -37,9 +37,9 @@ internal static class DuplicationExplanation
                                     formatting do not affect a match
 
         Unit of comparison
-          The unit is a window of 8 consecutive normalized lines carrying at least 24
+          The unit is a window of 19 consecutive normalized lines carrying at least 57
           tokens in total. Two windows repeat when their token sequences are identical.
-          Windows below that token count are not compared at all: eight lines of braces,
+          Windows below that token count are not compared at all: nineteen lines of braces,
           `return`s and closing parentheses are identical in every file and are not
           something anyone can extract.
 
@@ -66,7 +66,7 @@ internal static class DuplicationExplanation
           The reader is lexical. An interpolation hole is masked with the literal that
           contains it, so code written inside one is not compared. Structurally identical
           code that differs by one token — an added argument, a different operator — does
-          not match, and a repetition shorter than 8 normalized lines is not reported at
+          not match, and a repetition shorter than 19 normalized lines is not reported at
           all. Conditional compilation is not evaluated: directives are removed and every
           branch of the source is read.
 
