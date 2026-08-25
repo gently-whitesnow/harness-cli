@@ -11,6 +11,8 @@ internal static class BuildPropertiesExplanation
         What it reads
           Tracked SDK-style .csproj, .fsproj and .vbproj files and the nearest tracked
           Directory.Build.props above each project. The repository toolchain is not executed.
+          Tracked means present in the Git index, so a props file written without `git add` counts
+          as missing; the run then names it under `not in the index`, as it does for a project.
 
         What fails
           A project without Directory.Build.props; a missing hardened property; an unconditional

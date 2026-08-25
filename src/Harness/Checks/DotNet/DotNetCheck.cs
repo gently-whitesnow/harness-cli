@@ -13,13 +13,18 @@ internal abstract class DotNetCheck : IRepositoryCheck
 
     public string Applicability => "dotnet";
 
+    public IReadOnlyList<EvidenceFile> Evidence => [.. DotNetRepository.ProjectFiles, .. PolicyFiles];
+
+    /// <summary>The named files this policy reads on top of the projects it judges.</summary>
+    protected abstract IReadOnlyList<EvidenceFile> PolicyFiles { get; }
+
     public abstract string Summary { get; }
 
     public abstract string Explanation { get; }
 
     public CheckEvaluation Evaluate(CheckContext context)
     {
-        var (projects, failure) = DotNetRepository.ReadProjects(context.Repository);
+        var (projects, failure) = DotNetRepository.ReadProjects(context);
         if (failure is not null)
         {
             return CheckEvaluation.Incomplete(failure);

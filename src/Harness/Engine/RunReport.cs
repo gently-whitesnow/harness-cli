@@ -2,12 +2,17 @@ using Harness.Checks;
 
 namespace Harness.Engine;
 
+/// <param name="UntrackedEvidence">
+/// Paths a finding looked for that exist in the working tree without being tracked. They
+/// change no verdict; they tell the author that the file they wrote is invisible to Git.
+/// </param>
 internal sealed record RunReport(
     string? RepositoryPath,
     IReadOnlyList<GateReport> Gates,
     string? ToolError,
     TimeSpan EvidenceDuration = default,
-    string? Pin = null)
+    string? Pin = null,
+    IReadOnlyList<string>? UntrackedEvidence = null)
 {
     public bool NothingWasVerified
         => ToolError is not null || !Gates.Any(gate => gate.Outcome is CheckOutcome.Passed or CheckOutcome.Failed);

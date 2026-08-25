@@ -10,7 +10,9 @@ internal static class CentralPackagesExplanation
 
         What it reads
           PackageReference items in tracked SDK-style projects and the nearest tracked
-          Directory.Packages.props above each project. NuGet restore is not executed.
+          Directory.Packages.props above each project. NuGet restore is not executed. Tracked
+          means present in the Git index, so a file written without `git add` counts as missing;
+          the run then names it under `not in the index`, as it does for a project.
 
         What fails
           A referenced package without a Directory.Packages.props scope, central management not

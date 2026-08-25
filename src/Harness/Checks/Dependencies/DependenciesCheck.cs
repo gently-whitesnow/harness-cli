@@ -25,6 +25,8 @@ internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer) : IRepositor
 
     public string Applicability => analyzer.Language.Key;
 
+    public IReadOnlyList<EvidenceFile> Evidence => [];
+
     public string Summary => $"{analyzer.Language.Name} dependencies between modules and types";
 
     public string Explanation => DependenciesExplanation.Text;

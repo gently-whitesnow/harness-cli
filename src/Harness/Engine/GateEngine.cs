@@ -39,8 +39,8 @@ internal static class GateEngine
         }
 
         var (config, configFailure) = HarnessConfig.Load(repository, CheckRegistry.Describe(checks));
-        var context = new CheckContext(repository, config, configFailure);
         var used = new HashSet<Suppression>();
+        var unexplained = new HashSet<EvidenceFile>();
 
         var gates = new List<GateReport>();
         foreach (var check in checks)
@@ -61,12 +61,18 @@ internal static class GateEngine
             var stopwatch = Stopwatch.StartNew();
             var disabled = config?.NotApplicable(check.Applicability);
             var evaluation = disabled is null
-                ? Evaluate(check, context)
+                ? Evaluate(check, new CheckContext(repository, config, configFailure, check))
                 : CheckEvaluation.NotApplicable(
                     $"{HarnessConfig.FileName} answers `{disabled.Key}` not applicable — \"{disabled.Reason}\".");
             stopwatch.Stop();
 
-            gates.Add(Judge(check, evaluation, stopwatch.Elapsed, config, policy, used));
+            var gate = Judge(check, evaluation, stopwatch.Elapsed, config, policy, used);
+            gates.Add(gate);
+
+            if (disabled is null && LeftSomethingUnexplained(gate))
+            {
+                unexplained.UnionWith(check.Evidence);
+            }
         }
 
         return new RunReport(
@@ -74,7 +80,42 @@ internal static class GateEngine
             WithStaleSuppressions(gates, config, used),
             ToolError: null,
             repository.ReadDuration,
-            Pin(config));
+            Pin(config),
+            UntrackedEvidence(repository, unexplained));
+    }
+
+    /// <summary>
+    /// Whether the check ended with a question open, and so with a place where a file Git
+    /// cannot see may be the reason. A clean pass explains itself; an excluded check and one
+    /// the repository answered not applicable asked nothing and are left out by the caller.
+    /// </summary>
+    private static bool LeftSomethingUnexplained(GateReport gate)
+        => gate.Findings.Count > 0
+            || gate.Outcome is CheckOutcome.Failed
+                or CheckOutcome.Incomplete
+                or CheckOutcome.ReadinessGap
+                or CheckOutcome.NotApplicable;
+
+    /// <summary>
+    /// Named evidence that is in the working tree and not in the index. Otherwise "never
+    /// written" and "written but never staged" read identically, and the second is the
+    /// ordinary state of a repository being brought under the harness. The verdict is
+    /// untouched; Git is asked once, and only when a question stayed open.
+    /// </summary>
+    private static List<string> UntrackedEvidence(GitRepository repository, HashSet<EvidenceFile> evidence)
+    {
+        if (evidence.Count == 0)
+        {
+            return [];
+        }
+
+        var (untracked, _) = repository.ReadUntrackedPaths();
+        return untracked is null
+            ? []
+            : untracked
+                .Where(path => evidence.Any(file => file.Matches(path)))
+                .Order(StringComparer.Ordinal)
+                .ToList();
     }
 
     private static string? Pin(HarnessConfig? config)

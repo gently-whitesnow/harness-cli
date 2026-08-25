@@ -118,15 +118,20 @@ internal static class CommitHookSetup
             : $"Refusing to replace local Git setting '{key}={existing}'. Remove or reconcile it explicitly.";
     }
 
+    /// <summary>
+    /// Where the managed hook and template live: the common metadata directory, not the
+    /// private one a linked worktree also has. `core.hooksPath` is a shared setting, so a
+    /// worktree is the same clone for this purpose, and one setup serves all of them.
+    /// </summary>
     private static (HookPaths? Paths, string? Failure) ResolvePaths(string rootPath)
     {
-        var result = RunGit(rootPath, ["rev-parse", "--absolute-git-dir"]);
+        var result = RunGit(rootPath, ["rev-parse", "--git-common-dir"]);
         if (result.Failure is not null || result.ExitCode != 0)
         {
             return (null, result.Failure ?? "Git did not report its metadata directory.");
         }
 
-        var gitDirectory = result.Output.Trim();
+        var gitDirectory = Path.GetFullPath(Path.Combine(rootPath, result.Output.Trim()));
         var hooksDirectory = Path.Combine(gitDirectory, "harness-hooks");
         return (new HookPaths(
             hooksDirectory,

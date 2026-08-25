@@ -20,6 +20,8 @@ internal sealed class CohesionCheck(ILanguageAnalyzer analyzer) : IRepositoryChe
 
     public string Applicability => analyzer.Language.Key;
 
+    public IReadOnlyList<EvidenceFile> Evidence => [];
+
     public string Summary => $"{analyzer.Language.Name} types that hold unrelated groups of members";
 
     public string Explanation => CohesionExplanation.Text;

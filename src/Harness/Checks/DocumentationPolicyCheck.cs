@@ -20,6 +20,10 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 
     public string Group => "docs";
 
+    /// <summary>The four names this policy knows; the rest of the Markdown is judged as a corpus.</summary>
+    public IReadOnlyList<EvidenceFile> Evidence =>
+        [new(RootDocument), new(AgentEntryPoint), new(ReadmeDocument), new(SkillDocument)];
+
     public string Summary => "Markdown documentation policy";
 
     public string Explanation => DocumentationPolicyExplanation.Text;

@@ -6,6 +6,10 @@ namespace Harness.Checks.DotNet;
 
 internal sealed class SolutionFormatCheck : DotNetCheck
 {
+    private static readonly EvidenceFile Solution = new("*.slnx");
+
+    private static readonly EvidenceFile LegacySolution = new("*.sln");
+
     public override string Id => "solution-format.dotnet";
 
     public override string Group => "solution-format";
@@ -14,17 +18,16 @@ internal sealed class SolutionFormatCheck : DotNetCheck
 
     public override string Explanation => SolutionFormatExplanation.Text;
 
+    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [Solution, LegacySolution];
+
     protected override CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects)
     {
-        var findings = context.Repository.TrackedEntries
-            .Where(entry => entry.Path.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
+        var findings = context.Tracked(LegacySolution)
             .Select(entry => Block(
                 entry.Path, "legacy .sln is tracked; migrate it to .slnx and remove the .sln file"))
             .ToList();
 
-        var solutions = context.Repository.TrackedEntries
-            .Where(entry => entry.Path.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        var solutions = context.Tracked(Solution);
 
         if (solutions.Count == 0)
         {

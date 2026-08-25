@@ -34,7 +34,9 @@ internal static class DocumentationPolicyExplanation
           Non-Markdown contracts such as OpenAPI documents and schemas are out of scope.
           Line counts are measured on the working tree, so an edit is judged before it is
           staged; when a tracked document is absent there, its staged content is used
-          instead. Evidence that cannot be read at all ends the check as incomplete.
+          instead. A new document is different: until `git add` it is not in the index and
+          the check reads it as missing, which the run says in as many words.
+          Evidence that cannot be read at all ends the check as incomplete.
 
         Remediation
           Blocking findings: create AGENTS.md if it is missing, shorten a document that

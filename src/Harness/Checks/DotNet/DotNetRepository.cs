@@ -5,16 +5,21 @@ namespace Harness.Checks.DotNet;
 
 internal static class DotNetRepository
 {
-    private static readonly string[] ProjectExtensions = [".csproj", ".fsproj", ".vbproj"];
+    /// <summary>
+    /// The project files themselves. Without a tracked one there is nothing to judge, so every
+    /// .NET policy reads them and names them as the evidence it needs.
+    /// </summary>
+    public static readonly IReadOnlyList<EvidenceFile> ProjectFiles =
+        [new("*.csproj"), new("*.fsproj"), new("*.vbproj")];
 
-    public static (IReadOnlyList<DotNetFile> Projects, string? Failure) ReadProjects(GitRepository repository)
+    public static (IReadOnlyList<DotNetFile> Projects, string? Failure) ReadProjects(CheckContext context)
     {
         var projects = new List<DotNetFile>();
-        foreach (var entry in repository.TrackedEntries
-            .Where(entry => ProjectExtensions.Contains(System.IO.Path.GetExtension(entry.Path), StringComparer.OrdinalIgnoreCase))
+        foreach (var entry in ProjectFiles
+            .SelectMany(context.Tracked)
             .Where(entry => !RepositoryLocations.IsGenerated(entry.Path)))
         {
-            var (file, failure) = ReadXml(repository, entry);
+            var (file, failure) = ReadXml(context.Repository, entry);
             if (failure is not null)
             {
                 return ([], failure);
@@ -30,27 +35,12 @@ internal static class DotNetRepository
     }
 
     public static (DotNetFile? File, string? Failure) ReadNearest(
-        GitRepository repository,
+        CheckContext context,
         string projectPath,
-        string fileName)
+        EvidenceFile file)
     {
-        var tracked = repository.TrackedEntries.ToDictionary(entry => entry.Path, StringComparer.Ordinal);
-        var directory = Directory(projectPath);
-        while (true)
-        {
-            var candidate = directory.Length == 0 ? fileName : $"{directory}/{fileName}";
-            if (tracked.TryGetValue(candidate, out var entry))
-            {
-                return ReadXml(repository, entry);
-            }
-
-            if (directory.Length == 0)
-            {
-                return (null, null);
-            }
-
-            directory = Directory(directory);
-        }
+        var entry = context.Nearest(file, projectPath);
+        return entry is null ? (null, null) : ReadXml(context.Repository, entry);
     }
 
     public static IEnumerable<XElement> Elements(DotNetFile file, string localName)

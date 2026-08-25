@@ -26,6 +26,8 @@ internal sealed class DuplicationCheck(CSharpSources sources) : IRepositoryCheck
 
     public string Applicability => Language.CSharp.Key;
 
+    public IReadOnlyList<EvidenceFile> Evidence => [];
+
     public string Summary => "C# cross-file lexical repetition";
 
     public string Explanation => DuplicationExplanation.Text;

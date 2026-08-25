@@ -19,6 +19,8 @@ internal sealed class GitRepository
 
     private readonly Dictionary<string, string> blobs = new(StringComparer.Ordinal);
 
+    private IReadOnlyList<string>? untracked;
+
     private GitRepository(string rootPath, IReadOnlyList<TrackedEntry> trackedEntries, TimeSpan readDuration)
     {
         RootPath = rootPath;
@@ -113,6 +115,34 @@ internal sealed class GitRepository
         return parseFailure is not null
             ? (null, parseFailure)
             : (new GitRepository(rootPath, entries, topLevel.Duration + listing.Duration), null);
+    }
+
+    /// <summary>
+    /// Paths that exist in the working tree and are not in the index, respecting .gitignore.
+    /// Git answers this, so ignored trees are never walked. It is read on demand: the answer
+    /// explains a finding rather than producing one, so a run with nothing to explain does
+    /// not pay for it.
+    /// </summary>
+    public (IReadOnlyList<string>? Paths, string? Failure) ReadUntrackedPaths()
+    {
+        if (untracked is not null)
+        {
+            return (untracked, null);
+        }
+
+        var listing = RunGit(["ls-files", "--others", "--exclude-standard", "-z"], RootPath);
+        if (listing.Failure is not null)
+        {
+            return (null, listing.Failure);
+        }
+
+        if (listing.ExitCode != 0)
+        {
+            return (null, $"Could not list the untracked files of '{RootPath}' ({Summarize(listing.StandardError)}).");
+        }
+
+        untracked = listing.StandardOutput.Split('\0', StringSplitOptions.RemoveEmptyEntries);
+        return (untracked, null);
     }
 
     /// <summary>Reads the target of a tracked symbolic link from its staged blob.</summary>

@@ -4,6 +4,8 @@ namespace Harness.Checks.DotNet;
 
 internal sealed class CentralPackagesCheck : DotNetCheck
 {
+    private static readonly EvidenceFile PackagesProps = new("Directory.Packages.props");
+
     public override string Id => "central-packages.dotnet";
 
     public override string Group => "central-packages";
@@ -11,6 +13,8 @@ internal sealed class CentralPackagesCheck : DotNetCheck
     public override string Summary => "central NuGet package versions";
 
     public override string Explanation => CentralPackagesExplanation.Text;
+
+    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [PackagesProps];
 
     protected override CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects)
     {
@@ -26,8 +30,7 @@ internal sealed class CentralPackagesCheck : DotNetCheck
             }
 
             referencing = true;
-            var (packages, failure) = DotNetRepository.ReadNearest(
-                context.Repository, project.Path, "Directory.Packages.props");
+            var (packages, failure) = DotNetRepository.ReadNearest(context, project.Path, PackagesProps);
             if (failure is not null)
             {
                 return CheckEvaluation.Incomplete(failure);

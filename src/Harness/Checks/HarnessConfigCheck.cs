@@ -13,6 +13,12 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
 
     public string Group => "harness";
 
+    /// <summary>
+    /// The frame itself. `init` writes it and deliberately does not stage it, so the file being
+    /// present and untracked is the ordinary first state of a repository meeting this tool.
+    /// </summary>
+    public IReadOnlyList<EvidenceFile> Evidence => [new(HarnessConfig.FileName)];
+
     public string Summary => $"tracked {HarnessConfig.FileName} the rest of the run reads";
 
     public string Explanation =>
@@ -26,7 +32,8 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
         What it reads
           The tracked {HarnessConfig.FileName} at the repository root, and nothing else. An
           untracked file does not exist for the harness, so every developer, agent and CI
-          job reads the same frame.
+          job reads the same frame. `init` writes the file without staging it, so a run that
+          finds it in the working tree only says so under `not in the index`.
 
         What it accepts
           version       required; the harness release this repository is pinned to, such as

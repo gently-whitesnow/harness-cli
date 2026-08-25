@@ -115,6 +115,28 @@ public sealed class CommitMessageTests
         Assert.Equal(head, repository.Git("rev-parse", "HEAD"));
     }
 
+    /// <summary>
+    /// A linked worktree shares the clone's configuration, so it must share its setup too.
+    /// Anchoring on the worktree's own metadata directory would make the check unsatisfiable
+    /// there: `core.hooksPath` is written once, for every worktree at once.
+    /// </summary>
+    [Fact]
+    public void Setup_of_the_clone_covers_a_linked_worktree()
+    {
+        using var repository = Repository(RequireSetup: true, language: "en");
+        Assert.Equal(0, HarnessCli.Run(repository.Path, "setup").ExitCode);
+
+        var worktree = repository.Absolute("linked");
+        repository.Git("worktree", "add", "--quiet", "-b", "linked", worktree);
+
+        var check = HarnessCli.RunVerbose(worktree, "check", "--only", "commits.setup");
+        var setup = HarnessCli.Run(worktree, "setup");
+
+        Assert.Equal(0, check.ExitCode);
+        Assert.Contains("commit-msg hook are active", check.Output, StringComparison.Ordinal);
+        Assert.Equal(0, setup.ExitCode);
+    }
+
     [Fact]
     public void Setup_refuses_to_replace_an_unrelated_hooks_path()
     {

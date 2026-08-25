@@ -8,6 +8,9 @@ internal sealed class CommitSetupCheck : IRepositoryCheck
 
     public string Group => "commits";
 
+    /// <summary>Clone-local Git settings are not tracked content, so nothing here can be staged.</summary>
+    public IReadOnlyList<EvidenceFile> Evidence => [];
+
     public string Summary => "clone-local commit message hook and template";
 
     public string Explanation =>

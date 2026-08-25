@@ -11,6 +11,8 @@ internal sealed class TypesPerFileCheck(CSharpSources sources) : IRepositoryChec
 
     public string Applicability => Language.CSharp.Key;
 
+    public IReadOnlyList<EvidenceFile> Evidence => [];
+
     public string Summary => "one top-level C# class or record per file";
 
     public string Explanation => TypesPerFileExplanation.Text;
