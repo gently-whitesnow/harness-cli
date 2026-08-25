@@ -1,5 +1,3 @@
-using System.Runtime.InteropServices;
-
 namespace Harness.Tests;
 
 /// <summary>
@@ -13,7 +11,7 @@ public sealed class NativePublicationTests
     [Fact]
     public void Published_native_executable_is_self_contained_and_checks_repositories()
     {
-        var (executable, buildOutput) = Publish();
+        var (executable, buildOutput) = NativePublication.Get();
 
         Assert.False(
             buildOutput.Contains("warning IL", StringComparison.Ordinal),
@@ -37,25 +35,4 @@ public sealed class NativePublicationTests
             // A published binary must not depend on the SDK that produced it.
             removeFromEnvironment: ["DOTNET_ROOT", "MSBuildExtensionsPath"]);
 
-    private static (string Executable, string BuildOutput) Publish()
-    {
-        var outputDirectory = Path.Combine(
-            Path.GetTempPath(), "harness-publish-" + Guid.NewGuid().ToString("n"));
-
-        var publication = ProcessLauncher.Run(
-            "dotnet",
-            [
-                "publish", Path.Combine("src", "Harness", "Harness.csproj"),
-                "--configuration", "Release",
-                "--runtime", RuntimeInformation.RuntimeIdentifier,
-                "--output", outputDirectory,
-            ],
-            Release.RepositoryRoot());
-
-        Assert.True(publication.ExitCode == 0, "NativeAOT publication failed:\n" + publication.Output);
-
-        var executable = Path.Combine(outputDirectory, "harness");
-        Assert.True(File.Exists(executable), "Published executable not found:\n" + publication.Output);
-        return (executable, publication.Output);
-    }
 }

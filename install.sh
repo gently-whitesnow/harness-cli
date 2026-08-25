@@ -12,13 +12,21 @@ set -eu
 
 REPOSITORY="gently-whitesnow/harness-cli"
 VERSION="${HARNESS_VERSION:-latest}"
-INSTALL_DIR="${HARNESS_INSTALL_DIR:-$HOME/.local/bin}"
+INSTALL_DIR="${HARNESS_INSTALL_DIR:-}"
 NO_SETUP="${HARNESS_NO_SETUP:-}"
+SCOPE="user"
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --version) VERSION="$2"; shift 2 ;;
-    --dir) INSTALL_DIR="$2"; shift 2 ;;
+    --version | --dir | --scope)
+      [ $# -ge 2 ] || { echo "harness install: '$1' requires a value." >&2; exit 2; }
+      case "$1" in
+        --version) VERSION="$2" ;;
+        --dir) INSTALL_DIR="$2" ;;
+        --scope) SCOPE="$2" ;;
+      esac
+      shift 2
+      ;;
     --no-setup) NO_SETUP=1; shift ;;
     *) echo "harness install: unknown option '$1'" >&2; exit 2 ;;
   esac
@@ -27,6 +35,31 @@ done
 fail() { echo "harness install: $*" >&2; exit 1; }
 
 need() { command -v "$1" >/dev/null 2>&1 || fail "'$1' is required but not installed."; }
+
+case "$SCOPE" in
+  user)
+    INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
+    ;;
+  clone)
+    need git
+    common_dir=$(git rev-parse --git-common-dir 2>/dev/null) \
+      || fail "--scope clone must be run inside a Git clone."
+    case "$common_dir" in
+      /*) ;;
+      *) common_dir=$(cd "$common_dir" && pwd -P) \
+        || fail "could not resolve the clone's common Git directory." ;;
+    esac
+    INSTALL_DIR="$common_dir/harness/bin"
+    ;;
+  *)
+    echo "harness install: --scope must be 'user' or 'clone'." >&2
+    exit 2
+    ;;
+esac
+
+if [ "$SCOPE" = "clone" ] && [ -n "$NO_SETUP" ]; then
+  fail "--no-setup is incompatible with --scope clone."
+fi
 
 need curl
 need tar
@@ -65,8 +98,7 @@ verify_checksum() {
   elif command -v shasum >/dev/null 2>&1; then
     actual=$(shasum -a 256 "$archive" | cut -d' ' -f1)
   else
-    echo "harness install: no sha256 tool found; skipping checksum verification." >&2
-    return 0
+    fail "'sha256sum' or 'shasum' is required to verify the download."
   fi
 
   [ "$actual" = "$expected" ] || fail "checksum mismatch: expected $expected, got $actual."
@@ -81,8 +113,40 @@ else
   base_url="https://github.com/$REPOSITORY/releases/download/v$VERSION"
 fi
 
+work=""
+lock_directory=""
+lock_acquired=""
+
+cleanup() {
+  if [ -n "$lock_acquired" ]; then
+    rm -f "$lock_directory/pid"
+    rmdir "$lock_directory" 2>/dev/null || true
+  fi
+  if [ -n "$work" ]; then
+    rm -rf "$work"
+  fi
+}
+trap cleanup EXIT
+trap 'exit 1' HUP INT TERM
+
+if [ "$SCOPE" = "clone" ]; then
+  mkdir -p "$common_dir/harness"
+  lock_directory="$common_dir/harness/install.lock"
+  attempts=0
+  while ! mkdir "$lock_directory" 2>/dev/null; do
+    if [ "$attempts" -eq 0 ]; then
+      echo "Waiting for another clone-local harness installation..."
+    fi
+    attempts=$((attempts + 1))
+    [ "$attempts" -lt 60 ] \
+      || fail "timed out waiting for clone-local installation lock '$lock_directory'."
+    sleep 1
+  done
+  lock_acquired=1
+  printf '%s\n' "$$" >"$lock_directory/pid"
+fi
+
 work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT
 
 echo "Downloading harness ($VERSION, $runtime_identifier)..."
 curl -fsSL "$base_url/$archive_name" -o "$work/$archive_name" \
@@ -102,14 +166,18 @@ mv "$INSTALL_DIR/harness.tmp" "$INSTALL_DIR/harness"
 
 echo "Installed $("$INSTALL_DIR/harness" version | head -1) to $INSTALL_DIR/harness"
 
-case ":$PATH:" in
-  *":$INSTALL_DIR:"*) ;;
-  *) echo "Add it to your PATH:  export PATH=\"$INSTALL_DIR:\$PATH\"" ;;
-esac
+if [ "$SCOPE" = "user" ]; then
+  case ":$PATH:" in
+    *":$INSTALL_DIR:"*) ;;
+    *) echo "Add it to your PATH:  export PATH=\"$INSTALL_DIR:\$PATH\"" ;;
+  esac
+fi
 
 # A clone needs its commit template and hook activated once, and that step is the one agents
 # and disposable sandboxes lose most often. Installing inside a framed repository does it.
-if [ -z "$NO_SETUP" ] && [ -f ".harness.json" ] && command -v git >/dev/null 2>&1 \
+if [ "$SCOPE" = "clone" ]; then
+  "$INSTALL_DIR/harness" setup
+elif [ -z "$NO_SETUP" ] && [ -f ".harness.json" ] && command -v git >/dev/null 2>&1 \
   && git rev-parse --git-dir >/dev/null 2>&1; then
   "$INSTALL_DIR/harness" setup || true
 fi
