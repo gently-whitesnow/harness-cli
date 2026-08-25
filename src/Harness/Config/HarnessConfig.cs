@@ -15,6 +15,7 @@ internal enum FrameAnswerKind
 internal enum CheckPolicy
 {
     Required,
+    Strict,
     Advisory,
     Off,
 }

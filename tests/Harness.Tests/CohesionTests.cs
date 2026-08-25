@@ -34,6 +34,22 @@ public sealed class CohesionTests
     }
 
     [Fact]
+    public void Strict_policy_turns_an_advisory_finding_into_a_violation()
+    {
+        using var repository = Fixtures
+            .Compliant(Frame.AllPresent().Policy(Check, "strict"))
+            .WriteFile("src/App/Mixed.cs", CSharp.TwoGroups)
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.True(run.OutputContains("outcome: failed"), run.Output);
+        Assert.True(run.OutputContains("sets this check to strict"), run.Output);
+        Assert.True(run.OutputContains("violation"), run.Output);
+    }
+
+    [Fact]
     public void A_type_whose_members_all_reach_the_same_state_is_not_reported()
     {
         var run = RunSource("src/App/Counter.cs", CSharp.OneGroup);

@@ -51,9 +51,22 @@ public sealed class HarnessFrameTests
         Assert.True(run.OutputContains(explanation), run.Output);
     }
 
+    [Fact]
+    public void A_focused_check_cannot_bypass_an_unsound_frame()
+    {
+        using var repository = Fixtures.WithRawFrame("{}");
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "maintainability.csharp");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains("harness.config"), run.Output);
+        Assert.True(run.OutputContains("'version' must be a harness release"), run.Output);
+        Assert.False(run.OutputContains("maintainability.csharp"), run.Output);
+    }
+
     [Theory]
     [InlineData("docs.plicy", "off", "not a check or group this harness ships")]
-    [InlineData("docs.policy", "lenient", "must be required, advisory or off")]
+    [InlineData("docs.policy", "lenient", "must be required, strict, advisory or off")]
     public void Invalid_policy_ends_the_run_as_incomplete(string selector, string value, string explanation)
     {
         using var repository = Fixtures.WithRawFrame(Frame.Answering().Policy(selector, value).ToString());

@@ -22,14 +22,10 @@ internal static class GateEngine
         IReadOnlyList<string> skip,
         IReadOnlyList<IRepositoryCheck> checks)
     {
-        var unknown = UnknownSelectors(only, skip, checks);
-        if (unknown.Count > 0)
+        var invalidSelection = InvalidSelectionReport(only, skip, checks);
+        if (invalidSelection is not null)
         {
-            return new RunReport(
-                RepositoryPath: null,
-                Gates: [],
-                ToolError: $"Unknown check identifier: {string.Join(", ", unknown)}. "
-                    + $"Known identifiers: {string.Join(", ", checks.Select(check => check.Id))}.");
+            return invalidSelection;
         }
 
         var (repository, failure) = GitRepository.Open(repositoryPath);
@@ -39,6 +35,12 @@ internal static class GateEngine
         }
 
         var (config, configFailure) = HarnessConfig.Load(repository, CheckRegistry.Describe(checks));
+        var invalidConfig = InvalidConfigReport(repository, config, configFailure, checks);
+        if (invalidConfig is not null)
+        {
+            return invalidConfig;
+        }
+
         var used = new HashSet<Suppression>();
         var unexplained = new HashSet<EvidenceFile>();
 
@@ -82,6 +84,54 @@ internal static class GateEngine
             repository.ReadDuration,
             Pin(config),
             UntrackedEvidence(repository, unexplained));
+    }
+
+    private static RunReport? InvalidSelectionReport(
+        IReadOnlyList<string> only,
+        IReadOnlyList<string> skip,
+        IReadOnlyList<IRepositoryCheck> checks)
+    {
+        var unknown = UnknownSelectors(only, skip, checks);
+        return unknown.Count == 0
+            ? null
+            : new RunReport(
+                RepositoryPath: null,
+                Gates: [],
+                ToolError: $"Unknown check identifier: {string.Join(", ", unknown)}. "
+                    + $"Known identifiers: {string.Join(", ", checks.Select(check => check.Id))}.");
+    }
+
+    private static RunReport? InvalidConfigReport(
+        GitRepository repository,
+        HarnessConfig? config,
+        string? configFailure,
+        IReadOnlyList<IRepositoryCheck> checks)
+    {
+        var configCheck = checks.FirstOrDefault(check => check.Id == "harness.config");
+        if (config is not null || configFailure is null || configCheck is null)
+        {
+            return null;
+        }
+
+        var stopwatch = Stopwatch.StartNew();
+        var evaluation = Evaluate(
+            configCheck,
+            new CheckContext(repository, config, configFailure, configCheck));
+        stopwatch.Stop();
+
+        return new RunReport(
+            repository.RootPath,
+            [Judge(
+                configCheck,
+                evaluation,
+                stopwatch.Elapsed,
+                config,
+                CheckPolicy.Required,
+                [])],
+            ToolError: null,
+            repository.ReadDuration,
+            Pin(config),
+            UntrackedEvidence(repository, configCheck.Evidence.ToHashSet()));
     }
 
     /// <summary>
@@ -159,6 +209,15 @@ internal static class GateEngine
 
         switch (policy)
         {
+            case CheckPolicy.Strict when kept.Count > 0:
+                kept = kept
+                    .Select(finding => finding with { Severity = FindingSeverity.Blocking })
+                    .ToList();
+                outcome = CheckOutcome.Failed;
+                reason = $"{HarnessConfig.FileName} sets this check to strict, so every reported finding is a "
+                    + "blocking violation.";
+                break;
+
             case CheckPolicy.Advisory when outcome == CheckOutcome.Failed:
                 kept = kept
                     .Select(finding => finding with { Severity = FindingSeverity.Advisory })
@@ -170,7 +229,7 @@ internal static class GateEngine
 
             // The repository has committed to this one, so an open question is no longer an
             // acceptable state for it.
-            case CheckPolicy.Required when outcome == CheckOutcome.ReadinessGap:
+            case CheckPolicy.Required or CheckPolicy.Strict when outcome == CheckOutcome.ReadinessGap:
                 kept = [new Finding(FindingSeverity.Blocking, HarnessConfig.FileName, reason ?? "not satisfied")];
                 outcome = CheckOutcome.Failed;
                 reason = "checks are required by default; use an advisory policy override to accept this gap.";
