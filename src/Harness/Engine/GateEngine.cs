@@ -52,12 +52,6 @@ internal static class GateEngine
                 continue;
             }
 
-            if (config is not null && !config.Includes(check.Since))
-            {
-                gates.Add(NewerThanPin(check, config));
-                continue;
-            }
-
             var stopwatch = Stopwatch.StartNew();
             var disabled = config?.NotApplicable(check.Applicability);
             var evaluation = disabled is null
@@ -182,7 +176,7 @@ internal static class GateEngine
 
         switch (policy)
         {
-            case CheckPolicy.Required when FindingPolicy.ShouldRequire(findings, config):
+            case CheckPolicy.Required when FindingPolicy.ShouldRequire(findings):
                 (findings, reason) = FindingPolicy.Require(findings, outcome, reason);
                 detailed = FindingPolicy.RequireSeverity(detailed);
                 outcome = CheckOutcome.Failed;
@@ -210,21 +204,6 @@ internal static class GateEngine
 
         return new GateReport(check.Id, check.Summary, outcome, findings, detailed, duration, reason);
     }
-
-    /// <summary>
-    /// A check the pinned release did not ship. Taking a newer binary therefore cannot add a
-    /// finding on its own: the repository decides when to take one on, in a reviewable commit.
-    /// </summary>
-    private static GateReport NewerThanPin(IRepositoryCheck check, HarnessConfig config)
-        => new(
-            check.Id,
-            check.Summary,
-            CheckOutcome.Skipped,
-            [],
-            [],
-            TimeSpan.Zero,
-            $"introduced in harness {check.Since}; this repository pins {config.Version}. "
-                + "Run `harness upgrade` to take it on.");
 
     private static GateReport Excluded(
         IRepositoryCheck check,

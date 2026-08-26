@@ -7,7 +7,6 @@ internal enum CommandKind
 {
     Check,
     Init,
-    Upgrade,
     Setup,
     CommitMessageCheck,
     CommitTemplate,
@@ -42,8 +41,6 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
 
     public bool AllowFixup { get; init; }
 
-    public bool DryRun { get; init; }
-
     public CommitLanguage CommitLanguage { get; init; } = CommitSettings.Default.Language;
 
     public static Invocation Parse(IReadOnlyList<string> arguments, string currentDirectory)
@@ -60,7 +57,6 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
         {
             "check" => ParseCheck(rest, currentDirectory),
             "init" => ParseInit(rest, currentDirectory),
-            "upgrade" => ParseUpgrade(rest, currentDirectory),
             "setup" => ParseSetup(rest, currentDirectory),
             "commit-message" => ParseCommitMessage(rest, currentDirectory),
             "commits" => ParseCommits(rest, currentDirectory),
@@ -192,56 +188,6 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             Latest = latest,
             CommitLanguage = language,
         };
-    }
-
-    private static Invocation ParseUpgrade(List<string> arguments, string currentDirectory)
-    {
-        var dryRun = false;
-        string? target = null;
-        string? path = null;
-
-        for (var index = 0; index < arguments.Count; index++)
-        {
-            var argument = arguments[index];
-            if (argument == "--dry-run")
-            {
-                if (dryRun)
-                {
-                    return Usage(currentDirectory, "--dry-run may only be given once.");
-                }
-
-                dryRun = true;
-            }
-            else if (argument == "--to")
-            {
-                if (target is not null)
-                {
-                    return Usage(currentDirectory, "--to may only be given once.");
-                }
-
-                if (index + 1 >= arguments.Count)
-                {
-                    return Usage(currentDirectory, "--to requires a harness release, such as 1.1.0.");
-                }
-
-                target = arguments[++index];
-            }
-            else if (argument.StartsWith('-'))
-            {
-                return Usage(currentDirectory, $"Unknown option '{argument}'.");
-            }
-            else if (path is not null)
-            {
-                return Usage(currentDirectory, "Only one repository path may be given.");
-            }
-            else
-            {
-                path = argument;
-            }
-        }
-
-        var repositoryPath = Path.GetFullPath(path ?? currentDirectory, currentDirectory);
-        return new Invocation(CommandKind.Upgrade, repositoryPath) { Operand = target, DryRun = dryRun };
     }
 
     private static Invocation ParseSetup(List<string> arguments, string currentDirectory)

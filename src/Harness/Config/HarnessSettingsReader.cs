@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Harness.Commits;
 using Harness.Languages;
-using Harness.Versioning;
 
 namespace Harness.Config;
 
@@ -12,16 +11,14 @@ namespace Harness.Config;
 /// </summary>
 internal static class HarnessSettingsReader
 {
-    private static readonly HarnessVersion DependencyCountsRemovedIn = new(1, 5, 0);
-
     private static readonly string Comments = Language.CSharp.Qualify("comments");
     private static readonly string Dependencies = Language.CSharp.Qualify("dependencies");
     private static readonly string Duplication = Language.CSharp.Qualify("duplication");
     private const string Commits = "commits";
 
-    public static (HarnessSettings? Settings, string? Failure) Read(JsonElement root, HarnessVersion version)
+    public static (HarnessSettings? Settings, string? Failure) Read(JsonElement root)
     {
-        var defaults = HarnessSettings.For(version);
+        var defaults = HarnessSettings.Default;
         if (!root.TryGetProperty("settings", out var declared))
         {
             return (defaults, null);
@@ -32,10 +29,9 @@ internal static class HarnessSettingsReader
             return (null, "'settings' must be an object");
         }
 
-        var readsDependencyCounts = version < DependencyCountsRemovedIn;
-        if (!readsDependencyCounts && declared.TryGetProperty(Dependencies, out _))
+        if (declared.TryGetProperty(Dependencies, out _))
         {
-            return (null, $"'settings.{Dependencies}' was removed in harness 1.5; remove this section. "
+            return (null, $"'settings.{Dependencies}' is not part of the current contract; remove this section. "
                 + "The current check proves module cycles and has no comparison points");
         }
 
@@ -47,9 +43,7 @@ internal static class HarnessSettingsReader
             }
         }
 
-        string[] known = readsDependencyCounts
-            ? [Comments, Dependencies, Duplication, Commits]
-            : [Comments, Duplication, Commits];
+        string[] known = [Comments, Duplication, Commits];
         foreach (var property in declared.EnumerateObject())
         {
             if (!known.Contains(property.Name, StringComparer.Ordinal))
@@ -59,13 +53,12 @@ internal static class HarnessSettingsReader
             }
         }
 
-        return Assemble(declared, defaults, readsDependencyCounts);
+        return Assemble(declared, defaults);
     }
 
     private static (HarnessSettings? Settings, string? Failure) Assemble(
         JsonElement declared,
-        HarnessSettings defaults,
-        bool readsDependencyCounts)
+        HarnessSettings defaults)
     {
         var (comments, commentFailure) = ReadSection(
             declared,
@@ -76,13 +69,6 @@ internal static class HarnessSettingsReader
         if (comments is null)
         {
             return (null, commentFailure);
-        }
-
-        var (dependencies, dependencyFailure) = DependenciesFor(
-            declared, defaults.Dependencies, readsDependencyCounts);
-        if (dependencies is null)
-        {
-            return (null, dependencyFailure);
         }
 
         var (duplication, duplicationFailure) = ReadSection(
@@ -105,30 +91,8 @@ internal static class HarnessSettingsReader
             ? (null, commitFailure)
             : (new HarnessSettings(
                 new CommentSettings(comments[0], comments[1]),
-                dependencies,
                 new DuplicationSettings(duplication[0], duplication[1]),
                 commits), null);
-    }
-
-    private static (DependencySettings? Settings, string? Failure) DependenciesFor(
-        JsonElement declared,
-        DependencySettings defaults,
-        bool readsDependencyCounts)
-        => readsDependencyCounts ? ReadDependencies(declared, defaults) : (defaults, null);
-
-    private static (DependencySettings? Settings, string? Failure) ReadDependencies(
-        JsonElement declared,
-        DependencySettings defaults)
-    {
-        var (values, failure) = ReadSection(
-            declared,
-            Dependencies,
-            ["externalImports", "outgoingReferences", "incomingReferences"],
-            [defaults.ExternalImports, defaults.OutgoingReferences, defaults.IncomingReferences]);
-
-        return values is null
-            ? (null, failure)
-            : (new DependencySettings(values[0], values[1], values[2]), null);
     }
 
     private static (CommitSettings? Settings, string? Failure) ReadCommits(

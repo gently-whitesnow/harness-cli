@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted. Части про `suppress` superseded by [ADR-0032](0032-topology-over-thresholds.md).
-Уточняет [ADR-0014](0014-frame-answers-are-self-reported.md) и заменяет часть
+Accepted. Версионированные снимки вопросов и `suppress` superseded by ADR-0023 и ADR-0032;
+локальные ошибки ответов и явный `init` остаются действующими. Уточняет
+[ADR-0014](0014-frame-answers-are-self-reported.md) и заменяет часть
 [ADR-0008](0008-the-harness-only-observes.md), запрещавшую харнесу писать `.harness.json`.
 Обычный `check` остаётся только читающим; единственное исключение — явно вызванный `init`.
 

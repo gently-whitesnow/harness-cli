@@ -104,7 +104,6 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 ```sh
 ./harness version                                  # релиз бинаря и текущий контракт
 ./harness init /path/to/repository                 # создать незавершённую рамку
-./harness upgrade --dry-run                        # что включит подъём пина, ничего не записывая
 ./harness setup                                    # активировать hook и шаблон в этом клоне
 ./harness commit-message template                  # показать шаблон выбранного языка
 ./harness commits check <base>..<head>             # проверить диапазон для CI

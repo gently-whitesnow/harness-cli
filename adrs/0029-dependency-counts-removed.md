@@ -3,7 +3,8 @@
 ## Status
 
 Accepted. Рекомендации про `suppress` superseded by
-[ADR-0032](0032-topology-over-thresholds.md). Развивает
+[ADR-0032](0032-topology-over-thresholds.md); там же удалено воспроизведение legacy counts.
+Развивает
 [ADR-0021](0021-coupling-evidence-grades.md).
 
 ## Context
@@ -35,9 +36,8 @@ semantic architecture tests репозитория. Glob-пороги добав
 - `settings.dependencies.csharp` удалён из актуальной схемы и `harness init`;
 - `--all` раскрывает полные списки других ограниченных required-метрик, а также все циклы.
 
-Pins до 1.5 сохраняют counts, settings и policy-поведение исходного контракта. Обновление
-бинаря без tracked upgrade не меняет их результат. При upgrade явное legacy-setting нужно
-удалить; валидатор называет эту миграцию вместо молчаливого игнорирования числа.
+Текущий бинарь не вычисляет counts ни для одного принятого конфига. Явное
+`settings.dependencies.csharp` валидатор отвергает вместо молчаливого игнорирования числа.
 
 ## Consequences
 

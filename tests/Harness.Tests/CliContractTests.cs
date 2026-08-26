@@ -118,6 +118,18 @@ public sealed class CliContractTests
         Assert.True(run.OutputContains("docs.policy"), run.Output);
         Assert.True(run.OutputContains("group docs"), run.Output);
         Assert.True(run.OutputContains("C# comment density limit"), run.Output);
+        Assert.False(run.OutputContains("harness upgrade"), run.Output);
+    }
+
+    [Fact]
+    public void Upgrade_is_not_a_command()
+    {
+        using var repository = Fixtures.Compliant();
+
+        var run = HarnessCli.Run(repository.Path, "upgrade");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains("Unknown command 'upgrade'"), run.Output);
     }
 
     [Fact]

@@ -1,9 +1,7 @@
 namespace Harness.Versioning;
 
 /// <summary>
-/// A harness release, which is also the contract a repository pins in its frame. Behaviour
-/// changes only on minor and major, so releases differing in patch reach the same verdict on
-/// the same pin, and a patch component in a pin carries provenance rather than meaning.
+/// A harness release, which is also the contract a repository names in its frame.
 /// </summary>
 internal readonly record struct HarnessVersion(int Major, int Minor, int Patch)
 {
@@ -11,20 +9,6 @@ internal readonly record struct HarnessVersion(int Major, int Minor, int Patch)
 
     /// <summary>The release this binary is.</summary>
     public static HarnessVersion Current { get; } = Parse(HarnessBuild.Version);
-
-    /// <summary>The first release, and so the oldest possible origin of a shipped check.</summary>
-    public static HarnessVersion Initial { get; } = new(1, 0, 0);
-
-    /// <summary>The only contract this binary implements.</summary>
-    public static HarnessVersion Minimum => Current;
-
-    public static bool operator <(HarnessVersion left, HarnessVersion right) => Compare(left, right) < 0;
-
-    public static bool operator >(HarnessVersion left, HarnessVersion right) => Compare(left, right) > 0;
-
-    public static bool operator <=(HarnessVersion left, HarnessVersion right) => Compare(left, right) <= 0;
-
-    public static bool operator >=(HarnessVersion left, HarnessVersion right) => Compare(left, right) >= 0;
 
     public static bool TryParse(string? text, out HarnessVersion version)
     {
@@ -63,16 +47,4 @@ internal readonly record struct HarnessVersion(int Major, int Minor, int Patch)
     // int.TryParse alone accepts '+1' and ' 1' — spellings that compare equal but read apart.
     private static bool IsDigits(string part)
         => part.Length > 0 && part.All(char.IsAsciiDigit);
-
-    private static int Compare(HarnessVersion left, HarnessVersion right)
-    {
-        var major = left.Major.CompareTo(right.Major);
-        if (major != 0)
-        {
-            return major;
-        }
-
-        var minor = left.Minor.CompareTo(right.Minor);
-        return minor != 0 ? minor : left.Patch.CompareTo(right.Patch);
-    }
 }

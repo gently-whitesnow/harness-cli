@@ -1,11 +1,11 @@
 #!/bin/sh
-# Installs the harness CLI. The binary reproduces whatever release a repository pins, so
-# there is nothing to pin here: this always installs the newest one unless asked otherwise.
+# Installs the harness CLI. Its release must match a repository's contract; by default this
+# installs the newest release, while HARNESS_VERSION selects an exact matching release.
 #
 #   curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh | sh
 #
 # Environment:
-#   HARNESS_VERSION      release to install, such as 1.4.0 (default: the latest release)
+#   HARNESS_VERSION      release to install, such as 2.0.0 (default: the latest release)
 #   HARNESS_INSTALL_DIR  where to put the binary (default: ~/.local/bin)
 #   HARNESS_NO_SETUP     set to any value to skip `harness setup` in the current clone
 set -eu

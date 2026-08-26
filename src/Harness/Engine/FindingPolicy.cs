@@ -1,19 +1,11 @@
 using Harness.Checks;
-using Harness.Config;
-using Harness.Versioning;
-
 namespace Harness.Engine;
 
-/// <summary>Maps a check's evidence severity through the repository's versioned policy.</summary>
+/// <summary>Maps a check's evidence severity through the repository's policy.</summary>
 internal static class FindingPolicy
 {
-    private static readonly HarnessVersion RequiredFindingsSince = new(1, 3, 0);
-
-    public static bool ShouldRequire(IReadOnlyList<Finding> findings, HarnessConfig? config)
-        => findings.Count > 0 && UsesRequiredContract(config);
-
-    public static bool UsesRequiredContract(HarnessConfig? config)
-        => config?.Includes(RequiredFindingsSince) == true;
+    public static bool ShouldRequire(IReadOnlyList<Finding> findings)
+        => findings.Count > 0;
 
     public static (List<Finding> Findings, string? Reason) Require(
         List<Finding> findings,

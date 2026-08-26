@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 остаётся общим для всех linked worktree клона. User-каталоги и tracked-файлы этот режим не
 меняет.
 
-`HARNESS_VERSION=1.5.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+`HARNESS_VERSION=2.0.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
@@ -69,17 +69,8 @@ harness version                    # релиз бинаря и текущий �
 
 Бинарь исполняет ровно один текущий контракт. Пин на другую версию останавливает прогон с
 кодом `2` и требует обновить tracked-конфиг; старые проверки и настройки не эмулируются.
-
-Новые проверки включает отдельный явный шаг, который правит tracked-файл:
-
-```sh
-harness upgrade --dry-run   # что включится, если поднять пин; ничего не пишет
-harness upgrade             # поднять пин до установленного релиза
-```
-
-Дальше `harness check --verbose` покажет новые находки, а владелец либо чинит их, либо
-осознанно смягчает проверку через `policy`. Версия едет в CI тем же коммитом, что и подъём
-пина. [ADR-0023](adrs/0023-release-version-as-the-verification-contract.md)
+Новый контракт принимается явной tracked-правкой `version` и остальных изменившихся
+секций в одном reviewable-коммите. [ADR-0023](adrs/0023-release-version-as-the-verification-contract.md)
 
 ## В CI
 

@@ -14,9 +14,9 @@
   `policy` не перечисляет эту норму и хранит только явные overrides.
 - [ADR-0027](0027-required-findings-are-blocking.md) — `required` превращает каждую
   находку проверки в blocking-нарушение; `advisory` даёт явное время на исправление.
-- [ADR-0016](0016-versioned-frame-and-explicit-initialization.md) — Числовая `version`
-  фиксирует снимок вопросов, `latest` следует за текущим; ошибка одного answer локальна,
-  а `init` создаёт намеренно незавершённую рамку и не выдумывает ответы владельца.
+- [ADR-0016](0016-versioned-frame-and-explicit-initialization.md) — Версионированные снимки
+  вопросов отменены ADR-0023/0032; ошибка одного answer остаётся локальной, а `init` создаёт
+  намеренно незавершённую рамку и не выдумывает ответы владельца.
 - [ADR-0002](0002-when-a-check-becomes-blocking.md) — Проверка становится blocking, только
   если выполнены сразу пять условий: детерминизм, actionable-находка, скорость, низкий риск
   false positive, негативная фикстура. Иначе advisory, без влияния на код возврата.
@@ -69,8 +69,8 @@
   `dotnet` требуют hardened `Directory.Build.props`, Central Package Management через
   ближайший `Directory.Packages.props` и `.slnx`, покрывающий authored-проекты.
 - [ADR-0028](0028-recalibrated-csharp-defaults.md) — Начиная с 1.4.0 дефолты C#-эвристик:
-  comments `10/8`, cohesion `6/2`, duplication `30/90`; старые pins получают прежние
-  значения. Порог cohesion отменён ADR-0032; comments и duplication остаются.
+  comments `10/8`, cohesion `6/2`, duplication `30/90`. Порог cohesion отменён ADR-0032;
+  comments и duplication остаются с текущими значениями.
 - [ADR-0029](0029-dependency-counts-removed.md) — Начиная с 1.5 `dependencies.csharp`
   оставляет только blocking-циклы по `Proven`; fan-in/out и external imports удалены как
   контекстные counts без универсального remediation.
