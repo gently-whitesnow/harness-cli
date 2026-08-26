@@ -18,10 +18,10 @@ self-reported: адрес служит навигацией, а не доказ�
 ```
 
 Каждая применимая проверка априори `required`: любая её находка blocking, даже если сама
-эвристика помечает исходную уверенность как advisory. `policy` нужен только для явного
-временного смягчения до `advisory` или отключения через `off`; `suppress` — именованные
-исключения с обязательным `reason`. Поэтому ответ `present: false` по умолчанию становится
-нарушением. Харнес валидирует полноту ответов, но не инспектирует их и не ищет опровержения.
+эвристика помечает исходную уверенность как advisory. `policy` смягчает проверку до
+`advisory` или отключает через `off`; `suppress` принимает именованное исключение с
+обязательным `reason`. Поэтому `present: false` по умолчанию — нарушение. Харнес валидирует
+полноту ответов, но не инспектирует их и не ищет опровержения.
 [ADR-0017](adrs/0017-required-by-default.md), [ADR-0027](adrs/0027-required-findings-are-blocking.md)
 
 C#-проверки разделяют applicability `csharp`. Если весь этот анализ не относится к
@@ -29,12 +29,12 @@ C#-проверки разделяют applicability `csharp`. Если весь
 "..." } }` делает их `NotApplicable`; точечно выключать каждую через policy не нужно.
 [ADR-0018](adrs/0018-csharp-applicability-and-one-type-per-file.md)
 
-Связанность и связность считаются по tracked-исходникам средствами BCL. Каждое ребро графа
-несёт `Proven` (позиция, где язык не допускает ничего, кроме типа, и единственный кандидат по
-имени) или `Inferred`. Исходная уверенность blocking строится только из `Proven`, и такая
-находка одна — цикл модулей; счётные метрики исходно advisory. Итоговый вердикт затем
-определяет repository policy по ADR-0027. Ссылка между модулем и модулем внутри него —
-содержание, а не цикл. [ADR-0021](adrs/0021-coupling-evidence-grades.md)
+Граф C# строится по tracked-исходникам средствами BCL. Ребро несёт `Proven` (позиция
+допускает только тип, кандидат по имени один) или `Inferred`. Начиная с 1.5
+`dependencies.csharp` строит из `Proven` только blocking-циклы модулей; raw fan-in/out и
+external imports удалены как контекстные counts без универсального remediation. Вложенный
+модуль — содержание, а не цикл. [ADR-0021](adrs/0021-coupling-evidence-grades.md),
+[ADR-0029](adrs/0029-dependency-counts-removed.md)
 
 Проверка называется `<семейство>.<язык>`, `Group` — семейство, `Applicability` — язык.
 Язык-нейтральное ядро живёт в `Structure/`, чтение исходника — за `ILanguageAnalyzer` в
@@ -90,7 +90,7 @@ setup` включает шаблон и `commit-msg` hook в общем ката
     - `Checks/Metrics/` — метрика, измерение и общий отчёт «худшие субъекты плюс счётчик».
     - `Checks/Comments/` — blocking-порог плотности комментариев в authored C#.
     - `Checks/TypesPerFile/` — blocking-правило: один верхнеуровневый class или record в файле.
-    - `Checks/Dependencies/` — blocking-цикл модулей и advisory-счётчики связанности.
+    - `Checks/Dependencies/` — blocking-циклы модулей по доказанным ссылкам.
     - `Checks/Cohesion/` — advisory-компоненты «член ↔ поле» внутри типа.
     - `Checks/Maintainability/` — advisory-метрики hotspot'ов, измеряемые этим ридером.
     - `Checks/Duplication/` — нормализация токенов и построенный на ней advisory-отчёт

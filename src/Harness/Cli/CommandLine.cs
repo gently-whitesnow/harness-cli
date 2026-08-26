@@ -30,6 +30,8 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
 
     public bool Verbose { get; init; }
 
+    public bool All { get; init; }
+
     public bool Latest { get; init; }
 
     public string? CheckId { get; init; }
@@ -74,6 +76,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
         var only = new List<string>();
         var skip = new List<string>();
         var verbose = false;
+        var all = false;
         string? path = null;
 
         for (var index = 0; index < arguments.Count; index++)
@@ -93,6 +96,11 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
                     break;
 
                 case "--verbose":
+                    verbose = true;
+                    break;
+
+                case "--all":
+                    all = true;
                     verbose = true;
                     break;
 
@@ -118,6 +126,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             Only = only,
             Skip = skip,
             Verbose = verbose,
+            All = all,
         };
     }
 

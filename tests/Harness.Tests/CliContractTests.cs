@@ -239,7 +239,7 @@ public sealed class CliContractTests
         Assert.Contains("Details: harness check --only <check-id> --verbose", lines);
         Assert.DoesNotContain(lines, line => line.StartsWith("Check ids: ", StringComparison.Ordinal));
         Assert.Equal(
-            "harness check [path] [--only <ids>] [--skip <ids>] [--verbose]",
+            "harness check [path] [--only <ids>] [--skip <ids>] [--verbose] [--all]",
             lines[^1]);
         Assert.False(run.OutputContains("violation"), run.Output);
     }

@@ -32,8 +32,8 @@ internal sealed class CohesionCheck(ILanguageAnalyzer analyzer)
         var settings = context.Config?.Settings.Cohesion ?? CohesionSettings.Default;
         var metric = new Metric("independent member groups", settings.Groups);
 
-        return CheckEvaluation.From(
-            MetricReport.Exceeding(Measure(types, metric, settings), [metric], Shown));
+        var report = MetricReport.Exceeding(Measure(types, metric, settings), [metric], Shown);
+        return CheckEvaluation.From(report.Summary, detailedFindings: report.Detailed);
     }
 
     /// <summary>

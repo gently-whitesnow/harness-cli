@@ -1,5 +1,5 @@
 {
-  "version": "1.4.0",
+  "version": "1.5.0",
   "answers": {
     "tests.unit": {
       "present": false,
@@ -40,11 +40,6 @@
       "branches": 12,
       "constructorParameters": 6,
       "publicMembers": 25
-    },
-    "dependencies.csharp": {
-      "externalImports": 20,
-      "outgoingReferences": 24,
-      "incomingReferences": 21
     },
     "cohesion.csharp": {
       "minimumMembers": 6,

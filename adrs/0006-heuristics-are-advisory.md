@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted; enforcement superseded by [ADR-0027](0027-required-findings-are-blocking.md).
+Accepted; enforcement superseded by [ADR-0027](0027-required-findings-are-blocking.md),
+dependency counts removed by [ADR-0029](0029-dependency-counts-removed.md).
 
 ## Context
 
@@ -31,9 +32,9 @@ logical LOC, lexical branch tokens, constructor parameters, public members, `usi
 Число, с которым сравнивается измерение, — comparison point, а не порог и не бюджет.
 
 `explain` содержит формулу, её пределы и вид её false positive — как измерение бывает
-неверным и когда читателю следует отказаться действовать. Отчёт ограничен: худшие субъекты
-по каждой метрике плюс счётчик остальных (`Cli/ConsoleReport.cs` показывает пять локаций),
-а не инвентарь репозитория.
+неверным и когда читателю следует отказаться действовать. Default-отчёт ограничен: худшие
+субъекты по каждой метрике плюс счётчик остальных; начиная с 1.5 явный `--all` раскрывает
+полный измеренный список.
 
 ## Consequences
 

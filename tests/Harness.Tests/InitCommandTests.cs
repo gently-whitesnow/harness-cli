@@ -51,8 +51,8 @@ public sealed class InitCommandTests
     {
         Assert.Equal(
             [
-                "comments.csharp", "maintainability.csharp", "dependencies.csharp",
-                "cohesion.csharp", "duplication.csharp", "commits",
+                "comments.csharp", "maintainability.csharp", "cohesion.csharp",
+                "duplication.csharp", "commits",
             ],
             settings.EnumerateObject().Select(section => section.Name));
         AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));
@@ -65,12 +65,6 @@ public sealed class InitCommandTests
             ("branches", 12),
             ("constructorParameters", 6),
             ("publicMembers", 25));
-        AssertSection(
-            settings,
-            "dependencies.csharp",
-            ("externalImports", 20),
-            ("outgoingReferences", 15),
-            ("incomingReferences", 20));
         AssertSection(settings, "cohesion.csharp", ("minimumMembers", 6), ("groups", 2));
         AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));
         Assert.Equal("ru", settings

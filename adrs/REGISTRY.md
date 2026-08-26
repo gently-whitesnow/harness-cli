@@ -72,6 +72,9 @@
 - [ADR-0028](0028-recalibrated-csharp-defaults.md) — Начиная с 1.4.0 дефолты C#-эвристик:
   comments `10/8`, cohesion `6/2`, duplication `30/90`; старые pins получают прежние
   значения. Заменяет порог comments из ADR-0015.
+- [ADR-0029](0029-dependency-counts-removed.md) — Начиная с 1.5 `dependencies.csharp`
+  оставляет только blocking-циклы по `Proven`; fan-in/out и external imports удалены как
+  контекстные counts без универсального remediation.
 - [ADR-0015](0015-comment-density-is-a-blocking-source-policy.md) — Историческое правило
   comments `10/25`, заменённое ADR-0028 начиная с контракта 1.4.0.
 - [ADR-0006](0006-heuristics-are-advisory.md) — Лексические метрики исходно advisory и

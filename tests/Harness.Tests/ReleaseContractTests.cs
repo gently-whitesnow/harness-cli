@@ -77,6 +77,22 @@ public sealed class ReleaseContractTests
         Assert.Contains($"\"version\": \"{newerRelease}\"", File.ReadAllText(frame), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Upgrade_previews_versioned_behavior_changes_without_a_new_check_identifier()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("1.4.0"));
+
+        var preview = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+
+        Assert.Equal(0, preview.ExitCode);
+        Assert.Contains("Versioned contract changes this would take on", preview.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "dependency counts and their settings are removed; proved cycles remain",
+            preview.Output,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("verdict does not change", preview.Output, StringComparison.Ordinal);
+    }
+
     /// <summary>A binary that does not ship the pinned release refuses rather than guessing.</summary>
     [Fact]
     public void A_binary_older_than_the_pin_refuses_to_verify()

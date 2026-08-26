@@ -102,6 +102,8 @@ public sealed class HarnessFrameTests
     [InlineData("{ \"comments.csharp\": { \"percent\": 25 } }", "is not a setting")]
     [InlineData("{ \"comments.csharp\": { \"percentageLimit\": 101 } }", "must not exceed 100")]
     [InlineData("{ \"maintainability.csharp\": { \"methodLines\": -1 } }", "non-negative integer")]
+    [InlineData("{ \"dependencies.csharp\": { \"incomingReferences\": 20 } }", "removed in harness 1.5")]
+    [InlineData("{ \"maintainability.csharp\": { \"importFanOut\": 20 } }", "removed in harness 1.5")]
     [InlineData("{ \"duplication.csharp\": { \"windowLines\": 0 } }", "positive integer")]
     [InlineData("{ \"duplication.csharp\": { \"minimumTokens\": -1 } }", "non-negative integer")]
     [InlineData("{ \"commits\": { \"language\": \"de\" } }", "must be 'en' or 'ru'")]

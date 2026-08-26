@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted; current count scope refined by [ADR-0029](0029-dependency-counts-removed.md).
 
 ## Context
 
@@ -50,11 +50,10 @@ architecture) при этом сознательно остаётся работ
   локальная переменная, приведение.
 
 **Blocking-находка строится только из `Proven`-рёбер.** Единственная такая находка —
-`module dependency cycle`: набор модулей, достижимых друг из друга. Все счётные метрики
-(`resolved outgoing type references`, `resolved incoming type references`,
-`external import fan-out`, `independent member groups`) остаются advisory, как требует
-ADR-0006. Их итоговое влияние на прогон определяет repository policy по ADR-0027:
-`required` блокирует оставшуюся находку, `advisory` явно смягчает её.
+`module dependency cycle`: набор модулей, достижимых друг из друга. В контрактах до 1.5
+счётные метрики остаются advisory и повышаются required-policy по ADR-0027. Начиная с 1.5
+fan-in, fan-out и external import counts удалены по ADR-0029: у них нет универсального
+remediation, а единственной dependency-находкой остаётся доказанный цикл.
 
 Имя модуля вложено в имя объемлющего модуля. Ссылка между модулем и модулем внутри него —
 не зависимость, а содержание: реестр, который собирает объявленное собственным поддеревом, и
@@ -66,10 +65,10 @@ Roslyn не берётся: он даёт только точность синт
 Точный уровень по build output получает шов в модели рёбер, но не реализацию: чтение
 untracked build output — отдельное решение, которого этот ADR не принимает.
 
-`using directive fan-out` заменён на `external import fan-out` и переехал из
-`maintainability.csharp` в `dependencies.csharp`; настройка `importFanOut` отвечает
-именованной ошибкой с новым адресом. `constructor parameter count` перестал применяться к
-позиционным `record`: их список — форма данных, а не список переданных сотрудников.
+В legacy-контракте `using directive fan-out` был заменён на `external import fan-out` и
+переехал из `maintainability.csharp` в `dependencies.csharp`; начиная с 1.5 оба удалены.
+`constructor parameter count` перестал применяться к позиционным `record`: их список —
+форма данных, а не список переданных сотрудников.
 
 ## Consequences
 
@@ -91,6 +90,6 @@ untracked build output — отдельное решение, которого �
   неявные преобразования, наследование от внешних типов, wiring через DI и рефлексию.
   Связанность занижена, никогда не завышена на `Proven`.
 - Локальная переменная или член с именем объявленного типа создаёт `Inferred`-ребро,
-  которого нет. Advisory-метрики платят за это точностью.
+  которого нет. Legacy counts до 1.5 платят за это точностью; текущие циклы его не читают.
 - Blocking-цикл может оказаться осознанным: тогда его принимают `suppress` с причиной,
   и эта причина видна в каждом прогоне.

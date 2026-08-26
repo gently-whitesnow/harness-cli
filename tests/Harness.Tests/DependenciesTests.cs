@@ -75,7 +75,8 @@ public sealed class DependenciesTests
     [Fact]
     public void Import_fan_out_counts_imports_from_outside_the_repository()
     {
-        using var repository = Fixtures.Compliant(Frame.AllPresent().Policy(Check, "advisory"))
+        using var repository = Fixtures.Compliant(
+                Frame.AllPresent().Version("1.4.0").Policy(Check, "advisory"))
             .WriteFile("src/App/Imports.cs", CSharp.ManyImports(25))
             .Commit();
 
@@ -89,7 +90,8 @@ public sealed class DependenciesTests
     public void An_import_of_a_namespace_this_repository_declares_is_not_external()
     {
         using var repository = Fixtures
-            .Compliant(Frame.AllPresent().Settings("""{ "dependencies.csharp": { "externalImports": 0 } }"""))
+            .Compliant(Frame.AllPresent().Version("1.4.0").Settings(
+                """{ "dependencies.csharp": { "externalImports": 0 } }"""))
             .WriteFile("src/App/Registry.cs", CSharp.Uses("App", "Registry", "Other", "Widget"))
             .WriteFile("src/Other/Widget.cs", CSharp.Empty("Other", "Widget"))
             .Commit();
@@ -104,7 +106,8 @@ public sealed class DependenciesTests
     public void A_using_statement_inside_a_method_is_not_an_import()
     {
         using var repository = Fixtures
-            .Compliant(Frame.AllPresent().Settings("""{ "dependencies.csharp": { "externalImports": 1 } }"""))
+            .Compliant(Frame.AllPresent().Version("1.4.0").Settings(
+                """{ "dependencies.csharp": { "externalImports": 1 } }"""))
             .WriteFile("src/App/Stream.cs", CSharp.UsingStatements)
             .Commit();
 
@@ -112,6 +115,46 @@ public sealed class DependenciesTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("external import fan-out"), run.Output);
+    }
+
+    [Fact]
+    public void Current_contract_does_not_report_dependency_counts()
+    {
+        using var repository = Fixtures
+            .Compliant()
+            .WriteFile("src/App/Env.cs", "namespace App; public enum Env { Production }\n")
+            .WriteFile(
+                "src/App/Model.cs",
+                "namespace App; public sealed class Model { public Env Current { get; init; } }\n")
+            .WriteFile(
+                "src/App/Named.cs",
+                "namespace App; public sealed class Named { public string Env { get; init; } = string.Empty; }\n")
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.False(run.OutputContains("type references"), run.Output);
+        Assert.False(run.OutputContains("external import fan-out"), run.Output);
+    }
+
+    [Fact]
+    public void A_pin_before_counts_were_removed_keeps_them_enforceable()
+    {
+        using var repository = Fixtures
+            .Compliant(Frame.AllPresent().Version("1.4.0").Settings(
+                """{ "dependencies.csharp": { "outgoingReferences": 0, "incomingReferences": 0 } }"""))
+            .WriteFile("src/App/Env.cs", "namespace App; public enum Env { Production }\n")
+            .WriteFile(
+                "src/App/Model.cs",
+                "namespace App; public sealed class Model { public string Env { get; init; } = string.Empty; }\n")
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.True(run.OutputContains("resolved incoming type references 1"), run.Output);
+        Assert.True(run.OutputContains("violation"), run.Output);
     }
 
     [Fact]
@@ -125,7 +168,7 @@ public sealed class DependenciesTests
     }
 
     [Fact]
-    public void Explain_separates_what_is_proved_from_what_is_estimated()
+    public void Explain_limits_the_current_check_to_proved_cycles()
     {
         using var repository = Fixtures.Compliant();
 
@@ -135,8 +178,8 @@ public sealed class DependenciesTests
         Assert.True(run.OutputContains("Evidence"), run.Output);
         Assert.True(run.OutputContains("Why a cycle is blocking"), run.Output);
         Assert.True(run.OutputContains("Limits"), run.Output);
-        Assert.True(run.OutputContains("Possible damage"), run.Output);
-        Assert.True(run.OutputContains("not semantic coupling"), run.Output);
+        Assert.True(run.OutputContains("Named suppression"), run.Output);
+        Assert.True(run.OutputContains("does not report fan-in or fan-out"), run.Output);
     }
 
     private static RepositoryFixture Cycle(Frame? frame = null)

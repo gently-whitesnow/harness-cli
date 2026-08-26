@@ -36,7 +36,8 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
             Measure(file, metrics, measurements);
         }
 
-        return CheckEvaluation.From(MetricReport.Exceeding(measurements, metrics.All, ShownPerMetric));
+        var report = MetricReport.Exceeding(measurements, metrics.All, ShownPerMetric);
+        return CheckEvaluation.From(report.Summary, detailedFindings: report.Detailed);
     }
 
     private static void Measure(CSharpFile file, MetricSet metrics, List<Measurement> measurements)
