@@ -10,21 +10,20 @@ internal static class MetricReport
     public static MetricFindings Exceeding(
         IReadOnlyList<Measurement> measurements,
         IReadOnlyList<Metric> metrics,
-        int shown,
-        FindingSeverity severity = FindingSeverity.Advisory)
+        int shown)
     {
         var findings = new List<Finding>();
         var detailed = new List<Finding>();
         foreach (var metric in metrics)
         {
-            var all = Exceeding(measurements, metric, severity);
+            var all = Exceeding(measurements, metric);
             detailed.AddRange(all);
             findings.AddRange(all.Take(shown));
 
             if (all.Count > shown)
             {
                 findings.Add(new Finding(
-                    severity,
+                    FindingSeverity.Advisory,
                     all[shown].Location,
                     $"{metric.Name}: {all.Count} subjects exceed the configured comparison point "
                         + $"of {metric.ComparisonPoint}; the {shown} largest are listed above"));
@@ -36,8 +35,7 @@ internal static class MetricReport
 
     private static List<Finding> Exceeding(
         IReadOnlyList<Measurement> measurements,
-        Metric metric,
-        FindingSeverity severity)
+        Metric metric)
     {
         var exceeded = measurements
             .Where(measurement => ReferenceEquals(measurement.Metric, metric))
@@ -48,7 +46,7 @@ internal static class MetricReport
 
         return exceeded
             .Select(measurement => new Finding(
-                severity,
+                FindingSeverity.Advisory,
                 measurement.Location,
                 $"{metric.Name} {measurement.Value} exceeds the configured comparison point "
                     + $"of {metric.ComparisonPoint} in {measurement.Subject}"))

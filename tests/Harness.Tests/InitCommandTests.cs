@@ -47,6 +47,7 @@ public sealed class InitCommandTests
             .GetProperty("comments.csharp").GetProperty("percentageLimit").GetInt32());
         Assert.Equal(400, root.GetProperty("settings")
             .GetProperty("maintainability.csharp").GetProperty("fileLines").GetInt32());
+        Assert.False(root.GetProperty("settings").TryGetProperty("dependencies.csharp", out _));
         Assert.Equal(2, root.GetProperty("settings")
             .GetProperty("cohesion.csharp").GetProperty("groups").GetInt32());
         Assert.Equal(30, root.GetProperty("settings")

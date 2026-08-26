@@ -12,6 +12,8 @@ namespace Harness.Config;
 /// </summary>
 internal static class HarnessSettingsReader
 {
+    private static readonly HarnessVersion DependencyCountsRemovedIn = new(1, 5, 0);
+
     private static readonly string Comments = Language.CSharp.Qualify("comments");
     private static readonly string Maintainability = Language.CSharp.Qualify("maintainability");
     private static readonly string Dependencies = Language.CSharp.Qualify("dependencies");
@@ -32,7 +34,25 @@ internal static class HarnessSettingsReader
             return (null, "'settings' must be an object");
         }
 
-        string[] known = [Comments, Maintainability, Dependencies, Cohesion, Duplication, Commits];
+        var readsDependencyCounts = version < DependencyCountsRemovedIn;
+        if (!readsDependencyCounts && declared.TryGetProperty(Dependencies, out _))
+        {
+            return (null, $"'settings.{Dependencies}' was removed in harness 1.5; remove this section. "
+                + "The current check proves module cycles and has no comparison points");
+        }
+
+        if (!readsDependencyCounts
+            && declared.TryGetProperty(Maintainability, out var maintainability)
+            && maintainability.ValueKind == JsonValueKind.Object
+            && maintainability.TryGetProperty("importFanOut", out _))
+        {
+            return (null, $"'settings.{Maintainability}.importFanOut' was removed in harness 1.5; "
+                + "dependency cycles have no import-count setting");
+        }
+
+        string[] known = readsDependencyCounts
+            ? [Comments, Maintainability, Dependencies, Cohesion, Duplication, Commits]
+            : [Comments, Maintainability, Cohesion, Duplication, Commits];
         foreach (var property in declared.EnumerateObject())
         {
             if (!known.Contains(property.Name, StringComparer.Ordinal))
@@ -42,12 +62,13 @@ internal static class HarnessSettingsReader
             }
         }
 
-        return Assemble(declared, defaults);
+        return Assemble(declared, defaults, readsDependencyCounts);
     }
 
     private static (HarnessSettings? Settings, string? Failure) Assemble(
         JsonElement declared,
-        HarnessSettings defaults)
+        HarnessSettings defaults,
+        bool readsDependencyCounts)
     {
         var (comments, commentFailure) = ReadSection(
             declared,
@@ -66,7 +87,8 @@ internal static class HarnessSettingsReader
             return (null, maintainabilityFailure);
         }
 
-        var (dependencies, dependencyFailure) = ReadDependencies(declared, defaults.Dependencies);
+        var (dependencies, dependencyFailure) = DependenciesFor(
+            declared, defaults.Dependencies, readsDependencyCounts);
         if (dependencies is null)
         {
             return (null, dependencyFailure);
@@ -108,6 +130,12 @@ internal static class HarnessSettingsReader
                 new DuplicationSettings(duplication[0], duplication[1]),
                 commits), null);
     }
+
+    private static (DependencySettings? Settings, string? Failure) DependenciesFor(
+        JsonElement declared,
+        DependencySettings defaults,
+        bool readsDependencyCounts)
+        => readsDependencyCounts ? ReadDependencies(declared, defaults) : (defaults, null);
 
     private static (MaintainabilitySettings? Settings, string? Failure) ReadMaintainability(
         JsonElement declared,

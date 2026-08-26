@@ -222,6 +222,27 @@ public sealed class MaintainabilityTests
     }
 
     [Fact]
+    public void All_prints_every_measured_subject_and_implies_verbose()
+    {
+        var repository = Fixtures.Compliant();
+        for (var index = 0; index < 8; index++)
+        {
+            repository.WriteFile($"src/App/Report{index:00}.cs", MaintainabilitySources.LongMethod(70));
+        }
+
+        using var committed = repository.Commit();
+
+        var compact = HarnessCli.RunVerbose(committed.Path, "check", "--only", Check);
+        var all = HarnessCli.Run(committed.Path, "check", "--only", Check, "--all");
+
+        Assert.False(compact.OutputContains("src/App/Report07.cs:5"), compact.Output);
+        Assert.True(compact.OutputContains("8 subjects exceed"), compact.Output);
+        Assert.True(all.OutputContains("outcome: failed"), all.Output);
+        Assert.True(all.OutputContains("src/App/Report07.cs:5"), all.Output);
+        Assert.False(all.OutputContains("8 subjects exceed"), all.Output);
+    }
+
+    [Fact]
     public void The_gate_reports_a_duration_and_leaves_the_repository_unchanged()
     {
         using var repository = SourceRepository("src/App/Report.cs", MaintainabilitySources.LongMethod(70));

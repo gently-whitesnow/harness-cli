@@ -103,7 +103,7 @@ internal static class ConsoleReport
             text.Append("    ").Append(gate.OutcomeReason).Append('\n');
         }
 
-        AppendFindings(text, all ? gate.DetailedFindings : gate.Findings);
+        AppendFindings(text, all ? gate.DetailedFindings : gate.Findings, all);
         AppendSuppressed(text, gate.Suppressed);
     }
 
@@ -174,9 +174,12 @@ internal static class ConsoleReport
             + "run\n    `git add` on them, because an untracked file is evidence for nobody.\n");
     }
 
-    private static void AppendFindings(StringBuilder text, IReadOnlyList<Finding> findings)
+    private static void AppendFindings(
+        StringBuilder text,
+        IReadOnlyList<Finding> findings,
+        bool all)
     {
-        const int shownLocations = 5;
+        var shownLocations = all ? int.MaxValue : 5;
 
         var groups = findings
             .GroupBy(finding => (finding.Severity, finding.Message))
@@ -203,12 +206,7 @@ internal static class ConsoleReport
     }
 
     private static string Label(FindingSeverity severity)
-        => severity switch
-        {
-            FindingSeverity.Blocking => "violation",
-            FindingSeverity.Advisory => "advisory ",
-            _ => "observed  ",
-        };
+        => severity == FindingSeverity.Blocking ? "violation" : "advisory ";
 
     private static string Headline(RunReport report)
         => report.ExitCode switch

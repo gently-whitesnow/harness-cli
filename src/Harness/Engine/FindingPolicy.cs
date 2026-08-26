@@ -10,8 +10,7 @@ internal static class FindingPolicy
     private static readonly HarnessVersion RequiredFindingsSince = new(1, 3, 0);
 
     public static bool ShouldRequire(IReadOnlyList<Finding> findings, HarnessConfig? config)
-        => findings.Any(finding => finding.Severity != FindingSeverity.Observation)
-            && UsesRequiredContract(config);
+        => findings.Count > 0 && UsesRequiredContract(config);
 
     public static bool UsesRequiredContract(HarnessConfig? config)
         => config?.Includes(RequiredFindingsSince) == true;
@@ -30,9 +29,7 @@ internal static class FindingPolicy
 
     public static List<Finding> RequireSeverity(IEnumerable<Finding> findings)
         => findings
-            .Select(finding => finding.Severity == FindingSeverity.Observation
-                ? finding
-                : finding with { Severity = FindingSeverity.Blocking })
+            .Select(finding => finding with { Severity = FindingSeverity.Blocking })
             .ToList();
 
     public static Finding Demote(Finding finding)

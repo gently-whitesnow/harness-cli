@@ -87,7 +87,7 @@ public sealed class ReleaseContractTests
         Assert.Equal(0, preview.ExitCode);
         Assert.Contains("Versioned contract changes this would take on", preview.Output, StringComparison.Ordinal);
         Assert.Contains(
-            "dependency counts become proven-only, non-blocking observations",
+            "dependency counts and their settings are removed; proved cycles remain",
             preview.Output,
             StringComparison.Ordinal);
         Assert.DoesNotContain("verdict does not change", preview.Output, StringComparison.Ordinal);

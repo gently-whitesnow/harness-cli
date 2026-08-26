@@ -19,7 +19,7 @@ internal static class FrameUpgrade
     private static readonly IReadOnlyList<(HarnessVersion Since, string Description)> ContractChanges =
     [
         (new HarnessVersion(1, 4, 0), "recalibrated comments, cohesion and duplication defaults"),
-        (new HarnessVersion(1, 5, 0), "dependency counts become proven-only, non-blocking observations"),
+        (new HarnessVersion(1, 5, 0), "dependency counts and their settings are removed; proved cycles remain"),
     ];
 
     public static (string? Report, string? Failure) Raise(

@@ -90,11 +90,6 @@ internal static class ConfigInitializer
                   "constructorParameters": {{defaults.Maintainability.ConstructorParameters}},
                   "publicMembers": {{defaults.Maintainability.PublicMembers}}
                 },
-                "dependencies.csharp": {
-                  "externalImports": {{defaults.Dependencies.ExternalImports}},
-                  "outgoingReferences": {{defaults.Dependencies.OutgoingReferences}},
-                  "incomingReferences": {{defaults.Dependencies.IncomingReferences}}
-                },
                 "cohesion.csharp": {
                   "minimumMembers": {{defaults.Cohesion.MinimumMembers}},
                   "groups": {{defaults.Cohesion.Groups}}

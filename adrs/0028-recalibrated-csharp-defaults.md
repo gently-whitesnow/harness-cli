@@ -31,8 +31,9 @@ C#-монорепозитории. Дефолты cohesion `groups: 1` и duplic
 Пины до `1.4.0` получают прежние `6/1`, `8/24` и `10/25`, даже когда проверку выполняет
 новый бинарь. Явные repository settings, как и раньше, сильнее дефолта.
 
-Фиксированные fan-in/fan-out defaults не меняются: калибровка двух репозиториев не устраняет
-смешение production, tests, composition roots и устойчивых domain hubs в одной метрике.
+Фиксированные fan-in/fan-out defaults в 1.4 не меняются; начиная с 1.5 counts удалены по
+[ADR-0029](0029-dependency-counts-removed.md), потому что смешивают production, tests,
+composition roots и устойчивые domain hubs в одной метрике.
 
 ## Consequences
 

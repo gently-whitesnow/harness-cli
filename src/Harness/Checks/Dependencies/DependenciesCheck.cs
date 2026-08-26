@@ -8,15 +8,14 @@ namespace Harness.Checks.Dependencies;
 
 /// <summary>
 /// Reads the dependency graph a repository declares about itself and reports two different
-/// kinds of thing. A cycle between modules is proved: every edge of it stands in a position
-/// the language allows nothing but a type, and every name in it resolves to exactly one
-/// declaration, so the check marks it blocking. The counts around it use those same proven
-/// edges but remain observations: their comparison points provide scale, not a gate.
+/// kinds of thing. A current-contract cycle between modules is proved: every edge of it
+/// stands in a position the language allows nothing but a type, and every name resolves to
+/// exactly one declaration. Legacy pins retain the counts they originally contracted for.
 /// </summary>
 internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer)
     : LanguageAnalyzerCheck(analyzer, "dependencies", "dependencies between modules and types")
 {
-    private static readonly HarnessVersion ProvenObservationsSince = new(1, 5, 0);
+    private static readonly HarnessVersion CountsRemovedSince = new(1, 5, 0);
 
     private const int ShownPerMetric = 5;
 
@@ -39,10 +38,14 @@ internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer)
             return CheckEvaluation.NotApplicable(Analyzer.NothingToAnalyze);
         }
 
-        var settings = context.Config?.Settings.Dependencies ?? DependencySettings.Default;
-        var usesProvenObservations = context.Config?.Includes(ProvenObservationsSince) == true;
         var cycles = Cycles(graph);
-        var coupling = Coupling(graph, settings, usesProvenObservations);
+        if (context.Config?.Includes(CountsRemovedSince) == true)
+        {
+            return CheckEvaluation.From(cycles.Summary, Coverage(graph), cycles.Detailed);
+        }
+
+        var settings = context.Config?.Settings.Dependencies ?? DependencySettings.Default;
+        var coupling = Coupling(graph, settings);
         var findings = cycles.Summary.Concat(coupling.Summary).ToList();
         var detailed = cycles.Detailed.Concat(coupling.Detailed).ToList();
 
@@ -90,31 +93,22 @@ internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer)
             + "references is turned around or the concept both need is moved out of both." + wider;
     }
 
-    private static MetricFindings Coupling(
-        SourceGraph graph,
-        DependencySettings settings,
-        bool usesProvenObservations)
+    private static MetricFindings Coupling(SourceGraph graph, DependencySettings settings)
     {
-        var prefix = usesProvenObservations ? "proven" : "resolved";
-        var outgoing = new Metric($"{prefix} outgoing type references", settings.OutgoingReferences);
-        var incoming = new Metric($"{prefix} incoming type references", settings.IncomingReferences);
+        var outgoing = new Metric("resolved outgoing type references", settings.OutgoingReferences);
+        var incoming = new Metric("resolved incoming type references", settings.IncomingReferences);
         var external = new Metric("external import fan-out", settings.ExternalImports);
 
         var measurements = new List<Measurement>();
-        var edges = usesProvenObservations ? graph.Proven : graph.Edges;
-        measurements.AddRange(Fan(edges, outgoing, edge => edge.From));
-        measurements.AddRange(Fan(edges, incoming, edge => edge.To));
+        measurements.AddRange(Fan(graph.Edges, outgoing, edge => edge.From));
+        measurements.AddRange(Fan(graph.Edges, incoming, edge => edge.To));
         measurements.AddRange(graph.Imports.Select(file =>
             new Measurement(external, file.Count, file.Path, file.Path)));
 
-        var severity = usesProvenObservations
-            ? FindingSeverity.Observation
-            : FindingSeverity.Advisory;
         return MetricReport.Exceeding(
             measurements,
             [outgoing, incoming, external],
-            ShownPerMetric,
-            severity);
+            ShownPerMetric);
     }
 
     // One edge per pair of types already, so counting edges counts distinct partners.
