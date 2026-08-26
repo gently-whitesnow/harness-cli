@@ -6,8 +6,8 @@ internal static class MaintainabilityExplanation
     public const string Text =
         """
         Rationale
-          Size, branching and surface area are the cheapest observable signals that a piece
-          of C# is becoming expensive to change. They are signals, not verdicts: the gate
+          Size and branching are cheap observable signals that a piece of C# is becoming
+          expensive to change. They are signals, not verdicts: the gate
           measures them and names them precisely. Findings originate as advisory evidence,
           while the default required repository policy makes every unresolved finding
           blocking. A repository paying down known findings can opt into advisory policy.
@@ -34,19 +34,18 @@ internal static class MaintainabilityExplanation
           lexical branch count        1 plus the occurrences of `if`, `for`, `foreach`,
                                       `while`, `do`, `case`, `catch`, `when`, `&&`, `||`
                                       and `??` inside the member
-          constructor parameter count parameters of a declared constructor, or of a
-                                      primary constructor on a class; a positional record
-                                      declares the shape of its data and is not counted
-          public declared members     declarations beginning with `public` directly inside
-                                      one type body
 
         Names
-          The names above are the whole claim. `constructor parameter count` counts
-          parameters and is not a dependency count: a parameter may be a value, an option
-          or an already-grouped context. `lexical branch count` counts tokens; it is
+          The names above are the whole claim. `lexical branch count` counts tokens; it is
           not a compiler control-flow graph, and has no notion of reachability, of paths
-          that cannot be taken, or of exception edges. `public declared members` counts
-          declarations, not the size of the reachable API.
+          that cannot be taken, or of exception edges.
+
+          Repository pins through 1.5 additionally reproduce the legacy `constructor
+          parameter count` and `public declared members` measurements and their comparison
+          points. They were removed in 1.6 because data values, options, facades and services
+          have legitimately different width, so repository-wide counts had no universal
+          remediation. In particular, treating a positional record as data but a data class
+          as collaborators made the constructor rule depend on syntax rather than intent.
 
         Limits
           The reader is lexical. Interpolation holes are masked with the literal that
@@ -76,10 +75,8 @@ internal static class MaintainabilityExplanation
         Remediation
           Read the subject at the reported location and decide. A refactor has its own
           cost: splitting a cohesive type to satisfy a line count adds indirection and
-          spreads one decision across several files, and reducing a constructor's
-          parameters by introducing a container can hide a real dependency rather than
-          remove it. Act when the measurement matches something you already find hard to
-          change. Engineering judgement decides here; the harness supplies the evidence and
-          will not edit the code.
+          spreads one decision across several files. Act when the measurement matches
+          something you already find hard to change. Engineering judgement decides here;
+          the harness supplies the evidence and will not edit the code.
         """;
 }

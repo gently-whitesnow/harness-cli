@@ -1,6 +1,7 @@
 using Harness.Checks.Metrics;
 using Harness.Config;
 using Harness.Languages.CSharp;
+using Harness.Versioning;
 
 namespace Harness.Checks.Maintainability;
 
@@ -20,6 +21,7 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
         MaintainabilityExplanation.Text)
 {
     private const int ShownPerMetric = 5;
+    private static readonly HarnessVersion ContextualWidthCountsRemovedIn = new(1, 6, 0);
 
     // Longest first so `foreach` is not read as `for`.
     private static readonly string[] BranchKeywords =
@@ -27,8 +29,13 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
 
     protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
     {
+        var config = context.Config;
+        var measuresContextualWidthCounts = config is not null
+            && !config.TracksLatest
+            && config.Version < ContextualWidthCountsRemovedIn;
         var metrics = new MetricSet(
-            context.Config?.Settings.Maintainability ?? MaintainabilitySettings.Default);
+            config?.Settings.Maintainability ?? MaintainabilitySettings.Default,
+            measuresContextualWidthCounts);
 
         var measurements = new List<Measurement>();
         foreach (var file in files)
@@ -55,8 +62,11 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
                 case DeclarationKind.Type:
                     measurements.Add(new Measurement(
                         metrics.TypeLines, logicalLines, declaration.Subject, location));
-                    measurements.Add(new Measurement(
-                        metrics.PublicMembers, declaration.PublicMembers, declaration.Subject, location));
+                    if (metrics.PublicMembers is not null)
+                    {
+                        measurements.Add(new Measurement(
+                            metrics.PublicMembers, declaration.PublicMembers, declaration.Subject, location));
+                    }
                     break;
 
                 case DeclarationKind.Field:
@@ -77,7 +87,9 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
             // the same measurement, so both are reported under the same name. A positional
             // record is excluded: its parameter list is the shape of the data it holds, not
             // a list of collaborators the type had to be handed.
-            if (declaration.ParameterCount >= 0 && declaration.TypeForm != TypeForm.Record)
+            if (metrics.ConstructorParameters is not null
+                && declaration.ParameterCount >= 0
+                && declaration.TypeForm != TypeForm.Record)
             {
                 measurements.Add(new Measurement(
                     metrics.ConstructorParameters, declaration.ParameterCount, declaration.Subject, location));
@@ -137,31 +149,44 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
 
     private sealed class MetricSet
     {
-        public MetricSet(MaintainabilitySettings settings)
+        public MetricSet(MaintainabilitySettings settings, bool measuresContextualWidthCounts)
         {
             FileLines = new("file logical lines", settings.FileLines);
             TypeLines = new("type logical lines", settings.TypeLines);
             MethodLines = new("method logical lines", settings.MethodLines);
             Branches = new("lexical branch count", settings.Branches);
-            ConstructorParameters = new("constructor parameter count", settings.ConstructorParameters);
-            PublicMembers = new("public declared members", settings.PublicMembers);
-            All =
-            [
+            ConstructorParameters = measuresContextualWidthCounts
+                ? new Metric("constructor parameter count", settings.ConstructorParameters)
+                : null;
+            PublicMembers = measuresContextualWidthCounts
+                ? new Metric("public declared members", settings.PublicMembers)
+                : null;
+            var all = new List<Metric>
+            {
                 FileLines,
                 TypeLines,
                 MethodLines,
                 Branches,
-                ConstructorParameters,
-                PublicMembers,
-            ];
+            };
+            if (ConstructorParameters is not null)
+            {
+                all.Add(ConstructorParameters);
+            }
+
+            if (PublicMembers is not null)
+            {
+                all.Add(PublicMembers);
+            }
+
+            All = all;
         }
 
         public Metric FileLines { get; }
         public Metric TypeLines { get; }
         public Metric MethodLines { get; }
         public Metric Branches { get; }
-        public Metric ConstructorParameters { get; }
-        public Metric PublicMembers { get; }
+        public Metric? ConstructorParameters { get; }
+        public Metric? PublicMembers { get; }
         public IReadOnlyList<Metric> All { get; }
     }
 }

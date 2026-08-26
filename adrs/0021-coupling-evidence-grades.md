@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted; current count scope refined by [ADR-0029](0029-dependency-counts-removed.md).
+Accepted; dependency count scope refined by [ADR-0029](0029-dependency-counts-removed.md),
+constructor count removed by [ADR-0030](0030-contextual-width-counts-removed.md).
 
 ## Context
 

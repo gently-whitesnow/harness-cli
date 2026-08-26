@@ -3,7 +3,8 @@
 ## Status
 
 Accepted; enforcement superseded by [ADR-0027](0027-required-findings-are-blocking.md),
-dependency counts removed by [ADR-0029](0029-dependency-counts-removed.md).
+dependency counts removed by [ADR-0029](0029-dependency-counts-removed.md), contextual
+width counts removed by [ADR-0030](0030-contextual-width-counts-removed.md).
 
 ## Context
 

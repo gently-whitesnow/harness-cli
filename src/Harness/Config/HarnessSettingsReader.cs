@@ -13,6 +13,7 @@ namespace Harness.Config;
 internal static class HarnessSettingsReader
 {
     private static readonly HarnessVersion DependencyCountsRemovedIn = new(1, 5, 0);
+    private static readonly HarnessVersion ContextualWidthCountsRemovedIn = new(1, 6, 0);
 
     private static readonly string Comments = Language.CSharp.Qualify("comments");
     private static readonly string Maintainability = Language.CSharp.Qualify("maintainability");
@@ -62,12 +63,13 @@ internal static class HarnessSettingsReader
             }
         }
 
-        return Assemble(declared, defaults, readsDependencyCounts);
+        return Assemble(declared, defaults, version, readsDependencyCounts);
     }
 
     private static (HarnessSettings? Settings, string? Failure) Assemble(
         JsonElement declared,
         HarnessSettings defaults,
+        HarnessVersion version,
         bool readsDependencyCounts)
     {
         var (comments, commentFailure) = ReadSection(
@@ -81,7 +83,7 @@ internal static class HarnessSettingsReader
             return (null, commentFailure);
         }
 
-        var (maintainability, maintainabilityFailure) = ReadMaintainability(declared, defaults.Maintainability);
+        var (maintainability, maintainabilityFailure) = ReadMaintainability(declared, defaults.Maintainability, version);
         if (maintainability is null)
         {
             return (null, maintainabilityFailure);
@@ -139,16 +141,45 @@ internal static class HarnessSettingsReader
 
     private static (MaintainabilitySettings? Settings, string? Failure) ReadMaintainability(
         JsonElement declared,
-        MaintainabilitySettings defaults)
+        MaintainabilitySettings defaults,
+        HarnessVersion version)
     {
+        var readsContextualWidthCounts = version < ContextualWidthCountsRemovedIn;
+        if (!readsContextualWidthCounts
+            && declared.TryGetProperty(Maintainability, out var maintainability)
+            && maintainability.ValueKind == JsonValueKind.Object
+            && maintainability.TryGetProperty("publicMembers", out _))
+        {
+            return (null, $"'settings.{Maintainability}.publicMembers' was removed in harness 1.6; "
+                + "remove this key because public surface width is no longer measured");
+        }
+
+        if (!readsContextualWidthCounts
+            && declared.TryGetProperty(Maintainability, out maintainability)
+            && maintainability.ValueKind == JsonValueKind.Object
+            && maintainability.TryGetProperty("constructorParameters", out _))
+        {
+            return (null, $"'settings.{Maintainability}.constructorParameters' was removed in harness 1.6; "
+                + "remove this key because raw constructor arity is no longer measured");
+        }
+
+        string[] known = readsContextualWidthCounts
+            ? ["fileLines", "typeLines", "methodLines", "branches", "constructorParameters", "publicMembers"]
+            : ["fileLines", "typeLines", "methodLines", "branches"];
+        int[] fallback = readsContextualWidthCounts
+            ? [
+                defaults.FileLines, defaults.TypeLines, defaults.MethodLines,
+                defaults.Branches, defaults.ConstructorParameters, defaults.PublicMembers,
+            ]
+            : [
+                defaults.FileLines, defaults.TypeLines, defaults.MethodLines,
+                defaults.Branches,
+            ];
         var (values, failure) = ReadSection(
             declared,
             Maintainability,
-            ["fileLines", "typeLines", "methodLines", "branches", "constructorParameters", "publicMembers"],
-            [
-                defaults.FileLines, defaults.TypeLines, defaults.MethodLines,
-                defaults.Branches, defaults.ConstructorParameters, defaults.PublicMembers,
-            ],
+            known,
+            fallback,
             moved: new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["importFanOut"] = $"settings.{Dependencies}.externalImports",
@@ -156,7 +187,10 @@ internal static class HarnessSettingsReader
 
         return values is null
             ? (null, failure)
-            : (new MaintainabilitySettings(values[0], values[1], values[2], values[3], values[4], values[5]), null);
+            : (new MaintainabilitySettings(
+                values[0], values[1], values[2], values[3],
+                readsContextualWidthCounts ? values[4] : defaults.ConstructorParameters,
+                readsContextualWidthCounts ? values[5] : defaults.PublicMembers), null);
     }
 
     private static (DependencySettings? Settings, string? Failure) ReadDependencies(

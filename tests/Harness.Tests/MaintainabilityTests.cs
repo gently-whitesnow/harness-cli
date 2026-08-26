@@ -91,7 +91,10 @@ public sealed class MaintainabilityTests
     [Fact]
     public void A_positional_record_does_not_report_a_constructor_parameter_count()
     {
-        using var repository = SourceRepository("src/App/Money.cs", MaintainabilitySources.WideRecord);
+        using var repository = SourceRepository(
+            "src/App/Money.cs",
+            MaintainabilitySources.WideRecord,
+            Frame.AllPresent().Version("1.5.0"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
@@ -102,7 +105,10 @@ public sealed class MaintainabilityTests
     [Fact]
     public void A_class_primary_constructor_reports_its_parameter_count()
     {
-        using var repository = SourceRepository("src/App/Engine.cs", MaintainabilitySources.WidePrimaryConstructor);
+        using var repository = SourceRepository(
+            "src/App/Engine.cs",
+            MaintainabilitySources.WidePrimaryConstructor,
+            Frame.AllPresent().Version("1.5.0"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
@@ -113,7 +119,10 @@ public sealed class MaintainabilityTests
     [Fact]
     public void A_declared_constructor_reports_its_parameter_count()
     {
-        using var repository = SourceRepository("src/App/Service.cs", MaintainabilitySources.WideConstructor);
+        using var repository = SourceRepository(
+            "src/App/Service.cs",
+            MaintainabilitySources.WideConstructor,
+            Frame.AllPresent().Version("1.5.0"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
@@ -122,14 +131,43 @@ public sealed class MaintainabilityTests
     }
 
     [Fact]
-    public void A_wide_public_surface_is_reported_for_the_declaring_type()
+    public void The_current_contract_does_not_measure_constructor_arity()
     {
-        using var repository = SourceRepository("src/App/Facade.cs", MaintainabilitySources.WidePublicSurface(30));
+        using var repository = SourceRepository(
+            "src/App/Service.cs", MaintainabilitySources.WideConstructor);
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.False(run.OutputContains("constructor parameter count"), run.Output);
+        Assert.False(run.OutputContains("App.Service"), run.Output);
+    }
+
+    [Fact]
+    public void A_legacy_pin_reports_a_wide_public_surface_for_the_declaring_type()
+    {
+        using var repository = SourceRepository(
+            "src/App/Facade.cs",
+            MaintainabilitySources.WidePublicSurface(30),
+            Frame.AllPresent().Version("1.5.0"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.True(run.OutputContains("public declared members 30 exceeds"), run.Output);
         Assert.True(run.OutputContains("App.Facade"), run.Output);
+    }
+
+    [Fact]
+    public void The_current_contract_does_not_measure_public_surface_width()
+    {
+        using var repository = SourceRepository(
+            "src/App/Facade.cs", MaintainabilitySources.WidePublicSurface(30));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.False(run.OutputContains("public declared members"), run.Output);
+        Assert.False(run.OutputContains("App.Facade"), run.Output);
     }
 
     [Fact]
@@ -275,8 +313,6 @@ public sealed class MaintainabilityTests
             .WriteFile("src/App/Big.cs", MaintainabilitySources.LargeType(420))
             .WriteFile("src/App/Report.cs", MaintainabilitySources.LongMethod(70))
             .WriteFile("src/App/Router.cs", MaintainabilitySources.BranchingMethod)
-            .WriteFile("src/App/Service.cs", MaintainabilitySources.WideConstructor)
-            .WriteFile("src/App/Facade.cs", MaintainabilitySources.WidePublicSurface(30))
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
@@ -288,8 +324,6 @@ public sealed class MaintainabilityTests
             "type logical lines",
             "method logical lines",
             "lexical branch count",
-            "constructor parameter count",
-            "public declared members",
         })
         {
             Assert.True(run.OutputContains(metric), metric + " is missing from:\n" + run.Output);
@@ -317,7 +351,6 @@ public sealed class MaintainabilityTests
 
         var run = HarnessCli.Run(repository.Path, "explain", Check);
 
-        Assert.True(run.OutputContains("not a dependency count"), run.Output);
         Assert.True(run.OutputContains("not a compiler control-flow graph"), run.Output);
     }
 

@@ -75,6 +75,9 @@
 - [ADR-0029](0029-dependency-counts-removed.md) — Начиная с 1.5 `dependencies.csharp`
   оставляет только blocking-циклы по `Proven`; fan-in/out и external imports удалены как
   контекстные counts без универсального remediation.
+- [ADR-0030](0030-contextual-width-counts-removed.md) — Начиная с 1.6
+  `maintainability.csharp` не измеряет constructor parameters и public members и не
+  принимает их settings; старые pins сохраняют прежний контракт.
 - [ADR-0015](0015-comment-density-is-a-blocking-source-policy.md) — Историческое правило
   comments `10/25`, заменённое ADR-0028 начиная с контракта 1.4.0.
 - [ADR-0006](0006-heuristics-are-advisory.md) — Лексические метрики исходно advisory и

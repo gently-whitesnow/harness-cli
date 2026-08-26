@@ -93,6 +93,21 @@ public sealed class ReleaseContractTests
         Assert.DoesNotContain("verdict does not change", preview.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Upgrade_from_1_5_names_the_removed_contextual_width_metrics()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("1.5.0"));
+
+        var preview = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+
+        Assert.Equal(0, preview.ExitCode);
+        Assert.Contains(
+            "contextual constructor and public-member counts are removed",
+            preview.Output,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("verdict does not change", preview.Output, StringComparison.Ordinal);
+    }
+
     /// <summary>A binary that does not ship the pinned release refuses rather than guessing.</summary>
     [Fact]
     public void A_binary_older_than_the_pin_refuses_to_verify()

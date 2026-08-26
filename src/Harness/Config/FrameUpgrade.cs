@@ -20,6 +20,7 @@ internal static class FrameUpgrade
     [
         (new HarnessVersion(1, 4, 0), "recalibrated comments, cohesion and duplication defaults"),
         (new HarnessVersion(1, 5, 0), "dependency counts and their settings are removed; proved cycles remain"),
+        (new HarnessVersion(1, 6, 0), "contextual constructor and public-member counts are removed"),
     ];
 
     public static (string? Report, string? Failure) Raise(

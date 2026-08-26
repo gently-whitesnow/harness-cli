@@ -102,6 +102,8 @@ public sealed class HarnessFrameTests
     [InlineData("{ \"comments.csharp\": { \"percent\": 25 } }", "is not a setting")]
     [InlineData("{ \"comments.csharp\": { \"percentageLimit\": 101 } }", "must not exceed 100")]
     [InlineData("{ \"maintainability.csharp\": { \"methodLines\": -1 } }", "non-negative integer")]
+    [InlineData("{ \"maintainability.csharp\": { \"publicMembers\": 25 } }", "removed in harness 1.6")]
+    [InlineData("{ \"maintainability.csharp\": { \"constructorParameters\": 6 } }", "removed in harness 1.6")]
     [InlineData("{ \"dependencies.csharp\": { \"incomingReferences\": 20 } }", "removed in harness 1.5")]
     [InlineData("{ \"maintainability.csharp\": { \"importFanOut\": 20 } }", "removed in harness 1.5")]
     [InlineData("{ \"duplication.csharp\": { \"windowLines\": 0 } }", "positive integer")]
@@ -116,6 +118,19 @@ public sealed class HarnessFrameTests
 
         Assert.Equal(2, run.ExitCode);
         Assert.True(run.OutputContains(explanation), run.Output);
+    }
+
+    [Fact]
+    public void A_legacy_pin_still_accepts_the_contextual_width_settings()
+    {
+        using var repository = Fixtures.Compliant(
+            Frame.Answering().Version("1.5.0").Settings(
+                """{ "maintainability.csharp": { "constructorParameters": 7, "publicMembers": 30 } }"""));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "maintainability.csharp");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.False(run.OutputContains("harness.config"), run.Output);
     }
 
     [Theory]
