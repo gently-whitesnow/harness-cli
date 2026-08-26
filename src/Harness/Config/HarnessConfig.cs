@@ -287,7 +287,7 @@ internal sealed record HarnessConfig
                 "minimumTokens": 90
               },
               "commits": {
-                "language": "en",
+                "language": "ru",
                 "requireSetup": true
               }
             }

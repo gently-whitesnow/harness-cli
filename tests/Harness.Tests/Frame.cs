@@ -20,7 +20,9 @@ public sealed class Frame
 
     private readonly List<string> suppressions = [];
 
-    private string? settings;
+    // Unrelated acceptance tests opt out of clone-local setup explicitly. Tests of the
+    // shipped settings profile replace this section and exercise the actual defaults.
+    private string? settings = """{ "commits": { "requireSetup": false } }""";
 
     private readonly Dictionary<string, string> applicability = new(StringComparer.Ordinal);
 

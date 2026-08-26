@@ -8,7 +8,7 @@ internal enum CommitLanguage
 
 internal sealed record CommitSettings(CommitLanguage Language, bool RequireSetup)
 {
-    public static CommitSettings Default { get; } = new(CommitLanguage.English, RequireSetup: false);
+    public static CommitSettings Default { get; } = new(CommitLanguage.Russian, RequireSetup: true);
 
     public string Code => Language == CommitLanguage.Russian ? "ru" : "en";
 

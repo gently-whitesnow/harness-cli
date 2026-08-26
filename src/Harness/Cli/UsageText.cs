@@ -28,7 +28,7 @@ internal static class UsageText
           --latest       make an initialized frame follow the newest question set
           --to <release> raise the pin to this release instead of the installed one
           --dry-run      report what raising the pin would take on, and write nothing
-          --language     language for human-written commit subjects and bodies
+          --language     language for human-written commit subjects and bodies (default: ru)
 
         Exit codes
           0  every selected applicable blocking check completed and passed
