@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted; count enforcement refined by [ADR-0029](0029-dependency-observations.md).
 
 ## Context
 
@@ -50,11 +50,10 @@ architecture) при этом сознательно остаётся работ
   локальная переменная, приведение.
 
 **Blocking-находка строится только из `Proven`-рёбер.** Единственная такая находка —
-`module dependency cycle`: набор модулей, достижимых друг из друга. Все счётные метрики
-(`resolved outgoing type references`, `resolved incoming type references`,
-`external import fan-out`, `independent member groups`) остаются advisory, как требует
-ADR-0006. Их итоговое влияние на прогон определяет repository policy по ADR-0027:
-`required` блокирует оставшуюся находку, `advisory` явно смягчает её.
+`module dependency cycle`: набор модулей, достижимых друг из друга. В контрактах до 1.5
+счётные метрики остаются advisory и повышаются required-policy по ADR-0027. Начиная с 1.5
+dependency fan-in/fan-out используют только `Proven`, а вместе с `external import fan-out`
+становятся observations по ADR-0029; остальные метрики сохраняют свою policy-семантику.
 
 Имя модуля вложено в имя объемлющего модуля. Ссылка между модулем и модулем внутри него —
 не зависимость, а содержание: реестр, который собирает объявленное собственным поддеревом, и

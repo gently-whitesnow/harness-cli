@@ -2,7 +2,6 @@ using System.Diagnostics;
 using Harness.Checks;
 using Harness.Config;
 using Harness.Git;
-using Harness.Versioning;
 
 namespace Harness.Engine;
 
@@ -17,8 +16,6 @@ namespace Harness.Engine;
 /// </remarks>
 internal static class GateEngine
 {
-    private static readonly HarnessVersion RequiredFindingsSince = new(1, 3, 0);
-
     public static RunReport Run(
         string repositoryPath,
         IReadOnlyList<string> only,
@@ -200,6 +197,7 @@ internal static class GateEngine
 
         var outcome = evaluation.Outcome;
         var reason = evaluation.OutcomeReason;
+        var detailed = evaluation.DetailedFindings.ToList();
 
         // A check that failed only on findings the repository has accepted in writing has
         // not proved anything it does not already know. It passes, and says why it passes.
@@ -212,15 +210,17 @@ internal static class GateEngine
 
         switch (policy)
         {
-            case CheckPolicy.Required when ShouldRequireFindings(kept, config):
-                (kept, reason) = Require(kept, outcome, reason);
+            case CheckPolicy.Required when FindingPolicy.ShouldRequire(kept, config):
+                (kept, reason) = FindingPolicy.Require(kept, outcome, reason);
+                detailed = FindingPolicy.RequireSeverity(detailed);
                 outcome = CheckOutcome.Failed;
                 break;
 
             case CheckPolicy.Advisory when outcome == CheckOutcome.Failed:
                 kept = kept
-                    .Select(finding => finding with { Severity = FindingSeverity.Advisory })
+                    .Select(FindingPolicy.Demote)
                     .ToList();
+                detailed = detailed.Select(FindingPolicy.Demote).ToList();
                 outcome = CheckOutcome.Passed;
                 reason = $"{HarnessConfig.FileName} sets this check to advisory, so its violations are reported "
                     + "without failing the run.";
@@ -230,26 +230,13 @@ internal static class GateEngine
             // acceptable state for it.
             case CheckPolicy.Required when outcome == CheckOutcome.ReadinessGap:
                 kept = [new Finding(FindingSeverity.Blocking, HarnessConfig.FileName, reason ?? "not satisfied")];
+                detailed = kept.ToList();
                 outcome = CheckOutcome.Failed;
                 reason = "checks are required by default; use an advisory policy override to accept this gap.";
                 break;
         }
 
-        return new GateReport(check.Id, check.Summary, outcome, kept, duration, reason, suppressed);
-    }
-
-    private static (List<Finding> Findings, string? Reason) Require(
-        List<Finding> findings,
-        CheckOutcome previousOutcome,
-        string? previousReason)
-    {
-        var reason = previousOutcome == CheckOutcome.Passed
-            ? "checks are required by default, so every reported finding is a blocking violation; "
-                + "use an advisory policy override while the repository is paying down known findings."
-            : previousReason;
-        return (findings
-            .Select(finding => finding with { Severity = FindingSeverity.Blocking })
-            .ToList(), reason);
+        return new GateReport(check.Id, check.Summary, outcome, kept, detailed, duration, reason, suppressed);
     }
 
     /// <summary>
@@ -269,7 +256,7 @@ internal static class GateEngine
         }
 
         var policy = config!.PolicyFor("harness.config", "harness");
-        var required = policy == CheckPolicy.Required && UsesRequiredFindingContract(config);
+        var required = policy == CheckPolicy.Required && FindingPolicy.UsesRequiredContract(config);
         var severity = required
             ? FindingSeverity.Blocking
             : FindingSeverity.Advisory;
@@ -290,15 +277,16 @@ internal static class GateEngine
                             $"the exception for `{suppression.Check}` at {suppression.Location} matched nothing in "
                                 + $"this run (\"{suppression.Reason}\"); the finding it accepted may be gone."))
                         .ToList(),
+                    DetailedFindings = stale
+                        .Select(suppression => new Finding(
+                            severity,
+                            HarnessConfig.FileName,
+                            $"the exception for `{suppression.Check}` at {suppression.Location} matched nothing in "
+                                + $"this run (\"{suppression.Reason}\"); the finding it accepted may be gone."))
+                        .ToList(),
                 })
             .ToList();
     }
-
-    private static bool UsesRequiredFindingContract(HarnessConfig? config)
-        => config?.Includes(RequiredFindingsSince) == true;
-
-    private static bool ShouldRequireFindings(List<Finding> findings, HarnessConfig? config)
-        => findings.Count > 0 && UsesRequiredFindingContract(config);
 
     private static bool Covers(Suppression suppression, IRepositoryCheck check, Finding finding)
         => (string.Equals(suppression.Check, check.Id, StringComparison.Ordinal)
@@ -325,6 +313,7 @@ internal static class GateEngine
             check.Summary,
             CheckOutcome.Skipped,
             [],
+            [],
             TimeSpan.Zero,
             $"introduced in harness {check.Since}; this repository pins {config.Version}. "
                 + "Run `harness upgrade` to take it on.",
@@ -338,6 +327,7 @@ internal static class GateEngine
             check.Id,
             check.Summary,
             CheckOutcome.Skipped,
+            [],
             [],
             TimeSpan.Zero,
             policy == CheckPolicy.Off

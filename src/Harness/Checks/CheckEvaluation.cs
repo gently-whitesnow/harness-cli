@@ -8,23 +8,28 @@ namespace Harness.Checks;
 internal sealed record CheckEvaluation(
     CheckOutcome Outcome,
     IReadOnlyList<Finding> Findings,
-    string? OutcomeReason)
+    string? OutcomeReason,
+    IReadOnlyList<Finding> DetailedFindings)
 {
-    public static CheckEvaluation From(IReadOnlyList<Finding> findings, string? reason = null)
+    public static CheckEvaluation From(
+        IReadOnlyList<Finding> findings,
+        string? reason = null,
+        IReadOnlyList<Finding>? detailedFindings = null)
         => new(
             findings.Any(finding => finding.Severity == FindingSeverity.Blocking)
                 ? CheckOutcome.Failed
                 : CheckOutcome.Passed,
             findings,
-            reason);
+            reason,
+            detailedFindings ?? findings);
 
-    public static CheckEvaluation Passed(string reason) => new(CheckOutcome.Passed, [], reason);
+    public static CheckEvaluation Passed(string reason) => new(CheckOutcome.Passed, [], reason, []);
 
-    public static CheckEvaluation Incomplete(string reason) => new(CheckOutcome.Incomplete, [], reason);
+    public static CheckEvaluation Incomplete(string reason) => new(CheckOutcome.Incomplete, [], reason, []);
 
-    public static CheckEvaluation Skipped(string reason) => new(CheckOutcome.Skipped, [], reason);
+    public static CheckEvaluation Skipped(string reason) => new(CheckOutcome.Skipped, [], reason, []);
 
-    public static CheckEvaluation NotApplicable(string reason) => new(CheckOutcome.NotApplicable, [], reason);
+    public static CheckEvaluation NotApplicable(string reason) => new(CheckOutcome.NotApplicable, [], reason, []);
 
-    public static CheckEvaluation ReadinessGap(string reason) => new(CheckOutcome.ReadinessGap, [], reason);
+    public static CheckEvaluation ReadinessGap(string reason) => new(CheckOutcome.ReadinessGap, [], reason, []);
 }

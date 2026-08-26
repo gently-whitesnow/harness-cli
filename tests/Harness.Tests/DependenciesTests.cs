@@ -115,6 +115,89 @@ public sealed class DependenciesTests
     }
 
     [Fact]
+    public void A_member_named_like_a_type_does_not_inflate_proven_counts()
+    {
+        using var repository = Fixtures
+            .Compliant(Frame.AllPresent().Settings(
+                """{ "dependencies.csharp": { "outgoingReferences": 0, "incomingReferences": 0 } }"""))
+            .WriteFile("src/App/Env.cs", "namespace App; public enum Env { Production }\n")
+            .WriteFile(
+                "src/App/Model.cs",
+                "namespace App; public sealed class Model { public string Env { get; init; } = string.Empty; }\n")
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.False(run.OutputContains("type references"), run.Output);
+    }
+
+    [Fact]
+    public void A_proven_count_is_observed_but_does_not_block_required_policy()
+    {
+        using var repository = Fixtures
+            .Compliant(Frame.AllPresent().Settings(
+                """{ "dependencies.csharp": { "outgoingReferences": 0, "incomingReferences": 0 } }"""))
+            .WriteFile("src/App/Env.cs", "namespace App; public enum Env { Production }\n")
+            .WriteFile(
+                "src/App/Model.cs",
+                "namespace App; public sealed class Model { public Env Current { get; init; } }\n")
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("observed"), run.Output);
+        Assert.True(run.OutputContains("proven outgoing type references 1"), run.Output);
+        Assert.False(run.OutputContains("violation"), run.Output);
+    }
+
+    [Fact]
+    public void A_pin_before_dependency_observations_keeps_inferred_counts_enforceable()
+    {
+        using var repository = Fixtures
+            .Compliant(Frame.AllPresent().Version("1.4.0").Settings(
+                """{ "dependencies.csharp": { "outgoingReferences": 0, "incomingReferences": 0 } }"""))
+            .WriteFile("src/App/Env.cs", "namespace App; public enum Env { Production }\n")
+            .WriteFile(
+                "src/App/Model.cs",
+                "namespace App; public sealed class Model { public string Env { get; init; } = string.Empty; }\n")
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.True(run.OutputContains("resolved incoming type references 1"), run.Output);
+        Assert.True(run.OutputContains("violation"), run.Output);
+    }
+
+    [Fact]
+    public void All_prints_every_measured_subject_and_implies_verbose()
+    {
+        var repository = Fixtures
+            .Compliant(Frame.AllPresent().Settings(
+                """{ "dependencies.csharp": { "outgoingReferences": 0 } }"""))
+            .WriteFile("src/App/Target.cs", "namespace App; public sealed class Target { }\n");
+        for (var index = 0; index < 8; index++)
+        {
+            repository.WriteFile(
+                $"src/App/Source{index:00}.cs",
+                $"namespace App; public sealed class Source{index:00} {{ private Target? target; }}\n");
+        }
+
+        using var committed = repository.Commit();
+
+        var compact = HarnessCli.RunVerbose(committed.Path, "check", "--only", Check);
+        var all = HarnessCli.Run(committed.Path, "check", "--only", Check, "--all");
+
+        Assert.False(compact.OutputContains("App.Source07"), compact.Output);
+        Assert.True(compact.OutputContains("8 subjects exceed"), compact.Output);
+        Assert.True(all.OutputContains("outcome: passed"), all.Output);
+        Assert.True(all.OutputContains("App.Source07"), all.Output);
+        Assert.False(all.OutputContains("8 subjects exceed"), all.Output);
+    }
+
+    [Fact]
     public void The_share_of_names_that_resolved_is_reported_with_the_result()
     {
         using var repository = Cycle();
@@ -137,6 +220,8 @@ public sealed class DependenciesTests
         Assert.True(run.OutputContains("Limits"), run.Output);
         Assert.True(run.OutputContains("Possible damage"), run.Output);
         Assert.True(run.OutputContains("not semantic coupling"), run.Output);
+        Assert.True(run.OutputContains("not promote them to violations"), run.Output);
+        Assert.True(run.OutputContains("--all"), run.Output);
     }
 
     private static RepositoryFixture Cycle(Frame? frame = null)

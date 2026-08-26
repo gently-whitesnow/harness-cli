@@ -25,8 +25,9 @@ internal sealed class DuplicationCheck(CSharpSources sources)
     protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
     {
         var settings = context.Config?.Settings.Duplication ?? DuplicationSettings.Default;
-        return CheckEvaluation.From(Report(Repetitions(NormalizedFile.From(
-            files.Select(file => file.Source).ToList(), settings))));
+        var report = Report(Repetitions(NormalizedFile.From(
+            files.Select(file => file.Source).ToList(), settings)));
+        return CheckEvaluation.From(report.Summary, detailedFindings: report.Detailed);
     }
 
     private static List<Repetition> Repetitions(IReadOnlyList<NormalizedFile> files)
@@ -119,28 +120,26 @@ internal sealed class DuplicationCheck(CSharpSources sources)
         return expected is not null && group.All(occurrence => next(occurrence) == expected);
     }
 
-    private static List<Finding> Report(List<Repetition> repetitions)
+    private static DuplicationFindings Report(List<Repetition> repetitions)
     {
-        var findings = new List<Finding>();
-
-        foreach (var repetition in repetitions.Take(ShownBlocks))
-        {
-            findings.Add(new Finding(
+        var detailed = repetitions
+            .Select(repetition => new Finding(
                 FindingSeverity.Advisory,
                 repetition.Regions[0].ToString(),
                 $"a lexically repeated block of {repetition.Lines} normalized lines occurs "
-                    + $"{repetition.Regions.Count} times: {Listed(repetition.Regions)}"));
-        }
+                    + $"{repetition.Regions.Count} times: {Listed(repetition.Regions)}"))
+            .ToList();
+        var summary = detailed.Take(ShownBlocks).ToList();
 
         if (repetitions.Count > ShownBlocks)
         {
-            findings.Add(new Finding(
+            summary.Add(new Finding(
                 FindingSeverity.Advisory,
                 repetitions[ShownBlocks].Regions[0].ToString(),
                 $"{repetitions.Count} repeated blocks were found; the {ShownBlocks} largest are listed above"));
         }
 
-        return findings;
+        return new DuplicationFindings(summary, detailed);
     }
 
     private static string Listed(IReadOnlyList<Region> regions)
@@ -157,6 +156,10 @@ internal sealed class DuplicationCheck(CSharpSources sources)
     }
 
     private sealed record Repetition(int Lines, IReadOnlyList<Region> Regions);
+
+    private sealed record DuplicationFindings(
+        IReadOnlyList<Finding> Summary,
+        IReadOnlyList<Finding> Detailed);
 
     private readonly record struct Occurrence(NormalizedFile File, int Start);
 

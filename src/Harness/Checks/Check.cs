@@ -16,6 +16,7 @@ internal enum FindingSeverity
 {
     Blocking,
     Advisory,
+    Observation,
 }
 
 internal interface IRepositoryCheck

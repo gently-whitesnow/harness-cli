@@ -32,22 +32,25 @@ internal static class DependenciesExplanation
           resolved is printed with the result, because it is the price of every number below.
 
         Evidence
-          Each reference is graded, and the grade — not the metric — decides what may fail
-          a run.
+          Each reference is graded. Only proven references contribute to cycles and current
+          fan-in/fan-out observations.
 
           proven    the reference stands where the language allows nothing but a type: a
                     construction, a base list, the type of a parameter, field, property or
                     return value, a generic argument list, an attribute, `typeof`, `sizeof`,
                     `default`, `catch`, or a type followed by the name it introduces.
           inferred  the name matches a declaration, but the position does not prove it: a
-                    member access, an argument, a local, a cast.
+                    member access, an argument, a local, a cast. It contributes to coverage
+                    diagnostics, not to a coupling count.
 
         Formulas
           module dependency cycle       a set of namespaces that all reach each other
                                         through proven references between the types they
                                         declare. A namespace never depends on itself here.
-          resolved outgoing type refs   how many distinct declared types one type names.
-          resolved incoming type refs   how many distinct declared types name it.
+          proven outgoing type refs     how many distinct declared types one type names in
+                                        a position that can only hold a type.
+          proven incoming type refs     how many distinct declared types name it in such a
+                                        position.
           external import fan-out       imports of one file that name no namespace or type
                                         declared in this repository. It counts import
                                         directives and is not semantic coupling: it says
@@ -61,8 +64,9 @@ internal static class DependenciesExplanation
           modules in a cycle cannot be read, moved, extracted or reused in one direction,
           and no ordering of them exists. Break one reference, move the shared concept into
           a module both may depend on, or accept it in writing with a `suppress` entry that
-          says why. The counts are not blocking: they are approximate, and an approximate
-          measurement does not get to impose one architectural taste on a repository.
+          says why. Counts are observations, not enforceable findings: required policy does
+          not promote them to violations. `--all` prints every subject beyond the compact
+          top-five report.
 
         Limits
           Nothing bound by the compiler is here. Extension method targets, types inferred
@@ -72,18 +76,25 @@ internal static class DependenciesExplanation
           never overstated, on the proven grade. Conditional compilation is not evaluated:
           every branch of the source is read. Partial types declared across several files
           are one subject and their references are merged. A local or a member whose name is
-          exactly a declared type's name can create an inferred edge that does not exist.
+          exactly a declared type's name can create an inferred candidate, but it cannot
+          inflate the proven counts.
 
         Possible damage
-          Acting on an inferred edge can move code for a dependency that was never there.
-          Open the reported line before believing it. A cycle names the exact references
-          that close it; if one of them is wrong, the cycle is wrong, and the finding should
-          be suppressed with that as the reason rather than repaired by a refactor.
+          A proven lexical reference can still sit in a test fixture, composition root or
+          intentionally stable hub where high fan-out is natural. Counts therefore remain
+          observations and need no path exclusions. A cycle names the exact references that
+          close it; if one of them is wrong, suppress it with that reason rather than repair
+          code to satisfy the tool.
 
         Comparison points
           The numbers the counts are reported against are comparison points, not thresholds
-          and not budgets. They exist so a value has a scale, and they are configured under
-          `settings.dependencies.csharp` in `.harness.json`.
+          and not budgets. They filter the observations shown so a value has a useful scale;
+          they are configured under `settings.dependencies.csharp` in `.harness.json`.
+
+        Compatibility
+          Repositories pinned through harness 1.4 retain the original resolved-edge counts
+          and required-policy behavior. Raising the pin to 1.5 takes on proven-only,
+          non-blocking observations; updating the binary alone does not change the verdict.
 
         Remediation
           For a cycle, read every reference it lists and decide which direction the design

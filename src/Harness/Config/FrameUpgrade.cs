@@ -16,6 +16,12 @@ namespace Harness.Config;
 /// </remarks>
 internal static class FrameUpgrade
 {
+    private static readonly IReadOnlyList<(HarnessVersion Since, string Description)> ContractChanges =
+    [
+        (new HarnessVersion(1, 4, 0), "recalibrated comments, cohesion and duplication defaults"),
+        (new HarnessVersion(1, 5, 0), "dependency counts become proven-only, non-blocking observations"),
+    ];
+
     public static (string? Report, string? Failure) Raise(
         GitRepository repository,
         HarnessConfig config,
@@ -54,6 +60,9 @@ internal static class FrameUpgrade
         var taken = checks
             .Where(check => check.Since > from && check.Since <= target)
             .ToList();
+        var changed = ContractChanges
+            .Where(change => change.Since > from && change.Since <= target)
+            .ToList();
 
         var text = new StringBuilder();
         text.Append(dryRun ? "Would raise " : "Raised ")
@@ -61,16 +70,26 @@ internal static class FrameUpgrade
             .Append(" from ").Append(from)
             .Append(" to ").Append(target).Append(".\n");
 
-        if (taken.Count == 0)
+        if (taken.Count == 0 && changed.Count == 0)
         {
             text.Append("No check is introduced between these releases, so the verdict does not change.\n");
         }
-        else
+
+        if (taken.Count > 0)
         {
             text.Append(dryRun ? "Checks this would take on:\n" : "Checks this takes on:\n");
             foreach (var check in taken)
             {
                 text.Append("  ").Append(check.Id).Append("  introduced in ").Append(check.Since).Append('\n');
+            }
+        }
+
+        if (changed.Count > 0)
+        {
+            text.Append(dryRun ? "Versioned contract changes this would take on:\n" : "Versioned contract changes:\n");
+            foreach (var change in changed)
+            {
+                text.Append("  ").Append(change.Since).Append("  ").Append(change.Description).Append('\n');
             }
         }
 

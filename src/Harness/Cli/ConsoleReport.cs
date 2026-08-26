@@ -9,7 +9,7 @@ namespace Harness.Cli;
 /// <summary>Renders a complete scan as compact status rows, with evidence on demand.</summary>
 internal static class ConsoleReport
 {
-    public static string Render(RunReport report, bool verbose, bool focused)
+    public static string Render(RunReport report, bool verbose, bool focused, bool all = false)
     {
         var text = new StringBuilder();
 
@@ -49,7 +49,7 @@ internal static class ConsoleReport
 
         foreach (var gate in visibleGates)
         {
-            AppendGate(text, gate, verbose, identifierWidth);
+            AppendGate(text, gate, verbose, all, identifierWidth);
         }
 
         var untracked = report.UntrackedEvidence ?? [];
@@ -67,17 +67,22 @@ internal static class ConsoleReport
         if (report.Gates.Any(gate => gate.Outcome is CheckOutcome.Failed or CheckOutcome.Incomplete))
         {
             text.Append("\nDetails: harness check --only <check-id> --verbose\n");
-            text.Append("harness check [path] [--only <ids>] [--skip <ids>] [--verbose]\n");
+            text.Append("harness check [path] [--only <ids>] [--skip <ids>] [--verbose] [--all]\n");
         }
 
         return text.ToString();
     }
 
-    private static void AppendGate(StringBuilder text, GateReport gate, bool verbose, int identifierWidth)
+    private static void AppendGate(
+        StringBuilder text,
+        GateReport gate,
+        bool verbose,
+        bool all,
+        int identifierWidth)
     {
         text.Append(Status(gate)).Append(' ');
         text.Append(gate.Id.PadRight(identifierWidth))
-            .Append(IssueCount(gate).ToString(CultureInfo.InvariantCulture).PadLeft("FINDINGS".Length));
+            .Append(IssueCount(gate, all).ToString(CultureInfo.InvariantCulture).PadLeft("FINDINGS".Length));
 
         if (verbose)
         {
@@ -98,7 +103,7 @@ internal static class ConsoleReport
             text.Append("    ").Append(gate.OutcomeReason).Append('\n');
         }
 
-        AppendFindings(text, gate.Findings);
+        AppendFindings(text, all ? gate.DetailedFindings : gate.Findings);
         AppendSuppressed(text, gate.Suppressed);
     }
 
@@ -114,9 +119,10 @@ internal static class ConsoleReport
             _ => "⏭️",
         };
 
-    private static int IssueCount(GateReport gate)
+    private static int IssueCount(GateReport gate, bool all)
     {
-        var reported = gate.Findings.Count + gate.Suppressed.Count;
+        var summarized = gate.Findings.Count + gate.Suppressed.Count;
+        var reported = all ? Math.Max(gate.DetailedFindings.Count, summarized) : summarized;
         if (reported > 0)
         {
             return reported;
@@ -183,7 +189,7 @@ internal static class ConsoleReport
             var remaining = locations.Count - Math.Min(locations.Count, shownLocations);
 
             text.Append("    ")
-                .Append(group.Key.Severity == FindingSeverity.Blocking ? "violation" : "advisory ")
+                .Append(Label(group.Key.Severity))
                 .Append("  ")
                 .Append(shown);
 
@@ -195,6 +201,14 @@ internal static class ConsoleReport
             text.Append(": ").Append(group.Key.Message).Append('\n');
         }
     }
+
+    private static string Label(FindingSeverity severity)
+        => severity switch
+        {
+            FindingSeverity.Blocking => "violation",
+            FindingSeverity.Advisory => "advisory ",
+            _ => "observed  ",
+        };
 
     private static string Headline(RunReport report)
         => report.ExitCode switch

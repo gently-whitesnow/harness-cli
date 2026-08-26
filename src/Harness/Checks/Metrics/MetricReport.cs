@@ -7,24 +7,37 @@ namespace Harness.Checks.Metrics;
 /// </summary>
 internal static class MetricReport
 {
-    public static List<Finding> Exceeding(
+    public static MetricFindings Exceeding(
         IReadOnlyList<Measurement> measurements,
         IReadOnlyList<Metric> metrics,
-        int shown)
+        int shown,
+        FindingSeverity severity = FindingSeverity.Advisory)
     {
         var findings = new List<Finding>();
+        var detailed = new List<Finding>();
         foreach (var metric in metrics)
         {
-            findings.AddRange(Exceeding(measurements, metric, shown));
+            var all = Exceeding(measurements, metric, severity);
+            detailed.AddRange(all);
+            findings.AddRange(all.Take(shown));
+
+            if (all.Count > shown)
+            {
+                findings.Add(new Finding(
+                    severity,
+                    all[shown].Location,
+                    $"{metric.Name}: {all.Count} subjects exceed the configured comparison point "
+                        + $"of {metric.ComparisonPoint}; the {shown} largest are listed above"));
+            }
         }
 
-        return findings;
+        return new MetricFindings(findings, detailed);
     }
 
-    private static IEnumerable<Finding> Exceeding(
+    private static List<Finding> Exceeding(
         IReadOnlyList<Measurement> measurements,
         Metric metric,
-        int shown)
+        FindingSeverity severity)
     {
         var exceeded = measurements
             .Where(measurement => ReferenceEquals(measurement.Metric, metric))
@@ -33,22 +46,12 @@ internal static class MetricReport
             .ThenBy(measurement => measurement.Location, StringComparer.Ordinal)
             .ToList();
 
-        foreach (var measurement in exceeded.Take(shown))
-        {
-            yield return new Finding(
-                FindingSeverity.Advisory,
+        return exceeded
+            .Select(measurement => new Finding(
+                severity,
                 measurement.Location,
                 $"{metric.Name} {measurement.Value} exceeds the configured comparison point "
-                    + $"of {metric.ComparisonPoint} in {measurement.Subject}");
-        }
-
-        if (exceeded.Count > shown)
-        {
-            yield return new Finding(
-                FindingSeverity.Advisory,
-                exceeded[shown].Location,
-                $"{metric.Name}: {exceeded.Count} subjects exceed the configured comparison point "
-                    + $"of {metric.ComparisonPoint}; the {shown} largest are listed above");
-        }
+                    + $"of {metric.ComparisonPoint} in {measurement.Subject}"))
+            .ToList();
     }
 }
