@@ -122,7 +122,7 @@ public sealed class DuplicationTests
         using var repository = Repository(
             Frame.AllPresent()
                 .Policy(Check, "advisory")
-                .Settings("""{ "duplication.csharp": { "windowLines": 8, "minimumTokens": 24 } }"""),
+                .Settings("""{ "duplication.csharp": { "windowLines": 8, "minimumTokens": 24 }, "commits": { "requireSetup": false } }"""),
             ("src/App/Invoice.cs", DuplicationSources.PropertyBag("Invoice", "Supplier")),
             ("src/App/Patient.cs", DuplicationSources.PropertyBag("Patient", "Clinic")));
 

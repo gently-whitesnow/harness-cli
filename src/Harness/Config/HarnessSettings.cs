@@ -12,6 +12,7 @@ internal sealed record HarnessSettings(
     CommitSettings Commits)
 {
     private static readonly HarnessVersion RecalibratedIn = new(1, 4, 0);
+    private static readonly CommitSettings LegacyCommits = new(CommitLanguage.English, RequireSetup: false);
 
     private static readonly HarnessSettings Legacy = new(
         new CommentSettings(MinimumCommentLines: 10, PercentageLimit: 25),
@@ -19,7 +20,7 @@ internal sealed record HarnessSettings(
         DependencySettings.Default,
         new CohesionSettings(MinimumMembers: 6, Groups: 1),
         new DuplicationSettings(WindowLines: 8, MinimumTokens: 24),
-        CommitSettings.Default);
+        LegacyCommits);
 
     public static HarnessSettings Default { get; } = new(
         CommentSettings.Default,

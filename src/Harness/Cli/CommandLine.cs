@@ -42,7 +42,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
 
     public bool DryRun { get; init; }
 
-    public CommitLanguage CommitLanguage { get; init; } = CommitLanguage.English;
+    public CommitLanguage CommitLanguage { get; init; } = CommitSettings.Default.Language;
 
     public static Invocation Parse(IReadOnlyList<string> arguments, string currentDirectory)
     {
@@ -124,7 +124,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
     private static Invocation ParseInit(List<string> arguments, string currentDirectory)
     {
         var latest = false;
-        var language = CommitLanguage.English;
+        var language = CommitSettings.Default.Language;
         var languageSeen = false;
         string? path = null;
 

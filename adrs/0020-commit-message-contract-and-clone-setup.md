@@ -32,7 +32,9 @@ metadata текущего клона, затем задаёт локальные
 
 `commits.setup` — blocking-проверка, когда `requireSetup` true. Она сверяет локальные
 настройки, managed hook, исполнимость и шаблон выбранного языка. Исправление одно:
-`harness setup`. Старые frames без opt-in остаются `NotApplicable`.
+`harness setup`. Начиная с профиля 1.4.0 отсутствующие commit-настройки означают `ru` и
+`requireSetup: true`; старые pins без opt-in сохраняют `en`, `requireSetup: false` и
+`NotApplicable`.
 
 Валидатор принимает Conventional header с фиксированными типами и kebab-case scope.
 Заголовок длиннее 72 символов, точка в конце, неверный язык и нарушенная структура —
