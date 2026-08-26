@@ -105,7 +105,7 @@ public sealed class HarnessFrameTests
     [InlineData("{ \"comments.csharp\": { \"percentageLimit\": 101 } }", "must not exceed 100")]
     [InlineData("{ \"maintainability.csharp\": { \"methodLines\": 60 } }", "removed in harness 2.0")]
     [InlineData("{ \"cohesion.csharp\": { \"groups\": 2 } }", "removed in harness 2.0")]
-    [InlineData("{ \"dependencies.csharp\": { \"incomingReferences\": 20 } }", "removed in harness 1.5")]
+    [InlineData("{ \"dependencies.csharp\": { \"incomingReferences\": 20 } }", "not part of the current contract")]
     [InlineData("{ \"duplication.csharp\": { \"windowLines\": 0 } }", "positive integer")]
     [InlineData("{ \"duplication.csharp\": { \"minimumTokens\": -1 } }", "non-negative integer")]
     [InlineData("{ \"commits\": { \"language\": \"de\" } }", "must be 'en' or 'ru'")]

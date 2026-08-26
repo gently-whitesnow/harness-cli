@@ -2,8 +2,9 @@
 
 ## Status
 
-Superseded by ADR-0023 and ADR-0032: текущий бинарь больше не читает старые снимки.
-Уточняет [ADR-0014](0014-frame-answers-are-self-reported.md) и заменяет часть
+Accepted. Версионированные снимки вопросов и `suppress` superseded by ADR-0023 и ADR-0032;
+локальные ошибки ответов и явный `init` остаются действующими. Уточняет
+[ADR-0014](0014-frame-answers-are-self-reported.md) и заменяет часть
 [ADR-0008](0008-the-harness-only-observes.md), запрещавшую харнесу писать `.harness.json`.
 Обычный `check` остаётся только читающим; единственное исключение — явно вызванный `init`.
 

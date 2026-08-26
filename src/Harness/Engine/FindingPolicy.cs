@@ -1,12 +1,11 @@
 using Harness.Checks;
-using Harness.Config;
 namespace Harness.Engine;
 
 /// <summary>Maps a check's evidence severity through the repository's policy.</summary>
 internal static class FindingPolicy
 {
-    public static bool ShouldRequire(IReadOnlyList<Finding> findings, HarnessConfig? config)
-        => findings.Count > 0 && config is not null;
+    public static bool ShouldRequire(IReadOnlyList<Finding> findings)
+        => findings.Count > 0;
 
     public static (List<Finding> Findings, string? Reason) Require(
         List<Finding> findings,

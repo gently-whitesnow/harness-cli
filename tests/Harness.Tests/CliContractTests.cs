@@ -122,6 +122,17 @@ public sealed class CliContractTests
     }
 
     [Fact]
+    public void Upgrade_is_not_a_command()
+    {
+        using var repository = Fixtures.Compliant();
+
+        var run = HarnessCli.Run(repository.Path, "upgrade");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains("Unknown command 'upgrade'"), run.Output);
+    }
+
+    [Fact]
     public void Every_shipped_check_identifier_can_be_explained_and_selected()
     {
         using var repository = Fixtures.Compliant();

@@ -25,7 +25,7 @@ internal static class UsageText
           --skip <ids>   exclude the given check or group identifiers; they stay visible in the summary
           --verbose      show findings, reasons and timings
           --all          show every measured subject instead of top findings; implies --verbose
-          --latest       make an initialized frame follow the newest question set
+          --latest       make an initialized frame follow the installed binary's contract
           --language     language for human-written commit subjects and bodies (default: ru)
 
         Exit codes

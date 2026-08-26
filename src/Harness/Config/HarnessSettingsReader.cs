@@ -31,7 +31,7 @@ internal static class HarnessSettingsReader
 
         if (declared.TryGetProperty(Dependencies, out _))
         {
-            return (null, $"'settings.{Dependencies}' was removed in harness 1.5; remove this section. "
+            return (null, $"'settings.{Dependencies}' is not part of the current contract; remove this section. "
                 + "The current check proves module cycles and has no comparison points");
         }
 

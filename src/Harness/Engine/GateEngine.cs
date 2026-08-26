@@ -176,7 +176,7 @@ internal static class GateEngine
 
         switch (policy)
         {
-            case CheckPolicy.Required when FindingPolicy.ShouldRequire(findings, config):
+            case CheckPolicy.Required when FindingPolicy.ShouldRequire(findings):
                 (findings, reason) = FindingPolicy.Require(findings, outcome, reason);
                 detailed = FindingPolicy.RequireSeverity(detailed);
                 outcome = CheckOutcome.Failed;
