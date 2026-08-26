@@ -22,7 +22,6 @@ public sealed class InitCommandTests
         Assert.Contains(repository.Absolute(".harness.json"), run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("Review every answer", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("ask the repository owner", run.StandardOutput, StringComparison.Ordinal);
-        Assert.Contains("rather than suppressing", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("Track the file", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("harness check --verbose", run.StandardOutput, StringComparison.Ordinal);
 
@@ -44,28 +43,17 @@ public sealed class InitCommandTests
         AssertDefaultSettings(root.GetProperty("settings"));
         Assert.Contains("harness-hooks", repository.Git("config", "--local", "--get", "core.hooksPath"));
         Assert.Empty(root.GetProperty("policy").EnumerateObject());
-        Assert.Empty(root.GetProperty("suppress").EnumerateArray());
+        Assert.False(root.TryGetProperty("suppress", out _));
     }
 
     private static void AssertDefaultSettings(JsonElement settings)
     {
         Assert.Equal(
             [
-                "comments.csharp", "maintainability.csharp", "cohesion.csharp",
-                "duplication.csharp", "commits",
+                "comments.csharp", "duplication.csharp", "commits",
             ],
             settings.EnumerateObject().Select(section => section.Name));
         AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));
-        AssertSection(
-            settings,
-            "maintainability.csharp",
-            ("fileLines", 400),
-            ("typeLines", 300),
-            ("methodLines", 60),
-            ("branches", 12),
-            ("constructorParameters", 6),
-            ("publicMembers", 25));
-        AssertSection(settings, "cohesion.csharp", ("minimumMembers", 6), ("groups", 2));
         AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));
         Assert.Equal("ru", settings
             .GetProperty("commits").GetProperty("language").GetString());

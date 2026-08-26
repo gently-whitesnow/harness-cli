@@ -6,13 +6,12 @@ using Harness.Git;
 namespace Harness.Engine;
 
 /// <summary>
-/// Owns selection, ordering, execution, timing, policy, suppression and aggregation.
+/// Owns selection, ordering, execution, timing, policy and aggregation.
 /// Callers hand it a repository and selection options; they never assemble a run themselves.
 /// </summary>
 /// <remarks>
-/// Policy and suppression are applied here, once, rather than inside each check. A check
-/// states what it found and stops; whether the repository has agreed to live with that is a
-/// different question, asked in one place, the same way for every check.
+/// Policy is applied here, once, rather than inside each check. A check states what it found
+/// and stops; whether the repository requires it is decided in one place.
 /// </remarks>
 internal static class GateEngine
 {
@@ -41,7 +40,6 @@ internal static class GateEngine
             return invalidConfig;
         }
 
-        var used = new HashSet<Suppression>();
         var unexplained = new HashSet<EvidenceFile>();
 
         var gates = new List<GateReport>();
@@ -68,7 +66,7 @@ internal static class GateEngine
                     $"{HarnessConfig.FileName} answers `{disabled.Key}` not applicable — \"{disabled.Reason}\".");
             stopwatch.Stop();
 
-            var gate = Judge(check, evaluation, stopwatch.Elapsed, config, policy, used);
+            var gate = Judge(check, evaluation, stopwatch.Elapsed, config, policy);
             gates.Add(gate);
 
             if (disabled is null && LeftSomethingUnexplained(gate))
@@ -79,7 +77,7 @@ internal static class GateEngine
 
         return new RunReport(
             repository.RootPath,
-            WithStaleSuppressions(gates, config, used),
+            gates,
             ToolError: null,
             repository.ReadDuration,
             Pin(config),
@@ -126,8 +124,7 @@ internal static class GateEngine
                 evaluation,
                 stopwatch.Elapsed,
                 config,
-                CheckPolicy.Required,
-                [])],
+                CheckPolicy.Required)],
             ToolError: null,
             repository.ReadDuration,
             Pin(config),
@@ -176,48 +173,23 @@ internal static class GateEngine
         CheckEvaluation evaluation,
         TimeSpan duration,
         HarnessConfig? config,
-        CheckPolicy policy,
-        HashSet<Suppression> used)
+        CheckPolicy policy)
     {
-        var kept = new List<Finding>();
-        var suppressed = new List<SuppressedFinding>();
-
-        foreach (var finding in evaluation.Findings)
-        {
-            var exception = config?.Suppressions.FirstOrDefault(candidate => Covers(candidate, check, finding));
-            if (exception is null)
-            {
-                kept.Add(finding);
-                continue;
-            }
-
-            used.Add(exception);
-            suppressed.Add(new SuppressedFinding(finding, exception));
-        }
-
+        var findings = evaluation.Findings.ToList();
         var outcome = evaluation.Outcome;
         var reason = evaluation.OutcomeReason;
         var detailed = evaluation.DetailedFindings.ToList();
 
-        // A check that failed only on findings the repository has accepted in writing has
-        // not proved anything it does not already know. It passes, and says why it passes.
-        if (outcome == CheckOutcome.Failed && !kept.Any(finding => finding.Severity == FindingSeverity.Blocking))
-        {
-            outcome = CheckOutcome.Passed;
-            reason = $"every violation is a named exception in {HarnessConfig.FileName}; they are listed below "
-                + "rather than removed.";
-        }
-
         switch (policy)
         {
-            case CheckPolicy.Required when FindingPolicy.ShouldRequire(kept, config):
-                (kept, reason) = FindingPolicy.Require(kept, outcome, reason);
+            case CheckPolicy.Required when FindingPolicy.ShouldRequire(findings, config):
+                (findings, reason) = FindingPolicy.Require(findings, outcome, reason);
                 detailed = FindingPolicy.RequireSeverity(detailed);
                 outcome = CheckOutcome.Failed;
                 break;
 
             case CheckPolicy.Advisory when outcome == CheckOutcome.Failed:
-                kept = kept
+                findings = findings
                     .Select(FindingPolicy.Demote)
                     .ToList();
                 detailed = detailed.Select(FindingPolicy.Demote).ToList();
@@ -229,79 +201,15 @@ internal static class GateEngine
             // The repository has committed to this one, so an open question is no longer an
             // acceptable state for it.
             case CheckPolicy.Required when outcome == CheckOutcome.ReadinessGap:
-                kept = [new Finding(FindingSeverity.Blocking, HarnessConfig.FileName, reason ?? "not satisfied")];
-                detailed = kept.ToList();
+                findings = [new Finding(FindingSeverity.Blocking, HarnessConfig.FileName, reason ?? "not satisfied")];
+                detailed = findings.ToList();
                 outcome = CheckOutcome.Failed;
                 reason = "checks are required by default; use an advisory policy override to accept this gap.";
                 break;
         }
 
-        return new GateReport(check.Id, check.Summary, outcome, kept, detailed, duration, reason, suppressed);
+        return new GateReport(check.Id, check.Summary, outcome, findings, detailed, duration, reason);
     }
-
-    /// <summary>
-    /// An exception that never matched anything is reported on the frame itself. Stale
-    /// exceptions accumulate silently otherwise, and a list of accepted findings nobody has
-    /// re-read is exactly the thing this mechanism is supposed to prevent.
-    /// </summary>
-    private static List<GateReport> WithStaleSuppressions(
-        List<GateReport> gates,
-        HarnessConfig? config,
-        HashSet<Suppression> used)
-    {
-        var stale = config?.Suppressions.Where(suppression => !used.Contains(suppression)).ToList() ?? [];
-        if (stale.Count == 0)
-        {
-            return gates;
-        }
-
-        var policy = config!.PolicyFor("harness.config", "harness");
-        var required = policy == CheckPolicy.Required && FindingPolicy.UsesRequiredContract(config);
-        var severity = required
-            ? FindingSeverity.Blocking
-            : FindingSeverity.Advisory;
-
-        return gates
-            .Select(gate => gate.Id != "harness.config" || gate.Outcome != CheckOutcome.Passed
-                ? gate
-                : gate with
-                {
-                    Outcome = required ? CheckOutcome.Failed : gate.Outcome,
-                    OutcomeReason = required
-                        ? "checks are required by default, so a stale named exception is a blocking violation."
-                        : gate.OutcomeReason,
-                    Findings = stale
-                        .Select(suppression => new Finding(
-                            severity,
-                            HarnessConfig.FileName,
-                            $"the exception for `{suppression.Check}` at {suppression.Location} matched nothing in "
-                                + $"this run (\"{suppression.Reason}\"); the finding it accepted may be gone."))
-                        .ToList(),
-                    DetailedFindings = stale
-                        .Select(suppression => new Finding(
-                            severity,
-                            HarnessConfig.FileName,
-                            $"the exception for `{suppression.Check}` at {suppression.Location} matched nothing in "
-                                + $"this run (\"{suppression.Reason}\"); the finding it accepted may be gone."))
-                        .ToList(),
-                })
-            .ToList();
-    }
-
-    private static bool Covers(Suppression suppression, IRepositoryCheck check, Finding finding)
-        => (string.Equals(suppression.Check, check.Id, StringComparison.Ordinal)
-                || string.Equals(suppression.Check, check.Group, StringComparison.Ordinal))
-            && CoversLocation(suppression.Location, finding.Location);
-
-    /// <summary>
-    /// An accepted location covers the file or directory named, and any line inside it. An
-    /// exception that had to name a line number would expire on the next edit above it, which
-    /// would make writing one down pointless.
-    /// </summary>
-    private static bool CoversLocation(string accepted, string found)
-        => string.Equals(accepted, found, StringComparison.Ordinal)
-            || found.StartsWith(accepted + "/", StringComparison.Ordinal)
-            || found.StartsWith(accepted + ":", StringComparison.Ordinal);
 
     /// <summary>
     /// A check the pinned release did not ship. Taking a newer binary therefore cannot add a
@@ -316,8 +224,7 @@ internal static class GateEngine
             [],
             TimeSpan.Zero,
             $"introduced in harness {check.Since}; this repository pins {config.Version}. "
-                + "Run `harness upgrade` to take it on.",
-            []);
+                + "Run `harness upgrade` to take it on.");
 
     private static GateReport Excluded(
         IRepositoryCheck check,
@@ -332,8 +239,7 @@ internal static class GateEngine
             TimeSpan.Zero,
             policy == CheckPolicy.Off
                 ? $"{HarnessConfig.FileName} turns this check off."
-                : explicitlySkipped ? "excluded by --skip." : null,
-            []);
+                : explicitlySkipped ? "excluded by --skip." : null);
 
     private static CheckEvaluation Evaluate(IRepositoryCheck check, CheckContext context)
     {

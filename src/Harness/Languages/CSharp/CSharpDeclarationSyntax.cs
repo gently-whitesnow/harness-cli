@@ -2,28 +2,12 @@ namespace Harness.Languages.CSharp;
 
 /// <summary>
 /// Reads one declaration header — the masked text between the previous terminator and the
-/// `{` or `;` that ends it. Everything here is lexical: it recognizes the forms the metrics
-/// need and returns nothing for the rest, so an unfamiliar construct costs a measurement
-/// rather than producing a wrong one.
+/// `{` or `;` that ends it. Everything here is lexical and recognizes only the forms the
+/// dependency graph needs.
 /// </summary>
 internal static class CSharpDeclarationSyntax
 {
     private static readonly string[] TypeKeywords = ["class", "struct", "interface", "record", "enum"];
-
-    private static readonly HashSet<string> NotDeclarationNames = new(StringComparer.Ordinal)
-    {
-        "if", "for", "foreach", "while", "do", "switch", "case", "catch", "try", "finally", "using", "lock",
-        "fixed", "return", "else", "when", "new", "yield", "await", "throw", "checked", "unchecked", "unsafe",
-        "nameof", "typeof", "sizeof", "default", "is", "as", "in", "out", "ref", "stackalloc", "base", "this",
-        "and", "or", "not", "with", "from", "select", "where", "let", "goto", "delegate",
-    };
-
-    private static readonly HashSet<string> Modifiers = new(StringComparer.Ordinal)
-    {
-        "public", "private", "protected", "internal", "file", "static", "sealed", "abstract", "virtual",
-        "override", "async", "partial", "extern", "unsafe", "readonly", "required", "const", "volatile",
-        "event", "void", "implicit", "explicit", "operator",
-    };
 
     /// <summary>
     /// An expression body is the member's implementation, not part of its header. Cutting it
@@ -136,66 +120,6 @@ internal static class CSharpDeclarationSyntax
             keyword == "record" ? TypeForm.Record : keyword == "class" ? TypeForm.Class : TypeForm.Other);
     }
 
-    // Skipping groups without a preceding name prevents tuple return types from becoming
-    // parameter lists and their modifiers from becoming member names.
-    public static MemberSignature? SignatureOf(string text)
-    {
-        var declaration = WithoutConstraints(text);
-
-        for (var from = 0; from < declaration.Length;)
-        {
-            var open = TopLevelIndexOf(declaration, "(", from);
-            if (open < 0)
-            {
-                return null;
-            }
-
-            var prefix = declaration[..open].TrimEnd();
-            if (HasAssignment(prefix))
-            {
-                return null;
-            }
-
-            var generic = prefix.LastIndexOf('<');
-            if (generic >= 0 && prefix.EndsWith('>'))
-            {
-                prefix = prefix[..generic].TrimEnd();
-            }
-
-            var name = LastName(prefix);
-            if (name is not null && !NotDeclarationNames.Contains(name) && !Modifiers.Contains(name))
-            {
-                return new MemberSignature(name, open);
-            }
-
-            from = EndOfGroup(declaration, open);
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// The name a field or property declaration introduces: the last identifier of a header
-    /// that carries a type and a name and opens no parameter list.
-    /// </summary>
-    public static string? FieldNameOf(string text)
-    {
-        var declaration = WithoutInitializer(WithoutConstraints(text));
-        if (TopLevelIndexOf(declaration, "(") >= 0)
-        {
-            return null;
-        }
-
-        var name = LastName(declaration);
-        if (name is null || NotDeclarationNames.Contains(name) || Modifiers.Contains(name))
-        {
-            return null;
-        }
-
-        var remainder = declaration[..declaration.LastIndexOf(name, StringComparison.Ordinal)].Trim();
-        return remainder.Length == 0 ? null : name;
-    }
-
     /// <summary>The types a declaration names after `:`, before any constraint clause.</summary>
     public static string BaseListOf(string text)
     {
@@ -203,12 +127,6 @@ internal static class CSharpDeclarationSyntax
         var colon = TopLevelIndexOf(declaration, ":");
         return colon < 0 ? string.Empty : declaration[(colon + 1)..];
     }
-
-    public static int ParameterCountOf(string text)
-        => ParameterCountOf(text, TopLevelIndexOf(text, "(", 0));
-
-    public static int ParameterCountOf(string text, int open)
-        => CSharpParameterList.Count(text, open);
 
     public static string WithoutConstraints(string text)
     {
@@ -260,25 +178,6 @@ internal static class CSharpDeclarationSyntax
         return -1;
     }
 
-    private static string WithoutInitializer(string text)
-    {
-        var assignment = TopLevelIndexOf(text, "=");
-        return assignment >= 0 ? text[..assignment].TrimEnd() : text;
-    }
-
-    private static bool HasAssignment(string text)
-    {
-        for (var index = 0; index < text.Length; index++)
-        {
-            if (text[index] == '=' && !IsComparison(text, index, "="))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private static bool IsComparison(string text, int index, string target)
         => target == "="
             && ((index > 0 && text[index - 1] is '=' or '!' or '<' or '>')
@@ -288,48 +187,5 @@ internal static class CSharpDeclarationSyntax
         => target == ":"
             && (text.AsSpan(index).StartsWith("::", StringComparison.Ordinal)
                 || (index > 0 && text[index - 1] == ':'));
-
-    private static string? LastName(string text)
-    {
-        var end = text.Length;
-        while (end > 0 && char.IsWhiteSpace(text[end - 1]))
-        {
-            end--;
-        }
-
-        var start = end;
-        while (start > 0 && (char.IsLetterOrDigit(text[start - 1]) || text[start - 1] is '_' or '@' or '.'))
-        {
-            start--;
-        }
-
-        if (start == end)
-        {
-            return null;
-        }
-
-        var name = text[start..end];
-        var dot = name.LastIndexOf('.');
-        var last = dot >= 0 ? name[(dot + 1)..] : name;
-        return IsIdentifier(last) ? last : null;
-    }
-
-    private static int EndOfGroup(string text, int open)
-    {
-        var depth = 0;
-        for (var index = open; index < text.Length; index++)
-        {
-            if (text[index] is '(' or '[' or '{')
-            {
-                depth++;
-            }
-            else if (text[index] is ')' or ']' or '}' && --depth == 0)
-            {
-                return index + 1;
-            }
-        }
-
-        return text.Length;
-    }
 
 }

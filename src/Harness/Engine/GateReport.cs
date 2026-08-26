@@ -9,5 +9,4 @@ internal sealed record GateReport(
     IReadOnlyList<Finding> Findings,
     IReadOnlyList<Finding> DetailedFindings,
     TimeSpan Duration,
-    string? OutcomeReason,
-    IReadOnlyList<SuppressedFinding> Suppressed);
+    string? OutcomeReason);

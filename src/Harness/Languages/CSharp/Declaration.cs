@@ -3,13 +3,6 @@ namespace Harness.Languages.CSharp;
 internal enum DeclarationKind
 {
     Type,
-
-    Constructor,
-
-    Method,
-
-    /// <summary>A field or a property: the state a type holds, under one name.</summary>
-    Field,
 }
 
 internal enum TypeForm
@@ -35,14 +28,7 @@ internal sealed class Declaration
 
     public string Header { get; init; } = string.Empty;
 
-    /// <summary>The member computes its result rather than holding one.</summary>
-    public bool HasExpressionBody { get; init; }
-
     public int LastLine { get; set; }
-
-    public int ParameterCount { get; set; } = -1;
-
-    public int PublicMembers { get; set; }
 
     public TypeForm TypeForm { get; set; }
 

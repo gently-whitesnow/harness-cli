@@ -15,9 +15,7 @@ internal static class HarnessSettingsReader
     private static readonly HarnessVersion DependencyCountsRemovedIn = new(1, 5, 0);
 
     private static readonly string Comments = Language.CSharp.Qualify("comments");
-    private static readonly string Maintainability = Language.CSharp.Qualify("maintainability");
     private static readonly string Dependencies = Language.CSharp.Qualify("dependencies");
-    private static readonly string Cohesion = Language.CSharp.Qualify("cohesion");
     private static readonly string Duplication = Language.CSharp.Qualify("duplication");
     private const string Commits = "commits";
 
@@ -41,18 +39,17 @@ internal static class HarnessSettingsReader
                 + "The current check proves module cycles and has no comparison points");
         }
 
-        if (!readsDependencyCounts
-            && declared.TryGetProperty(Maintainability, out var maintainability)
-            && maintainability.ValueKind == JsonValueKind.Object
-            && maintainability.TryGetProperty("importFanOut", out _))
+        foreach (var removed in new[] { "maintainability.csharp", "cohesion.csharp" })
         {
-            return (null, $"'settings.{Maintainability}.importFanOut' was removed in harness 1.5; "
-                + "dependency cycles have no import-count setting");
+            if (declared.TryGetProperty(removed, out _))
+            {
+                return (null, $"'settings.{removed}' was removed in harness 2.0; remove this section");
+            }
         }
 
         string[] known = readsDependencyCounts
-            ? [Comments, Maintainability, Dependencies, Cohesion, Duplication, Commits]
-            : [Comments, Maintainability, Cohesion, Duplication, Commits];
+            ? [Comments, Dependencies, Duplication, Commits]
+            : [Comments, Duplication, Commits];
         foreach (var property in declared.EnumerateObject())
         {
             if (!known.Contains(property.Name, StringComparer.Ordinal))
@@ -81,27 +78,11 @@ internal static class HarnessSettingsReader
             return (null, commentFailure);
         }
 
-        var (maintainability, maintainabilityFailure) = ReadMaintainability(declared, defaults.Maintainability);
-        if (maintainability is null)
-        {
-            return (null, maintainabilityFailure);
-        }
-
         var (dependencies, dependencyFailure) = DependenciesFor(
             declared, defaults.Dependencies, readsDependencyCounts);
         if (dependencies is null)
         {
             return (null, dependencyFailure);
-        }
-
-        var (cohesion, cohesionFailure) = ReadSection(
-            declared,
-            Cohesion,
-            ["minimumMembers", "groups"],
-            [defaults.Cohesion.MinimumMembers, defaults.Cohesion.Groups]);
-        if (cohesion is null)
-        {
-            return (null, cohesionFailure);
         }
 
         var (duplication, duplicationFailure) = ReadSection(
@@ -124,9 +105,7 @@ internal static class HarnessSettingsReader
             ? (null, commitFailure)
             : (new HarnessSettings(
                 new CommentSettings(comments[0], comments[1]),
-                maintainability,
                 dependencies,
-                new CohesionSettings(cohesion[0], cohesion[1]),
                 new DuplicationSettings(duplication[0], duplication[1]),
                 commits), null);
     }
@@ -136,28 +115,6 @@ internal static class HarnessSettingsReader
         DependencySettings defaults,
         bool readsDependencyCounts)
         => readsDependencyCounts ? ReadDependencies(declared, defaults) : (defaults, null);
-
-    private static (MaintainabilitySettings? Settings, string? Failure) ReadMaintainability(
-        JsonElement declared,
-        MaintainabilitySettings defaults)
-    {
-        var (values, failure) = ReadSection(
-            declared,
-            Maintainability,
-            ["fileLines", "typeLines", "methodLines", "branches", "constructorParameters", "publicMembers"],
-            [
-                defaults.FileLines, defaults.TypeLines, defaults.MethodLines,
-                defaults.Branches, defaults.ConstructorParameters, defaults.PublicMembers,
-            ],
-            moved: new Dictionary<string, string>(StringComparer.Ordinal)
-            {
-                ["importFanOut"] = $"settings.{Dependencies}.externalImports",
-            });
-
-        return values is null
-            ? (null, failure)
-            : (new MaintainabilitySettings(values[0], values[1], values[2], values[3], values[4], values[5]), null);
-    }
 
     private static (DependencySettings? Settings, string? Failure) ReadDependencies(
         JsonElement declared,

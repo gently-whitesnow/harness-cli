@@ -20,8 +20,7 @@ internal enum CheckPolicy
 }
 
 /// <summary>
-/// The repository's own answers to the harness frame, how strictly each check is treated,
-/// and which findings it has consciously accepted and why.
+/// The repository's own answers to the harness frame and how strictly each check is treated.
 /// </summary>
 /// <remarks>
 /// Answers are self-reported. The harness validates each question independently and reports
@@ -36,7 +35,7 @@ internal sealed record HarnessConfig
     public const string FrameGroup = "frame";
 
     private static readonly string[] TopLevelKeys =
-        ["version", "answers", "applicability", "settings", "policy", "suppress"];
+        ["version", "answers", "applicability", "settings", "policy"];
 
     public required HarnessVersion Version { get; init; }
 
@@ -51,8 +50,6 @@ internal sealed record HarnessConfig
     public required HarnessSettings Settings { get; init; }
 
     public required IReadOnlyDictionary<string, CheckPolicy> Policy { get; init; }
-
-    public required IReadOnlyList<Suppression> Suppressions { get; init; }
 
     public FrameAnswer? Answered(string key)
         => Answers.TryGetValue(key, out var answer) ? answer : null;
@@ -132,6 +129,12 @@ internal sealed record HarnessConfig
 
         foreach (var property in root.EnumerateObject())
         {
+            if (property.Name is "suppress" or "overrides")
+            {
+                return (null, ConfigJson.Failure(
+                    $"'{property.Name}' was removed in harness 2.0; remove this section"));
+            }
+
             if (!TopLevelKeys.Contains(property.Name, StringComparer.Ordinal))
             {
                 return (null, ConfigJson.Failure($"'{property.Name}' is not a key this harness reads "
@@ -180,26 +183,21 @@ internal sealed record HarnessConfig
             return (null, policyFailure);
         }
 
-        var (suppressions, suppressionFailure) = PolicyReader.ReadSuppressions(root, selectors);
-        return suppressions is null
-            ? (null, suppressionFailure)
-            : (new HarnessConfig
-            {
-                Version = version,
-                TracksLatest = tracksLatest,
-                Answers = answers,
-                AnswerFailures = answerFailures!,
-                Applicability = applicability,
-                Settings = settings,
-                Policy = policy,
-                Suppressions = suppressions,
-            }, null);
+        return (new HarnessConfig
+        {
+            Version = version,
+            TracksLatest = tracksLatest,
+            Answers = answers,
+            AnswerFailures = answerFailures!,
+            Applicability = applicability,
+            Settings = settings,
+            Policy = policy,
+        }, null);
     }
 
     /// <summary>
-    /// The pinned release is the whole contract: which questions are asked, which checks run
-    /// and which defaults they use. A binary may be newer than the pin and then reproduces the
-    /// pinned release; it may never be older, because it cannot know what it does not ship.
+    /// The binary implements one current contract. A repository on another release must
+    /// upgrade its tracked pin before the run can be evaluated.
     /// </summary>
     private static (HarnessVersion Version, bool TracksLatest, string? Failure) ReadVersion(JsonElement root)
     {
@@ -227,7 +225,7 @@ internal sealed record HarnessConfig
 
         return version < HarnessVersion.Minimum
             ? (default, false, $"'version' pins harness {version}, which this binary no longer reproduces "
-                + $"(the oldest it knows is {HarnessVersion.Minimum}); raise the pin with `harness upgrade`")
+                + $"(the current contract is {HarnessVersion.Current}); upgrade required")
             : (version, false, null);
     }
 
@@ -249,7 +247,7 @@ internal sealed record HarnessConfig
         A minimal .harness.json, committed at the repository root:
 
           {
-            "version": "1.0.0",
+            "version": "2.0.0",
             "answers": {
               "tests.unit": { "paths": ["tests/Unit"] },
               "tests.integration": { "present": false, "reason": "no external dependencies yet" },
@@ -264,23 +262,6 @@ internal sealed record HarnessConfig
               "comments.csharp": {
                 "minimumCommentLines": 10,
                 "percentageLimit": 8
-              },
-              "maintainability.csharp": {
-                "fileLines": 400,
-                "typeLines": 300,
-                "methodLines": 60,
-                "branches": 12,
-                "constructorParameters": 6,
-                "publicMembers": 25
-              },
-              "dependencies.csharp": {
-                "externalImports": 20,
-                "outgoingReferences": 15,
-                "incomingReferences": 20
-              },
-              "cohesion.csharp": {
-                "minimumMembers": 6,
-                "groups": 2
               },
               "duplication.csharp": {
                 "windowLines": 30,

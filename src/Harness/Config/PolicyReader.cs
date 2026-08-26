@@ -3,10 +3,9 @@ using System.Text.Json;
 namespace Harness.Config;
 
 /// <summary>
-/// Reads repository overrides around the default: applicability switches a whole family off,
-/// policy softens or disables a check, and a named exception accepts one finding. Every
-/// one of them has to name something this harness ships, and every one that speaks without an
-/// address has to say why.
+/// Reads repository policy around the default: applicability switches a whole family off,
+/// while policy softens or disables a check. Every entry has to name something this harness
+/// ships, and every applicability answer has to say why.
 /// </summary>
 internal static class PolicyReader
 {
@@ -120,74 +119,4 @@ internal static class PolicyReader
         return (policy, null);
     }
 
-    public static (List<Suppression>? Suppressions, string? Failure) ReadSuppressions(
-        JsonElement root,
-        IReadOnlyList<string> selectors)
-    {
-        var suppressions = new List<Suppression>();
-        if (!root.TryGetProperty("suppress", out var declared))
-        {
-            return (suppressions, null);
-        }
-
-        if (declared.ValueKind != JsonValueKind.Array)
-        {
-            return (null, ConfigJson.Failure("'suppress' must be an array"));
-        }
-
-        var index = 0;
-        foreach (var element in declared.EnumerateArray())
-        {
-            var (suppression, failure) = ReadSuppression(element, $"suppress[{index++}]", selectors);
-            if (suppression is null)
-            {
-                return (null, failure);
-            }
-
-            suppressions.Add(suppression);
-        }
-
-        return (suppressions, null);
-    }
-
-    private static (Suppression? Suppression, string? Failure) ReadSuppression(
-        JsonElement element,
-        string at,
-        IReadOnlyList<string> selectors)
-    {
-        if (element.ValueKind != JsonValueKind.Object)
-        {
-            return (null, ConfigJson.Failure($"'{at}' must be an object"));
-        }
-
-        foreach (var property in element.EnumerateObject())
-        {
-            if (property.Name is not ("check" or "location" or "reason"))
-            {
-                return (null, ConfigJson.Failure($"'{at}.{property.Name}' is not a key this harness reads "
-                    + "(expected check, location, reason)"));
-            }
-        }
-
-        var check = ConfigJson.String(element, "check");
-        var location = ConfigJson.String(element, "location");
-        var reason = ConfigJson.String(element, "reason");
-
-        if (string.IsNullOrWhiteSpace(check) || !selectors.Contains(check, StringComparer.Ordinal))
-        {
-            return (null, ConfigJson.Failure($"'{at}.check' must name a check or group this harness ships"));
-        }
-
-        if (string.IsNullOrWhiteSpace(location))
-        {
-            return (null, ConfigJson.Failure($"'{at}.location' must be a non-empty repository-relative path"));
-        }
-
-        // The whole point of a named exception is the sentence that justifies it. A
-        // suppression without one is an invisible exception, which is the thing this
-        // mechanism exists to prevent.
-        return string.IsNullOrWhiteSpace(reason)
-            ? (null, ConfigJson.Failure($"'{at}.reason' must say why this finding is accepted"))
-            : (new Suppression(check.Trim(), location.Trim().TrimEnd('/'), reason.Trim()), null);
-    }
 }

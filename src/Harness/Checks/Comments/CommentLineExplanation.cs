@@ -47,7 +47,7 @@ internal static class CommentLineExplanation
           `settings.comments.csharp` in `.harness.json`; they are repository policy, not
           industry constants. A file
           with an unusually dense set of indispensable comments can use
-          `policy.comments.csharp`, or a named `suppress` exception with a reason.
+          `policy.comments.csharp`.
 
         Remediation
           Review the reported file. Delete stale, obvious and decorative prose; remove

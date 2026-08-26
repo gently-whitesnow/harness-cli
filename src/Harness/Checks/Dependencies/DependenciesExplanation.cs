@@ -40,11 +40,10 @@ internal static class DependenciesExplanation
           violation. The report names the shortest ring and the source lines that close it.
 
         What this check deliberately leaves elsewhere
-          Type size, branch count and constructor width belong to `maintainability.csharp`;
-          mixed responsibilities belong to `cohesion.csharp`; repeated test setup belongs to
-          `duplication.csharp`; allowed layer directions belong to the repository's semantic
-          architecture tests. A raw incoming or outgoing count adds no universal remediation
-          beyond those checks and is not part of the current contract.
+          Repeated test setup belongs to `duplication.csharp`; allowed layer directions belong
+          to the repository's semantic architecture tests. Type size, member groups and raw
+          incoming or outgoing counts have no universal remediation and are not part of the
+          current contract.
 
         Limits
           Nothing is bound by the compiler. Extension methods, overload resolution, implicit
@@ -52,17 +51,11 @@ internal static class DependenciesExplanation
           A unique internal type with the same simple name as an external type can still be
           resolved incorrectly even in a type-only position. Partial types are merged.
 
-        Named suppression
-          If a proved cycle is deliberately accepted for a limited time, or a named edge is
-          a lexical false positive, add a `suppress` entry for `dependencies.csharp` at the
-          reported file with a concrete reason. Suppression remains visible and becomes stale
-          when it no longer matches. There are no count findings to suppress.
-
-        Compatibility
-          Repositories pinned through harness 1.4 retain their resolved fan-in, fan-out and
-          external-import counts with the original policy behavior. Raising the pin to 1.5
-          removes those counts and their `settings.dependencies.csharp` section; updating the
-          binary alone does not change an older pin's result.
+        Policy
+          A proved cycle is blocking by default and cannot be suppressed by path. If the
+          repository consciously accepts all findings from this check, tracked policy may
+          make the whole check `advisory` or `off`; that broader decision stays visible in
+          review.
 
         Remediation
           Read each edge in the reported ring and choose the intended direction. Usually the

@@ -42,18 +42,6 @@ public sealed class CommentLineTests
     }
 
     [Fact]
-    public void A_pin_before_the_recalibration_keeps_the_25_percent_default()
-    {
-        using var repository = SourceRepository(
-            Source(commentLines: 10, codeLines: 90),
-            Frame.AllPresent().Version("1.3.0"));
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
-
-        Assert.Equal(0, run.ExitCode);
-    }
-
-    [Fact]
     public void A_dense_small_file_below_the_comment_floor_passes()
     {
         using var repository = SourceRepository(Source(commentLines: 9, codeLines: 1));

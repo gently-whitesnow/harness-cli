@@ -63,9 +63,8 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
           "{{Key}}": { "present": true, "reason": "where or how it is provided" }
           "{{Key}}": { "present": false, "reason": "why it is currently absent" }
           "{{Key}}": { "applicable": false, "reason": "why this question does not apply" }
-        Run `harness explain frame.{{Key}}` for the question's intent. Do not invent a positive answer or use
-        `suppress` to bypass an unanswered frame question. If the repository owner's intent is unclear, ask
-        them before choosing an answer.
+        Run `harness explain frame.{{Key}}` for the question's intent. Do not invent a positive answer. If the
+        repository owner's intent is unclear, ask them before choosing an answer.
         """;
 
     private static CheckEvaluation Located(FrameAnswer answer)

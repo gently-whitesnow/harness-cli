@@ -21,8 +21,8 @@ internal static class BuildPropertiesExplanation
 
         Remediation
           Put shared values in the nearest Directory.Build.props. Keep genuinely different target
-          frameworks in project files. A deliberate exception uses `suppress` with this check,
-          the affected path and a non-empty reason.
+          frameworks in project files. If the repository rejects the rule as a whole, record
+          that decision through `policy.build-properties.dotnet`.
 
         Applicability
           Disable all .NET repository checks together only when they do not apply:

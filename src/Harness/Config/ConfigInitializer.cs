@@ -82,18 +82,6 @@ internal static class ConfigInitializer
                   "minimumCommentLines": {{defaults.Comments.MinimumCommentLines}},
                   "percentageLimit": {{defaults.Comments.PercentageLimit}}
                 },
-                "maintainability.csharp": {
-                  "fileLines": {{defaults.Maintainability.FileLines}},
-                  "typeLines": {{defaults.Maintainability.TypeLines}},
-                  "methodLines": {{defaults.Maintainability.MethodLines}},
-                  "branches": {{defaults.Maintainability.Branches}},
-                  "constructorParameters": {{defaults.Maintainability.ConstructorParameters}},
-                  "publicMembers": {{defaults.Maintainability.PublicMembers}}
-                },
-                "cohesion.csharp": {
-                  "minimumMembers": {{defaults.Cohesion.MinimumMembers}},
-                  "groups": {{defaults.Cohesion.Groups}}
-                },
                 "duplication.csharp": {
                   "windowLines": {{defaults.Duplication.WindowLines}},
                   "minimumTokens": {{defaults.Duplication.MinimumTokens}}
@@ -103,8 +91,7 @@ internal static class ConfigInitializer
                   "requireSetup": {{defaults.Commits.RequireSetup.ToString().ToLowerInvariant()}}
                 }
               },
-              "policy": {},
-              "suppress": []
+              "policy": {}
             }
             """);
         return text.ToString();

@@ -5,9 +5,7 @@ namespace Harness.Config;
 
 internal sealed record HarnessSettings(
     CommentSettings Comments,
-    MaintainabilitySettings Maintainability,
     DependencySettings Dependencies,
-    CohesionSettings Cohesion,
     DuplicationSettings Duplication,
     CommitSettings Commits)
 {
@@ -16,17 +14,13 @@ internal sealed record HarnessSettings(
 
     private static readonly HarnessSettings Legacy = new(
         new CommentSettings(MinimumCommentLines: 10, PercentageLimit: 25),
-        MaintainabilitySettings.Default,
         DependencySettings.Default,
-        new CohesionSettings(MinimumMembers: 6, Groups: 1),
         new DuplicationSettings(WindowLines: 8, MinimumTokens: 24),
         LegacyCommits);
 
     public static HarnessSettings Default { get; } = new(
         CommentSettings.Default,
-        MaintainabilitySettings.Default,
         DependencySettings.Default,
-        CohesionSettings.Default,
         DuplicationSettings.Default,
         CommitSettings.Default);
 

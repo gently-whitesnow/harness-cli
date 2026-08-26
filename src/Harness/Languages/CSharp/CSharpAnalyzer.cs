@@ -19,9 +19,4 @@ internal sealed class CSharpAnalyzer(CSharpSources sources) : ILanguageAnalyzer
         return failure is not null ? (null, failure) : (CSharpGraphBuilder.Build(files), null);
     }
 
-    public (IReadOnlyList<TypeCohesion>? Types, string? Failure) ReadCohesion(GitRepository repository)
-    {
-        var (files, failure) = sources.Read(repository);
-        return failure is not null ? (null, failure) : (CSharpCohesionReader.Read(files), null);
-    }
 }

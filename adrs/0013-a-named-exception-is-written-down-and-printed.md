@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Superseded by [ADR-0032](0032-topology-over-thresholds.md) for harness 2.0. The requirement
+for a tracked readable frame remains; named suppressions are removed.
 
 ## Context
 

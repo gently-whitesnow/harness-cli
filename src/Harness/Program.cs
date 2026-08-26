@@ -51,7 +51,7 @@ switch (invocation.Kind)
 
         Console.WriteLine("Configured the commit template and commit-msg hook for this clone.");
         Console.WriteLine(
-            "Review every answer; ask the repository owner when intent is unclear rather than suppressing the work.");
+            "Review every answer; ask the repository owner when intent is unclear rather than guessing.");
         Console.WriteLine("Track the file, then run `harness check --verbose`.");
         return ExitCodes.Success;
     }
@@ -215,7 +215,7 @@ switch (invocation.Kind)
     case CommandKind.Version:
         Console.WriteLine($"harness {HarnessVersion.Current}");
         Console.WriteLine(
-            $"Reproduces repositories pinned from {HarnessVersion.Minimum} to {HarnessVersion.Current}.");
+            $"Runs contract {HarnessVersion.Current}; every other pin requires an upgrade.");
         return ExitCodes.Success;
 
     case CommandKind.Help:
