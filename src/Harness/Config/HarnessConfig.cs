@@ -57,10 +57,6 @@ internal sealed record HarnessConfig
     public string? AnswerFailure(string key)
         => AnswerFailures.TryGetValue(key, out var failure) ? failure : null;
 
-    /// <summary>Whether the pinned release already shipped the thing introduced in <paramref name="since"/>.</summary>
-    public bool Includes(HarnessVersion since)
-        => TracksLatest || since <= Version;
-
     public CheckPolicy PolicyFor(string checkId, string group)
     {
         if (Policy.TryGetValue(checkId, out var byId))
@@ -156,9 +152,7 @@ internal sealed record HarnessConfig
     {
         var (answers, answerFailures, answerFailure) = FrameAnswerReader.Read(
             root,
-            checks.Where(check => check.AnswerKey is not null).ToList(),
-            version,
-            tracksLatest);
+            checks.Where(check => check.AnswerKey is not null).ToList());
         if (answers is null)
         {
             return (null, answerFailure);
@@ -170,7 +164,7 @@ internal sealed record HarnessConfig
             return (null, applicabilityFailure);
         }
 
-        var (settings, settingsFailure) = HarnessSettingsReader.Read(root, version);
+        var (settings, settingsFailure) = HarnessSettingsReader.Read(root);
         if (settings is null)
         {
             return (null, ConfigJson.Failure(settingsFailure!));
@@ -195,10 +189,7 @@ internal sealed record HarnessConfig
         }, null);
     }
 
-    /// <summary>
-    /// The binary implements one current contract. A repository on another release must
-    /// upgrade its tracked pin before the run can be evaluated.
-    /// </summary>
+    /// <summary>The binary implements exactly the contract named by its current release.</summary>
     private static (HarnessVersion Version, bool TracksLatest, string? Failure) ReadVersion(JsonElement root)
     {
         if (!root.TryGetProperty("version", out var declared) || declared.ValueKind != JsonValueKind.String)
@@ -217,16 +208,10 @@ internal sealed record HarnessConfig
             return (default, false, Expected);
         }
 
-        if (version > HarnessVersion.Current)
-        {
-            return (default, false, $"'version' pins harness {version}, which is newer than this binary "
-                + $"({HarnessVersion.Current}); update the harness before checking this repository");
-        }
-
-        return version < HarnessVersion.Minimum
-            ? (default, false, $"'version' pins harness {version}, which this binary no longer reproduces "
-                + $"(the current contract is {HarnessVersion.Current}); upgrade required")
-            : (version, false, null);
+        return version == HarnessVersion.Current
+            ? (version, false, null)
+            : (default, false, $"'version' pins harness {version}, but this binary only runs contract "
+                + $"{HarnessVersion.Current}; upgrade required");
     }
 
     private static string Expected

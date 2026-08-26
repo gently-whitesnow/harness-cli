@@ -69,8 +69,8 @@
   `dotnet` требуют hardened `Directory.Build.props`, Central Package Management через
   ближайший `Directory.Packages.props` и `.slnx`, покрывающий authored-проекты.
 - [ADR-0028](0028-recalibrated-csharp-defaults.md) — Начиная с 1.4.0 дефолты C#-эвристик:
-  comments `10/8`, cohesion `6/2`, duplication `30/90`; старые pins получают прежние
-  значения. Порог cohesion отменён ADR-0032; comments и duplication остаются.
+  comments `10/8`, cohesion `6/2`, duplication `30/90`. Порог cohesion отменён ADR-0032;
+  comments и duplication остаются с текущими значениями.
 - [ADR-0029](0029-dependency-counts-removed.md) — Начиная с 1.5 `dependencies.csharp`
   оставляет только blocking-циклы по `Proven`; fan-in/out и external imports удалены как
   контекстные counts без универсального remediation.

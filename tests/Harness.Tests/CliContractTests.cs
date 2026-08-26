@@ -118,6 +118,7 @@ public sealed class CliContractTests
         Assert.True(run.OutputContains("docs.policy"), run.Output);
         Assert.True(run.OutputContains("group docs"), run.Output);
         Assert.True(run.OutputContains("C# comment density limit"), run.Output);
+        Assert.False(run.OutputContains("harness upgrade"), run.Output);
     }
 
     [Fact]

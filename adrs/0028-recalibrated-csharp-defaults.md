@@ -5,7 +5,8 @@
 Accepted. Заменяет порог из
 [ADR-0015](0015-comment-density-is-a-blocking-source-policy.md), развивает
 [ADR-0006](0006-heuristics-are-advisory.md) и следует release-контракту
-[ADR-0023](0023-release-version-as-the-verification-contract.md).
+[ADR-0023](0023-release-version-as-the-verification-contract.md). Versioned defaults и
+`cohesion.csharp` superseded by ADR-0032.
 
 ## Context
 
@@ -28,8 +29,8 @@ C#-монорепозитории. Дефолты cohesion `groups: 1` и duplic
 - `duplication.csharp` использует окно `30` нормализованных строк и минимум `90` токенов;
 - `comments.csharp` следует выбранному владельцем профилю `10/8`, закреплённому ADR-0015.
 
-Пины до `1.4.0` получают прежние `6/1`, `8/24` и `10/25`, даже когда проверку выполняет
-новый бинарь. Явные repository settings, как и раньше, сильнее дефолта.
+Текущий контракт сохраняет `comments.csharp` `10/8` и `duplication.csharp` `30/90`.
+Исторические defaults не воспроизводятся, а `cohesion.csharp` удалён по ADR-0032.
 
 Фиксированные fan-in/fan-out defaults в 1.4 не меняются; начиная с 1.5 counts удалены по
 [ADR-0029](0029-dependency-counts-removed.md), потому что смешивают production, tests,
@@ -41,7 +42,6 @@ composition roots и устойчивые domain hubs в одной метрик
 
 - Крупные межфайловые повторы остаются видимыми, короткий шаблонный шум резко сокращается.
 - Две независимые группы допустимы; три и более остаются поводом читать и делить тип.
-- Обновление бинаря не меняет вердикт старого pin.
 
 ### Negative / Risks
 

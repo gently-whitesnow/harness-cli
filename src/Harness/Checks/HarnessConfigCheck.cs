@@ -37,10 +37,10 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
 
         What it accepts
           version       required; the current harness contract, such as "2.0.0", or "latest"
-                        to follow the installed binary. A different pin must be upgraded before
-                        this binary can evaluate it.
-          answers       one self-reported answer for every `frame` question in the selected
-                        version, keyed without the `frame.` prefix.
+                        to follow the installed binary. A different pin must be updated in the
+                        tracked config before this binary can evaluate it.
+          answers       one self-reported answer for every current `frame` question, keyed
+                        without the `frame.` prefix.
           applicability shared analysis family (currently `csharp`) answered not applicable.
           settings      deterministic policy and commit language/setup requirements.
           policy        exceptions to the default `required`: `advisory` keeps findings visible

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Части про `suppress` superseded by [ADR-0032](0032-topology-over-thresholds.md).
+Superseded by ADR-0023 and ADR-0032: текущий бинарь больше не читает старые снимки.
 Уточняет [ADR-0014](0014-frame-answers-are-self-reported.md) и заменяет часть
 [ADR-0008](0008-the-harness-only-observes.md), запрещавшую харнесу писать `.harness.json`.
 Обычный `check` остаётся только читающим; единственное исключение — явно вызванный `init`.

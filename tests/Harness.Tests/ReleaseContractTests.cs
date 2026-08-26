@@ -29,28 +29,18 @@ public sealed class ReleaseContractTests
         Assert.Contains($"repository pins {Release.Current}", run.Output, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void A_pin_older_than_the_current_contract_requires_an_upgrade()
+    [Theory]
+    [InlineData("1.5.0")]
+    [InlineData("99.0.0")]
+    public void A_pin_that_differs_from_the_current_contract_requires_an_upgrade(string pin)
     {
-        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("1.5.0"));
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version(pin));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(2, run.ExitCode);
         Assert.True(run.OutputContains("upgrade required"), run.Output);
-    }
-
-    /// <summary>A binary that does not ship the pinned release refuses rather than guessing.</summary>
-    [Fact]
-    public void A_binary_older_than_the_pin_refuses_to_verify()
-    {
-        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("99.0.0"));
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check");
-
-        Assert.Equal(2, run.ExitCode);
-        Assert.True(run.OutputContains("newer than this binary"), run.Output);
-        Assert.True(run.OutputContains("update the harness"), run.Output);
+        Assert.True(run.OutputContains($"only runs contract {Release.Current}"), run.Output);
     }
 
 }

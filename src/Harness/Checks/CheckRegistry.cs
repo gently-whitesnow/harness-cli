@@ -58,7 +58,6 @@ internal static class CheckRegistry
                 check.Id,
                 check.Group,
                 check.Applicability,
-                (check as FrameQuestionCheck)?.AnswerKey,
-                check.Since))
+                (check as FrameQuestionCheck)?.AnswerKey))
             .ToList();
 }

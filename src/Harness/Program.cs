@@ -56,38 +56,6 @@ switch (invocation.Kind)
         return ExitCodes.Success;
     }
 
-    case CommandKind.Upgrade:
-    {
-        var (repository, config, failure) = LoadRepository(invocation.RepositoryPath, checks);
-        if (repository is null || config is null)
-        {
-            Console.Error.WriteLine(failure);
-            return ExitCodes.Incomplete;
-        }
-
-        var target = HarnessVersion.Current;
-        if (invocation.Operand is not null && !HarnessVersion.TryParse(invocation.Operand, out target))
-        {
-            Console.Error.WriteLine($"'{invocation.Operand}' is not a harness release, such as 1.1.0.");
-            return ExitCodes.Incomplete;
-        }
-
-        var (report, upgradeFailure) = FrameUpgrade.Raise(
-            repository,
-            config,
-            CheckRegistry.Describe(checks),
-            target,
-            invocation.DryRun);
-        if (report is null)
-        {
-            Console.Error.WriteLine(upgradeFailure);
-            return ExitCodes.Incomplete;
-        }
-
-        Console.Write(report);
-        return ExitCodes.Success;
-    }
-
     case CommandKind.Setup:
     {
         var (repository, config, failure) = LoadRepository(invocation.RepositoryPath, checks);
@@ -215,7 +183,7 @@ switch (invocation.Kind)
     case CommandKind.Version:
         Console.WriteLine($"harness {HarnessVersion.Current}");
         Console.WriteLine(
-            $"Runs contract {HarnessVersion.Current}; every other pin requires an upgrade.");
+            $"Runs contract {HarnessVersion.Current}; every other pin requires a tracked config update.");
         return ExitCodes.Success;
 
     case CommandKind.Help:
