@@ -1,9 +1,6 @@
 namespace Harness.Tests;
 
-/// <summary>
-/// The pinned release is the contract: any binary that still knows it reaches the same
-/// verdict, so local and CI installations do not have to match.
-/// </summary>
+/// <summary>The pinned release gives every compatible binary the same verdict.</summary>
 [Trait("Category", "Publication")]
 public sealed class ReleaseContractTests
 {
@@ -30,10 +27,7 @@ public sealed class ReleaseContractTests
         Assert.Contains($"repository pins {Release.Current}", run.Output, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// The invariant the distribution rests on: a newer binary changes the version it reports
-    /// and nothing else. Only `harness upgrade`, a tracked edit, changes a verdict.
-    /// </summary>
+    /// <summary>A newer binary cannot change the verdict until the tracked pin changes.</summary>
     [Fact]
     public void A_newer_binary_reaches_the_same_verdict_on_the_same_pin()
     {
@@ -48,7 +42,6 @@ public sealed class ReleaseContractTests
         Assert.Equal(WithoutTheVersionLine(pinned.Output), WithoutTheVersionLine(updated.Output));
     }
 
-    /// <summary>The preview exists so the cost of a newer release is visible before a commit.</summary>
     [Fact]
     public void Upgrade_previews_the_new_pin_before_it_writes_one()
     {
@@ -102,13 +95,12 @@ public sealed class ReleaseContractTests
 
         Assert.Equal(0, preview.ExitCode);
         Assert.Contains(
-            "contextual constructor and public-member counts are removed",
+            "contextual width counts and lexical branch count are removed",
             preview.Output,
             StringComparison.Ordinal);
         Assert.DoesNotContain("verdict does not change", preview.Output, StringComparison.Ordinal);
     }
 
-    /// <summary>A binary that does not ship the pinned release refuses rather than guessing.</summary>
     [Fact]
     public void A_binary_older_than_the_pin_refuses_to_verify()
     {
@@ -126,7 +118,6 @@ public sealed class ReleaseContractTests
             '\n',
             output.Split('\n').Where(line => !line.TrimStart().StartsWith("harness 1.", StringComparison.Ordinal)));
 
-    /// <summary>Builds the CLI as a different release by overriding the one MSBuild property.</summary>
     private static string BuildStampedAs(string version)
     {
         var directory = Path.Combine(Path.GetTempPath(), "harness-release-" + Guid.NewGuid().ToString("n"));

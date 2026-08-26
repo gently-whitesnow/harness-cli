@@ -3,10 +3,8 @@ using Harness.Structure;
 namespace Harness.Languages.CSharp;
 
 /// <summary>
-/// Turns read files into the dependency graph of the repository. Every edge starts at the
-/// type whose lines contain the reference and ends at a type the repository declares; a name
-/// that resolves nowhere is not an edge, and a name that resolves to more than one place is
-/// counted as unresolved instead of being attributed to whichever came first.
+/// Builds edges between declared repository types; missing and ambiguous names never become
+/// guessed edges.
 /// </summary>
 internal sealed class CSharpGraphBuilder
 {
@@ -125,10 +123,7 @@ internal sealed class CSharpGraphBuilder
     private static TypeNode? OwnerAt(IReadOnlyList<TypeNode?> owners, int line)
         => line >= 1 && line <= owners.Count ? owners[line - 1] : null;
 
-    /// <summary>
-    /// Which type owns each line. A nested type is written inside the one that contains it,
-    /// so the narrower span wins and the reference is attributed to the type that names it.
-    /// </summary>
+    /// <summary>Narrower nested spans overwrite their owners so references reach the naming type.</summary>
     private static TypeNode?[] OwnersByLine(CSharpFile file, List<DeclaredType> declared)
     {
         var owners = new TypeNode?[file.Source.LineCount];

@@ -1,10 +1,8 @@
 namespace Harness.Languages.CSharp;
 
 /// <summary>
-/// Reads one declaration header — the masked text between the previous terminator and the
-/// `{` or `;` that ends it. Everything here is lexical: it recognizes the forms the metrics
-/// need and returns nothing for the rest, so an unfamiliar construct costs a measurement
-/// rather than producing a wrong one.
+/// Lexically reads the masked header before `{` or `;`; unfamiliar forms return no declaration
+/// rather than a guessed one.
 /// </summary>
 internal static class CSharpDeclarationSyntax
 {
@@ -25,10 +23,6 @@ internal static class CSharpDeclarationSyntax
         "event", "void", "implicit", "explicit", "operator",
     };
 
-    /// <summary>
-    /// An expression body is the member's implementation, not part of its header. Cutting it
-    /// away keeps a call inside it from being read as the declaration itself.
-    /// </summary>
     public static string WithoutExpressionBody(string text)
     {
         var arrow = TopLevelIndexOf(text, "=>");
@@ -67,9 +61,8 @@ internal static class CSharpDeclarationSyntax
             || (StartsWithWord(text, "global") && StartsWithWord(text["global".Length..].TrimStart(), "using"));
 
     /// <summary>
-    /// The namespace a `using` directive imports. An alias names one type or namespace under
-    /// a local name, so what it imports is the right-hand side; `using static` imports the
-    /// members of the type it names, so the type itself is what the file depends on.
+    /// Returns an alias's right-hand side and the named type for `using static`, preserving
+    /// the actual dependency rather than its local spelling.
     /// </summary>
     public static string? ImportNameOf(string text)
     {
@@ -123,7 +116,6 @@ internal static class CSharpDeclarationSyntax
             return null;
         }
 
-        // `record class` and `record struct` place a second keyword before the name.
         var keyword = tokens[keywordIndex];
         var name = tokens.Skip(keywordIndex + 1).FirstOrDefault(token => !TypeKeywords.Contains(token));
         if (name is null || !IsIdentifier(name))
@@ -174,10 +166,6 @@ internal static class CSharpDeclarationSyntax
         return null;
     }
 
-    /// <summary>
-    /// The name a field or property declaration introduces: the last identifier of a header
-    /// that carries a type and a name and opens no parameter list.
-    /// </summary>
     public static string? FieldNameOf(string text)
     {
         var declaration = WithoutInitializer(WithoutConstraints(text));
@@ -196,7 +184,6 @@ internal static class CSharpDeclarationSyntax
         return remainder.Length == 0 ? null : name;
     }
 
-    /// <summary>The types a declaration names after `:`, before any constraint clause.</summary>
     public static string BaseListOf(string text)
     {
         var declaration = WithoutConstraints(text);

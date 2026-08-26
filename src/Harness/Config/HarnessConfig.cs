@@ -19,16 +19,7 @@ internal enum CheckPolicy
     Off,
 }
 
-/// <summary>
-/// The repository's own answers to the harness frame, how strictly each check is treated,
-/// and which findings it has consciously accepted and why.
-/// </summary>
-/// <remarks>
-/// Answers are self-reported. The harness validates each question independently and reports
-/// local answer problems on that question, but it neither inspects an address nor searches Git
-/// for a contradiction. The frame is described to this reader as data — it never reaches for
-/// the checks themselves, so reading a repository does not depend on being able to run one.
-/// </remarks>
+/// <summary>Parsed self-reported contract; answers are validated but not fact-checked.</summary>
 internal sealed record HarnessConfig
 {
     public const string FileName = ".harness.json";
@@ -60,7 +51,6 @@ internal sealed record HarnessConfig
     public string? AnswerFailure(string key)
         => AnswerFailures.TryGetValue(key, out var failure) ? failure : null;
 
-    /// <summary>Whether the pinned release already shipped the thing introduced in <paramref name="since"/>.</summary>
     public bool Includes(HarnessVersion since)
         => TracksLatest || since <= Version;
 
@@ -77,13 +67,7 @@ internal sealed record HarnessConfig
     public ApplicabilityAnswer? NotApplicable(string? key)
         => key is not null && Applicability.TryGetValue(key, out var answer) ? answer : null;
 
-    /// <summary>
-    /// Reads the tracked config and validates its envelope before preserving per-answer results.
-    /// An untracked config does not exist for the harness, the same as any untracked file: what
-    /// verifies a repository has to be part of it. Every failure names what to fix rather than
-    /// degrading to a default; answer failures stay local, while failures that make policy
-    /// unreliable remain global.
-    /// </summary>
+    /// <summary>Reads tracked config; envelope failures are global and answer failures stay local.</summary>
     public static (HarnessConfig? Config, string? Failure) Load(
         GitRepository repository,
         IReadOnlyList<CheckDescriptor> checks)
@@ -196,11 +180,7 @@ internal sealed record HarnessConfig
             }, null);
     }
 
-    /// <summary>
-    /// The pinned release is the whole contract: which questions are asked, which checks run
-    /// and which defaults they use. A binary may be newer than the pin and then reproduces the
-    /// pinned release; it may never be older, because it cannot know what it does not ship.
-    /// </summary>
+    /// <summary>Reads a pin that newer binaries reproduce and older binaries reject.</summary>
     private static (HarnessVersion Version, bool TracksLatest, string? Failure) ReadVersion(JsonElement root)
     {
         if (!root.TryGetProperty("version", out var declared) || declared.ValueKind != JsonValueKind.String)
@@ -240,10 +220,7 @@ internal sealed record HarnessConfig
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-    /// <summary>
-    /// The smallest config that answers everything, shown whenever there is none. A reader
-    /// who has never seen this file should not have to find documentation to start.
-    /// </summary>
+    /// <summary>Fallback onboarding example shown when tracked configuration is absent.</summary>
     public static string Template =>
         """
         A minimal .harness.json, committed at the repository root:

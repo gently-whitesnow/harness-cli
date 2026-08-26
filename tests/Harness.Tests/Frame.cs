@@ -2,10 +2,7 @@ using System.Text;
 
 namespace Harness.Tests;
 
-/// <summary>
-/// Builds a complete `.harness.json` for a fixture. Every question has a self-reported
-/// answer unless a test deliberately removes or corrupts one.
-/// </summary>
+/// <summary>Builds a complete frame unless a test deliberately breaks one answer.</summary>
 public sealed class Frame
 {
     private static readonly string[] Questions =
@@ -28,10 +25,8 @@ public sealed class Frame
 
     private string version = Quote(Release.Current);
 
-    /// <summary>A frame that answers "no" to every question.</summary>
     public static Frame Answering() => new();
 
-    /// <summary>A frame with a positive answer to every question.</summary>
     public static Frame AllPresent()
     {
         var frame = new Frame();
@@ -49,18 +44,15 @@ public sealed class Frame
     public Frame Present(string question, string reason = "no single file carries it")
         => With(question, $$"""{ "present": true, "reason": {{Quote(reason)}} }""");
 
-    /// <summary>Answers that one question does not apply to this repository.</summary>
     public Frame NotApplicable(string question, string reason = "no stack for it")
         => With(question, $$"""{ "applicable": false, "reason": {{Quote(reason)}} }""");
 
-    /// <summary>Leaves one question out of the frame entirely.</summary>
     public Frame Silent(string question)
     {
         answers.Remove(question);
         return this;
     }
 
-    /// <summary>Writes one answer verbatim, including one the reader should reject.</summary>
     public Frame With(string question, string body)
     {
         answers[question] = body;
@@ -85,7 +77,6 @@ public sealed class Frame
         return this;
     }
 
-    /// <summary>Pins the frame to a release, or to the moving "latest" marker.</summary>
     public Frame Version(string value)
     {
         version = Quote(value);

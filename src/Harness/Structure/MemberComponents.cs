@@ -1,10 +1,6 @@
 namespace Harness.Structure;
 
-/// <summary>
-/// Splits a type's members into groups that share state. Two members are in the same group
-/// when one names the other, directly or through a chain of members between them. More than
-/// one group means the type holds several sets of state and behaviour that never meet.
-/// </summary>
+/// <summary>Finds transitive member groups that share state.</summary>
 internal sealed class MemberComponents
 {
     private readonly Dictionary<string, int> indexes = new(StringComparer.Ordinal);
@@ -20,11 +16,7 @@ internal sealed class MemberComponents
         }
     }
 
-    /// <summary>
-    /// The groups that hold both state and behaviour, largest first. A group of nothing but
-    /// state says a field is unused, and a group of nothing but behaviour says a helper
-    /// touches nothing; both are different claims from this one, and both are left out.
-    /// </summary>
+    /// <summary>Returns mixed state/behaviour groups, largest first.</summary>
     public static List<List<string>> Of(IReadOnlyList<CohesionMember> members)
     {
         var components = new MemberComponents(members);

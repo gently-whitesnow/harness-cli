@@ -2,11 +2,7 @@ using Harness.Git;
 
 namespace Harness.Checks;
 
-/// <summary>
-/// Audits the Markdown documentation policy of a repository. Tracked state comes from
-/// the Git index, so generated, vendored and build-output content stays out of scope and
-/// symbolic links are judged by what Git actually stores.
-/// </summary>
+/// <summary>Enforces documentation policy against Git-tracked paths and entry modes.</summary>
 internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 {
     private const int LineLimit = DocumentationPolicyExplanation.LineLimit;
@@ -20,7 +16,6 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 
     public string Group => "docs";
 
-    /// <summary>The four names this policy knows; the rest of the Markdown is judged as a corpus.</summary>
     public IReadOnlyList<EvidenceFile> Evidence =>
         [new(RootDocument), new(AgentEntryPoint), new(ReadmeDocument), new(SkillDocument)];
 
@@ -54,10 +49,6 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
         return separator < 0 ? string.Empty : path[..(separator + 1)];
     }
 
-    /// <summary>
-    /// One evaluation of one repository: the tracked inventory, the findings collected so
-    /// far, and the first evidence gap that made the audit unreliable.
-    /// </summary>
     private sealed class DocumentationAudit(GitRepository repository)
     {
         private readonly Dictionary<string, TrackedEntry> tracked =
@@ -94,11 +85,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
             ReviewEntryPoint(entry);
         }
 
-        /// <summary>
-        /// Judges every tracked Markdown document the root rules did not already own. The
-        /// three cross-vendor names an agent opens by itself keep their meaning at any
-        /// depth, so the directory a document lives in decides nothing on its own.
-        /// </summary>
+        /// <summary>Applies document-name semantics at every directory depth.</summary>
         public void ReviewRemainingMarkdown()
         {
             foreach (var entry in repository.TrackedEntries)
@@ -226,18 +213,13 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 
         private void RequireLinkedDocument(string path, string resolved)
         {
-            // The root pair is judged by RequireRootDocument, which already names a missing
-            // root; only a nested entry point can point at a sibling that is not there.
+            // RequireRootDocument already reports a missing root; this check is for nested pairs.
             if (resolved != RootDocument && !tracked.ContainsKey(resolved))
             {
                 Violation(path, $"is a broken symbolic link: no {RootDocument} is tracked beside it");
             }
         }
 
-        /// <summary>
-        /// Resolves a relative link target against the directory holding the link, so a
-        /// target that climbs is compared as the path Git would actually follow.
-        /// </summary>
         private static string? Resolve(string directory, string target)
         {
             List<string> segments = directory.Length == 0

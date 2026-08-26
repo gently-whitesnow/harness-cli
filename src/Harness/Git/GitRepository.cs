@@ -1,10 +1,8 @@
 namespace Harness.Git;
 
 /// <summary>
-/// Read access to the Git evidence the harness relies on: which paths are tracked, what
-/// Git stores for them, and their text. Every failure to obtain evidence is reported as a
-/// reason rather than guessed at, so callers can end a check as incomplete instead of
-/// inventing a pass or a violation.
+/// Read access to Git evidence. Failures are returned so callers can report incomplete
+/// checks instead of guessing a verdict.
 /// </summary>
 internal sealed class GitRepository
 {
@@ -23,7 +21,6 @@ internal sealed class GitRepository
 
     public IReadOnlyList<TrackedEntry> TrackedEntries { get; }
 
-    /// <summary>Reads commit messages in oldest-first order from an explicit revision range.</summary>
     public (IReadOnlyList<(string ObjectId, string Message)>? Commits, string? Failure) ReadCommits(
         string revisionRange)
     {
@@ -63,10 +60,8 @@ internal sealed class GitRepository
         return (commits, null);
     }
 
-    /// <summary>How long collecting the repository inventory took.</summary>
     public TimeSpan ReadDuration { get; }
 
-    /// <summary>Opens the repository containing <paramref name="path"/>, or explains why it could not.</summary>
     public static (GitRepository? Repository, string? Failure) Open(string path)
     {
         if (!Directory.Exists(path))
@@ -109,10 +104,8 @@ internal sealed class GitRepository
     }
 
     /// <summary>
-    /// Paths that exist in the working tree and are not in the index, respecting .gitignore.
-    /// Git answers this, so ignored trees are never walked. It is read on demand: the answer
-    /// explains a finding rather than producing one, so a run with nothing to explain does
-    /// not pay for it.
+    /// Reads untracked, non-ignored paths on demand; they explain findings but never produce
+    /// one, so successful runs do not pay for this query.
     /// </summary>
     public (IReadOnlyList<string>? Paths, string? Failure) ReadUntrackedPaths()
     {
@@ -136,7 +129,6 @@ internal sealed class GitRepository
         return (untracked, null);
     }
 
-    /// <summary>Reads the target of a tracked symbolic link from its staged blob.</summary>
     public (string? Target, string? Failure) ReadSymbolicLinkTarget(TrackedEntry entry)
     {
         var (text, failure) = ReadBlob(entry);
@@ -144,9 +136,8 @@ internal sealed class GitRepository
     }
 
     /// <summary>
-    /// Reads the text of a tracked document. The working tree is preferred, so the harness
-    /// judges what the author is about to commit; when the file is absent there the staged
-    /// blob is used, so a deleted-but-tracked document still has readable evidence.
+    /// Prefers working-tree text, but falls back to the staged blob when the tracked path is
+    /// absent, preserving evidence for a pending deletion.
     /// </summary>
     public (string? Text, string? Failure) ReadTrackedText(TrackedEntry entry)
     {
@@ -193,7 +184,6 @@ internal sealed class GitRepository
         var entries = new List<TrackedEntry>();
         foreach (var record in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
         {
-            // "<mode> <object> <stage>\t<path>"
             var tab = record.IndexOf('\t');
             if (tab < 0)
             {

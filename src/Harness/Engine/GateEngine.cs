@@ -5,15 +5,6 @@ using Harness.Git;
 
 namespace Harness.Engine;
 
-/// <summary>
-/// Owns selection, ordering, execution, timing, policy, suppression and aggregation.
-/// Callers hand it a repository and selection options; they never assemble a run themselves.
-/// </summary>
-/// <remarks>
-/// Policy and suppression are applied here, once, rather than inside each check. A check
-/// states what it found and stops; whether the repository has agreed to live with that is a
-/// different question, asked in one place, the same way for every check.
-/// </remarks>
 internal static class GateEngine
 {
     public static RunReport Run(
@@ -134,11 +125,7 @@ internal static class GateEngine
             UntrackedEvidence(repository, configCheck.Evidence.ToHashSet()));
     }
 
-    /// <summary>
-    /// Whether the check ended with a question open, and so with a place where a file Git
-    /// cannot see may be the reason. A clean pass explains itself; an excluded check and one
-    /// the repository answered not applicable asked nothing and are left out by the caller.
-    /// </summary>
+    /// <summary>Whether an unseen file could explain the check's open question.</summary>
     private static bool LeftSomethingUnexplained(GateReport gate)
         => gate.Findings.Count > 0
             || gate.Outcome is CheckOutcome.Failed
@@ -147,10 +134,8 @@ internal static class GateEngine
                 or CheckOutcome.NotApplicable;
 
     /// <summary>
-    /// Named evidence that is in the working tree and not in the index. Otherwise "never
-    /// written" and "written but never staged" read identically, and the second is the
-    /// ordinary state of a repository being brought under the harness. The verdict is
-    /// untouched; Git is asked once, and only when a question stayed open.
+    /// Distinguishes missing evidence from evidence written but not staged. It does not alter
+    /// the verdict, and Git is queried only while a question remains open.
     /// </summary>
     private static List<string> UntrackedEvidence(GitRepository repository, HashSet<EvidenceFile> evidence)
     {
@@ -199,8 +184,6 @@ internal static class GateEngine
         var reason = evaluation.OutcomeReason;
         var detailed = evaluation.DetailedFindings.ToList();
 
-        // A check that failed only on findings the repository has accepted in writing has
-        // not proved anything it does not already know. It passes, and says why it passes.
         if (outcome == CheckOutcome.Failed && !kept.Any(finding => finding.Severity == FindingSeverity.Blocking))
         {
             outcome = CheckOutcome.Passed;
@@ -226,8 +209,6 @@ internal static class GateEngine
                     + "without failing the run.";
                 break;
 
-            // The repository has committed to this one, so an open question is no longer an
-            // acceptable state for it.
             case CheckPolicy.Required when outcome == CheckOutcome.ReadinessGap:
                 kept = [new Finding(FindingSeverity.Blocking, HarnessConfig.FileName, reason ?? "not satisfied")];
                 detailed = kept.ToList();
@@ -239,11 +220,7 @@ internal static class GateEngine
         return new GateReport(check.Id, check.Summary, outcome, kept, detailed, duration, reason, suppressed);
     }
 
-    /// <summary>
-    /// An exception that never matched anything is reported on the frame itself. Stale
-    /// exceptions accumulate silently otherwise, and a list of accepted findings nobody has
-    /// re-read is exactly the thing this mechanism is supposed to prevent.
-    /// </summary>
+    /// <summary>Reports unmatched exceptions on the frame instead of letting them accumulate.</summary>
     private static List<GateReport> WithStaleSuppressions(
         List<GateReport> gates,
         HarnessConfig? config,
@@ -294,9 +271,8 @@ internal static class GateEngine
             && CoversLocation(suppression.Location, finding.Location);
 
     /// <summary>
-    /// An accepted location covers the file or directory named, and any line inside it. An
-    /// exception that had to name a line number would expire on the next edit above it, which
-    /// would make writing one down pointless.
+    /// A file or directory exception covers its lines; line-number coupling would make it
+    /// expire after unrelated edits above the finding.
     /// </summary>
     private static bool CoversLocation(string accepted, string found)
         => string.Equals(accepted, found, StringComparison.Ordinal)
@@ -304,8 +280,7 @@ internal static class GateEngine
             || found.StartsWith(accepted + ":", StringComparison.Ordinal);
 
     /// <summary>
-    /// A check the pinned release did not ship. Taking a newer binary therefore cannot add a
-    /// finding on its own: the repository decides when to take one on, in a reviewable commit.
+    /// A newer binary cannot enable this check until a reviewable pin upgrade takes it on.
     /// </summary>
     private static GateReport NewerThanPin(IRepositoryCheck check, HarnessConfig config)
         => new(

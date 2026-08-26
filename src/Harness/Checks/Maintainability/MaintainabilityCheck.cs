@@ -5,14 +5,7 @@ using Harness.Versioning;
 
 namespace Harness.Checks.Maintainability;
 
-/// <summary>
-/// Measures C# hotspots lexically and reports them as evidence. Every finding names the
-/// metric, the measured value, the comparison point, the subject and where to read it, so
-/// an agent can decide whether a refactor is warranted without re-deriving the numbers.
-/// Findings originate as advisory evidence: approximate analysis does not claim universal
-/// architectural truth. Required repository policy nevertheless enforces its configured
-/// comparison points; advisory policy is the explicit migration state.
-/// </summary>
+/// <summary>Reports versioned lexical C# hotspot measurements.</summary>
 internal sealed class MaintainabilityCheck(CSharpSources sources)
     : CSharpSourceCheck(
         sources,
@@ -83,10 +76,8 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
                     break;
             }
 
-            // A primary constructor belongs to its type; a declared one to itself. Both are
-            // the same measurement, so both are reported under the same name. A positional
-            // record is excluded: its parameter list is the shape of the data it holds, not
-            // a list of collaborators the type had to be handed.
+            // Legacy pins count both constructor forms but exclude positional records,
+            // whose parameter list is data shape.
             if (metrics.ConstructorParameters is not null
                 && declaration.ParameterCount >= 0
                 && declaration.TypeForm != TypeForm.Record)

@@ -3,10 +3,7 @@ using Harness.Structure;
 namespace Harness.Languages.CSharp;
 
 /// <summary>
-/// Finds every place a file names a type the repository declares, and grades each place by
-/// what the language allows to be written there. A declaration position — a construction, a
-/// generic argument, an attribute, `typeof`, `catch`, or a type followed by the name it
-/// introduces — can only be a type. Everything else is graded as a guess.
+/// Grades known names as proven in type-only positions and inferred everywhere else.
 /// </summary>
 internal sealed class CSharpReferenceScanner
 {
@@ -84,10 +81,7 @@ internal sealed class CSharpReferenceScanner
         return next >= 0 && IsNameStart(text, next) ? EvidenceGrade.Proven : EvidenceGrade.Inferred;
     }
 
-    /// <summary>
-    /// Past a nullable mark and any array ranks, so that `Store? held` and `Store[] held` are
-    /// read the same way `Store held` is: a type followed by the name it introduces.
-    /// </summary>
+    /// <summary>Skips nullable and array suffixes before looking for a declared name.</summary>
     private int AfterTypeSuffix(int end)
     {
         var text = source.Masked;
@@ -112,10 +106,7 @@ internal sealed class CSharpReferenceScanner
         return -1;
     }
 
-    /// <summary>
-    /// A keyword may be separated from the type it introduces by an opening parenthesis, as
-    /// in `typeof(` and `catch (`, and by nothing else.
-    /// </summary>
+    /// <summary>Allows only whitespace and `(` between a declarative keyword and its type.</summary>
     private bool OnlySeparators(int from, int to)
     {
         var text = source.Masked;
@@ -156,10 +147,7 @@ internal sealed class CSharpReferenceScanner
         }
     }
 
-    /// <summary>
-    /// A run that holds nothing but names, separators and nested angle brackets is a type
-    /// argument list. Anything else — an operator, a call, a literal — makes it a comparison.
-    /// </summary>
+    /// <summary>Rejects operators, calls and literals so comparisons are not read as type arguments.</summary>
     private int TypeArgumentEnd(int open)
     {
         var text = source.Masked;

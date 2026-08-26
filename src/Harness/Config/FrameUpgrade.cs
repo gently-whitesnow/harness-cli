@@ -4,16 +4,7 @@ using Harness.Versioning;
 
 namespace Harness.Config;
 
-/// <summary>
-/// Raises the release a repository pins. This is the only way a repository takes on checks
-/// it did not run before, and it is a tracked edit: the commit that raises the pin is the
-/// commit where every clone and every CI job starts running the newer contract.
-/// </summary>
-/// <remarks>
-/// Only the pinned value is rewritten. Answers a newer release introduces are left for the
-/// owner to write, the same way <see cref="ConfigInitializer"/> leaves them: the run that
-/// follows names each missing key, and an invented answer would defeat the frame.
-/// </remarks>
+/// <summary>Raises the tracked pin without inventing newly required repository answers.</summary>
 internal static class FrameUpgrade
 {
     private static readonly IReadOnlyList<(HarnessVersion Since, string Description)> ContractChanges =
@@ -100,10 +91,7 @@ internal static class FrameUpgrade
         return text.ToString();
     }
 
-    /// <summary>
-    /// Replaces the pinned value in place. The document is hand-maintained, so re-serializing
-    /// it would rewrite formatting and drop comments the owner put there.
-    /// </summary>
+    // Preserve hand-maintained JSON formatting and comments by replacing only the pin token.
     private static (bool Rewritten, string? Failure) Rewrite(
         string path,
         HarnessVersion from,
