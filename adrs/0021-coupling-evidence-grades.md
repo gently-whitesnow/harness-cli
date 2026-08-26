@@ -3,6 +3,7 @@
 ## Status
 
 Accepted; current count scope refined by [ADR-0029](0029-dependency-counts-removed.md).
+Рекомендации про `suppress` superseded by [ADR-0032](0032-topology-over-thresholds.md).
 
 ## Context
 

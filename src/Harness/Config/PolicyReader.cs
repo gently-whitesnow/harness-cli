@@ -92,6 +92,12 @@ internal static class PolicyReader
 
         foreach (var property in declared.EnumerateObject())
         {
+            if (property.Name is "maintainability.csharp" or "cohesion.csharp")
+            {
+                return (null, ConfigJson.Failure(
+                    $"'policy.{property.Name}' was removed in harness 2.0; remove this entry"));
+            }
+
             if (!selectors.Contains(property.Name, StringComparer.Ordinal))
             {
                 return (null, ConfigJson.Failure(

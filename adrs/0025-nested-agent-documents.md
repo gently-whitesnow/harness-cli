@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted. Уточняет [ADR-0010](0010-documentation-policy.md): словарь разрешённого Markdown
+Accepted. Части про `suppress` superseded by [ADR-0032](0032-topology-over-thresholds.md).
+Уточняет [ADR-0010](0010-documentation-policy.md): словарь разрешённого Markdown
 перестаёт быть списком корневых путей и становится списком имён, действующих на любой
 глубине. Опирается на [ADR-0023](0023-release-version-as-the-verification-contract.md)
 (релиз — контракт проверки).

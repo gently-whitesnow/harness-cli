@@ -66,6 +66,8 @@ public sealed class HarnessFrameTests
 
     [Theory]
     [InlineData("docs.plicy", "off", "not a check or group this harness ships")]
+    [InlineData("maintainability.csharp", "off", "removed in harness 2.0")]
+    [InlineData("cohesion.csharp", "advisory", "removed in harness 2.0")]
     [InlineData("docs.policy", "lenient", "must be required, advisory or off")]
     public void Invalid_policy_ends_the_run_as_incomplete(string selector, string value, string explanation)
     {
