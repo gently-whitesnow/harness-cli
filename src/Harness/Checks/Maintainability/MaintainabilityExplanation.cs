@@ -6,9 +6,9 @@ internal static class MaintainabilityExplanation
     public const string Text =
         """
         Rationale
-          Size and branching are cheap observable signals that a piece of C# is becoming
-          expensive to change. They are signals, not verdicts: the gate
-          measures them and names them precisely. Findings originate as advisory evidence,
+          Size is a cheap observable signal that a piece of C# is becoming expensive to
+          change. It is a signal, not a verdict: the gate measures it and names it precisely.
+          Findings originate as advisory evidence,
           while the default required repository policy makes every unresolved finding
           blocking. A repository paying down known findings can opt into advisory policy.
 
@@ -31,14 +31,9 @@ internal static class MaintainabilityExplanation
           method logical lines        the same count between a method or constructor
                                       declaration and its closing brace, from the first
                                       line of the signature
-          lexical branch count        1 plus the occurrences of `if`, `for`, `foreach`,
-                                      `while`, `do`, `case`, `catch`, `when`, `&&`, `||`
-                                      and `??` inside the member
-
         Names
-          The names above are the whole claim. `lexical branch count` counts tokens; it is
-          not a compiler control-flow graph, and has no notion of reachability, of paths
-          that cannot be taken, or of exception edges.
+          The names above are the whole claim. Logical lines measure source size, not the
+          number of statements, execution paths or responsibilities.
 
           Repository pins through 1.5 additionally reproduce the legacy `constructor
           parameter count` and `public declared members` measurements and their comparison
@@ -48,14 +43,13 @@ internal static class MaintainabilityExplanation
           as collaborators made the constructor rule depend on syntax rather than intent.
 
         Limits
-          The reader is lexical. Interpolation holes are masked with the literal that
-          contains them, so branching written inside one is not counted. Ternary
-          conditionals, pattern combinators and switch-expression arms are not counted.
-          Lambdas and local functions are counted against the member that contains them,
-          and nested types against the type that contains them. Conditional compilation is
-          not evaluated: directives are removed and every branch of the source is read.
-          Constructs the reader does not recognize are treated as ordinary blocks, which
-          costs a measurement rather than producing a wrong one.
+          Multi-line literals contribute lines because their size remains authored source,
+          while comments and blank lines do not. Lambdas and local functions are counted
+          against the member that contains them, and nested types against the type that
+          contains them. Conditional compilation is not evaluated: directives are removed
+          and every branch of the source is read. Constructs the reader does not recognize
+          are treated as ordinary blocks, which costs a measurement rather than producing a
+          wrong one.
 
         Possible damage
           A measurement can be wrong. An unfamiliar declaration form can be attributed to

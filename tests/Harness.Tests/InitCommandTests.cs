@@ -61,8 +61,7 @@ public sealed class InitCommandTests
             "maintainability.csharp",
             ("fileLines", 400),
             ("typeLines", 300),
-            ("methodLines", 60),
-            ("branches", 12));
+            ("methodLines", 60));
         AssertSection(settings, "cohesion.csharp", ("minimumMembers", 6), ("groups", 2));
         AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));
         Assert.Equal("ru", settings

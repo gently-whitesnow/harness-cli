@@ -16,10 +16,6 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
     private const int ShownPerMetric = 5;
     private static readonly HarnessVersion ContextualWidthCountsRemovedIn = new(1, 6, 0);
 
-    // Longest first so `foreach` is not read as `for`.
-    private static readonly string[] BranchKeywords =
-        ["foreach", "while", "catch", "case", "when", "for", "if", "do"];
-
     protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
     {
         var config = context.Config;
@@ -68,11 +64,6 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
                 default:
                     measurements.Add(new Measurement(
                         metrics.MethodLines, logicalLines, declaration.Subject, location));
-                    measurements.Add(new Measurement(
-                        metrics.Branches,
-                        BranchCount(source.TextBetween(declaration.FirstLine, declaration.LastLine)),
-                        declaration.Subject,
-                        location));
                     break;
             }
 
@@ -88,56 +79,6 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
         }
     }
 
-
-    private static int BranchCount(ReadOnlySpan<char> text)
-    {
-        var count = 1;
-        for (var index = 0; index < text.Length; index++)
-        {
-            var character = text[index];
-
-            // `&&`, `||` and `??` each introduce a path; `&`, `|`, `?.` and `?:` do not.
-            if (character is '&' or '|' or '?')
-            {
-                if (index + 1 < text.Length && text[index + 1] == character)
-                {
-                    count++;
-                    index++;
-                }
-
-                continue;
-            }
-
-            if (!char.IsLetter(character) || (index > 0 && IsWordCharacter(text[index - 1])))
-            {
-                continue;
-            }
-
-            foreach (var keyword in BranchKeywords)
-            {
-                if (!text[index..].StartsWith(keyword))
-                {
-                    continue;
-                }
-
-                var after = index + keyword.Length;
-                if (after < text.Length && IsWordCharacter(text[after]))
-                {
-                    continue;
-                }
-
-                count++;
-                index = after - 1;
-                break;
-            }
-        }
-
-        return count;
-    }
-
-    private static bool IsWordCharacter(char character)
-        => char.IsLetterOrDigit(character) || character is '_' or '@';
-
     private sealed class MetricSet
     {
         public MetricSet(MaintainabilitySettings settings, bool measuresContextualWidthCounts)
@@ -145,7 +86,6 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
             FileLines = new("file logical lines", settings.FileLines);
             TypeLines = new("type logical lines", settings.TypeLines);
             MethodLines = new("method logical lines", settings.MethodLines);
-            Branches = new("lexical branch count", settings.Branches);
             ConstructorParameters = measuresContextualWidthCounts
                 ? new Metric("constructor parameter count", settings.ConstructorParameters)
                 : null;
@@ -157,7 +97,6 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
                 FileLines,
                 TypeLines,
                 MethodLines,
-                Branches,
             };
             if (ConstructorParameters is not null)
             {
@@ -175,7 +114,6 @@ internal sealed class MaintainabilityCheck(CSharpSources sources)
         public Metric FileLines { get; }
         public Metric TypeLines { get; }
         public Metric MethodLines { get; }
-        public Metric Branches { get; }
         public Metric? ConstructorParameters { get; }
         public Metric? PublicMembers { get; }
         public IReadOnlyList<Metric> All { get; }

@@ -67,28 +67,6 @@ public sealed class MaintainabilityTests
     }
 
     [Fact]
-    public void Branch_tokens_inside_comments_strings_and_char_literals_are_not_control_flow()
-    {
-        using var repository = SourceRepository("src/App/Quiet.cs", MaintainabilitySources.BranchTokensOnlyInCommentsAndStrings);
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
-
-        Assert.Equal(0, run.ExitCode);
-        Assert.False(run.OutputContains("src/App/Quiet.cs"), run.Output);
-    }
-
-    [Fact]
-    public void Real_control_flow_is_reported_as_a_lexical_branch_count()
-    {
-        using var repository = SourceRepository("src/App/Router.cs", MaintainabilitySources.BranchingMethod);
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
-
-        Assert.True(run.OutputContains("lexical branch count"), run.Output);
-        Assert.True(run.OutputContains("App.Router.Route"), run.Output);
-    }
-
-    [Fact]
     public void A_positional_record_does_not_report_a_constructor_parameter_count()
     {
         using var repository = SourceRepository(
@@ -312,7 +290,6 @@ public sealed class MaintainabilityTests
         using var repository = Fixtures.Compliant(Frame.AllPresent().Policy(Check, "advisory"))
             .WriteFile("src/App/Big.cs", MaintainabilitySources.LargeType(420))
             .WriteFile("src/App/Report.cs", MaintainabilitySources.LongMethod(70))
-            .WriteFile("src/App/Router.cs", MaintainabilitySources.BranchingMethod)
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
@@ -323,7 +300,6 @@ public sealed class MaintainabilityTests
             "file logical lines",
             "type logical lines",
             "method logical lines",
-            "lexical branch count",
         })
         {
             Assert.True(run.OutputContains(metric), metric + " is missing from:\n" + run.Output);
@@ -351,7 +327,8 @@ public sealed class MaintainabilityTests
 
         var run = HarnessCli.Run(repository.Path, "explain", Check);
 
-        Assert.True(run.OutputContains("not a compiler control-flow graph"), run.Output);
+        Assert.True(run.OutputContains("Logical lines measure source size"), run.Output);
+        Assert.True(run.OutputContains("execution paths or responsibilities"), run.Output);
     }
 
     private static RepositoryFixture SourceRepository(string path, string source, Frame? frame = null)

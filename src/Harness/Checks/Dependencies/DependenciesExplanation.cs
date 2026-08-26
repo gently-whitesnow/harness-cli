@@ -40,7 +40,7 @@ internal static class DependenciesExplanation
           violation. The report names the shortest ring and the source lines that close it.
 
         What this check deliberately leaves elsewhere
-          Type size, branch count and constructor width belong to `maintainability.csharp`;
+          Type and method size belong to `maintainability.csharp`;
           mixed responsibilities belong to `cohesion.csharp`; repeated test setup belongs to
           `duplication.csharp`; allowed layer directions belong to the repository's semantic
           architecture tests. A raw incoming or outgoing count adds no universal remediation

@@ -85,8 +85,7 @@ internal static class ConfigInitializer
                 "maintainability.csharp": {
                   "fileLines": {{defaults.Maintainability.FileLines}},
                   "typeLines": {{defaults.Maintainability.TypeLines}},
-                  "methodLines": {{defaults.Maintainability.MethodLines}},
-                  "branches": {{defaults.Maintainability.Branches}}
+                  "methodLines": {{defaults.Maintainability.MethodLines}}
                 },
                 "cohesion.csharp": {
                   "minimumMembers": {{defaults.Cohesion.MinimumMembers}},

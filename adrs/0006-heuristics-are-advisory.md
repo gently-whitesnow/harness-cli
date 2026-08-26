@@ -4,7 +4,8 @@
 
 Accepted; enforcement superseded by [ADR-0027](0027-required-findings-are-blocking.md),
 dependency counts removed by [ADR-0029](0029-dependency-counts-removed.md), contextual
-width counts removed by [ADR-0030](0030-contextual-width-counts-removed.md).
+width counts removed by [ADR-0030](0030-contextual-width-counts-removed.md), lexical branch
+count removed by [ADR-0031](0031-lexical-branch-count-removed.md).
 
 ## Context
 
@@ -28,8 +29,8 @@ logical LOC, lexical branch tokens, constructor parameters, public members, `usi
 
 Метрика называется формулой, а не свойством, которое из формулы не следует:
 `using directive fan-out` считает директивы импорта и не является связностью,
-`constructor parameter count` считает параметры и не является числом зависимостей,
-`lexical branch count` считает токены и не является цикломатической сложностью.
+`constructor parameter count` считает параметры и не является числом зависимостей. Legacy
+`lexical branch count` считал токены и не являлся цикломатической сложностью.
 Число, с которым сравнивается измерение, — comparison point, а не порог и не бюджет.
 
 `explain` содержит формулу, её пределы и вид её false positive — как измерение бывает

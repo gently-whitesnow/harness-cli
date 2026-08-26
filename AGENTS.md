@@ -36,9 +36,9 @@ external imports удалены как контекстные counts без ун
 модуль — содержание, а не цикл. [ADR-0021](adrs/0021-coupling-evidence-grades.md),
 [ADR-0029](adrs/0029-dependency-counts-removed.md)
 
-Начиная с 1.6 `maintainability.csharp` не считает constructor parameters и public members:
-единые пороги смешивали роли кода без универсального remediation.
-[ADR-0030](adrs/0030-contextual-width-counts-removed.md)
+Начиная с 1.6 `maintainability.csharp` оставляет только размер файлов, типов и методов:
+контекстные width counts и противоречивый lexical branch count удалены.
+[ADR-0030](adrs/0030-contextual-width-counts-removed.md), [ADR-0031](adrs/0031-lexical-branch-count-removed.md)
 
 Проверка называется `<семейство>.<язык>`, `Group` — семейство, `Applicability` — язык.
 Язык-нейтральное ядро живёт в `Structure/`, чтение исходника — за `ILanguageAnalyzer` в

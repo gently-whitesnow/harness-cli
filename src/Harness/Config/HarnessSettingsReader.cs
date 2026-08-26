@@ -145,8 +145,16 @@ internal static class HarnessSettingsReader
         HarnessVersion version)
     {
         var readsContextualWidthCounts = version < ContextualWidthCountsRemovedIn;
+        if (declared.TryGetProperty(Maintainability, out var maintainability)
+            && maintainability.ValueKind == JsonValueKind.Object
+            && maintainability.TryGetProperty("branches", out _))
+        {
+            return (null, $"'settings.{Maintainability}.branches' was removed in harness 1.6; "
+                + "remove this key because lexical tokens do not measure control-flow complexity");
+        }
+
         if (!readsContextualWidthCounts
-            && declared.TryGetProperty(Maintainability, out var maintainability)
+            && declared.TryGetProperty(Maintainability, out maintainability)
             && maintainability.ValueKind == JsonValueKind.Object
             && maintainability.TryGetProperty("publicMembers", out _))
         {
@@ -164,16 +172,15 @@ internal static class HarnessSettingsReader
         }
 
         string[] known = readsContextualWidthCounts
-            ? ["fileLines", "typeLines", "methodLines", "branches", "constructorParameters", "publicMembers"]
-            : ["fileLines", "typeLines", "methodLines", "branches"];
+            ? ["fileLines", "typeLines", "methodLines", "constructorParameters", "publicMembers"]
+            : ["fileLines", "typeLines", "methodLines"];
         int[] fallback = readsContextualWidthCounts
             ? [
                 defaults.FileLines, defaults.TypeLines, defaults.MethodLines,
-                defaults.Branches, defaults.ConstructorParameters, defaults.PublicMembers,
+                defaults.ConstructorParameters, defaults.PublicMembers,
             ]
             : [
                 defaults.FileLines, defaults.TypeLines, defaults.MethodLines,
-                defaults.Branches,
             ];
         var (values, failure) = ReadSection(
             declared,
@@ -188,9 +195,9 @@ internal static class HarnessSettingsReader
         return values is null
             ? (null, failure)
             : (new MaintainabilitySettings(
-                values[0], values[1], values[2], values[3],
-                readsContextualWidthCounts ? values[4] : defaults.ConstructorParameters,
-                readsContextualWidthCounts ? values[5] : defaults.PublicMembers), null);
+                values[0], values[1], values[2],
+                readsContextualWidthCounts ? values[3] : defaults.ConstructorParameters,
+                readsContextualWidthCounts ? values[4] : defaults.PublicMembers), null);
     }
 
     private static (DependencySettings? Settings, string? Failure) ReadDependencies(

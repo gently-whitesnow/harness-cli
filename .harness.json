@@ -36,8 +36,7 @@
     "maintainability.csharp": {
       "fileLines": 400,
       "typeLines": 300,
-      "methodLines": 60,
-      "branches": 12
+      "methodLines": 60
     },
     "cohesion.csharp": {
       "minimumMembers": 6,

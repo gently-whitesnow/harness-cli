@@ -246,7 +246,6 @@ internal sealed record HarnessConfig
                 "fileLines": 400,
                 "typeLines": 300,
                 "methodLines": 60,
-                "branches": 12,
                 "constructorParameters": 6,
                 "publicMembers": 25
               },

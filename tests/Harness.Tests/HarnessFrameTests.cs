@@ -102,6 +102,7 @@ public sealed class HarnessFrameTests
     [InlineData("{ \"comments.csharp\": { \"percent\": 25 } }", "is not a setting")]
     [InlineData("{ \"comments.csharp\": { \"percentageLimit\": 101 } }", "must not exceed 100")]
     [InlineData("{ \"maintainability.csharp\": { \"methodLines\": -1 } }", "non-negative integer")]
+    [InlineData("{ \"maintainability.csharp\": { \"branches\": 12 } }", "removed in harness 1.6")]
     [InlineData("{ \"maintainability.csharp\": { \"publicMembers\": 25 } }", "removed in harness 1.6")]
     [InlineData("{ \"maintainability.csharp\": { \"constructorParameters\": 6 } }", "removed in harness 1.6")]
     [InlineData("{ \"dependencies.csharp\": { \"incomingReferences\": 20 } }", "removed in harness 1.5")]
@@ -131,6 +132,19 @@ public sealed class HarnessFrameTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("harness.config"), run.Output);
+    }
+
+    [Fact]
+    public void A_legacy_pin_rejects_the_removed_branch_setting()
+    {
+        using var repository = Fixtures.Compliant(
+            Frame.Answering().Version("1.5.0").Settings(
+                """{ "maintainability.csharp": { "branches": 12 } }"""));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains("removed in harness 1.6"), run.Output);
     }
 
     [Theory]
