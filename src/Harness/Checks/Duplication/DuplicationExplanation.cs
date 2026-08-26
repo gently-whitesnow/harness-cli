@@ -85,7 +85,8 @@ internal static class DuplicationExplanation
           things that had no reason to change together, and every later change to one of
           them then arrives as a parameter or a flag on the shared helper. That is worse
           than the repetition it removed. A match that does not survive reading should be
-          tuned or suppressed with a reason instead of forcing the wrong abstraction.
+          handled by tuning the detector or by advisory policy instead of forcing the wrong
+          abstraction.
 
         Remediation
           Open both locations before deciding anything. Extract when the two blocks encode

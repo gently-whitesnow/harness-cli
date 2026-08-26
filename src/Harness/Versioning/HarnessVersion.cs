@@ -15,8 +15,8 @@ internal readonly record struct HarnessVersion(int Major, int Minor, int Patch)
     /// <summary>The first release, and so the oldest possible origin of a shipped check.</summary>
     public static HarnessVersion Initial { get; } = new(1, 0, 0);
 
-    /// <summary>The oldest pin this binary still knows how to reproduce.</summary>
-    public static HarnessVersion Minimum { get; } = Initial;
+    /// <summary>The only contract this binary implements.</summary>
+    public static HarnessVersion Minimum => Current;
 
     public static bool operator <(HarnessVersion left, HarnessVersion right) => Compare(left, right) < 0;
 

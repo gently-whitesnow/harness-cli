@@ -44,7 +44,7 @@ internal static class DocumentationPolicyExplanation
           link, for example `ln -sf AGENTS.md CLAUDE.md && git add CLAUDE.md`.
           Unexpected Markdown: remove the document, rename it to the name an agent already
           opens in that directory, fold its navigation into AGENTS.md, move durable rationale
-          into an ADR under adrs/, set `policy.docs.policy` to `advisory` or `off`, or add a
-          named `suppress` exception with a reason. The harness never edits documentation.
+          into an ADR under adrs/, or set `policy.docs.policy` to `advisory` or `off`. The
+          harness never edits documentation.
         """;
 }

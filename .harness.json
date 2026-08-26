@@ -1,5 +1,5 @@
 {
-  "version": "1.5.0",
+  "version": "2.0.0",
   "answers": {
     "tests.unit": {
       "present": false,
@@ -32,18 +32,6 @@
     "comments.csharp": {
       "minimumCommentLines": 10,
       "percentageLimit": 15
-    },
-    "maintainability.csharp": {
-      "fileLines": 400,
-      "typeLines": 300,
-      "methodLines": 60,
-      "branches": 12,
-      "constructorParameters": 6,
-      "publicMembers": 25
-    },
-    "cohesion.csharp": {
-      "minimumMembers": 6,
-      "groups": 2
     },
     "duplication.csharp": {
       "windowLines": 30,

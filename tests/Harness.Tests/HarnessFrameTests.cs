@@ -1,6 +1,6 @@
 namespace Harness.Tests;
 
-/// <summary>The frame file: complete answers, policy and named exceptions.</summary>
+/// <summary>The frame file: complete answers and policy.</summary>
 public sealed class HarnessFrameTests
 {
     [Fact]
@@ -56,16 +56,18 @@ public sealed class HarnessFrameTests
     {
         using var repository = Fixtures.WithRawFrame("{}");
 
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "maintainability.csharp");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "docs.policy");
 
         Assert.Equal(2, run.ExitCode);
         Assert.True(run.OutputContains("harness.config"), run.Output);
         Assert.True(run.OutputContains("'version' must be a harness release"), run.Output);
-        Assert.False(run.OutputContains("maintainability.csharp"), run.Output);
+        Assert.False(run.OutputContains("docs.policy"), run.Output);
     }
 
     [Theory]
     [InlineData("docs.plicy", "off", "not a check or group this harness ships")]
+    [InlineData("maintainability.csharp", "off", "removed in harness 2.0")]
+    [InlineData("cohesion.csharp", "advisory", "removed in harness 2.0")]
     [InlineData("docs.policy", "lenient", "must be required, advisory or off")]
     public void Invalid_policy_ends_the_run_as_incomplete(string selector, string value, string explanation)
     {
@@ -101,9 +103,9 @@ public sealed class HarnessFrameTests
     [InlineData("{ \"comments\": {} }", "is not configurable")]
     [InlineData("{ \"comments.csharp\": { \"percent\": 25 } }", "is not a setting")]
     [InlineData("{ \"comments.csharp\": { \"percentageLimit\": 101 } }", "must not exceed 100")]
-    [InlineData("{ \"maintainability.csharp\": { \"methodLines\": -1 } }", "non-negative integer")]
+    [InlineData("{ \"maintainability.csharp\": { \"methodLines\": 60 } }", "removed in harness 2.0")]
+    [InlineData("{ \"cohesion.csharp\": { \"groups\": 2 } }", "removed in harness 2.0")]
     [InlineData("{ \"dependencies.csharp\": { \"incomingReferences\": 20 } }", "removed in harness 1.5")]
-    [InlineData("{ \"maintainability.csharp\": { \"importFanOut\": 20 } }", "removed in harness 1.5")]
     [InlineData("{ \"duplication.csharp\": { \"windowLines\": 0 } }", "positive integer")]
     [InlineData("{ \"duplication.csharp\": { \"minimumTokens\": -1 } }", "non-negative integer")]
     [InlineData("{ \"commits\": { \"language\": \"de\" } }", "must be 'en' or 'ru'")]
@@ -119,21 +121,17 @@ public sealed class HarnessFrameTests
     }
 
     [Theory]
-    [InlineData("docs.policy", "AGENTS.md", "", "must say why")]
-    [InlineData("nope", "AGENTS.md", "because", "must name a check")]
-    public void Invalid_suppression_ends_the_run_as_incomplete(
-        string check,
-        string location,
-        string reason,
-        string explanation)
+    [InlineData("suppress")]
+    [InlineData("overrides")]
+    public void Removed_top_level_sections_end_the_run_as_incomplete(string section)
     {
         using var repository = Fixtures.WithRawFrame(
-            Frame.Answering().Suppressing(check, location, reason).ToString());
+            $$"""{ "version": "latest", "{{section}}": {} }""");
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(2, run.ExitCode);
-        Assert.True(run.OutputContains(explanation), run.Output);
+        Assert.True(run.OutputContains($"'{section}' was removed in harness 2.0"), run.Output);
     }
 
     [Fact]
@@ -227,38 +225,9 @@ public sealed class HarnessFrameTests
     }
 
     [Fact]
-    public void A_named_exception_clears_a_violation_and_stays_on_the_report()
-    {
-        using var repository = Fixtures
-            .Compliant(Frame.AllPresent().Suppressing("docs.policy", "AGENTS.md", "split in HARNESS-142"))
-            .WriteLines("AGENTS.md", 400)
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "docs.policy");
-
-        Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("suppressed"), run.Output);
-        Assert.True(run.OutputContains("split in HARNESS-142"), run.Output);
-    }
-
-    [Fact]
-    public void An_exception_that_matched_nothing_is_reported_on_the_frame()
-    {
-        using var repository = Fixtures.Compliant(
-            Frame.AllPresent().Suppressing("docs.policy", "gone.md", "was fixed last quarter"));
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check");
-
-        Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("matched nothing in this run"), run.Output);
-        Assert.True(run.OutputContains("was fixed last quarter"), run.Output);
-    }
-
-    [Fact]
     public void Reading_the_frame_does_not_modify_the_repository()
     {
-        using var repository = Fixtures.Compliant(
-            Frame.Answering().Policy("frame", "required").Suppressing("docs.policy", "AGENTS.md", "why not"));
+        using var repository = Fixtures.Compliant(Frame.Answering().Policy("frame", "required"));
 
         var before = repository.TrackedState();
 

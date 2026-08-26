@@ -1,11 +1,9 @@
-using Harness.Checks.Cohesion;
 using Harness.Checks.Comments;
 using Harness.Checks.Commits;
 using Harness.Checks.Dependencies;
 using Harness.Checks.DotNet;
 using Harness.Checks.Duplication;
 using Harness.Checks.Frame;
-using Harness.Checks.Maintainability;
 using Harness.Checks.TypesPerFile;
 using Harness.Config;
 using Harness.Languages.CSharp;
@@ -37,8 +35,6 @@ internal static class CheckRegistry
             new CommentLineCheck(csharp),
             new TypesPerFileCheck(csharp),
             new DependenciesCheck(analyzer),
-            new CohesionCheck(analyzer),
-            new MaintainabilityCheck(csharp),
             new DuplicationCheck(csharp),
 
             new BuildPropertiesCheck(),

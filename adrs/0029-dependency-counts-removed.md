@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted. Развивает [ADR-0021](0021-coupling-evidence-grades.md).
+Accepted. Рекомендации про `suppress` superseded by
+[ADR-0032](0032-topology-over-thresholds.md). Развивает
+[ADR-0021](0021-coupling-evidence-grades.md).
 
 ## Context
 

@@ -1,6 +1,6 @@
 namespace Harness.Tests;
 
-/// <summary>Which Markdown the policy allows and how repositories can accept exceptions.</summary>
+/// <summary>Which Markdown the policy allows and how advisory policy is reported.</summary>
 public sealed class MarkdownInventoryTests
 {
     [Fact]
@@ -56,21 +56,6 @@ public sealed class MarkdownInventoryTests
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("advisory"), run.Output);
         Assert.True(run.OutputContains("docs/old-specification.md"), run.Output);
-    }
-
-    [Fact]
-    public void Named_exception_accepts_one_unexpected_markdown_file()
-    {
-        using var repository = Fixtures.Compliant(
-                Frame.Answering().Suppressing("docs.policy", "docs/old-specification.md", "kept for HARNESS-142"))
-            .WriteFile("docs/old-specification.md", "# Stale\n")
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "docs.policy");
-
-        Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("suppressed"), run.Output);
-        Assert.True(run.OutputContains("kept for HARNESS-142"), run.Output);
     }
 
     [Fact]

@@ -26,8 +26,8 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
         Rationale
           The harness holds the same frame over every repository it is pointed at, and the
           frame is a document the repository owns rather than a flag someone passes. One
-          tracked file therefore carries its answers, check policy and accepted findings — and the same
-          file is what a reviewer, an agent and CI all read.
+          tracked file therefore carries its answers and check policy — and the same file is
+          what a reviewer, an agent and CI all read.
 
         What it reads
           The tracked {HarnessConfig.FileName} at the repository root, and nothing else. An
@@ -36,17 +36,15 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           finds it in the working tree only says so under `not in the index`.
 
         What it accepts
-          version       required; the harness release this repository is pinned to, such as
-                        "1.0.0", or "latest" to follow the installed binary. The pin selects
-                        the questions asked and the checks that run, so a newer binary
-                        reproduces it rather than adding to it.
+          version       required; the current harness contract, such as "2.0.0", or "latest"
+                        to follow the installed binary. A different pin must be upgraded before
+                        this binary can evaluate it.
           answers       one self-reported answer for every `frame` question in the selected
                         version, keyed without the `frame.` prefix.
           applicability shared analysis family (currently `csharp`) answered not applicable.
-          settings      thresholds and commit language/setup requirements.
+          settings      deterministic policy and commit language/setup requirements.
           policy        exceptions to the default `required`: `advisory` keeps findings visible
                         without blocking, and `off` skips a check.
-          suppress      accepted findings, each naming `check`, `location` and `reason`.
 
         Why it is incomplete rather than a violation
           Without a readable frame the harness cannot state what this repository answers, so
@@ -84,11 +82,6 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
         if (config.Policy.Count > 0)
         {
             parts.Add($"{config.Policy.Count} policy override{(config.Policy.Count == 1 ? "" : "s")}");
-        }
-
-        if (config.Suppressions.Count > 0)
-        {
-            parts.Add($"{config.Suppressions.Count} named exception{(config.Suppressions.Count == 1 ? "" : "s")}");
         }
 
         return $"{HarnessConfig.FileName} contains {string.Join(", ", parts)}. Answers are self-reported; "

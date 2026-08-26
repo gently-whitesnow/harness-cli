@@ -60,64 +60,6 @@ public sealed class DependenciesTests
     }
 
     [Fact]
-    public void A_proved_cycle_can_be_accepted_in_writing_by_naming_the_file()
-    {
-        using var repository = Cycle(
-            Frame.AllPresent().Suppressing(Check, "src/App/Left/Service.cs", "one release away from split"));
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
-
-        Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("suppressed"), run.Output);
-        Assert.True(run.OutputContains("one release away from split"), run.Output);
-    }
-
-    [Fact]
-    public void Import_fan_out_counts_imports_from_outside_the_repository()
-    {
-        using var repository = Fixtures.Compliant(
-                Frame.AllPresent().Version("1.4.0").Policy(Check, "advisory"))
-            .WriteFile("src/App/Imports.cs", CSharp.ManyImports(25))
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
-
-        Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("external import fan-out 25 exceeds"), run.Output);
-    }
-
-    [Fact]
-    public void An_import_of_a_namespace_this_repository_declares_is_not_external()
-    {
-        using var repository = Fixtures
-            .Compliant(Frame.AllPresent().Version("1.4.0").Settings(
-                """{ "dependencies.csharp": { "externalImports": 0 } }"""))
-            .WriteFile("src/App/Registry.cs", CSharp.Uses("App", "Registry", "Other", "Widget"))
-            .WriteFile("src/Other/Widget.cs", CSharp.Empty("Other", "Widget"))
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
-
-        Assert.Equal(0, run.ExitCode);
-        Assert.False(run.OutputContains("external import fan-out"), run.Output);
-    }
-
-    [Fact]
-    public void A_using_statement_inside_a_method_is_not_an_import()
-    {
-        using var repository = Fixtures
-            .Compliant(Frame.AllPresent().Version("1.4.0").Settings(
-                """{ "dependencies.csharp": { "externalImports": 1 } }"""))
-            .WriteFile("src/App/Stream.cs", CSharp.UsingStatements)
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
-
-        Assert.Equal(0, run.ExitCode);
-        Assert.False(run.OutputContains("external import fan-out"), run.Output);
-    }
-
-    [Fact]
     public void Current_contract_does_not_report_dependency_counts()
     {
         using var repository = Fixtures
@@ -136,25 +78,6 @@ public sealed class DependenciesTests
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("type references"), run.Output);
         Assert.False(run.OutputContains("external import fan-out"), run.Output);
-    }
-
-    [Fact]
-    public void A_pin_before_counts_were_removed_keeps_them_enforceable()
-    {
-        using var repository = Fixtures
-            .Compliant(Frame.AllPresent().Version("1.4.0").Settings(
-                """{ "dependencies.csharp": { "outgoingReferences": 0, "incomingReferences": 0 } }"""))
-            .WriteFile("src/App/Env.cs", "namespace App; public enum Env { Production }\n")
-            .WriteFile(
-                "src/App/Model.cs",
-                "namespace App; public sealed class Model { public string Env { get; init; } = string.Empty; }\n")
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
-
-        Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("resolved incoming type references 1"), run.Output);
-        Assert.True(run.OutputContains("violation"), run.Output);
     }
 
     [Fact]
@@ -178,7 +101,7 @@ public sealed class DependenciesTests
         Assert.True(run.OutputContains("Evidence"), run.Output);
         Assert.True(run.OutputContains("Why a cycle is blocking"), run.Output);
         Assert.True(run.OutputContains("Limits"), run.Output);
-        Assert.True(run.OutputContains("Named suppression"), run.Output);
+        Assert.True(run.OutputContains("Policy"), run.Output);
         Assert.True(run.OutputContains("does not report fan-in or fan-out"), run.Output);
     }
 

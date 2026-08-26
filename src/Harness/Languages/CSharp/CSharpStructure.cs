@@ -3,8 +3,8 @@ namespace Harness.Languages.CSharp;
 /// <summary>
 /// Reads declarations out of masked C# by matching braces and handing the text that precedes
 /// each one to <see cref="CSharpDeclarationSyntax"/>. This is a lexical reader, not a compiler
-/// front end: it recognizes the declaration forms the metrics need and treats everything else
-/// as an ordinary block.
+/// front end: it recognizes the type declarations the dependency graph needs and treats
+/// everything else as an ordinary block.
 /// </summary>
 internal sealed class CSharpStructureReader
 {
@@ -13,7 +13,6 @@ internal sealed class CSharpStructureReader
     private readonly List<Scope> scopes = [new Scope()];
     private readonly List<string> qualifiers = [];
     private readonly List<string> imports = [];
-    private bool expressionBodied;
     private int namespaceDepth;
     private int typeDepth;
 
@@ -70,7 +69,6 @@ internal sealed class CSharpStructureReader
     private void OpenBrace(string header, int headerIndex)
     {
         var (text, offset) = Clean(header);
-        var parent = scopes[^1];
         var scope = new Scope();
 
         if (typeDepth == 0 && CSharpDeclarationSyntax.NamespaceNameOf(text) is { } namespaceName)
@@ -82,7 +80,7 @@ internal sealed class CSharpStructureReader
             return;
         }
 
-        var (declaration, typeName) = Recognize(parent, text, headerIndex + offset);
+        var (declaration, typeName) = Recognize(text, headerIndex + offset);
         scope.Declaration = declaration;
 
         if (typeName is not null)
@@ -108,7 +106,6 @@ internal sealed class CSharpStructureReader
         if (scope.Declaration is not null)
         {
             scope.Declaration.LastLine = source.LineOf(index);
-            scope.Declaration.PublicMembers = scope.PublicMembers;
         }
 
         if (scope.TypeName is not null)
@@ -151,9 +148,8 @@ internal sealed class CSharpStructureReader
             }
         }
 
-        // A declaration that ends at a semicolon — a positional record, an expression-bodied
-        // member, a field, an abstract or interface member — spans only its own lines.
-        var (declaration, _) = Recognize(scopes[^1], text, headerIndex + offset);
+        // A positional type declaration that ends at a semicolon spans only its own lines.
+        var (declaration, _) = Recognize(text, headerIndex + offset);
         if (declaration is not null)
         {
             declaration.LastLine = source.LineOf(index);
@@ -168,94 +164,47 @@ internal sealed class CSharpStructureReader
         }
     }
 
-    private (Declaration? Declaration, string? TypeName) Recognize(Scope parent, string text, int index)
+    private (Declaration? Declaration, string? TypeName) Recognize(string text, int index)
     {
-        CountPublicMember(parent, text);
-
         if (CSharpDeclarationSyntax.TypeOf(text) is { } recognizedType)
         {
             var type = Declare(DeclarationKind.Type, recognizedType.Name, index, text);
-            type.ParameterCount = CSharpDeclarationSyntax.ParameterCountOf(
-                CSharpDeclarationSyntax.WithoutConstraintsAndBaseList(text));
             type.TypeForm = recognizedType.Form;
             type.IsNestedType = typeDepth > 0;
             return (type, recognizedType.Name);
         }
 
-        if (parent.TypeName is null)
-        {
-            return (null, null);
-        }
-
-        if (CSharpDeclarationSyntax.SignatureOf(text) is { } signature)
-        {
-            return (Member(parent, text, index, signature), null);
-        }
-
-        return CSharpDeclarationSyntax.FieldNameOf(text) is { } field
-            ? (Declare(DeclarationKind.Field, field, index, text), null)
-            : (null, null);
-    }
-
-    private Declaration Member(Scope parent, string text, int index, MemberSignature signature)
-    {
-        var isConstructor = string.Equals(signature.Name, parent.TypeName, StringComparison.Ordinal);
-        var member = Declare(
-            isConstructor ? DeclarationKind.Constructor : DeclarationKind.Method,
-            signature.Name,
-            index,
-            text,
-            qualifiedSubject: isConstructor ? Qualify() : null);
-
-        // Only a constructor's arity is measured, so only a constructor's is read.
-        if (isConstructor)
-        {
-            member.ParameterCount = CSharpDeclarationSyntax.ParameterCountOf(text, signature.ParameterList);
-        }
-
-        return member;
+        return (null, null);
     }
 
     private Declaration Declare(
         DeclarationKind kind,
         string name,
         int index,
-        string header,
-        string? qualifiedSubject = null)
+        string header)
     {
         var declaration = new Declaration
         {
             Kind = kind,
-            Subject = qualifiedSubject ?? Qualify(name),
+            Subject = Qualify(name),
             Name = name,
             Module = string.Join('.', qualifiers.Take(namespaceDepth)),
             Owner = typeDepth == 0 ? null : Qualify(),
             FirstLine = source.LineOf(index),
             Header = header,
-            HasExpressionBody = expressionBodied,
         };
 
         declarations.Add(declaration);
         return declaration;
     }
 
-    private static void CountPublicMember(Scope parent, string text)
-    {
-        if (parent.TypeName is not null && CSharpDeclarationSyntax.StartsWithWord(text, "public"))
-        {
-            parent.PublicMembers++;
-        }
-    }
-
     private string Qualify(string? name = null)
         => string.Join('.', name is null ? qualifiers : qualifiers.Append(name));
 
-    private (string Text, int Offset) Clean(string header)
+    private static (string Text, int Offset) Clean(string header)
     {
         var (text, offset) = CSharpDeclarationSyntax.WithoutAttributes(header);
-        var declaration = CSharpDeclarationSyntax.WithoutExpressionBody(text);
-        expressionBodied = declaration.Length != text.Length;
-        return (declaration, offset);
+        return (CSharpDeclarationSyntax.WithoutExpressionBody(text), offset);
     }
 
     private sealed class Scope
@@ -265,7 +214,5 @@ internal sealed class CSharpStructureReader
         public bool QualifiesNamespace { get; set; }
 
         public Declaration? Declaration { get; set; }
-
-        public int PublicMembers { get; set; }
     }
 }

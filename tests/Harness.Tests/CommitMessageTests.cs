@@ -17,20 +17,6 @@ public sealed class CommitMessageTests
     }
 
     [Fact]
-    public void Profile_before_1_4_keeps_commit_defaults_opted_out()
-    {
-        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("1.3.0").Settings("{}"));
-
-        var template = HarnessCli.Run(repository.Path, "commit-message", "template");
-        var setup = HarnessCli.RunVerbose(repository.Path, "check", "--only", "commits.setup");
-
-        Assert.Equal(0, template.ExitCode);
-        Assert.Contains("Context:", template.StandardOutput, StringComparison.Ordinal);
-        Assert.Equal(0, setup.ExitCode);
-        Assert.Contains("not require clone-local commit setup", setup.Output, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void Russian_subject_and_structured_body_pass()
     {
         using var repository = Repository(RequireSetup: false, language: "ru")

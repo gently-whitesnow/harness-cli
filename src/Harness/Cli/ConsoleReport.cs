@@ -104,13 +104,12 @@ internal static class ConsoleReport
         }
 
         AppendFindings(text, all ? gate.DetailedFindings : gate.Findings, all);
-        AppendSuppressed(text, gate.Suppressed);
     }
 
     private static string Status(GateReport gate)
         => gate.Outcome switch
         {
-            CheckOutcome.Passed when gate.Findings.Count == 0 && gate.Suppressed.Count == 0 => "✅",
+            CheckOutcome.Passed when gate.Findings.Count == 0 => "✅",
             CheckOutcome.Passed => "⚠️",
             CheckOutcome.Failed => "❌",
             CheckOutcome.Incomplete => "❌",
@@ -121,8 +120,7 @@ internal static class ConsoleReport
 
     private static int IssueCount(GateReport gate, bool all)
     {
-        var summarized = gate.Findings.Count + gate.Suppressed.Count;
-        var reported = all ? Math.Max(gate.DetailedFindings.Count, summarized) : summarized;
+        var reported = all ? Math.Max(gate.DetailedFindings.Count, gate.Findings.Count) : gate.Findings.Count;
         if (reported > 0)
         {
             return reported;
@@ -131,20 +129,6 @@ internal static class ConsoleReport
         return gate.Outcome is CheckOutcome.Failed or CheckOutcome.Incomplete or CheckOutcome.ReadinessGap
             ? 1
             : 0;
-    }
-
-    private static void AppendSuppressed(StringBuilder text, IReadOnlyList<SuppressedFinding> suppressed)
-    {
-        foreach (var entry in suppressed)
-        {
-            text.Append("    suppressed  ")
-                .Append(entry.Finding.Location)
-                .Append(": ")
-                .Append(entry.Finding.Message)
-                .Append(" — accepted: ")
-                .Append(entry.Suppression.Reason)
-                .Append('\n');
-        }
     }
 
     /// <summary>

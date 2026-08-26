@@ -18,8 +18,6 @@ public sealed class Frame
 
     private readonly Dictionary<string, string> policy = new(StringComparer.Ordinal);
 
-    private readonly List<string> suppressions = [];
-
     // Unrelated acceptance tests opt out of clone-local setup explicitly. Tests of the
     // shipped settings profile replace this section and exercise the actual defaults.
     private string? settings = """{ "commits": { "requireSetup": false } }""";
@@ -92,13 +90,6 @@ public sealed class Frame
         return this;
     }
 
-    public Frame Suppressing(string check, string location, string reason = "accepted for now")
-    {
-        suppressions.Add(
-            $$"""{ "check": {{Quote(check)}}, "location": {{Quote(location)}}, "reason": {{Quote(reason)}} }""");
-        return this;
-    }
-
     public override string ToString()
     {
         var text = new StringBuilder($"{{\n  \"version\": {version},\n  \"answers\": {{\n");
@@ -127,13 +118,6 @@ public sealed class Frame
                 ",\n",
                 policy.Select(entry => $"    {Quote(entry.Key)}: {Quote(entry.Value)}")));
             text.Append("\n  }");
-        }
-
-        if (suppressions.Count > 0)
-        {
-            text.Append(",\n  \"suppress\": [\n");
-            text.Append(string.Join(",\n", suppressions.Select(entry => $"    {entry}")));
-            text.Append("\n  ]");
         }
 
         return text.Append("\n}\n").ToString();

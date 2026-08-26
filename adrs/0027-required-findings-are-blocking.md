@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. Части про `suppress` superseded by [ADR-0032](0032-topology-over-thresholds.md).
 
 ## Context
 
