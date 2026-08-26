@@ -99,8 +99,8 @@ internal static class ConfigInitializer
                   "minimumTokens": {{defaults.Duplication.MinimumTokens}}
                 },
                 "commits": {
-                  "language": "{{new CommitSettings(commitLanguage, RequireSetup: true).Code}}",
-                  "requireSetup": true
+                  "language": "{{new CommitSettings(commitLanguage, defaults.Commits.RequireSetup).Code}}",
+                  "requireSetup": {{defaults.Commits.RequireSetup.ToString().ToLowerInvariant()}}
                 }
               },
               "policy": {},

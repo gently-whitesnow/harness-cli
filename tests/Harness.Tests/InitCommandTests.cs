@@ -41,26 +41,36 @@ public sealed class InitCommandTests
             root.GetProperty("answers").EnumerateObject(),
             answer => Assert.Empty(answer.Value.EnumerateObject()));
         Assert.Empty(root.GetProperty("applicability").EnumerateObject());
-        Assert.Equal(10, root.GetProperty("settings")
-            .GetProperty("comments.csharp").GetProperty("minimumCommentLines").GetInt32());
-        Assert.Equal(8, root.GetProperty("settings")
-            .GetProperty("comments.csharp").GetProperty("percentageLimit").GetInt32());
-        Assert.Equal(400, root.GetProperty("settings")
-            .GetProperty("maintainability.csharp").GetProperty("fileLines").GetInt32());
-        Assert.False(root.GetProperty("settings").TryGetProperty("dependencies.csharp", out _));
-        Assert.Equal(2, root.GetProperty("settings")
-            .GetProperty("cohesion.csharp").GetProperty("groups").GetInt32());
-        Assert.Equal(30, root.GetProperty("settings")
-            .GetProperty("duplication.csharp").GetProperty("windowLines").GetInt32());
-        Assert.Equal(90, root.GetProperty("settings")
-            .GetProperty("duplication.csharp").GetProperty("minimumTokens").GetInt32());
-        Assert.Equal("en", root.GetProperty("settings")
-            .GetProperty("commits").GetProperty("language").GetString());
-        Assert.True(root.GetProperty("settings")
-            .GetProperty("commits").GetProperty("requireSetup").GetBoolean());
+        AssertDefaultSettings(root.GetProperty("settings"));
         Assert.Contains("harness-hooks", repository.Git("config", "--local", "--get", "core.hooksPath"));
         Assert.Empty(root.GetProperty("policy").EnumerateObject());
         Assert.Empty(root.GetProperty("suppress").EnumerateArray());
+    }
+
+    private static void AssertDefaultSettings(JsonElement settings)
+    {
+        Assert.Equal(
+            [
+                "comments.csharp", "maintainability.csharp", "cohesion.csharp",
+                "duplication.csharp", "commits",
+            ],
+            settings.EnumerateObject().Select(section => section.Name));
+        AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));
+        AssertSection(
+            settings,
+            "maintainability.csharp",
+            ("fileLines", 400),
+            ("typeLines", 300),
+            ("methodLines", 60),
+            ("branches", 12),
+            ("constructorParameters", 6),
+            ("publicMembers", 25));
+        AssertSection(settings, "cohesion.csharp", ("minimumMembers", 6), ("groups", 2));
+        AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));
+        Assert.Equal("ru", settings
+            .GetProperty("commits").GetProperty("language").GetString());
+        Assert.True(settings
+            .GetProperty("commits").GetProperty("requireSetup").GetBoolean());
     }
 
     [Fact]
@@ -80,14 +90,14 @@ public sealed class InitCommandTests
     {
         using var repository = RepositoryFixture.CreateGitRepository();
 
-        var run = HarnessCli.Run(repository.Path, "init", "--language", "ru");
+        var run = HarnessCli.Run(repository.Path, "init", "--language", "en");
 
         Assert.Equal(0, run.ExitCode);
         using var document = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
-        Assert.Equal("ru", document.RootElement.GetProperty("settings")
+        Assert.Equal("en", document.RootElement.GetProperty("settings")
             .GetProperty("commits").GetProperty("language").GetString());
         var template = repository.Git("config", "--local", "--get", "commit.template").Trim();
-        Assert.Contains("Контекст:", File.ReadAllText(template), StringComparison.Ordinal);
+        Assert.Contains("Context:", File.ReadAllText(template), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -95,7 +105,7 @@ public sealed class InitCommandTests
     {
         using var repository = RepositoryFixture.CreateGitRepository();
         Assert.Equal(0, HarnessCli.Run(repository.Path, "init").ExitCode);
-        repository.CommitAs("chore(harness): initialize repository frame");
+        repository.CommitAs("chore(harness): инициализировать рамку репозитория");
 
         var check = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame");
 
@@ -179,4 +189,17 @@ public sealed class InitCommandTests
 
     private static int Occurrences(string text, string value)
         => text.Split(value, StringSplitOptions.None).Length - 1;
+
+    private static void AssertSection(
+        JsonElement settings,
+        string sectionName,
+        params (string Name, int Value)[] expected)
+    {
+        var section = settings.GetProperty(sectionName);
+        Assert.Equal(expected.Select(item => item.Name), section.EnumerateObject().Select(item => item.Name));
+        foreach (var (name, value) in expected)
+        {
+            Assert.Equal(value, section.GetProperty(name).GetInt32());
+        }
+    }
 }
