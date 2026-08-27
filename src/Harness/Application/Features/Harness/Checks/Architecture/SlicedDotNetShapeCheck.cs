@@ -7,6 +7,8 @@ internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
     private static readonly string[] Layers =
         ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure", "Shared"];
 
+    private static readonly string[] PlaceholderFiles = [".gitkeep", ".keep", ".gitignore"];
+
     public string Id => "architecture.sliced-dotnet";
 
     public string Group => "architecture";
@@ -29,8 +31,9 @@ internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
 
         What it accepts
           Every zone contains Host, Application and at least one of Api or Consumers. Every
-          present layer contains a tracked file, and every directory directly below a zone is a
-          canonical layer. The architecture map is printed on every attempted run.
+          present layer contains a tracked file other than .gitkeep, .keep or .gitignore, and
+          every directory directly below a zone is a canonical layer. The architecture map is
+          printed on every attempted run, including nested paths that would otherwise disappear.
 
         Remediation
           Move application files under Host, Api, Consumers, Application, Domain, Infrastructure
@@ -145,7 +148,7 @@ internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
         {
             var prefix = layer + "/";
             var nonPlaceholderFiles = entries.Any(path => path.StartsWith(prefix, StringComparison.Ordinal)
-                && !string.Equals(Path.GetFileName(path), ".gitkeep", StringComparison.Ordinal));
+                && !PlaceholderFiles.Contains(Path.GetFileName(path), StringComparer.Ordinal));
             if (!nonPlaceholderFiles)
             {
                 findings.Add(Block(At(zone, layer), $"layer '{layer}' is empty"));
@@ -166,12 +169,15 @@ internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
                     $"noncanonical-layer-directory: '{directory}' is not a sliced-dotnet/1 layer"));
         }
 
-        var slices = DiscoverSlices(entries);
+        var sliceMap = DiscoverSlices(entries);
         maps.Add($"architecture map: zone {Display(zone)} · layers [{string.Join(", ", presentLayers)}] "
-            + $"· slices [{string.Join(", ", slices)}]");
+            + $"· slices [{string.Join(", ", sliceMap.Slices)}]"
+            + (sliceMap.Nested.Count == 0
+                ? string.Empty
+                : $" · nested [{string.Join(", ", sliceMap.Nested)}]"));
     }
 
-    private static List<string> DiscoverSlices(IReadOnlyList<string> entries)
+    private static SliceMap DiscoverSlices(IReadOnlyList<string> entries)
     {
         const string prefix = "Application/Features/";
         var featurePaths = entries
@@ -180,22 +186,34 @@ internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
             .Where(parts => parts.Length >= 2)
             .ToList();
         var slices = new HashSet<string>(StringComparer.Ordinal);
+        var nestedPaths = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var feature in featurePaths.GroupBy(parts => parts[0], StringComparer.Ordinal))
         {
             if (feature.Any(parts => parts.Length == 2))
             {
                 slices.Add(feature.Key);
+                foreach (var child in feature.Where(parts => parts.Length >= 3).Select(parts => parts[1]))
+                {
+                    nestedPaths.Add($"{feature.Key}/{child}");
+                }
+
                 continue;
             }
 
-            foreach (var child in feature.Where(parts => parts.Length >= 3).Select(parts => parts[1]))
+            foreach (var child in feature.Where(parts => parts.Length >= 3).GroupBy(parts => parts[1], StringComparer.Ordinal))
             {
-                slices.Add($"{feature.Key}/{child}");
+                slices.Add($"{feature.Key}/{child.Key}");
+                foreach (var nested in child.Where(parts => parts.Length >= 4).Select(parts => parts[2]))
+                {
+                    nestedPaths.Add($"{feature.Key}/{child.Key}/{nested}");
+                }
             }
         }
 
-        return slices.Order(StringComparer.Ordinal).ToList();
+        return new SliceMap(
+            slices.Order(StringComparer.Ordinal).ToList(),
+            nestedPaths.Order(StringComparer.Ordinal).ToList());
     }
 
     private static void RequireLayer(
@@ -227,6 +245,8 @@ internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
 
     private static Finding Block(string location, string message)
         => new(FindingSeverity.Blocking, location, message);
+
+    private sealed record SliceMap(List<string> Slices, List<string> Nested);
 
     private static int EditDistance(string left, string right)
     {

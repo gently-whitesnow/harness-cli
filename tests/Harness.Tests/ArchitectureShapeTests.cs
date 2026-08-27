@@ -3,7 +3,7 @@ namespace Harness.Tests;
 public sealed class ArchitectureShapeTests
 {
     [Theory]
-    [InlineData("{}", "'architecture.applicable' must be false")]
+    [InlineData("{}", "'architecture' must select a standard or declare applicability false")]
     [InlineData("{ \"standard\": \"sliced-dotnet/2\" }", "'architecture.standard' must be 'sliced-dotnet/1'")]
     [InlineData("{ \"standard\": \"sliced-dotnet/1\", \"layers\": [] }", "'architecture.layers' is not a key")]
     [InlineData("{ \"applicable\": false }", "'architecture.reason' must say why")]
@@ -59,6 +59,23 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("layer 'Host' is empty", run.Output, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(".keep")]
+    [InlineData(".gitignore")]
+    public void Other_placeholder_markers_do_not_make_a_layer_nonempty(string marker)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile($"src/Orders/Host/{marker}", "")
+            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("layer 'Host' is empty", run.Output, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_close_layer_name_is_reported_as_a_typo()
     {
@@ -99,6 +116,50 @@ public sealed class ArchitectureShapeTests
             "architecture map: zone src/Billing · layers [Host, Consumers, Application] · slices [Finance/Invoices]",
             run.Output,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Nested_feature_paths_are_not_lost_from_the_map()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Group/Sub/Deep/Handler.cs", "sealed class Handler;")
+            .WriteFile("src/Orders/Application/Features/Grp2/FileInGroup.cs", "sealed class FileInGroup;")
+            .WriteFile("src/Orders/Application/Features/Grp2/Slice/Handler.cs", "sealed class Handler;")
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("nested [Group/Sub/Deep, Grp2/Slice]", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Noncanonical_layer_directory_is_blocking()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Tests/Fixture.cs", "sealed class Fixture;")
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("noncanonical-layer-directory", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Not_applicable_architecture_still_prints_an_observation()
+    {
+        using var repository = Fixtures.Compliant();
+
+        var run = HarnessCli.Run(repository.Path, "check", "--only", "architecture.sliced-dotnet");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("architecture map: not applicable — standalone fixture repository", run.Output, StringComparison.Ordinal);
     }
 
     private static RepositoryFixture ArchitectureRepository()

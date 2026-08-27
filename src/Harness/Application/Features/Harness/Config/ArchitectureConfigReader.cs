@@ -39,7 +39,7 @@ internal static class ArchitectureConfigReader
                     $"'architecture.standard' must be '{SlicedDotNet}'; '{name ?? standard.ToString()}' is not supported"));
         }
 
-        if (members.Any(member => member.Name is not ("applicable" or "reason")))
+        if (members.Count == 0)
         {
             return (null, ConfigJson.Failure("'architecture' must select a standard or declare applicability false"));
         }
