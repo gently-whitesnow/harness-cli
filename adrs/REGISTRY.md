@@ -89,6 +89,7 @@
   сведена к каноническому стандарту `sliced-dotnet/1`: фиксированные Clean
   Architecture-слои × сквозные слайсы `Features/` с публичным API `Contracts/`;
   per-repo декларации `layers`/`modules`/`mirrors` не реализуются,
+  кросс-импорт слайсов — только явный cross-API `X/<Потребитель>`,
   standalone-библиотека отвечает `applicable: false`.
 
 ## Сборка и документация
