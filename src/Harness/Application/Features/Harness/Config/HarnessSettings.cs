@@ -1,5 +1,3 @@
-using Harness.Commits;
-
 namespace Harness.Config;
 
 internal sealed record HarnessSettings(

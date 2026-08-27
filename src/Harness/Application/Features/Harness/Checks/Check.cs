@@ -1,21 +1,5 @@
 namespace Harness.Checks;
 
-internal enum CheckOutcome
-{
-    Passed,
-    Failed,
-    Skipped,
-    NotApplicable,
-    ReadinessGap,
-    Incomplete,
-}
-
-internal enum FindingSeverity
-{
-    Blocking,
-    Advisory,
-}
-
 internal interface IRepositoryCheck
 {
     string Id { get; }

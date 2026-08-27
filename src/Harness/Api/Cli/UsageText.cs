@@ -1,5 +1,4 @@
 using System.Text;
-using Harness.Checks;
 
 namespace Harness.Cli;
 
@@ -46,7 +45,7 @@ internal static class UsageText
     /// Usage followed by the shipped check and group vocabulary, so the identifiers
     /// accepted by --only, --skip and explain are discoverable from the tool itself.
     /// </summary>
-    public static string For(IReadOnlyList<IRepositoryCheck> checks)
+    public static string For(IReadOnlyList<CheckSummary> checks)
     {
         // Column widths follow the identifiers this build actually ships: a fixed width
         // silently runs a long identifier into the next column, and these lines are parsed.

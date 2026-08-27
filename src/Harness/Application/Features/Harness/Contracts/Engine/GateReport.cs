@@ -1,6 +1,4 @@
-using Harness.Checks;
-
-namespace Harness.Engine;
+namespace Harness.Contracts.Engine;
 
 internal sealed record GateReport(
     string Id,

@@ -1,4 +1,3 @@
-using Harness.Checks;
 namespace Harness.Engine;
 
 /// <summary>Maps a check's evidence severity through the repository's policy.</summary>

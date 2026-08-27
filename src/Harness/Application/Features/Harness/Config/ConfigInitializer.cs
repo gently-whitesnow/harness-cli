@@ -1,5 +1,4 @@
 using System.Text;
-using Harness.Commits;
 using Harness.Git;
 using Harness.Versioning;
 
