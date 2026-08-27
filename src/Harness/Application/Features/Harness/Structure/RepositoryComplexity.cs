@@ -1,5 +1,6 @@
 namespace Harness.Structure;
 
+/// <summary>DSM measurements over authored files connected by Proven dependency edges.</summary>
 internal sealed record RepositoryComplexity(
     int AuthoredFiles,
     long ReachablePairs,

@@ -44,7 +44,8 @@ internal static class ComplexityExplanation
         Limits
           The result measures the lexical graph the harness can prove, not runtime calls,
           reflection, generated code or ambiguous names. Missing edges conservatively
-          underestimate coupling. Cross-language file dependencies are not yet represented.
+          underestimate coupling. Authored test files are deliberately part of the graph and
+          affect both N and its edges. Cross-language file dependencies are not yet represented.
 
         Remediation
           No remediation is required by this informational check. A rising propagation cost

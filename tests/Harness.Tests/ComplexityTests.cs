@@ -59,6 +59,36 @@ public sealed class ComplexityTests
     }
 
     [Fact]
+    public void A_core_with_a_periphery_weights_each_component_by_its_file_count()
+    {
+        using var repository = Graph(
+            ("A", ["B"]),
+            ("B", ["C"]),
+            ("C", ["B"]),
+            ("D", []));
+
+        var run = Measure(repository);
+
+        Assert.True(run.OutputContains("propagation cost: 50.00% (8 reachable file pairs / 16)"), run.Output);
+        Assert.True(run.OutputContains("core size: 2 files (50.00% of 4 authored files)"), run.Output);
+    }
+
+    [Fact]
+    public void Files_without_any_proven_edge_report_only_the_diagonal()
+    {
+        using var repository = Graph(
+            ("A", []),
+            ("B", []),
+            ("C", []),
+            ("D", []));
+
+        var run = Measure(repository);
+
+        Assert.True(run.OutputContains("propagation cost: 25.00% (4 reachable file pairs / 16)"), run.Output);
+        Assert.True(run.OutputContains("core size: 0 files (0.00% of 4 authored files)"), run.Output);
+    }
+
+    [Fact]
     public void Metrics_are_informational_visible_and_stable_between_runs()
     {
         using var repository = Graph(

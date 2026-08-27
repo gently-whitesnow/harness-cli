@@ -1,7 +1,7 @@
 using Harness.Checks.Architecture;
 using Harness.Checks.Comments;
-using Harness.Checks.Complexity;
 using Harness.Checks.Commits;
+using Harness.Checks.Complexity;
 using Harness.Checks.Dependencies;
 using Harness.Checks.DotNet;
 using Harness.Checks.Duplication;
