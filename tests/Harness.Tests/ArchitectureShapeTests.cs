@@ -393,6 +393,27 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
+    public void Cross_api_rejects_a_non_host_import_from_outside_a_slice()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile(
+                "src/Orders/Api/Endpoint.cs",
+                ProvenReference("Fixture.Api", "Endpoint", "Fixture.Inventory", "ForSales"))
+            .WriteFile("src/Orders/Application/Features/Sales/Baseline.cs", EmptyType("Fixture.Sales", "Baseline"))
+            .WriteFile(
+                "src/Orders/Application/Features/Inventory/Contracts/X/Sales/ForSales.cs",
+                EmptyType("Fixture.Inventory", "ForSales"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("may be imported only by slice 'Sales'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Api outside a slice", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Mirror_cannot_sidestep_an_application_slice_contracts()
     {
         using var repository = ArchitectureRepository()
@@ -557,6 +578,27 @@ public sealed class ArchitectureShapeTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.DoesNotContain("public API sidestep", run.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Application/Features/Inventory/Contracts/X/Sales/ForSales.cs")]
+    [InlineData("Domain/Inventory/X/Sales/ForSales.cs")]
+    public void Host_may_import_a_consumer_specific_cross_api(string targetPath)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile(
+                "src/Orders/Host/Program.cs",
+                ProvenReference("Fixture.Host", "Program", "Fixture.Inventory", "ForSales"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Sales/Baseline.cs", EmptyType("Fixture.Sales", "SalesBaseline"))
+            .WriteFile("src/Orders/Application/Features/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "InventoryBaseline"))
+            .WriteFile($"src/Orders/{targetPath}", EmptyType("Fixture.Inventory", "ForSales"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("may be imported only", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]

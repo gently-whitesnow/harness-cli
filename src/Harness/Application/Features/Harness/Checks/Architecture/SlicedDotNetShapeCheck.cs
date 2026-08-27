@@ -70,10 +70,11 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           Slices inside one layer do not reference each other directly, including through an
           ordinary Contracts/ directory. A producer can expose a consumer-specific cross-API at
           Contracts/X/<Consumer>/ (or Domain/<Producer>/X/<Consumer>/); only that named consumer
-          may import it. Every reference into an Application slice from outside that slice goes
-          through Contracts/, except Host composition. Upper layers may freely compose different
-          Domain slices. Slice isolation is evaluated within one layer: a mirror may consume the
-          ordinary public Contracts/ of a differently named Application slice.
+          and Host composition may import it. Every reference into an Application slice from
+          outside that slice goes through Contracts/, except Host composition. Upper layers may
+          freely compose different Domain slices. Slice isolation is evaluated within one layer:
+          a mirror may consume the ordinary public Contracts/ of a differently named Application
+          slice.
 
           A file directly inside Features/<Name>/ makes <Name> a slice. Without such a file, that
           directory is a group and its child directories are the slices.
@@ -231,7 +232,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         }
 
         var crossConsumer = CrossConsumer(to, toSlice, knownSlices);
-        if (crossConsumer is not null && !string.Equals(fromSlice?.Name, crossConsumer, StringComparison.Ordinal))
+        if (crossConsumer is not null
+            && from.Layer != "Host"
+            && !string.Equals(fromSlice?.Name, crossConsumer, StringComparison.Ordinal))
         {
             var group = new DependencyGroup(
                 "cross-api-consumer", from.Zone!, from.Layer, fromSlice?.Name,
