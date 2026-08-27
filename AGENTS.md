@@ -83,6 +83,7 @@ setup` включает шаблон и `commit-msg` hook в общем ката
   - `Host/` — composition root и запуск процесса.
   - `Api/Cli/` — разбор командной строки, usage, компактный консольный отчёт.
   - `Application/Features/Harness/` — единый прикладной слайс CLI.
+  - `Application/Features/Harness/Contracts/` — типы, через которые `Api` обращается к слайсу.
   - `Application/Features/Harness/Versioning/` — релиз и граница текущего контракта.
   - `Application/Features/Harness/Config/` — чтение и полная валидация `.harness.json`.
   - `Application/Features/Harness/Engine/` — селекция, порядок, policy и коды возврата.

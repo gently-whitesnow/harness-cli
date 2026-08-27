@@ -67,11 +67,20 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           Infrastructure -> Domain edges at this stage; the Persistence-wide exception becomes
           distinct when slice isolation is enforced.
 
+          Slices inside one layer do not reference each other directly, including through an
+          ordinary Contracts/ directory. A producer can expose a consumer-specific cross-API at
+          Contracts/X/<Consumer>/ (or Domain/<Producer>/X/<Consumer>/); only that named consumer
+          may import it. Every reference into an Application slice from outside that slice goes
+          through Contracts/, except Host composition. Upper layers may freely compose different
+          Domain slices.
+
         Remediation
           Move application files under Host, Api, Consumers, Application, Domain, Infrastructure
           or Shared. Put use-case slices in Application/Features/<Slice>, or group them one level
           deeper as Application/Features/<Group>/<Slice> without files in the group directory.
           Turn a forbidden dependency around or move the shared concept to an allowed lower layer.
+          For a cross-slice dependency, prefer merging slices, then moving the shared concept down
+          to Domain or Shared, and use an explicit X/<Consumer> cross-API only as a last resort.
           A type-like name in a member access can look connected to the lexical reader, but that
           edge is Inferred and cannot produce this finding; use the named files to inspect a
           reported Proven declaration position.
@@ -106,9 +115,10 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
         var findings = new List<Finding>();
         var maps = new List<string>();
+        var slicesByZone = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
         foreach (var zone in zones)
         {
-            InspectZone(zone, paths, findings, maps);
+            slicesByZone[zone] = InspectZone(zone, paths, findings, maps).Slices;
         }
 
         if (findings.Count > 0)
@@ -122,15 +132,16 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             return CheckEvaluation.Incomplete(failure!, maps);
         }
 
-        var dependencies = InspectLayerDependencies(zones, graph);
+        var dependencies = InspectDependencies(zones, slicesByZone, graph);
         var detailed = dependencies.Select(dependency => dependency.Finding).ToList();
         var summary = Summarize(dependencies);
 
         return CheckEvaluation.From(summary, detailedFindings: detailed, observations: maps);
     }
 
-    private static List<DependencyViolation> InspectLayerDependencies(
+    private static List<DependencyViolation> InspectDependencies(
         IReadOnlyList<string> zones,
+        Dictionary<string, IReadOnlyList<string>> slicesByZone,
         SourceGraph graph)
     {
         var violations = new Dictionary<DependencyEvidence, DependencyViolation>();
@@ -139,7 +150,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             if (Address(path, zones) is { Layer: null, Zone: { } zone, RelativePath: { } relative }
                 && !relative.Contains('/'))
             {
-                var group = new DependencyGroup("outside-layer", zone, null, null, null);
+                var group = new DependencyGroup("outside-layer", zone, null, null, null, null, null);
                 var finding = Block(path,
                     $"C# file '{path}' is inside architecture zone but outside every canonical layer");
                 violations[new DependencyEvidence(group, path, string.Empty)] = new(group, finding);
@@ -158,7 +169,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             if (!string.Equals(from.Zone, to.Zone, StringComparison.Ordinal))
             {
                 var group = new DependencyGroup(
-                    "cross-zone", from.Zone!, from.Layer, to.Zone!, to.Layer);
+                    "cross-zone", from.Zone!, from.Layer, null, to.Zone!, to.Layer, null);
                 var finding = Block(edge.Location,
                     $"cross-zone dependency is forbidden: {from.Layer} file '{edge.From.Path}' names "
                     + $"{to.Layer} file '{edge.To.Path}' in zone '{Display(to.Zone!)}'");
@@ -166,22 +177,136 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                 continue;
             }
 
-            if (from.Layer == to.Layer || AllowedDependencies[from.Layer].Contains(to.Layer))
+            if (from.Layer != to.Layer && !AllowedDependencies[from.Layer].Contains(to.Layer))
             {
+                var layerGroup = new DependencyGroup(
+                    "layer-pair", from.Zone!, from.Layer, null, to.Zone!, to.Layer, null);
+                var layerFinding = Block(edge.Location,
+                    $"layer dependency {from.Layer} -> {to.Layer} is forbidden by sliced-dotnet/1: "
+                    + $"'{edge.From.Path}' names '{edge.To.Path}'");
+                violations[new DependencyEvidence(layerGroup, edge.From.Path, edge.To.Path)] =
+                    new(layerGroup, layerFinding);
                 continue;
             }
 
-            var layerGroup = new DependencyGroup(
-                "layer-pair", from.Zone!, from.Layer, to.Zone!, to.Layer);
-            var layerFinding = Block(edge.Location,
-                $"layer dependency {from.Layer} -> {to.Layer} is forbidden by sliced-dotnet/1: "
-                + $"'{edge.From.Path}' names '{edge.To.Path}'");
-            violations[new DependencyEvidence(layerGroup, edge.From.Path, edge.To.Path)] =
-                new(layerGroup, layerFinding);
+            var slices = slicesByZone[from.Zone!];
+            var fromSlice = SliceOf(from, slices);
+            var toSlice = SliceOf(to, slices);
+            if (SliceViolation(edge, from, fromSlice, to, toSlice, slices) is { } sliceViolation)
+            {
+                violations[new DependencyEvidence(
+                    sliceViolation.Group, edge.From.Path, edge.To.Path)] = sliceViolation;
+            }
         }
 
         return violations.Values.OrderBy(violation => violation.Finding.Location, StringComparer.Ordinal).ToList();
     }
+
+    private static DependencyViolation? SliceViolation(
+        ReferenceEdge edge,
+        LayerAddress from,
+        SliceAddress? fromSlice,
+        LayerAddress to,
+        SliceAddress? toSlice,
+        IReadOnlyList<string> knownSlices)
+    {
+        if (toSlice is null)
+        {
+            return null;
+        }
+
+        var crossConsumer = CrossConsumer(to, toSlice, knownSlices);
+        if (crossConsumer is not null && !string.Equals(fromSlice?.Name, crossConsumer, StringComparison.Ordinal))
+        {
+            var group = new DependencyGroup(
+                "cross-api-consumer", from.Zone!, from.Layer, fromSlice?.Name,
+                to.Zone!, to.Layer, toSlice.Name);
+            var importer = fromSlice is null ? $"{from.Layer} outside a slice" : $"slice '{fromSlice.Name}'";
+            var finding = Block(edge.Location,
+                $"cross-API '{toSlice.Name}/{CrossApiPath(to.Layer!, crossConsumer)}' may be imported only "
+                + $"by slice '{crossConsumer}'; {importer} file '{edge.From.Path}' names '{edge.To.Path}'");
+            return new DependencyViolation(group, finding);
+        }
+
+        if (from.Layer == to.Layer
+            && fromSlice is not null
+            && !string.Equals(fromSlice.Name, toSlice.Name, StringComparison.Ordinal)
+            && crossConsumer is null)
+        {
+            var group = new DependencyGroup(
+                "slice-pair", from.Zone!, from.Layer, fromSlice.Name,
+                to.Zone!, to.Layer, toSlice.Name);
+            var finding = Block(edge.Location,
+                $"cross-slice dependency {from.Layer}/{fromSlice.Name} -> {to.Layer}/{toSlice.Name} is forbidden: "
+                + $"'{edge.From.Path}' names '{edge.To.Path}'; merge the slices, move the shared concept down, "
+                + $"or expose {toSlice.Name}/{CrossApiPath(to.Layer!, fromSlice.Name)} as a last resort");
+            return new DependencyViolation(group, finding);
+        }
+
+        if (to.Layer == "Application"
+            && from.Layer != "Host"
+            && !(from.Layer == "Application"
+                && string.Equals(fromSlice?.Name, toSlice.Name, StringComparison.Ordinal))
+            && !toSlice.Path.StartsWith("Contracts/", StringComparison.Ordinal))
+        {
+            var group = new DependencyGroup(
+                "application-public-api", from.Zone!, from.Layer, fromSlice?.Name,
+                to.Zone!, to.Layer, toSlice.Name);
+            var finding = Block(edge.Location,
+                $"Application public API sidestep into slice '{toSlice.Name}': '{edge.From.Path}' names "
+                + $"internal file '{edge.To.Path}'; cross the slice boundary through Contracts/");
+            return new DependencyViolation(group, finding);
+        }
+
+        return null;
+    }
+
+    private static SliceAddress? SliceOf(LayerAddress address, IReadOnlyList<string> knownSlices)
+    {
+        var prefix = address.Layer switch
+        {
+            "Api" or "Consumers" or "Application" or "Infrastructure" => $"{address.Layer}/Features/",
+            "Domain" => "Domain/",
+            _ => null,
+        };
+        if (prefix is null || !address.RelativePath!.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var inside = address.RelativePath[prefix.Length..];
+        var slice = knownSlices
+            .OrderByDescending(candidate => candidate.Length)
+            .FirstOrDefault(candidate => inside.StartsWith(candidate + "/", StringComparison.Ordinal));
+        slice ??= inside.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+        if (slice is null || (address.Layer == "Domain" && slice == "Shared"))
+        {
+            return null;
+        }
+
+        return new SliceAddress(slice, inside[(slice.Length + 1)..]);
+    }
+
+    private static string? CrossConsumer(
+        LayerAddress target,
+        SliceAddress slice,
+        IReadOnlyList<string> knownSlices)
+    {
+        var prefix = target.Layer == "Domain" ? "X/" : "Contracts/X/";
+        if (!slice.Path.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var consumerPath = slice.Path[prefix.Length..];
+        return knownSlices
+            .OrderByDescending(candidate => candidate.Length)
+            .FirstOrDefault(candidate => consumerPath.StartsWith(candidate + "/", StringComparison.Ordinal))
+            ?? consumerPath.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+    }
+
+    private static string CrossApiPath(string layer, string consumer)
+        => layer == "Domain" ? $"X/{consumer}" : $"Contracts/X/{consumer}";
 
     private static List<Finding> Summarize(IReadOnlyList<DependencyViolation> violations)
     {
@@ -269,7 +394,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         return first is not null && Layers.Contains(first, StringComparer.Ordinal);
     }
 
-    private static void InspectZone(
+    private static SliceMap InspectZone(
         string zone,
         IReadOnlyList<string> paths,
         List<Finding> findings,
@@ -326,6 +451,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             + (sliceMap.Nested.Count == 0
                 ? string.Empty
                 : $" · nested [{string.Join(", ", sliceMap.Nested)}]"));
+        return sliceMap;
     }
 
     private static SliceMap DiscoverSlices(IReadOnlyList<string> entries)
@@ -341,7 +467,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
         foreach (var feature in featurePaths.GroupBy(parts => parts[0], StringComparer.Ordinal))
         {
-            if (feature.Any(parts => parts.Length == 2))
+            if (feature.Any(parts => parts.Length == 2 || parts[1] == "Contracts"))
             {
                 slices.Add(feature.Key);
                 foreach (var child in feature.Where(parts => parts.Length >= 3).Select(parts => parts[1]))
@@ -399,14 +525,18 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private sealed record SliceMap(List<string> Slices, List<string> Nested);
 
+    private sealed record SliceAddress(string Name, string Path);
+
     private sealed record LayerAddress(string? Zone, string? Layer, string? RelativePath);
 
     private sealed record DependencyGroup(
         string Kind,
         string FromZone,
         string? FromLayer,
+        string? FromSlice,
         string? ToZone,
-        string? ToLayer);
+        string? ToLayer,
+        string? ToSlice);
 
     private sealed record DependencyEvidence(DependencyGroup Group, string FromPath, string ToPath);
 
