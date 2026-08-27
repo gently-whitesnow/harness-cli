@@ -98,6 +98,12 @@ internal static class PolicyReader
                     $"'policy.{property.Name}' cannot soften or disable blocking architecture invariants"));
             }
 
+            if (property.Name is "complexity" or "complexity.csharp")
+            {
+                return (null, ConfigJson.Failure(
+                    $"'policy.{property.Name}' cannot soften or disable the blocking ratchet budget"));
+            }
+
             if (property.Name is "maintainability.csharp" or "cohesion.csharp")
             {
                 return (null, ConfigJson.Failure(

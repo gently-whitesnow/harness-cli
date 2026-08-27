@@ -13,6 +13,17 @@ public static class Fixtures
             .WriteFile("README.md", "# Overview\n")
             .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
             .WriteFile(".harness.json", frame.ToString())
+            .WriteFile(
+                ".harness.budget.json",
+                """
+                {
+                  "complexity.csharp": {
+                    "propagationCost": 100,
+                    "coreSize": 2147483647
+                  }
+                }
+
+                """)
             .Commit();
 
     public static RepositoryFixture WithoutAFrame()

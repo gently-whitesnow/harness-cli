@@ -1,9 +1,11 @@
 using Harness.Checks;
+using Harness.Checks.Complexity;
 using Harness.Cli;
 using Harness.Commits;
 using Harness.Config;
 using Harness.Engine;
 using Harness.Git;
+using Harness.Languages.CSharp;
 using Harness.Versioning;
 
 var invocation = Invocation.Parse(args, Directory.GetCurrentDirectory());
@@ -54,6 +56,28 @@ switch (invocation.Kind)
             "Review every answer; ask the repository owner when intent is unclear rather than guessing.");
         Console.WriteLine("Track the file, then run `harness check --verbose`.");
         return ExitCodes.Success;
+    }
+
+    case CommandKind.BudgetUpdate:
+    {
+        var (repository, config, failure) = LoadRepository(invocation.RepositoryPath, checks);
+        if (repository is null || config is null)
+        {
+            Console.Error.WriteLine(failure);
+            return ExitCodes.Incomplete;
+        }
+
+        if (config.NotApplicable("csharp") is { } disabled)
+        {
+            Console.Error.WriteLine($"Cannot update the DSM budget: `{disabled.Key}` is not applicable.");
+            return ExitCodes.Incomplete;
+        }
+
+        var analyzer = new CSharpAnalyzer(new CSharpSources());
+        var result = ComplexityBudgetUpdater.Update(repository, analyzer);
+        var writer = result.ExitCode == ExitCodes.Success ? Console.Out : Console.Error;
+        writer.WriteLine(result.Message);
+        return result.ExitCode;
     }
 
     case CommandKind.Setup:

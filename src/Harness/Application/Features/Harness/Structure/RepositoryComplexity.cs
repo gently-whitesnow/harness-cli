@@ -36,6 +36,36 @@ internal sealed record RepositoryComplexity(
         return From(adjacency);
     }
 
+    public static IReadOnlyList<string> LargestCore(SourceGraph graph)
+    {
+        var paths = graph.SourcePaths
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        var indexes = paths
+            .Select((path, index) => (path, index))
+            .ToDictionary(pair => pair.path, pair => pair.index, StringComparer.Ordinal);
+        var adjacency = Enumerable.Range(0, paths.Count).Select(_ => new List<int>()).ToList();
+        foreach (var edge in graph.Proven)
+        {
+            var from = indexes[edge.From.Path];
+            var to = indexes[edge.To.Path];
+            if (from != to && !adjacency[from].Contains(to))
+            {
+                adjacency[from].Add(to);
+            }
+        }
+
+        return StronglyConnectedComponents.Of(adjacency)
+            .Where(component => component.Count > 1)
+            .OrderByDescending(component => component.Count)
+            .ThenBy(component => paths[component.Min()], StringComparer.Ordinal)
+            .FirstOrDefault()?
+            .Select(index => paths[index])
+            .Order(StringComparer.Ordinal)
+            .ToList() ?? [];
+    }
+
     private static RepositoryComplexity From(List<List<int>> adjacency)
     {
         if (adjacency.Count == 0)
