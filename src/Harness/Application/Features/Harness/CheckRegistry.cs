@@ -1,3 +1,4 @@
+using Harness.Checks.Architecture;
 using Harness.Checks.Comments;
 using Harness.Checks.Commits;
 using Harness.Checks.Dependencies;
@@ -29,6 +30,8 @@ internal static class CheckRegistry
         return
         [
             new HarnessConfigCheck(),
+
+            new SlicedDotNetShapeCheck(),
 
             new DocumentationPolicyCheck(),
             new CommitSetupCheck(),

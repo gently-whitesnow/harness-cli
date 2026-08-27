@@ -80,25 +80,18 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 ## Раскладка
 
 - `src/Harness` — сам CLI. NativeAOT, установленный .NET runtime в момент использования не нужен.
-  - `Cli/` — разбор командной строки, usage, компактный консольный отчёт.
-  - `Versioning/` — релиз как значение и граница текущего контракта.
-  - `Config/` — чтение и полная валидация `.harness.json`: ответы, настройки и policy.
-  - `Engine/` — движок: селекция, порядок, тайминг, policy и коды возврата.
-  - `Structure/` — язык-нейтральное ядро: типы, рёбра с уровнем доказательности, границы
-    модулей, циклы и кратчайшее кольцо в них.
-  - `Languages/` — `Language` как ось и `ILanguageAnalyzer` как шов.
-    - `Languages/CSharp/` — лексический ридер C#: какие исходники анализируемы, маскирование
-      комментариев и литералов, структура объявлений, индекс имён и градация ссылок.
-  - `Checks/` — поставляемые проверки и их содержимое для `explain`.
-    - `Checks/Frame/` — одинаковые self-reported вопросы рамки для каждого репозитория.
-    - `Checks/Comments/` — blocking-порог плотности комментариев в authored C#.
-    - `Checks/TypesPerFile/` — blocking-правило: один верхнеуровневый class или record в файле.
-    - `Checks/Dependencies/` — blocking-циклы модулей по доказанным ссылкам.
-    - `Checks/Duplication/` — нормализация токенов и построенный на ней advisory-отчёт
-      о межфайловых повторах.
-  - `Git/` — безопасный вызов Git без shell и чтение evidence: tracked-записей, режимов
-    файлов и целей символических ссылок.
-  - `Commits/` — Conventional header, локализованный body, шаблон и общий валидатор hook/CI.
+  - `Host/` — composition root и запуск процесса.
+  - `Api/Cli/` — разбор командной строки, usage, компактный консольный отчёт.
+  - `Application/Features/Harness/` — единый прикладной слайс CLI.
+  - `Application/Features/Harness/Versioning/` — релиз и граница текущего контракта.
+  - `Application/Features/Harness/Config/` — чтение и полная валидация `.harness.json`.
+  - `Application/Features/Harness/Engine/` — селекция, порядок, policy и коды возврата.
+  - `Application/Features/Harness/Structure/` — язык-нейтральное ядро: типы, рёбра,
+    границы модулей, циклы и кратчайшее кольцо в них.
+  - `Application/Features/Harness/Languages/` — анализаторы языков, сейчас C#.
+  - `Application/Features/Harness/Checks/` — поставляемые проверки и тексты `explain`.
+  - `Application/Features/Harness/Git/` — безопасное чтение tracked evidence через Git.
+  - `Application/Features/Harness/Commits/` — commit-шаблон и общий валидатор hook/CI.
 - `tests/Harness.Tests` — приёмочные тесты, которые гоняют скомпилированный исполняемый файл.
 - `adrs/` — долговременные решения; правила ниже ссылаются туда за обоснованием.
   Реестр — [`adrs/REGISTRY.md`](adrs/REGISTRY.md), шаблон — `adrs/.template.md`.

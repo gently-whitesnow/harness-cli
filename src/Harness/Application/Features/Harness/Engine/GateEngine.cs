@@ -202,7 +202,15 @@ internal static class GateEngine
                 break;
         }
 
-        return new GateReport(check.Id, check.Summary, outcome, findings, detailed, duration, reason);
+        return new GateReport(
+            check.Id,
+            check.Summary,
+            outcome,
+            findings,
+            detailed,
+            duration,
+            reason,
+            evaluation.Observations);
     }
 
     private static GateReport Excluded(
@@ -218,7 +226,8 @@ internal static class GateEngine
             TimeSpan.Zero,
             policy == CheckPolicy.Off
                 ? $"{HarnessConfig.FileName} turns this check off."
-                : explicitlySkipped ? "excluded by --skip." : null);
+                : explicitlySkipped ? "excluded by --skip." : null,
+            []);
 
     private static CheckEvaluation Evaluate(IRepositoryCheck check, CheckContext context)
     {

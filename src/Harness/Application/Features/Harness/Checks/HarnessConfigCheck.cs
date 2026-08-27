@@ -39,6 +39,8 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           version       required; the current harness contract, such as "2.0.0", or "latest"
                         to follow the installed binary. A different pin must be updated in the
                         tracked config before this binary can evaluate it.
+          architecture  either the sliced-dotnet/1 standard, or not applicable with a reason
+                        for a standalone library.
           answers       one self-reported answer for every current `frame` question, keyed
                         without the `frame.` prefix.
           applicability shared analysis family (currently `csharp`) answered not applicable.
@@ -77,6 +79,11 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
         {
             parts.Add(
                 $"{config.AnswerFailures.Count} answer{(config.AnswerFailures.Count == 1 ? "" : "s")} to complete");
+        }
+
+        if (config.ArchitectureFailure is not null)
+        {
+            parts.Add("architecture section to complete");
         }
 
         if (config.Policy.Count > 0)
