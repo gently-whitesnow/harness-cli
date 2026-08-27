@@ -79,6 +79,11 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
                 $"{config.AnswerFailures.Count} answer{(config.AnswerFailures.Count == 1 ? "" : "s")} to complete");
         }
 
+        if (config.ArchitectureFailure is not null)
+        {
+            parts.Add("architecture section to complete");
+        }
+
         if (config.Policy.Count > 0)
         {
             parts.Add($"{config.Policy.Count} policy override{(config.Policy.Count == 1 ? "" : "s")}");

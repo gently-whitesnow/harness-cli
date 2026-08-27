@@ -26,6 +26,8 @@ public sealed class Frame
 
     private string version = Quote(Release.Current);
 
+    private string architecture = """{ "applicable": false, "reason": "standalone fixture repository" }""";
+
     /// <summary>A frame that answers "no" to every question.</summary>
     public static Frame Answering() => new();
 
@@ -83,6 +85,12 @@ public sealed class Frame
         return this;
     }
 
+    public Frame Architecture(string body)
+    {
+        architecture = body;
+        return this;
+    }
+
     /// <summary>Pins the frame to a release, or to the moving "latest" marker.</summary>
     public Frame Version(string value)
     {
@@ -92,7 +100,8 @@ public sealed class Frame
 
     public override string ToString()
     {
-        var text = new StringBuilder($"{{\n  \"version\": {version},\n  \"answers\": {{\n");
+        var text = new StringBuilder(
+            $"{{\n  \"version\": {version},\n  \"architecture\": {architecture},\n  \"answers\": {{\n");
         text.Append(string.Join(
             ",\n",
             answers.Select(entry => $"    {Quote(entry.Key)}: {entry.Value}")));

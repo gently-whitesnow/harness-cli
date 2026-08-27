@@ -91,6 +91,11 @@ internal static class ConsoleReport
 
         text.Append('\n');
 
+        foreach (var observation in gate.Observations)
+        {
+            text.Append("    ").Append(observation).Append('\n');
+        }
+
         if (!verbose)
         {
             return;

@@ -66,7 +66,8 @@ internal static class ConfigInitializer
             .ToList();
 
         var text = new StringBuilder();
-        text.Append("{\n  \"version\": \"").Append(version).Append("\",\n  \"answers\": {\n");
+        text.Append("{\n  \"version\": \"").Append(version)
+            .Append("\",\n  \"architecture\": {},\n  \"answers\": {\n");
         for (var index = 0; index < questions.Count; index++)
         {
             text.Append("    \"").Append(questions[index]).Append("\": {}");

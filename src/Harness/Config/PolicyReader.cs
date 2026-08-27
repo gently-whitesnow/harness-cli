@@ -92,6 +92,12 @@ internal static class PolicyReader
 
         foreach (var property in declared.EnumerateObject())
         {
+            if (property.Name is "architecture" or "architecture.sliced-dotnet")
+            {
+                return (null, ConfigJson.Failure(
+                    $"'policy.{property.Name}' cannot soften or disable blocking architecture invariants"));
+            }
+
             if (property.Name is "maintainability.csharp" or "cohesion.csharp")
             {
                 return (null, ConfigJson.Failure(

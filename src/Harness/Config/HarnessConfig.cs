@@ -35,11 +35,15 @@ internal sealed record HarnessConfig
     public const string FrameGroup = "frame";
 
     private static readonly string[] TopLevelKeys =
-        ["version", "answers", "applicability", "settings", "policy"];
+        ["version", "architecture", "answers", "applicability", "settings", "policy"];
 
     public required HarnessVersion Version { get; init; }
 
     public required bool TracksLatest { get; init; }
+
+    public required ArchitectureConfig? Architecture { get; init; }
+
+    public required string? ArchitectureFailure { get; init; }
 
     public required IReadOnlyDictionary<string, FrameAnswer> Answers { get; init; }
 
@@ -158,6 +162,8 @@ internal sealed record HarnessConfig
             return (null, answerFailure);
         }
 
+        var (architecture, architectureFailure) = ArchitectureConfigReader.Read(root);
+
         var (applicability, applicabilityFailure) = PolicyReader.ReadApplicability(root, checks);
         if (applicability is null)
         {
@@ -181,6 +187,8 @@ internal sealed record HarnessConfig
         {
             Version = version,
             TracksLatest = tracksLatest,
+            Architecture = architecture,
+            ArchitectureFailure = architectureFailure,
             Answers = answers,
             AnswerFailures = answerFailures!,
             Applicability = applicability,
@@ -233,6 +241,7 @@ internal sealed record HarnessConfig
 
           {
             "version": "2.0.0",
+            "architecture": { "standard": "sliced-dotnet/1" },
             "answers": {
               "tests.unit": { "paths": ["tests/Unit"] },
               "tests.integration": { "present": false, "reason": "no external dependencies yet" },
