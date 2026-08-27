@@ -37,6 +37,7 @@ internal sealed class CSharpGraphBuilder
         }
 
         return new SourceGraph(
+            files.Select(file => file.Path).ToList(),
             nodes,
             edges.Values.OrderBy(edge => edge.Location, StringComparer.Ordinal).ToList(),
             imports,

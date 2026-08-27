@@ -271,6 +271,126 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
+    public void Generated_csharp_at_the_zone_root_is_not_part_of_the_architecture_graph()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Generated.g.cs", EmptyType("Fixture", "Generated"))
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("outside every canonical layer", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Noncanonical_directory_is_not_repeated_for_every_csharp_file()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Helpers/One.cs", EmptyType("Fixture.Helpers", "One"))
+            .WriteFile("src/Orders/Helpers/Two.cs", EmptyType("Fixture.Helpers", "Two"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("noncanonical-layer-directory: 'Helpers'", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("outside every canonical layer", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Repeated_edges_in_one_layer_pair_are_folded_in_the_summary()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile(
+                "src/Orders/Api/Endpoint.cs",
+                ProvenReferences("Fixture.Api", "Endpoint", "Fixture.Infrastructure", ["One", "Two", "Three", "Four", "Five"]))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Infrastructure/One.cs", EmptyType("Fixture.Infrastructure", "One"))
+            .WriteFile("src/Orders/Infrastructure/Two.cs", EmptyType("Fixture.Infrastructure", "Two"))
+            .WriteFile("src/Orders/Infrastructure/Three.cs", EmptyType("Fixture.Infrastructure", "Three"))
+            .WriteFile("src/Orders/Infrastructure/Four.cs", EmptyType("Fixture.Infrastructure", "Four"))
+            .WriteFile("src/Orders/Infrastructure/Five.cs", EmptyType("Fixture.Infrastructure", "Five"))
+            .Commit();
+
+        var run = Shape(repository);
+        var all = HarnessCli.Run(repository.Path, "check", "--only", "architecture.sliced-dotnet", "--all");
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Equal(1, Occurrences(run.Output, "layer dependency Api -> Infrastructure"));
+        Assert.Contains("and 4 more file pairs", run.Output, StringComparison.Ordinal);
+        Assert.Equal(5, Occurrences(all.Output, "layer dependency Api -> Infrastructure"));
+    }
+
+    [Fact]
+    public void Compact_report_limits_distinct_dependency_groups()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Target.cs", EmptyType("Fixture.Targets", "HostTarget"))
+            .WriteFile("src/Orders/Api/Target.cs", EmptyType("Fixture.Targets", "ApiTarget"))
+            .WriteFile("src/Orders/Consumers/Target.cs", EmptyType("Fixture.Targets", "ConsumersTarget"))
+            .WriteFile("src/Orders/Application/Features/Sales/Target.cs", EmptyType("Fixture.Targets", "ApplicationTarget"))
+            .WriteFile("src/Orders/Domain/Target.cs", EmptyType("Fixture.Targets", "DomainTarget"))
+            .WriteFile("src/Orders/Infrastructure/Target.cs", EmptyType("Fixture.Targets", "InfrastructureTarget"))
+            .WriteFile(
+                "src/Orders/Shared/From.cs",
+                ProvenReferences(
+                    "Fixture.Shared",
+                    "From",
+                    "Fixture.Targets",
+                    ["HostTarget", "ApiTarget", "ConsumersTarget", "ApplicationTarget", "DomainTarget", "InfrastructureTarget"]))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("6 architecture dependency groups were proved", run.Output, StringComparison.Ordinal);
+        Assert.Contains("the first 5 are listed above", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Shape_findings_survive_an_unreadable_csharp_graph()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Helpers/Broken.cs", EmptyType("Fixture.Helpers", "Broken"))
+            .Commit()
+            .PointIndexAtMissingObject("src/Orders/Helpers/Broken.cs")
+            .Remove("src/Orders/Helpers/Broken.cs");
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("missing required layer 'Host'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("noncanonical-layer-directory: 'Helpers'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("architecture map: zone src/Orders", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Architecture_map_survives_an_unreadable_csharp_graph()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Sales/Broken.cs", EmptyType("Fixture.Application", "Broken"))
+            .Commit()
+            .PointIndexAtMissingObject("src/Orders/Application/Features/Sales/Broken.cs")
+            .Remove("src/Orders/Application/Features/Sales/Broken.cs");
+
+        var run = Shape(repository);
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("architecture map: zone src/Orders", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Explain_describes_the_fitness_function_dag_and_lexical_limit()
     {
         using var repository = Fixtures.Compliant();
@@ -279,7 +399,9 @@ public sealed class ArchitectureShapeTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.Contains("fitness function", run.Output, StringComparison.Ordinal);
-        Assert.Contains("Infrastructure -> Application, Domain, Shared", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Infrastructure -> Application/Contracts, Domain, Shared", run.Output, StringComparison.Ordinal);
+        Assert.Contains("layer-pair stage accepts Infrastructure -> Application", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Persistence-wide exception", run.Output, StringComparison.Ordinal);
         Assert.Contains("Inferred", run.Output, StringComparison.Ordinal);
         Assert.Contains("member access", run.Output, StringComparison.Ordinal);
     }
@@ -328,6 +450,23 @@ public sealed class ArchitectureShapeTests
 
         """;
 
+    private static string ProvenReferences(
+        string module,
+        string name,
+        string imported,
+        IReadOnlyList<string> used)
+        => $$"""
+        using {{imported}};
+
+        namespace {{module}};
+
+        public sealed class {{name}}
+        {
+        {{string.Join('\n', used.Select((type, index) => $"    private {type}? held{index};"))}}
+        }
+
+        """;
+
     private static string EmptyType(string module, string name)
         => $$"""
         namespace {{module}};
@@ -341,4 +480,7 @@ public sealed class ArchitectureShapeTests
 
     private static CliRun Shape(RepositoryFixture repository)
         => HarnessCli.RunVerbose(repository.Path, "check", "--only", "architecture.sliced-dotnet");
+
+    private static int Occurrences(string text, string value)
+        => text.Split(value, StringSplitOptions.None).Length - 1;
 }
