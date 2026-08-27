@@ -5,7 +5,6 @@ using Harness.Commits;
 using Harness.Config;
 using Harness.Engine;
 using Harness.Git;
-using Harness.Languages.CSharp;
 using Harness.Versioning;
 
 var invocation = Invocation.Parse(args, Directory.GetCurrentDirectory());
@@ -67,14 +66,16 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        if (config.NotApplicable("csharp") is { } disabled)
+        var analyzers = CheckRegistry.LanguageAnalyzers
+            .Where(analyzer => config.NotApplicable(analyzer.Language.Key) is null)
+            .ToList();
+        if (analyzers.Count == 0)
         {
-            Console.Error.WriteLine($"Cannot update the DSM budget: `{disabled.Key}` is not applicable.");
+            Console.Error.WriteLine("Cannot update the DSM budget: no registered language is applicable.");
             return ExitCodes.Incomplete;
         }
 
-        var analyzer = new CSharpAnalyzer(new CSharpSources());
-        var result = ComplexityBudgetUpdater.Update(repository, analyzer);
+        var result = ComplexityBudgetUpdater.Update(repository, analyzers);
         var writer = result.ExitCode == ExitCodes.Success ? Console.Out : Console.Error;
         writer.WriteLine(result.Message);
         return result.ExitCode;

@@ -6,36 +6,47 @@ namespace Harness.Checks.Complexity;
 
 internal static class ComplexityBudgetUpdater
 {
-    public static ComplexityBudgetUpdate Update(GitRepository repository, ILanguageAnalyzer analyzer)
+    public static ComplexityBudgetUpdate Update(
+        GitRepository repository,
+        IReadOnlyList<ILanguageAnalyzer> analyzers)
     {
-        var (graph, graphFailure) = analyzer.ReadGraph(repository);
-        if (graph is null)
+        var entries = new Dictionary<string, ComplexityBudget.Entry>(StringComparer.Ordinal);
+        foreach (var analyzer in analyzers)
         {
-            return new(ExitCodes.Incomplete, graphFailure!);
+            var (graph, graphFailure) = analyzer.ReadGraph(repository);
+            if (graph is null)
+            {
+                return new(ExitCodes.Incomplete, graphFailure!);
+            }
+
+            if (graph.SourcePaths.Count == 0)
+            {
+                return new(ExitCodes.Incomplete, analyzer.NothingToAnalyze);
+            }
+
+            entries[analyzer.Language.Qualify("complexity")] =
+                ComplexityBudget.Entry.From(RepositoryComplexity.Measure(graph));
         }
 
-        if (graph.SourcePaths.Count == 0)
-        {
-            return new(ExitCodes.Incomplete, analyzer.NothingToAnalyze);
-        }
-
-        var current = ComplexityBudget.From(RepositoryComplexity.Measure(graph));
+        var expectedIds = entries.Keys.Order(StringComparer.Ordinal).ToList();
+        var current = new ComplexityBudget(entries);
         var path = Path.Combine(repository.RootPath, ComplexityBudget.FileName);
-        var (existing, readFailure) = ComplexityBudget.LoadWorking(path);
+        var (existing, readFailure) = ComplexityBudget.LoadWorking(path, expectedIds);
         if (readFailure is not null)
         {
             return new(ExitCodes.Incomplete, readFailure);
         }
 
-        if (existing is not null
-            && (current.PropagationCost > existing.PropagationCost || current.CoreSize > existing.CoreSize))
+        if (existing is not null && entries.Any(entry =>
+            entry.Value.PropagationCost > existing.Entries[entry.Key].PropagationCost
+            || entry.Value.CoreSize > existing.Entries[entry.Key].CoreSize))
         {
             return new(
                 ExitCodes.Violation,
                 $"REFUSED  current DSM metrics exceed the tracked budget; '{ComplexityBudget.FileName}' was not changed.");
         }
 
-        if (existing == current)
+        if (existing is not null && entries.All(entry => entry.Value == existing.Entries[entry.Key]))
         {
             return new(ExitCodes.Success, $"UNCHANGED  '{ComplexityBudget.FileName}' already matches current DSM metrics.");
         }
@@ -60,8 +71,13 @@ internal static class ComplexityBudgetUpdater
         }
 
         var action = existing is null ? "CREATED" : "UPDATED";
+        var metrics = string.Join(
+            "; ",
+            entries.OrderBy(entry => entry.Key, StringComparer.Ordinal).Select(entry =>
+                $"{entry.Key}: propagation cost {entry.Value.PropagationCost:F6}% "
+                    + $"and core size {entry.Value.CoreSize} files"));
         return new(
             ExitCodes.Success,
-            $"{action}  '{ComplexityBudget.FileName}' at propagation cost {current.PropagationCost:F6}% and core size {current.CoreSize} files.");
+            $"{action}  '{ComplexityBudget.FileName}' at {metrics}.");
     }
 }

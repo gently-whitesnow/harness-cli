@@ -4,7 +4,9 @@ using Harness.Structure;
 
 namespace Harness.Checks.Complexity;
 
-internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
+internal sealed class ComplexityCheck(
+    ILanguageAnalyzer analyzer,
+    IReadOnlyList<ILanguageAnalyzer> budgetAnalyzers)
     : LanguageAnalyzerCheck(analyzer, "complexity", "repository DSM complexity")
 {
     private static readonly EvidenceFile BudgetEvidence = new(ComplexityBudget.FileName);
@@ -36,27 +38,31 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
                 + $"({Percent(metric.CorePercentage)} of {metric.AuthoredFiles} authored files)",
         };
 
-        var (budget, budgetFailure) = ComplexityBudget.Load(context, BudgetEvidence);
-        if (budget is null)
+        var budgetCheckIds = budgetAnalyzers
+            .Where(candidate => context.Config?.NotApplicable(candidate.Language.Key) is null)
+            .Select(candidate => candidate.Language.Qualify("complexity"))
+            .ToList();
+        var (budget, budgetFailure) = ComplexityBudget.Load(context, BudgetEvidence, budgetCheckIds);
+        if (budget is null || !budget.Entries.TryGetValue(Id, out var limit))
         {
             return CheckEvaluation.Incomplete(budgetFailure!, observations);
         }
 
-        var current = ComplexityBudget.From(metric);
-        if (current.PropagationCost > budget.PropagationCost || current.CoreSize > budget.CoreSize)
+        var current = ComplexityBudget.Entry.From(metric);
+        if (current.PropagationCost > limit.PropagationCost || current.CoreSize > limit.CoreSize)
         {
-            var findings = RegressionFindings(graph, budget, current);
+            var findings = RegressionFindings(graph, limit, current);
             var regression = new Finding(
                 FindingSeverity.Blocking,
                 ComplexityBudget.FileName,
-                RegressionMessage(budget, current));
+                RegressionMessage(limit, current));
             return CheckEvaluation.From(
                 [regression, .. findings],
                 detailedFindings: [regression, .. findings],
                 observations: observations);
         }
 
-        var progress = ProgressMessage(budget, current);
+        var progress = ProgressMessage(limit, current);
         return CheckEvaluation.From(
             [],
             observations: progress is null ? observations : [.. observations, progress]);
@@ -64,22 +70,19 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
 
     private static List<Finding> RegressionFindings(
         SourceGraph graph,
-        ComplexityBudget budget,
-        ComplexityBudget current)
+        ComplexityBudget.Entry budget,
+        ComplexityBudget.Entry current)
     {
         var findings = new List<Finding>();
         if (current.PropagationCost > budget.PropagationCost)
         {
-            findings.AddRange(graph.Proven
-                .Where(edge => edge.From.Path != edge.To.Path)
-                .GroupBy(edge => (edge.From.Path, edge.To.Path))
-                .Select(group => group.First())
-                .OrderBy(edge => edge.Location, StringComparer.Ordinal)
+            findings.AddRange(RepositoryComplexity.HighestPropagationEdges(graph)
                 .Take(5)
                 .Select(edge => new Finding(
                     FindingSeverity.Blocking,
-                    edge.Location,
-                    $"Proven file edge {edge.From.Path} -> {edge.To.Path} contributes to propagation.")));
+                    edge.Edge.Location,
+                    $"Proven file edge {edge.Edge.From.Path} -> {edge.Edge.To.Path} "
+                        + $"has a propagation span of {edge.ReachablePairs} reachable file pairs.")));
         }
 
         if (current.CoreSize > budget.CoreSize)
@@ -95,7 +98,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
             : findings;
     }
 
-    private static string RegressionMessage(ComplexityBudget budget, ComplexityBudget current)
+    private static string RegressionMessage(ComplexityBudget.Entry budget, ComplexityBudget.Entry current)
     {
         var deltas = new List<string>();
         if (current.PropagationCost > budget.PropagationCost)
@@ -111,7 +114,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
         return $"DSM budget regressed ({string.Join(", ", deltas)}); reduce the graph or review the tracked budget manually.";
     }
 
-    private static string? ProgressMessage(ComplexityBudget budget, ComplexityBudget current)
+    private static string? ProgressMessage(ComplexityBudget.Entry budget, ComplexityBudget.Entry current)
     {
         var progress = new List<string>();
         if (budget.PropagationCost - current.PropagationCost >= ComplexityBudget.NoticeablePropagationDelta)

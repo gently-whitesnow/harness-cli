@@ -33,6 +33,30 @@ public sealed class ComplexityBudgetTests
     }
 
     [Fact]
+    public void Propagation_regression_ranks_edges_by_structural_span_instead_of_path()
+    {
+        using var repository = Graph(
+                ("A", ["B"]),
+                ("B", []),
+                ("M", ["N"]),
+                ("N", ["O"]),
+                ("O", []),
+                ("P", ["M"]),
+                ("Q", ["P"]))
+            .WriteFile(".harness.budget.json", Budget(10, 0))
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(1, run.ExitCode);
+        var highImpact = run.Output.IndexOf("src/Graph/M.cs -> src/Graph/N.cs", StringComparison.Ordinal);
+        var alphabeticalFirst = run.Output.IndexOf("src/Graph/A.cs -> src/Graph/B.cs", StringComparison.Ordinal);
+        Assert.True(highImpact >= 0, run.Output);
+        Assert.True(alphabeticalFirst > highImpact, run.Output);
+        Assert.True(run.OutputContains("propagation span of 6 reachable file pairs"), run.Output);
+    }
+
+    [Fact]
     public void Core_regression_names_the_largest_strongly_connected_component()
     {
         using var repository = Graph(("A", ["B"]), ("B", ["C"]), ("C", ["A"]))
@@ -59,6 +83,31 @@ public sealed class ComplexityBudgetTests
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("DSM complexity improved"), run.Output);
         Assert.True(run.OutputContains("harness budget update"), run.Output);
+    }
+
+    [Fact]
+    public void Manually_raised_budget_keeps_the_check_green()
+    {
+        using var repository = Graph(("A", ["B"]), ("B", []))
+            .WriteFile(".harness.budget.json", Budget(80, 0))
+            .Commit();
+
+        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+    }
+
+    [Fact]
+    public void Sub_threshold_improvement_does_not_emit_an_advisory()
+    {
+        using var repository = Graph(("A", ["B"]), ("B", []))
+            .WriteFile(".harness.budget.json", Budget(75.009, 0))
+            .Commit();
+
+        var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.False(run.OutputContains("DSM complexity improved"), run.Output);
     }
 
     [Fact]
