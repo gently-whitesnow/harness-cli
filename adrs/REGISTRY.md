@@ -85,6 +85,11 @@
 - [ADR-0032](0032-topology-over-thresholds.md) — Контракт 2.0 удаляет
   `maintainability.csharp`, `cohesion.csharp`, `suppress` и `overrides`; бинарь исполняет
   только текущий контракт, а пороговые скоры заменяются топологическими инвариантами.
+- [ADR-0033](0033-canonical-standard-over-declarations.md) — Секция `architecture`
+  сведена к каноническому стандарту `sliced-dotnet/1`: фиксированные Clean
+  Architecture-слои × сквозные слайсы `Features/` с публичным API `Contracts/`;
+  per-repo декларации `layers`/`modules`/`mirrors` не реализуются,
+  standalone-библиотека отвечает `applicable: false`.
 
 ## Сборка и документация
 <!-- Инварианты, которые ограничивают код и тексты репозитория -->

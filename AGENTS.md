@@ -50,6 +50,13 @@ external imports удалены как контекстные counts без ун
 любой другой pin даёт `Incomplete` и требует обновления tracked-файла. Legacy-проверки и
 настройки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
+`architecture` называет единственный стандарт топологии `sliced-dotnet/1`: фиксированные
+Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`,
+`Infrastructure`, `Shared`) × сквозные слайсы `Features/<Слайс>`; публичный API слайса —
+его `Contracts/`, кросс-импорт слайсов запрещён. Standalone-библиотека отвечает
+`"architecture": { "applicable": false, "reason": "..." }`.
+[ADR-0033](adrs/0033-canonical-standard-over-declarations.md)
+
 `"latest"` включает rolling-контракт. `harness init` создаёт все answer-ключи как нерешённые
 placeholders: исследуй репозиторий и замени каждый честным ответом. Если intent или
 применимость нельзя установить, спроси владельца; не выдумывай положительный ответ.
