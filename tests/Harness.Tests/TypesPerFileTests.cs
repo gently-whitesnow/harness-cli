@@ -61,7 +61,7 @@ public sealed class TypesPerFileTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.DoesNotContain("outcome: failed", run.Output, StringComparison.OrdinalIgnoreCase);
-        Assert.Equal(4, run.Output.Split("outcome: not applicable", StringSplitOptions.None).Length - 1);
+        Assert.Equal(5, run.Output.Split("outcome: not applicable", StringSplitOptions.None).Length - 1);
         Assert.True(run.OutputContains("vendored C# only"), run.Output);
     }
 }

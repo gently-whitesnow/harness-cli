@@ -1,6 +1,7 @@
 using Harness.Checks.Architecture;
 using Harness.Checks.Comments;
 using Harness.Checks.Commits;
+using Harness.Checks.Complexity;
 using Harness.Checks.Dependencies;
 using Harness.Checks.DotNet;
 using Harness.Checks.Duplication;
@@ -32,6 +33,7 @@ internal static class CheckRegistry
             new HarnessConfigCheck(),
 
             new SlicedDotNetShapeCheck(analyzer),
+            new ComplexityCheck(analyzer),
 
             new DocumentationPolicyCheck(),
             new CommitSetupCheck(),
