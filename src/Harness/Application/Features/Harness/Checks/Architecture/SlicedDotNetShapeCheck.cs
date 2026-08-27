@@ -1,13 +1,27 @@
 using Harness.Config;
+using Harness.Languages;
+using Harness.Structure;
 
 namespace Harness.Checks.Architecture;
 
-internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
+internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepositoryCheck
 {
     private static readonly string[] Layers =
         ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure", "Shared"];
 
     private static readonly string[] PlaceholderFiles = [".gitkeep", ".keep", ".gitignore"];
+
+    private static readonly Dictionary<string, HashSet<string>> AllowedDependencies =
+        new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
+        {
+            ["Host"] = [.. Layers],
+            ["Api"] = ["Application", "Shared"],
+            ["Consumers"] = ["Application", "Shared"],
+            ["Application"] = ["Domain", "Shared"],
+            ["Domain"] = ["Shared"],
+            ["Infrastructure"] = ["Application", "Domain", "Shared"],
+            ["Shared"] = [],
+        };
 
     public string Id => "architecture.sliced-dotnet";
 
@@ -25,9 +39,11 @@ internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
           repository-specific declaration.
 
         What it reads
-          Every tracked path in Git. A directory containing Application/ starts one zone. The
-          check discovers canonical layer directories and Application/Features slices, including
-          one optional grouping level.
+          Every tracked path in Git and the C# dependency graph. A directory containing
+          Application/ starts one zone. The check discovers canonical layer directories and
+          Application/Features slices, including one optional grouping level. Dependency edges
+          are lexical evidence: only Proven edges can fail this fitness function; Inferred edges
+          are deliberately ignored.
 
         What it accepts
           Every zone contains Host, Application and at least one of Api or Consumers. Every
@@ -35,10 +51,26 @@ internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
           every directory directly below a zone is a canonical layer. The architecture map is
           printed on every attempted run, including nested paths that would otherwise disappear.
 
+          The layer DAG is an invariant, not a score:
+            Host           -> every layer
+            Api            -> Application, Shared
+            Consumers      -> Application, Shared
+            Application    -> Domain, Shared
+            Domain         -> Shared
+            Infrastructure -> Application, Domain, Shared
+            Shared         -> no other layer
+          References inside one layer are allowed. Infrastructure/Persistence may read all of
+          Domain, including every domain slice. References between architecture zones are never
+          allowed.
+
         Remediation
           Move application files under Host, Api, Consumers, Application, Domain, Infrastructure
           or Shared. Put use-case slices in Application/Features/<Slice>, or group them one level
           deeper as Application/Features/<Group>/<Slice> without files in the group directory.
+          Turn a forbidden dependency around or move the shared concept to an allowed lower layer.
+          A type-like name in a member access can look connected to the lexical reader, but that
+          edge is Inferred and cannot produce this finding; use the named files to inspect a
+          reported Proven declaration position.
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)
@@ -75,7 +107,75 @@ internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
             InspectZone(zone, paths, findings, maps);
         }
 
+        var (graph, failure) = analyzer.ReadGraph(context.Repository);
+        if (graph is null)
+        {
+            return CheckEvaluation.Incomplete(failure!);
+        }
+
+        InspectLayerDependencies(zones, paths, graph, findings);
+
         return CheckEvaluation.From(findings, observations: maps);
+    }
+
+    private static void InspectLayerDependencies(
+        IReadOnlyList<string> zones,
+        IReadOnlyList<string> paths,
+        SourceGraph graph,
+        List<Finding> findings)
+    {
+        foreach (var path in paths.Where(path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
+        {
+            if (Address(path, zones) is { Layer: null, Zone: not null })
+            {
+                findings.Add(Block(path,
+                    $"C# file '{path}' is inside architecture zone but outside every canonical layer"));
+            }
+        }
+
+        foreach (var edge in graph.Proven)
+        {
+            var from = Address(edge.From.Path, zones);
+            var to = Address(edge.To.Path, zones);
+            if (from.Layer is null || to.Layer is null)
+            {
+                continue;
+            }
+
+            if (!string.Equals(from.Zone, to.Zone, StringComparison.Ordinal))
+            {
+                findings.Add(Block(edge.Location,
+                    $"cross-zone dependency is forbidden: {from.Layer} file '{edge.From.Path}' names "
+                    + $"{to.Layer} file '{edge.To.Path}' in zone '{Display(to.Zone!)}'"));
+                continue;
+            }
+
+            if (from.Layer == to.Layer || AllowedDependencies[from.Layer].Contains(to.Layer))
+            {
+                continue;
+            }
+
+            findings.Add(Block(edge.Location,
+                $"layer dependency {from.Layer} -> {to.Layer} is forbidden by sliced-dotnet/1: "
+                + $"'{edge.From.Path}' names '{edge.To.Path}'"));
+        }
+    }
+
+    private static LayerAddress Address(string path, IReadOnlyList<string> zones)
+    {
+        foreach (var zone in zones.OrderByDescending(candidate => candidate.Length))
+        {
+            var relative = Relative(path, zone);
+            if (relative.StartsWith("../", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var layer = relative.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            return new LayerAddress(zone, Layers.Contains(layer, StringComparer.Ordinal) ? layer : null);
+        }
+
+        return new LayerAddress(null, null);
     }
 
     private static List<string> DiscoverZones(IReadOnlyList<string> paths)
@@ -247,6 +347,8 @@ internal sealed class SlicedDotNetShapeCheck : IRepositoryCheck
         => new(FindingSeverity.Blocking, location, message);
 
     private sealed record SliceMap(List<string> Slices, List<string> Nested);
+
+    private sealed record LayerAddress(string? Zone, string? Layer);
 
     private static int EditDistance(string left, string right)
     {

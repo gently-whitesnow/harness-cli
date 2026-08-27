@@ -31,7 +31,7 @@ internal static class CheckRegistry
         [
             new HarnessConfigCheck(),
 
-            new SlicedDotNetShapeCheck(),
+            new SlicedDotNetShapeCheck(analyzer),
 
             new DocumentationPolicyCheck(),
             new CommitSetupCheck(),
