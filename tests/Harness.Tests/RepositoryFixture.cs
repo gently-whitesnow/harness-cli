@@ -36,6 +36,12 @@ public sealed class RepositoryFixture : TemporaryDirectory
         return this;
     }
 
+    public RepositoryFixture PointIndexAtMissingObject(string relativePath)
+    {
+        Git("update-index", "--cacheinfo", "100644", new string('1', 40), relativePath);
+        return this;
+    }
+
     public RepositoryFixture WriteLines(string relativePath, int lineCount)
     {
         var builder = new StringBuilder();

@@ -2,6 +2,21 @@ namespace Harness.Tests;
 
 public sealed class ArchitectureShapeTests
 {
+    private static readonly string[] Layers =
+        ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure", "Shared"];
+
+    private static readonly Dictionary<string, string[]> AllowedDependencies =
+        new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            ["Host"] = Layers,
+            ["Api"] = ["Application", "Shared"],
+            ["Consumers"] = ["Application", "Shared"],
+            ["Application"] = ["Domain", "Shared"],
+            ["Domain"] = ["Shared"],
+            ["Infrastructure"] = ["Application", "Domain", "Shared"],
+            ["Shared"] = [],
+        };
+
     [Theory]
     [InlineData("{}", "'architecture' must select a standard or declare applicability false")]
     [InlineData("{ \"standard\": \"sliced-dotnet/2\" }", "'architecture.standard' must be 'sliced-dotnet/1'")]
@@ -162,9 +177,310 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("architecture map: not applicable — standalone fixture repository", run.Output, StringComparison.Ordinal);
     }
 
+    public static TheoryData<string, string> ForbiddenLayerPairs()
+    {
+        var pairs = new TheoryData<string, string>();
+        foreach (var from in Layers)
+        {
+            foreach (var to in Layers.Where(to => to != from && !AllowedDependencies[from].Contains(to)))
+            {
+                pairs.Add(from, to);
+            }
+        }
+
+        return pairs;
+    }
+
+    [Theory]
+    [MemberData(nameof(ForbiddenLayerPairs))]
+    public void Every_forbidden_layer_pair_is_blocking(string from, string to)
+    {
+        using var repository = DependencyRepository(from, to, proven: true);
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains($"layer dependency {from} -> {to} is forbidden", run.Output, StringComparison.Ordinal);
+        Assert.Contains($"src/Orders/{from}/From.cs", run.Output, StringComparison.Ordinal);
+        Assert.Contains($"src/Orders/{to}/To.cs", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_inferred_forbidden_edge_does_not_block()
+    {
+        using var repository = DependencyRepository("Shared", "Host", proven: false);
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("layer dependency", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Infrastructure_persistence_may_read_any_domain_slice()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Infrastructure/Persistence/Db.cs", ProvenReference("Fixture.Infrastructure", "Db", "Fixture.Domain", "Entity"))
+            .WriteFile("src/Orders/Domain/Inventory/Entity.cs", EmptyType("Fixture.Domain", "Entity"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("layer dependency", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_proven_edge_between_zones_is_blocking()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Orders.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", ProvenReference("Orders.Api", "Endpoint", "Billing.Application", "UseCase"))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Orders.Application", "Create"))
+            .WriteFile("src/Billing/Host/Program.cs", EmptyType("Billing.Host", "Program"))
+            .WriteFile("src/Billing/Api/Endpoint.cs", EmptyType("Billing.Api", "Endpoint"))
+            .WriteFile("src/Billing/Application/Features/Invoices/UseCase.cs", EmptyType("Billing.Application", "UseCase"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("cross-zone dependency is forbidden", run.Output, StringComparison.Ordinal);
+        Assert.Contains("src/Orders/Api/Endpoint.cs", run.Output, StringComparison.Ordinal);
+        Assert.Contains("src/Billing/Application/Features/Invoices/UseCase.cs", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_csharp_file_at_the_zone_root_is_blocking()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Loose.cs", EmptyType("Fixture", "Loose"))
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("src/Orders/Loose.cs", run.Output, StringComparison.Ordinal);
+        Assert.Contains("outside every canonical layer", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Generated_csharp_at_the_zone_root_is_not_part_of_the_architecture_graph()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Generated.g.cs", EmptyType("Fixture", "Generated"))
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("outside every canonical layer", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Noncanonical_directory_is_not_repeated_for_every_csharp_file()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Helpers/One.cs", EmptyType("Fixture.Helpers", "One"))
+            .WriteFile("src/Orders/Helpers/Two.cs", EmptyType("Fixture.Helpers", "Two"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("noncanonical-layer-directory: 'Helpers'", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("outside every canonical layer", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Repeated_edges_in_one_layer_pair_are_folded_in_the_summary()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile(
+                "src/Orders/Api/Endpoint.cs",
+                ProvenReferences("Fixture.Api", "Endpoint", "Fixture.Infrastructure", ["One", "Two", "Three", "Four", "Five"]))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Infrastructure/One.cs", EmptyType("Fixture.Infrastructure", "One"))
+            .WriteFile("src/Orders/Infrastructure/Two.cs", EmptyType("Fixture.Infrastructure", "Two"))
+            .WriteFile("src/Orders/Infrastructure/Three.cs", EmptyType("Fixture.Infrastructure", "Three"))
+            .WriteFile("src/Orders/Infrastructure/Four.cs", EmptyType("Fixture.Infrastructure", "Four"))
+            .WriteFile("src/Orders/Infrastructure/Five.cs", EmptyType("Fixture.Infrastructure", "Five"))
+            .Commit();
+
+        var run = Shape(repository);
+        var all = HarnessCli.Run(repository.Path, "check", "--only", "architecture.sliced-dotnet", "--all");
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Equal(1, Occurrences(run.Output, "layer dependency Api -> Infrastructure"));
+        Assert.Contains("and 4 more file pairs", run.Output, StringComparison.Ordinal);
+        Assert.Equal(5, Occurrences(all.Output, "layer dependency Api -> Infrastructure"));
+    }
+
+    [Fact]
+    public void Compact_report_limits_distinct_dependency_groups()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Target.cs", EmptyType("Fixture.Targets", "HostTarget"))
+            .WriteFile("src/Orders/Api/Target.cs", EmptyType("Fixture.Targets", "ApiTarget"))
+            .WriteFile("src/Orders/Consumers/Target.cs", EmptyType("Fixture.Targets", "ConsumersTarget"))
+            .WriteFile("src/Orders/Application/Features/Sales/Target.cs", EmptyType("Fixture.Targets", "ApplicationTarget"))
+            .WriteFile("src/Orders/Domain/Target.cs", EmptyType("Fixture.Targets", "DomainTarget"))
+            .WriteFile("src/Orders/Infrastructure/Target.cs", EmptyType("Fixture.Targets", "InfrastructureTarget"))
+            .WriteFile(
+                "src/Orders/Shared/From.cs",
+                ProvenReferences(
+                    "Fixture.Shared",
+                    "From",
+                    "Fixture.Targets",
+                    ["HostTarget", "ApiTarget", "ConsumersTarget", "ApplicationTarget", "DomainTarget", "InfrastructureTarget"]))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("6 architecture dependency groups were proved", run.Output, StringComparison.Ordinal);
+        Assert.Contains("the first 5 are listed above", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Shape_findings_survive_an_unreadable_csharp_graph()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Helpers/Broken.cs", EmptyType("Fixture.Helpers", "Broken"))
+            .Commit()
+            .PointIndexAtMissingObject("src/Orders/Helpers/Broken.cs")
+            .Remove("src/Orders/Helpers/Broken.cs");
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("missing required layer 'Host'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("noncanonical-layer-directory: 'Helpers'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("architecture map: zone src/Orders", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Architecture_map_survives_an_unreadable_csharp_graph()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Sales/Broken.cs", EmptyType("Fixture.Application", "Broken"))
+            .Commit()
+            .PointIndexAtMissingObject("src/Orders/Application/Features/Sales/Broken.cs")
+            .Remove("src/Orders/Application/Features/Sales/Broken.cs");
+
+        var run = Shape(repository);
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("architecture map: zone src/Orders", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Explain_describes_the_fitness_function_dag_and_lexical_limit()
+    {
+        using var repository = Fixtures.Compliant();
+
+        var run = HarnessCli.Run(repository.Path, "explain", "architecture.sliced-dotnet");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("fitness function", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Infrastructure -> Application/Contracts, Domain, Shared", run.Output, StringComparison.Ordinal);
+        Assert.Contains("layer-pair stage accepts Infrastructure -> Application", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Persistence-wide exception", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Inferred", run.Output, StringComparison.Ordinal);
+        Assert.Contains("member access", run.Output, StringComparison.Ordinal);
+    }
+
     private static RepositoryFixture ArchitectureRepository()
         => Fixtures.Compliant(Frame.AllPresent().Architecture("""{ "standard": "sliced-dotnet/1" }"""));
 
+    private static RepositoryFixture DependencyRepository(string from, string to, bool proven)
+    {
+        var reference = proven
+            ? ProvenReference("Fixture.From", "From", "Fixture.To", "To")
+            : InferredReference("Fixture.From", "From", "Fixture.To", "To");
+
+        return ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Baseline.cs", EmptyType("Fixture.Baseline", "HostBaseline"))
+            .WriteFile("src/Orders/Api/Baseline.cs", EmptyType("Fixture.Baseline", "ApiBaseline"))
+            .WriteFile("src/Orders/Application/Features/Sales/Baseline.cs", EmptyType("Fixture.Baseline", "ApplicationBaseline"))
+            .WriteFile($"src/Orders/{from}/From.cs", reference)
+            .WriteFile($"src/Orders/{to}/To.cs", EmptyType("Fixture.To", "To"))
+            .Commit();
+    }
+
+    private static string ProvenReference(string module, string name, string imported, string used)
+        => $$"""
+        using {{imported}};
+
+        namespace {{module}};
+
+        public sealed class {{name}}
+        {
+            private {{used}}? held;
+        }
+
+        """;
+
+    private static string InferredReference(string module, string name, string imported, string used)
+        => $$"""
+        using {{imported}};
+
+        namespace {{module}};
+
+        public sealed class {{name}}
+        {
+            public static string Describe() => {{used}}.Label;
+        }
+
+        """;
+
+    private static string ProvenReferences(
+        string module,
+        string name,
+        string imported,
+        IReadOnlyList<string> used)
+        => $$"""
+        using {{imported}};
+
+        namespace {{module}};
+
+        public sealed class {{name}}
+        {
+        {{string.Join('\n', used.Select((type, index) => $"    private {type}? held{index};"))}}
+        }
+
+        """;
+
+    private static string EmptyType(string module, string name)
+        => $$"""
+        namespace {{module}};
+
+        public sealed class {{name}}
+        {
+            public const string Label = "x";
+        }
+
+        """;
+
     private static CliRun Shape(RepositoryFixture repository)
         => HarnessCli.RunVerbose(repository.Path, "check", "--only", "architecture.sliced-dotnet");
+
+    private static int Occurrences(string text, string value)
+        => text.Split(value, StringSplitOptions.None).Length - 1;
 }

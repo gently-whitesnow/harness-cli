@@ -6,6 +6,7 @@ namespace Harness.Structure;
 /// so it is counted as an import and never appears as a node.
 /// </summary>
 internal sealed record SourceGraph(
+    IReadOnlyList<string> SourcePaths,
     IReadOnlyList<TypeNode> Types,
     IReadOnlyList<ReferenceEdge> Edges,
     IReadOnlyList<ExternalImports> Imports,

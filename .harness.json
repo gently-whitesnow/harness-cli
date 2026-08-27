@@ -10,8 +10,8 @@
       "paths": ["tests/Harness.Tests"]
     },
     "tests.architecture": {
-      "present": false,
-      "reason": "цикл модулей теперь доказывает сам харнес (ADR-0021), но правила слоёв и направления зависимостей здесь по-прежнему держатся ревью ADR, а не исполняемым ассертом"
+      "present": true,
+      "reason": "харнес доказывает циклы модулей (ADR-0021), форму sliced-dotnet и допустимые направления Proven-рёбер между слоями"
     },
     "format": {
       "paths": [".editorconfig"]
@@ -44,7 +44,6 @@
     }
   },
   "policy": {
-    "frame.tests.unit": "advisory",
-    "frame.tests.architecture": "advisory"
+    "frame.tests.unit": "advisory"
   }
 }
