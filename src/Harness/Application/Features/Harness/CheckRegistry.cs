@@ -63,4 +63,7 @@ internal static class CheckRegistry
                 check.Applicability,
                 (check as FrameQuestionCheck)?.AnswerKey))
             .ToList();
+
+    public static IReadOnlyList<CheckSummary> Summaries(IReadOnlyList<IRepositoryCheck> checks)
+        => checks.Select(check => new CheckSummary(check.Id, check.Group, check.Summary)).ToList();
 }

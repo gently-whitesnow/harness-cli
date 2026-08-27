@@ -1,4 +1,4 @@
-namespace Harness.Commits;
+namespace Harness.Contracts.Commits;
 
 internal enum CommitLanguage
 {

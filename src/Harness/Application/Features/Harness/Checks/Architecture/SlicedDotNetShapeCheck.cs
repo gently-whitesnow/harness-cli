@@ -64,15 +64,19 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           References inside one layer are allowed. References between architecture zones are
           never allowed. This layer-pair stage accepts Infrastructure -> Application; the public
           API invariant separately restricts its destination to Contracts/. It also accepts all
-          Infrastructure -> Domain edges at this stage; the Persistence-wide exception becomes
-          distinct when slice isolation is enforced.
+          Infrastructure -> Domain edges because Domain is the common vocabulary available to
+          every upper layer.
 
           Slices inside one layer do not reference each other directly, including through an
           ordinary Contracts/ directory. A producer can expose a consumer-specific cross-API at
           Contracts/X/<Consumer>/ (or Domain/<Producer>/X/<Consumer>/); only that named consumer
           may import it. Every reference into an Application slice from outside that slice goes
           through Contracts/, except Host composition. Upper layers may freely compose different
-          Domain slices.
+          Domain slices. Slice isolation is evaluated within one layer: a mirror may consume the
+          ordinary public Contracts/ of a differently named Application slice.
+
+          A file directly inside Features/<Name>/ makes <Name> a slice. Without such a file, that
+          directory is a group and its child directories are the slices.
 
         Remediation
           Move application files under Host, Api, Consumers, Application, Domain, Infrastructure
@@ -147,12 +151,23 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         var violations = new Dictionary<DependencyEvidence, DependencyViolation>();
         foreach (var path in graph.SourcePaths)
         {
-            if (Address(path, zones) is { Layer: null, Zone: { } zone, RelativePath: { } relative }
+            var address = Address(path, zones);
+            if (address is { Layer: null, Zone: { } zone, RelativePath: { } relative }
                 && !relative.Contains('/'))
             {
                 var group = new DependencyGroup("outside-layer", zone, null, null, null, null, null);
                 var finding = Block(path,
                     $"C# file '{path}' is inside architecture zone but outside every canonical layer");
+                violations[new DependencyEvidence(group, path, string.Empty)] = new(group, finding);
+            }
+
+            if (address is { Layer: not null, Zone: { } sliceZone }
+                && IsDirectlyInsideSliceRoot(address))
+            {
+                var group = new DependencyGroup(
+                    "outside-slice", sliceZone, address.Layer, null, null, null, null);
+                var finding = Block(path,
+                    $"C# file '{path}' is inside slice-bearing layer '{address.Layer}' but outside every slice");
                 violations[new DependencyEvidence(group, path, string.Empty)] = new(group, finding);
             }
         }
@@ -275,6 +290,11 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         }
 
         var inside = address.RelativePath[prefix.Length..];
+        if (!inside.Contains('/'))
+        {
+            return null;
+        }
+
         var slice = knownSlices
             .OrderByDescending(candidate => candidate.Length)
             .FirstOrDefault(candidate => inside.StartsWith(candidate + "/", StringComparison.Ordinal));
@@ -285,6 +305,19 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         }
 
         return new SliceAddress(slice, inside[(slice.Length + 1)..]);
+    }
+
+    private static bool IsDirectlyInsideSliceRoot(LayerAddress address)
+    {
+        var prefix = address.Layer switch
+        {
+            "Api" or "Consumers" or "Application" or "Infrastructure" => $"{address.Layer}/Features/",
+            "Domain" => "Domain/",
+            _ => null,
+        };
+        return prefix is not null
+            && address.RelativePath!.StartsWith(prefix, StringComparison.Ordinal)
+            && !address.RelativePath[prefix.Length..].Contains('/');
     }
 
     private static string? CrossConsumer(
@@ -316,7 +349,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             {
                 var first = group.First().Finding;
                 var remaining = group.Count() - 1;
-                var subject = group.Key.Kind == "outside-layer" ? "files" : "file pairs";
+                var subject = group.Key.Kind is "outside-layer" or "outside-slice" ? "files" : "file pairs";
                 return remaining == 0
                     ? first
                     : first with { Message = $"{first.Message}; and {remaining} more {subject}" };

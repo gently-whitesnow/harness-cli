@@ -350,6 +350,26 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("merge the slices, move the shared concept down", run.Output, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("Domain/Money.cs")]
+    [InlineData("Application/Features/Money.cs")]
+    public void Csharp_file_directly_in_a_slice_root_is_blocking(string relativePath)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Sales", "Create"))
+            .WriteFile($"src/Orders/{relativePath}", EmptyType("Fixture.Loose", "Money"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains($"src/Orders/{relativePath}", run.Output, StringComparison.Ordinal);
+        Assert.Contains("outside every slice", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("failed to run", run.Output, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Cross_api_rejects_an_import_from_a_third_slice()
     {
@@ -390,6 +410,27 @@ public sealed class ArchitectureShapeTests
         Assert.Equal(1, run.ExitCode);
         Assert.Contains("Application public API sidestep into slice 'Sales'", run.Output, StringComparison.Ordinal);
         Assert.Contains("through Contracts/", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Mirror_may_consume_another_application_slice_public_contract()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile(
+                "src/Orders/Api/Features/Sales/Endpoint.cs",
+                ProvenReference("Fixture.Api", "Endpoint", "Fixture.Inventory", "InventoryContract"))
+            .WriteFile("src/Orders/Application/Features/Sales/Baseline.cs", EmptyType("Fixture.Sales", "Baseline"))
+            .WriteFile(
+                "src/Orders/Application/Features/Inventory/Contracts/InventoryContract.cs",
+                EmptyType("Fixture.Inventory", "InventoryContract"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("cross-slice dependency", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("public API sidestep", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -478,6 +519,28 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
+    public void File_in_a_group_directory_intentionally_turns_the_group_into_one_slice()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Features/Trade/Marker.cs", EmptyType("Fixture.Trade", "Marker"))
+            .WriteFile(
+                "src/Orders/Application/Features/Trade/Sales/Create.cs",
+                ProvenReference("Fixture.Sales", "Create", "Fixture.Inventory", "Item"))
+            .WriteFile(
+                "src/Orders/Application/Features/Trade/Inventory/Item.cs",
+                EmptyType("Fixture.Inventory", "Item"))
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("slices [Trade]", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("cross-slice dependency", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Host_may_access_application_slice_implementation()
     {
         using var repository = ArchitectureRepository()
@@ -504,7 +567,7 @@ public sealed class ArchitectureShapeTests
             .WriteFile("src/Orders/Api/Target.cs", EmptyType("Fixture.Targets", "ApiTarget"))
             .WriteFile("src/Orders/Consumers/Target.cs", EmptyType("Fixture.Targets", "ConsumersTarget"))
             .WriteFile("src/Orders/Application/Features/Sales/Target.cs", EmptyType("Fixture.Targets", "ApplicationTarget"))
-            .WriteFile("src/Orders/Domain/Target.cs", EmptyType("Fixture.Targets", "DomainTarget"))
+            .WriteFile("src/Orders/Domain/Inventory/Target.cs", EmptyType("Fixture.Targets", "DomainTarget"))
             .WriteFile("src/Orders/Infrastructure/Target.cs", EmptyType("Fixture.Targets", "InfrastructureTarget"))
             .WriteFile(
                 "src/Orders/Shared/From.cs",
@@ -568,7 +631,9 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("fitness function", run.Output, StringComparison.Ordinal);
         Assert.Contains("Infrastructure -> Application/Contracts, Domain, Shared", run.Output, StringComparison.Ordinal);
         Assert.Contains("layer-pair stage accepts Infrastructure -> Application", run.Output, StringComparison.Ordinal);
-        Assert.Contains("Persistence-wide exception", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Domain is the common vocabulary", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Slice isolation is evaluated within one layer", run.Output, StringComparison.Ordinal);
+        Assert.Contains("makes <Name> a slice", run.Output, StringComparison.Ordinal);
         Assert.Contains("Inferred", run.Output, StringComparison.Ordinal);
         Assert.Contains("member access", run.Output, StringComparison.Ordinal);
     }

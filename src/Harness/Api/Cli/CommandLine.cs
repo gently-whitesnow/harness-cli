@@ -1,5 +1,3 @@
-using Harness.Commits;
-
 namespace Harness.Cli;
 
 /// <summary>What the user asked the harness to do.</summary>

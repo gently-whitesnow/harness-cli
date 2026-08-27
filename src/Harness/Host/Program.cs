@@ -187,11 +187,11 @@ switch (invocation.Kind)
         return ExitCodes.Success;
 
     case CommandKind.Help:
-        Console.Write(UsageText.For(checks));
+        Console.Write(UsageText.For(CheckRegistry.Summaries(checks)));
         return ExitCodes.Success;
 
     default:
-        Console.Error.Write(UsageText.For(checks));
+        Console.Error.Write(UsageText.For(CheckRegistry.Summaries(checks)));
         if (invocation.Error is not null)
         {
             Console.Error.WriteLine();

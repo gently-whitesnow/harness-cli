@@ -1,4 +1,4 @@
-namespace Harness.Engine;
+namespace Harness.Contracts.Engine;
 
 internal static class ExitCodes
 {

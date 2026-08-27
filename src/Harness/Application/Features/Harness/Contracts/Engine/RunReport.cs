@@ -1,6 +1,4 @@
-using Harness.Checks;
-
-namespace Harness.Engine;
+namespace Harness.Contracts.Engine;
 
 /// <param name="UntrackedEvidence">
 /// Paths a finding looked for that exist in the working tree without being tracked. They
