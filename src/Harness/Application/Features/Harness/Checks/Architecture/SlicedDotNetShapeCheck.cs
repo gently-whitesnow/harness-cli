@@ -24,8 +24,8 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
         {
             ["Host"] = [.. Layers],
-            ["Api"] = ["Application", "Shared"],
-            ["Consumers"] = ["Application", "Shared"],
+            ["Api"] = ["Application", "Domain", "Shared"],
+            ["Consumers"] = ["Application", "Domain", "Shared"],
             ["Application"] = ["Domain", "Shared"],
             ["Domain"] = ["Shared"],
             ["Infrastructure"] = ["Application", "Domain", "Shared"],
@@ -66,8 +66,8 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
           The layer DAG is an invariant, not a score:
             Host           -> every layer
-            Api            -> Application, Shared
-            Consumers      -> Application, Shared
+            Api            -> Application, Domain, Shared
+            Consumers      -> Application, Domain, Shared
             Application    -> Domain, Shared
             Domain         -> Shared
             Infrastructure -> Application/Contracts, Domain, Shared

@@ -9,8 +9,8 @@ public sealed class ArchitectureShapeTests
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["Host"] = Layers,
-            ["Api"] = ["Application", "Shared"],
-            ["Consumers"] = ["Application", "Shared"],
+            ["Api"] = ["Application", "Domain", "Shared"],
+            ["Consumers"] = ["Application", "Domain", "Shared"],
             ["Application"] = ["Domain", "Shared"],
             ["Domain"] = ["Shared"],
             ["Infrastructure"] = ["Application", "Domain", "Shared"],
@@ -501,6 +501,28 @@ public sealed class ArchitectureShapeTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.DoesNotContain("layer dependency", run.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Api")]
+    [InlineData("Consumers")]
+    public void Input_layers_may_read_any_domain_slice(string inputLayer)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile(
+                $"src/Orders/{inputLayer}/Features/Sales/Endpoint.cs",
+                ProvenReference("Fixture.Input", "Endpoint", "Fixture.Domain", "InventoryItem"))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Sales", "Create"))
+            .WriteFile("src/Orders/Application/Features/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "Baseline"))
+            .WriteFile("src/Orders/Domain/Inventory/InventoryItem.cs", EmptyType("Fixture.Domain", "InventoryItem"))
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain($"layer dependency {inputLayer} -> Domain", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]

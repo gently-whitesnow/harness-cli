@@ -230,7 +230,7 @@ internal sealed record HarnessConfig
         A minimal .harness.json, committed at the repository root:
 
           {
-            "version": "2.2.0",
+            "version": "2.2.1",
             "architecture": { "standard": "sliced-dotnet/1" },
             "answers": {
               "tests.unit": { "paths": ["tests/Unit"] },
