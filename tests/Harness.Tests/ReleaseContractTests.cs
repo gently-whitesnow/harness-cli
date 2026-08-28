@@ -41,6 +41,35 @@ public sealed class ReleaseContractTests
         Assert.Equal(2, run.ExitCode);
         Assert.True(run.OutputContains("upgrade required"), run.Output);
         Assert.True(run.OutputContains($"only runs contract {Release.Current}"), run.Output);
+        Assert.True(run.OutputContains("harness upgrade"), run.Output);
     }
 
+    [Fact]
+    public void Upgrade_raises_an_old_pin_and_prints_the_complete_2_0_migration()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("1.5.0"));
+
+        var run = HarnessCli.Run(repository.Path, "upgrade");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("from 1.5.0 to 2.0.0", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("removed  maintainability.csharp, cohesion.csharp", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("sliced-dotnet/1", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("explicit applicability, settings and policy", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains(".harness.budget.json", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains($"\"version\": \"{Release.Current}\"", File.ReadAllText(repository.Absolute(".harness.json")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Upgrade_dry_run_describes_the_migration_without_changing_the_pin()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("1.5.0"));
+        var before = File.ReadAllText(repository.Absolute(".harness.json"));
+
+        var run = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("Nothing was written", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Equal(before, File.ReadAllText(repository.Absolute(".harness.json")));
+    }
 }

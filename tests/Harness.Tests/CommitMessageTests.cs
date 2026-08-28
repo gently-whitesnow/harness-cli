@@ -3,9 +3,10 @@ namespace Harness.Tests;
 public sealed class CommitMessageTests
 {
     [Fact]
-    public void Current_profile_defaults_to_russian_and_required_setup()
+    public void Explicit_profile_selects_russian_and_required_setup()
     {
-        using var repository = Fixtures.Compliant(Frame.AllPresent().Settings("{}"));
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Settings(
+            """{ "commits": { "language": "ru", "requireSetup": true } }"""));
 
         var template = HarnessCli.Run(repository.Path, "commit-message", "template");
         var setup = HarnessCli.RunVerbose(repository.Path, "check", "--only", "commits.setup");

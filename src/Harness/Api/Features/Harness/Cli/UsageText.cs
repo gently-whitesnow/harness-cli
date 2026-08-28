@@ -12,6 +12,7 @@ internal static class UsageText
           harness check [path] [--only <ids>] [--skip <ids>] [--verbose] [--all]
           harness budget update [path]
           harness init [path] [--latest] [--language <en|ru>]
+          harness upgrade [path] [--dry-run]
           harness setup [path]
           harness commit-message check <message-file>
           harness commit-message template
@@ -26,6 +27,7 @@ internal static class UsageText
           --verbose      show findings, reasons and timings
           --all          show every measured subject instead of top findings; implies --verbose
           --latest       make an initialized frame follow the installed binary's contract
+          --dry-run      describe the contract migration without changing the pin
           --language     language for human-written commit subjects and bodies (default: ru)
 
         Exit codes

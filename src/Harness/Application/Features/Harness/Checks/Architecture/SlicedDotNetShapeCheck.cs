@@ -45,7 +45,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         Rationale
           The sliced-dotnet/1 standard makes the tracked directory tree the architecture map.
           Every application uses the same layer vocabulary, so a review does not depend on a
-          repository-specific declaration.
+          repository-specific declaration. This is tier 1 of the contract 2.0 model: immutable
+          topology invariants. Tier 2 is the monotonic DSM budget; tier 3 is explicit repository
+          policy. ADR-0032 defines the tiers and ADR-0033 defines sliced-dotnet/1.
 
         What it reads
           Every tracked path in Git and the non-generated C# sources used by the dependency
@@ -111,6 +113,10 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           A type-like name in a member access can look connected to the lexical reader. That
           Inferred edge cannot produce a blocking finding, but it can establish a reference for
           insignificant-slice; inspect the named files behind every reported Proven violation.
+
+        Decisions
+          adrs/0032-topology-over-thresholds.md
+          adrs/0033-canonical-standard-over-declarations.md
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)

@@ -22,10 +22,18 @@ switch (invocation.Kind)
 
     case CommandKind.Init:
     {
+        var (repositoryKind, interviewFailure) = ArchitectureInterview.Ask(Console.In, Console.Out);
+        if (repositoryKind is null)
+        {
+            Console.Error.WriteLine(interviewFailure);
+            return ExitCodes.Incomplete;
+        }
+
         var result = ConfigInitializer.Create(
             invocation.RepositoryPath,
             invocation.Latest,
             invocation.CommitLanguage,
+            repositoryKind.Value,
             CheckRegistry.Describe(checks));
         if (result.Failure is not null)
         {
@@ -33,7 +41,7 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        Console.WriteLine($"Created '{result.Path}'.");
+        Console.WriteLine($"Created '{result.Path}' and an empty '.harness.budget.json'.");
         var (repository, openFailure) = GitRepository.Open(invocation.RepositoryPath);
         if (repository is null)
         {
@@ -54,6 +62,26 @@ switch (invocation.Kind)
         Console.WriteLine(
             "Review every answer; ask the repository owner when intent is unclear rather than guessing.");
         Console.WriteLine("Track the file, then run `harness check --verbose`.");
+        return ExitCodes.Success;
+    }
+
+    case CommandKind.Upgrade:
+    {
+        var (repository, openFailure) = GitRepository.Open(invocation.RepositoryPath);
+        if (repository is null)
+        {
+            Console.Error.WriteLine(openFailure);
+            return ExitCodes.Incomplete;
+        }
+
+        var (report, upgradeFailure) = FrameUpgrade.Raise(repository, invocation.DryRun);
+        if (report is null)
+        {
+            Console.Error.WriteLine(upgradeFailure);
+            return ExitCodes.Incomplete;
+        }
+
+        Console.Write(report);
         return ExitCodes.Success;
     }
 
@@ -208,7 +236,7 @@ switch (invocation.Kind)
     case CommandKind.Version:
         Console.WriteLine($"harness {HarnessVersion.Current}");
         Console.WriteLine(
-            $"Runs contract {HarnessVersion.Current}; every other pin requires a tracked config update.");
+            $"Runs contract {HarnessVersion.Current}; every other pin requires `harness upgrade`.");
         return ExitCodes.Success;
 
     case CommandKind.Help:

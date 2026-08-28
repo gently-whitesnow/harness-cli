@@ -52,8 +52,8 @@ internal static class DependenciesExplanation
           resolved incorrectly even in a type-only position. Partial types are merged.
 
         Policy
-          A proved cycle is blocking by default and cannot be suppressed by path. If the
-          repository consciously accepts all findings from this check, tracked policy may
+          A proved cycle is blocking when its explicit policy is required and cannot be
+          suppressed by path. If the repository consciously accepts all findings from this check, tracked policy may
           make the whole check `advisory` or `off`; that broader decision stays visible in
           review.
 

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Harness.Tests;
 
 public sealed class ComplexityBudgetTests
@@ -209,7 +211,7 @@ public sealed class ComplexityBudgetTests
         => $$"""
         {
           "complexity.csharp": {
-            "propagationCost": {{propagationCost}},
+            "propagationCost": {{propagationCost.ToString(CultureInfo.InvariantCulture)}},
             "coreSize": {{coreSize}}
           }
         }

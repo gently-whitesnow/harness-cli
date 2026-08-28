@@ -6,6 +6,7 @@ internal enum CommandKind
     Check,
     BudgetUpdate,
     Init,
+    Upgrade,
     Setup,
     CommitMessageCheck,
     CommitTemplate,
@@ -32,6 +33,8 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
 
     public bool Latest { get; init; }
 
+    public bool DryRun { get; init; }
+
     public string? CheckId { get; init; }
 
     public string? Error { get; init; }
@@ -57,6 +60,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             "check" => ParseCheck(rest, currentDirectory),
             "budget" => ParseBudget(rest, currentDirectory),
             "init" => ParseInit(rest, currentDirectory),
+            "upgrade" => ParseUpgrade(rest, currentDirectory),
             "setup" => ParseSetup(rest, currentDirectory),
             "commit-message" => ParseCommitMessage(rest, currentDirectory),
             "commits" => ParseCommits(rest, currentDirectory),
@@ -64,6 +68,43 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             "version" or "--version" or "-v" => new Invocation(CommandKind.Version, currentDirectory),
             "help" or "--help" or "-h" => new Invocation(CommandKind.Help, currentDirectory),
             _ => Usage(currentDirectory, $"Unknown command '{command}'."),
+        };
+    }
+
+    private static Invocation ParseUpgrade(List<string> arguments, string currentDirectory)
+    {
+        var dryRun = false;
+        string? path = null;
+        foreach (var argument in arguments)
+        {
+            if (argument == "--dry-run")
+            {
+                if (dryRun)
+                {
+                    return Usage(currentDirectory, "--dry-run may only be given once.");
+                }
+
+                dryRun = true;
+            }
+            else if (argument.StartsWith('-'))
+            {
+                return Usage(currentDirectory, $"Unknown option '{argument}'.");
+            }
+            else if (path is not null)
+            {
+                return Usage(currentDirectory, "Only one repository path may be given.");
+            }
+            else
+            {
+                path = argument;
+            }
+        }
+
+        return new Invocation(
+            CommandKind.Upgrade,
+            Path.GetFullPath(path ?? currentDirectory, currentDirectory))
+        {
+            DryRun = dryRun,
         };
     }
 

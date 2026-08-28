@@ -61,18 +61,15 @@ internal sealed record HarnessConfig
     public string? AnswerFailure(string key)
         => AnswerFailures.TryGetValue(key, out var failure) ? failure : null;
 
-    public CheckPolicy PolicyFor(string checkId, string group)
-    {
-        if (Policy.TryGetValue(checkId, out var byId))
-        {
-            return byId;
-        }
-
-        return Policy.TryGetValue(group, out var byGroup) ? byGroup : CheckPolicy.Required;
-    }
+    public CheckPolicy PolicyFor(string checkId)
+        => Policy[checkId];
 
     public ApplicabilityAnswer? NotApplicable(string? key)
-        => key is not null && Applicability.TryGetValue(key, out var answer) ? answer : null;
+        => key is not null
+            && Applicability.TryGetValue(key, out var answer)
+            && !answer.IsApplicable
+                ? answer
+                : null;
 
     /// <summary>
     /// Reads the tracked config and validates its envelope before preserving per-answer results.
@@ -176,8 +173,7 @@ internal sealed record HarnessConfig
             return (null, ConfigJson.Failure(settingsFailure!));
         }
 
-        var selectors = Selectors(checks);
-        var (policy, policyFailure) = PolicyReader.ReadPolicy(root, selectors);
+        var (policy, policyFailure) = PolicyReader.ReadPolicy(root, checks);
         if (policy is null)
         {
             return (null, policyFailure);
@@ -219,17 +215,11 @@ internal sealed record HarnessConfig
         return version == HarnessVersion.Current
             ? (version, false, null)
             : (default, false, $"'version' pins harness {version}, but this binary only runs contract "
-                + $"{HarnessVersion.Current}; upgrade required");
+                + $"{HarnessVersion.Current}; upgrade required — run `harness upgrade`");
     }
 
     private static string Expected
         => $"'version' must be a harness release such as \"{HarnessVersion.Current}\", or \"latest\"";
-
-    private static List<string> Selectors(IReadOnlyList<CheckDescriptor> checks)
-        => checks.Select(check => check.Id)
-            .Concat(checks.Select(check => check.Group))
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
 
     /// <summary>
     /// The smallest config that answers everything, shown whenever there is none. A reader
@@ -251,7 +241,10 @@ internal sealed record HarnessConfig
               "build": { "paths": ["Repository.sln"] },
               "typecheck": { "applicable": false, "reason": "no web stack" }
             },
-            "applicability": {},
+            "applicability": {
+              "csharp": { "applicable": true },
+              "dotnet": { "applicable": true }
+            },
             "settings": {
               "comments.csharp": {
                 "minimumCommentLines": 10,
@@ -265,6 +258,27 @@ internal sealed record HarnessConfig
                 "language": "ru",
                 "requireSetup": true
               }
+            },
+            "policy": {
+              "harness.config": "required",
+              "architecture.sliced-dotnet": "required",
+              "complexity.csharp": "required",
+              "docs.policy": "required",
+              "commits.setup": "required",
+              "comments.csharp": "required",
+              "types-per-file.csharp": "required",
+              "dependencies.csharp": "required",
+              "duplication.csharp": "advisory",
+              "build-properties.dotnet": "required",
+              "central-packages.dotnet": "required",
+              "solution-format.dotnet": "required",
+              "frame.tests.unit": "required",
+              "frame.tests.integration": "required",
+              "frame.tests.architecture": "required",
+              "frame.format": "required",
+              "frame.lint": "required",
+              "frame.build": "required",
+              "frame.typecheck": "required"
             }
           }
 

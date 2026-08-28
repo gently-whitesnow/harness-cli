@@ -65,7 +65,7 @@ public sealed class HarnessFrameTests
     }
 
     [Theory]
-    [InlineData("docs.plicy", "off", "not a check or group this harness ships")]
+    [InlineData("docs.plicy", "off", "not a check this harness ships")]
     [InlineData("maintainability.csharp", "off", "removed in harness 2.0")]
     [InlineData("cohesion.csharp", "advisory", "removed in harness 2.0")]
     [InlineData("docs.policy", "lenient", "must be required, advisory or off")]
@@ -79,9 +79,39 @@ public sealed class HarnessFrameTests
         Assert.True(run.OutputContains(explanation), run.Output);
     }
 
+    [Fact]
+    public void Every_shipped_check_requires_an_explicit_policy_entry()
+    {
+        var frame = Frame.AllPresent().ToString().Replace(
+            "    \"docs.policy\": \"required\",\n",
+            string.Empty,
+            StringComparison.Ordinal);
+        using var repository = Fixtures.WithRawFrame(frame);
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("'policy' is missing explicit checks: docs.policy", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Every_applicability_axis_requires_an_explicit_entry()
+    {
+        var frame = Frame.AllPresent().ToString().Replace(
+            ",\n    \"dotnet\": { \"applicable\": true }",
+            string.Empty,
+            StringComparison.Ordinal);
+        using var repository = Fixtures.WithRawFrame(frame);
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("'applicability' is missing explicit entries: dotnet", run.Output, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("typescript", """{ "applicable": false, "reason": "not used" }""", "not an applicability")]
-    [InlineData("csharp", """{ "applicable": true, "reason": "used" }""", "must be false")]
+    [InlineData("csharp", """{ "applicable": true, "reason": "used" }""", "reason' is only valid")]
     [InlineData("csharp", """{ "applicable": false }""", "must say why")]
     public void Invalid_applicability_ends_the_run_as_incomplete(
         string key,
@@ -112,12 +142,32 @@ public sealed class HarnessFrameTests
     [InlineData("{ \"commits\": { \"requireSetup\": \"yes\" } }", "must be true or false")]
     public void Invalid_settings_end_the_run_as_incomplete(string settings, string explanation)
     {
-        using var repository = Fixtures.Compliant(Frame.Answering().Settings(settings));
+        var frame = settings == "[]"
+            ? Frame.Answering().RawSettings(settings)
+            : Frame.Answering().Settings(settings);
+        using var repository = Fixtures.Compliant(frame);
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(2, run.ExitCode);
         Assert.True(run.OutputContains(explanation), run.Output);
+    }
+
+    [Fact]
+    public void Every_setting_requires_an_explicit_value()
+    {
+        var frame = Frame.AllPresent().Settings(
+            """{ "duplication.csharp": { "minimumTokens": 91 } }""").ToString().Replace(
+                ",\"minimumTokens\":91",
+                string.Empty,
+                StringComparison.Ordinal);
+        using var repository = Fixtures.WithRawFrame(frame);
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("settings.duplication.csharp", run.Output, StringComparison.Ordinal);
+        Assert.Contains("must be present", run.Output, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -175,7 +225,7 @@ public sealed class HarnessFrameTests
     public void Latest_uses_the_current_question_set()
     {
         using var repository = Fixtures.Compliant(
-            Frame.Answering().Version("latest").Policy("frame", "advisory"));
+            Frame.Answering().Version("latest").FramePolicy("advisory"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame");
 
@@ -197,11 +247,10 @@ public sealed class HarnessFrameTests
     }
 
     [Fact]
-    public void A_check_identifier_outranks_its_group_in_policy()
+    public void Policy_is_explicit_for_one_check_identifier()
     {
         using var repository = Fixtures.Compliant(
             Frame.Answering()
-                .Policy("frame", "required")
                 .Policy("frame.tests.unit", "off"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.tests.unit");
@@ -227,7 +276,7 @@ public sealed class HarnessFrameTests
     [Fact]
     public void Reading_the_frame_does_not_modify_the_repository()
     {
-        using var repository = Fixtures.Compliant(Frame.Answering().Policy("frame", "required"));
+        using var repository = Fixtures.Compliant(Frame.Answering());
 
         var before = repository.TrackedState();
 

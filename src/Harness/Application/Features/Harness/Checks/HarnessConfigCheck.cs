@@ -43,10 +43,9 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
                         for a standalone library.
           answers       one self-reported answer for every current `frame` question, keyed
                         without the `frame.` prefix.
-          applicability shared analysis family (currently `csharp`) answered not applicable.
-          settings      deterministic policy and commit language/setup requirements.
-          policy        exceptions to the default `required`: `advisory` keeps findings visible
-                        without blocking, and `off` skips a check.
+          applicability every shared analysis family explicitly marked true or false with reason.
+          settings      every deterministic threshold and commit language/setup requirement.
+          policy        one explicit `required`, `advisory` or `off` value per shipped check.
 
         Why it is incomplete rather than a violation
           Without a readable frame the harness cannot state what this repository answers, so
@@ -88,7 +87,7 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
 
         if (config.Policy.Count > 0)
         {
-            parts.Add($"{config.Policy.Count} policy override{(config.Policy.Count == 1 ? "" : "s")}");
+            parts.Add($"{config.Policy.Count} explicit policy entr{(config.Policy.Count == 1 ? "y" : "ies")}");
         }
 
         return $"{HarnessConfig.FileName} contains {string.Join(", ", parts)}. Answers are self-reported; "

@@ -106,7 +106,7 @@ public sealed class UntrackedEvidenceTests
     {
         using var repository = Fixtures.WithoutAFrame();
 
-        HarnessCli.Run(repository.Path, "init");
+        HarnessCli.RunWithInput(repository.Path, "application\n", "init");
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "harness.config");
 
         Assert.Equal(2, run.ExitCode);

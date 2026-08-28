@@ -15,7 +15,7 @@ public sealed class InitCommandTests
             .Commit();
         Directory.CreateDirectory(repository.Absolute("src/Feature"));
 
-        var run = HarnessCli.Run(repository.Absolute("src/Feature"), "init");
+        var run = HarnessCli.RunWithInput(repository.Absolute("src/Feature"), "application\n", "init");
 
         Assert.Equal(0, run.ExitCode);
         Assert.Empty(run.StandardError);
@@ -28,22 +28,27 @@ public sealed class InitCommandTests
         var path = repository.Absolute(".harness.json");
         Assert.True(File.Exists(path));
         Assert.False(File.Exists(repository.Absolute("src/Feature/.harness.json")));
-        Assert.Equal("?? .harness.json\n", repository.Git("status", "--porcelain=v1"));
+        Assert.Equal("?? .harness.budget.json\n?? .harness.json\n", repository.Git("status", "--porcelain=v1"));
 
         using var document = JsonDocument.Parse(File.ReadAllText(path));
         var root = document.RootElement;
         Assert.Equal(Release.Current, root.GetProperty("version").GetString());
-        Assert.Empty(root.GetProperty("architecture").EnumerateObject());
+        Assert.Equal("sliced-dotnet/1", root.GetProperty("architecture").GetProperty("standard").GetString());
         Assert.Equal(
             Questions,
             root.GetProperty("answers").EnumerateObject().Select(answer => answer.Name));
         Assert.All(
             root.GetProperty("answers").EnumerateObject(),
             answer => Assert.Empty(answer.Value.EnumerateObject()));
-        Assert.Empty(root.GetProperty("applicability").EnumerateObject());
+        Assert.True(root.GetProperty("applicability").GetProperty("csharp").GetProperty("applicable").GetBoolean());
+        Assert.True(root.GetProperty("applicability").GetProperty("dotnet").GetProperty("applicable").GetBoolean());
         AssertDefaultSettings(root.GetProperty("settings"));
         Assert.Contains("harness-hooks", repository.Git("config", "--local", "--get", "core.hooksPath"));
-        Assert.Empty(root.GetProperty("policy").EnumerateObject());
+        Assert.All(root.GetProperty("policy").EnumerateObject(), entry =>
+            Assert.Equal(entry.Name.StartsWith("frame.", StringComparison.Ordinal)
+                ? "off"
+                : entry.Name == "duplication.csharp" ? "advisory" : "required", entry.Value.GetString()));
+        Assert.True(File.Exists(repository.Absolute(".harness.budget.json")));
         Assert.False(root.TryGetProperty("suppress", out _));
     }
 
@@ -67,7 +72,7 @@ public sealed class InitCommandTests
     {
         using var repository = RepositoryFixture.CreateGitRepository();
 
-        var run = HarnessCli.Run(repository.Path, "init", "--latest");
+        var run = HarnessCli.RunWithInput(repository.Path, "application\n", "init", "--latest");
 
         Assert.Equal(0, run.ExitCode);
         using var document = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
@@ -79,7 +84,7 @@ public sealed class InitCommandTests
     {
         using var repository = RepositoryFixture.CreateGitRepository();
 
-        var run = HarnessCli.Run(repository.Path, "init", "--language", "en");
+        var run = HarnessCli.RunWithInput(repository.Path, "application\n", "init", "--language", "en");
 
         Assert.Equal(0, run.ExitCode);
         using var document = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
@@ -90,21 +95,65 @@ public sealed class InitCommandTests
     }
 
     [Fact]
-    public void Initialized_frame_is_an_explicit_red_worklist_after_it_is_tracked()
+    public void Library_answer_declares_architecture_not_applicable()
     {
         using var repository = RepositoryFixture.CreateGitRepository();
-        Assert.Equal(0, HarnessCli.Run(repository.Path, "init").ExitCode);
+
+        var run = HarnessCli.RunWithInput(repository.Path, "library\n", "init");
+
+        Assert.Equal(0, run.ExitCode);
+        using var document = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
+        var architecture = document.RootElement.GetProperty("architecture");
+        Assert.False(architecture.GetProperty("applicable").GetBoolean());
+        Assert.Equal("standalone library", architecture.GetProperty("reason").GetString());
+
+        repository.CommitAs("chore(harness): инициализировать рамку библиотеки");
+        var check = HarnessCli.RunVerbose(repository.Path, "check", "--only", "architecture.sliced-dotnet");
+        Assert.Equal(0, check.ExitCode);
+        Assert.Contains("not applicable", check.Output, StringComparison.Ordinal);
+        Assert.Contains("architecture map: not applicable", check.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Canonical_empty_dotnet_application_is_green_after_init()
+    {
+        using var repository = RepositoryFixture.CreateGitRepository()
+            .WriteFile("AGENTS.md", "# Navigation\n")
+            .WriteFile("README.md", "# Overview\n")
+            .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
+            .WriteFile("Directory.Build.props", Fixtures.HardenedBuildProps)
+            .WriteFile("src/App/App.csproj", Fixtures.SimpleSdkProject)
+            .WriteFile("src/App/Host/host.txt", "composition\n")
+            .WriteFile("src/App/Api/Features/Example/entry.txt", "input\n")
+            .WriteFile("src/App/Application/Features/Example/usecase.txt", "use case\n")
+            .Commit();
+
+        Assert.Equal(0, HarnessCli.RunWithInput(repository.Path, "application\n", "init").ExitCode);
+        repository.CommitAs("chore(harness): инициализировать рамку репозитория");
+
+        var check = HarnessCli.Run(repository.Path, "check");
+
+        Assert.Equal(0, check.ExitCode);
+        Assert.Contains("architecture map: zone src/App", check.Output, StringComparison.Ordinal);
+        Assert.Contains("DSM budget:", check.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Initialized_frame_explicitly_disables_unanswered_questions()
+    {
+        using var repository = RepositoryFixture.CreateGitRepository();
+        Assert.Equal(0, HarnessCli.RunWithInput(repository.Path, "application\n", "init").ExitCode);
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
 
         var check = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame");
 
-        Assert.Equal(2, check.ExitCode);
+        Assert.Equal(0, check.ExitCode);
         foreach (var question in Questions)
         {
             Assert.Contains($"frame.{question}", check.Output, StringComparison.Ordinal);
         }
 
-        Assert.Equal(Questions.Length, Occurrences(check.Output, "outcome: incomplete"));
+        Assert.Equal(Questions.Length, Occurrences(check.Output, "outcome: skipped"));
     }
 
     [Theory]
@@ -121,10 +170,10 @@ public sealed class InitCommandTests
         }
 
         var before = repository.Git("status", "--porcelain=v1");
-        var run = HarnessCli.Run(repository.Path, "init");
+        var run = HarnessCli.RunWithInput(repository.Path, "application\n", "init");
 
         Assert.Equal(2, run.ExitCode);
-        Assert.Empty(run.StandardOutput);
+        Assert.Contains("Repository kind", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("Refusing to overwrite", run.StandardError, StringComparison.Ordinal);
         Assert.Equal(existing, File.ReadAllText(repository.Absolute(".harness.json")));
         Assert.Equal(before, repository.Git("status", "--porcelain=v1"));
@@ -138,10 +187,26 @@ public sealed class InitCommandTests
             .Commit()
             .Remove(".harness.json");
 
-        var run = HarnessCli.Run(repository.Path, "init");
+        var run = HarnessCli.RunWithInput(repository.Path, "application\n", "init");
 
         Assert.Equal(2, run.ExitCode);
         Assert.Contains("Refusing to overwrite", run.StandardError, StringComparison.Ordinal);
+        Assert.False(File.Exists(repository.Absolute(".harness.json")));
+    }
+
+    [Fact]
+    public void Init_does_not_replace_a_tracked_budget_deleted_from_the_working_tree()
+    {
+        using var repository = RepositoryFixture.CreateGitRepository()
+            .WriteFile(".harness.budget.json", "tracked\n")
+            .Commit()
+            .Remove(".harness.budget.json");
+
+        var run = HarnessCli.RunWithInput(repository.Path, "application\n", "init");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("Refusing to overwrite", run.StandardError, StringComparison.Ordinal);
+        Assert.False(File.Exists(repository.Absolute(".harness.budget.json")));
         Assert.False(File.Exists(repository.Absolute(".harness.json")));
     }
 
@@ -150,10 +215,10 @@ public sealed class InitCommandTests
     {
         using var directory = TemporaryDirectory.Create();
 
-        var run = HarnessCli.Run(directory.Path, "init");
+        var run = HarnessCli.RunWithInput(directory.Path, "application\n", "init");
 
         Assert.Equal(2, run.ExitCode);
-        Assert.Empty(run.StandardOutput);
+        Assert.Contains("Repository kind", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("not inside a Git repository", run.StandardError, StringComparison.Ordinal);
         Assert.False(File.Exists(directory.Absolute(".harness.json")));
     }

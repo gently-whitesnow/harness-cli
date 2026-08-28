@@ -11,6 +11,7 @@ internal static class ConfigInitializer
         string repositoryPath,
         bool latest,
         CommitLanguage commitLanguage,
+        RepositoryKind repositoryKind,
         IReadOnlyList<CheckDescriptor> checks)
     {
         var (repository, openFailure) = GitRepository.Open(repositoryPath);
@@ -20,41 +21,83 @@ internal static class ConfigInitializer
         }
 
         var path = System.IO.Path.Combine(repository.RootPath, HarnessConfig.FileName);
+        var budgetPath = System.IO.Path.Combine(repository.RootPath, ".harness.budget.json");
         var tracked = repository.TrackedEntries.Any(entry => entry.Path == HarnessConfig.FileName);
-        if (tracked || RootEntryExists(repository.RootPath))
+        if (tracked || RootEntryExists(repository.RootPath, HarnessConfig.FileName))
         {
             return (null, $"Refusing to overwrite existing '{path}'. Remove it explicitly before initializing.");
         }
 
-        var content = Render(latest, commitLanguage, checks);
+        var budgetTracked = repository.TrackedEntries.Any(entry => entry.Path == ".harness.budget.json");
+        if (budgetTracked || RootEntryExists(repository.RootPath, ".harness.budget.json"))
+        {
+            return (null, $"Refusing to overwrite existing '{budgetPath}'. Remove it explicitly before initializing.");
+        }
+
+        var content = Render(latest, commitLanguage, repositoryKind, checks);
+        var budgetCreated = false;
         try
         {
+            WriteNew(
+                budgetPath,
+                "{\n  \"complexity.csharp\": {\n    \"propagationCost\": 0,\n    \"coreSize\": 0\n  }\n}\n");
+            budgetCreated = true;
             using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
             using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
             writer.Write(content);
         }
         catch (IOException exception)
         {
+            if (budgetCreated)
+            {
+                DeleteCreatedBudget(budgetPath);
+            }
+
             return (null, $"Could not create '{path}' without overwriting anything: {exception.Message}");
         }
         catch (UnauthorizedAccessException exception)
         {
+            if (budgetCreated)
+            {
+                DeleteCreatedBudget(budgetPath);
+            }
+
             return (null, $"Could not create '{path}': {exception.Message}");
         }
 
         return (path, null);
     }
 
-    private static bool RootEntryExists(string rootPath)
+    private static bool RootEntryExists(string rootPath, string fileName)
         => Directory.EnumerateFileSystemEntries(rootPath)
             .Any(path => string.Equals(
                 System.IO.Path.GetFileName(path),
-                HarnessConfig.FileName,
+                fileName,
                 StringComparison.Ordinal));
+
+    private static void DeleteCreatedBudget(string budgetPath)
+    {
+        try
+        {
+            File.Delete(budgetPath);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Preserve the creation failure; rollback only removes the file this call created.
+        }
+    }
+
+    private static void WriteNew(string path, string content)
+    {
+        using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        writer.Write(content);
+    }
 
     private static string Render(
         bool latest,
         CommitLanguage commitLanguage,
+        RepositoryKind repositoryKind,
         IReadOnlyList<CheckDescriptor> checks)
     {
         var defaults = HarnessSettings.Default;
@@ -65,8 +108,11 @@ internal static class ConfigInitializer
             .ToList();
 
         var text = new StringBuilder();
+        var architecture = repositoryKind == RepositoryKind.Application
+            ? "{ \"standard\": \"sliced-dotnet/1\" }"
+            : "{ \"applicable\": false, \"reason\": \"standalone library\" }";
         text.Append("{\n  \"version\": \"").Append(version)
-            .Append("\",\n  \"architecture\": {},\n  \"answers\": {\n");
+            .Append("\",\n  \"architecture\": ").Append(architecture).Append(",\n  \"answers\": {\n");
         for (var index = 0; index < questions.Count; index++)
         {
             text.Append("    \"").Append(questions[index]).Append("\": {}");
@@ -76,7 +122,10 @@ internal static class ConfigInitializer
         text.Append(
             $$"""
               },
-              "applicability": {},
+              "applicability": {
+                "csharp": { "applicable": true },
+                "dotnet": { "applicable": true }
+              },
               "settings": {
                 "comments.csharp": {
                   "minimumCommentLines": {{defaults.Comments.MinimumCommentLines}},
@@ -91,9 +140,19 @@ internal static class ConfigInitializer
                   "requireSetup": {{defaults.Commits.RequireSetup.ToString().ToLowerInvariant()}}
                 }
               },
-              "policy": {}
-            }
+              "policy": {
             """);
+        for (var index = 0; index < checks.Count; index++)
+        {
+            var check = checks[index];
+            var policy = check.Id.StartsWith("frame.", StringComparison.Ordinal)
+                ? "off"
+                : check.Id == "duplication.csharp" ? "advisory" : "required";
+            text.Append("    \"").Append(check.Id).Append("\": \"").Append(policy).Append('"')
+                .Append(index == checks.Count - 1 ? '\n' : ",\n");
+        }
+
+        text.Append("  }\n}\n");
         return text.ToString();
     }
 }

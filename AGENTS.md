@@ -17,10 +17,10 @@ self-reported: адрес служит навигацией, а не доказ�
 "typecheck":   { "applicable": false, "reason": "нет web-стека" }    // вопрос не про нас
 ```
 
-Каждая применимая проверка априори `required`: любая её находка blocking, даже если сама
-эвристика помечает исходную уверенность как advisory. `policy` смягчает проверку до
-`advisory` или отключает через `off`; адресных подавлений нет. Поэтому `present: false` по
-умолчанию — нарушение. Харнес валидирует
+Каждая shipped-проверка явно перечислена в `policy`: `required` делает находку blocking,
+`advisory` оставляет её видимой, `off` пропускает проверку. `settings`, applicability и
+policy полны — ридер не подставляет скрытые defaults. Поэтому состояние всех проверок видно
+в tracked-файле. Харнес валидирует
 полноту ответов, но не инспектирует их и не ищет опровержения.
 [ADR-0017](adrs/0017-required-by-default.md), [ADR-0027](adrs/0027-required-findings-are-blocking.md)
 
@@ -51,8 +51,8 @@ baseline; повышение делается вручную через ревь
 [ADR-0019](adrs/0019-dotnet-repository-policy.md)
 
 `version` — строка текущего контракта (`"2.0.0"`). Бинарь исполняет только этот контракт;
-любой другой pin даёт `Incomplete` и требует обновления tracked-файла. Legacy-проверки и
-настройки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
+любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
+маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
 `architecture` называет единственный стандарт топологии `sliced-dotnet/1`: фиксированные
 Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`,
@@ -62,10 +62,10 @@ FSD 2.1), верхние слои читают любой `Domain`-слайс. S
 `"architecture": { "applicable": false, "reason": "..." }`.
 [ADR-0033](adrs/0033-canonical-standard-over-declarations.md)
 
-`"latest"` включает rolling-контракт. `harness init` создаёт все answer-ключи как нерешённые
-placeholders: исследуй репозиторий и замени каждый честным ответом. Если intent или
-применимость нельзя установить, спроси владельца; не выдумывай положительный ответ.
-Осознанное отсутствие — `present: false` с причиной.
+`"latest"` включает rolling-контракт. `harness init` спрашивает только application или
+standalone-library, создаёт соответствующую `architecture`, начальный DSM-бюджет и полный
+явный конфиг. Нерешённые answer-ключи остаются `{}` и `off`: исследуй репозиторий, замени
+каждый честным ответом и включи его policy. Не выдумывай положительный ответ.
 
 `settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness
 setup` включает шаблон и `commit-msg` hook в общем каталоге клона, поэтому одна подготовка
@@ -110,6 +110,7 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 ```sh
 ./harness version                                  # релиз бинаря и текущий контракт
 ./harness init /path/to/repository                 # создать незавершённую рамку
+./harness upgrade                                  # поднять pin и увидеть миграцию 2.0
 ./harness setup                                    # активировать hook и шаблон в этом клоне
 ./harness commit-message template                  # показать шаблон выбранного языка
 ./harness commits check <base>..<head>             # проверить диапазон для CI

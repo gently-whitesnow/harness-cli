@@ -3,7 +3,8 @@
 ## Status
 
 Accepted; current count scope refined by [ADR-0029](0029-dependency-counts-removed.md).
-Рекомендации про `suppress` superseded by [ADR-0032](0032-topology-over-thresholds.md).
+Рекомендации про `suppress` superseded by [ADR-0032](0032-topology-over-thresholds.md),
+а Proven file graph теперь также питает sliced-dotnet и DSM-ярусы ADR-0032/0033.
 
 ## Context
 
@@ -93,3 +94,5 @@ untracked build output — отдельное решение, которого �
   которого нет. Текущие циклы его не читают.
 - Blocking-цикл может оказаться осознанным: тогда проверку смягчают через reviewable
   `policy`, и это решение видно в каждом прогоне.
+- Архитектурные DAG/slice-инварианты и DSM-budget используют те же Proven-рёбра, но их
+  нельзя смягчить policy; этот enforcement задают ADR-0032/0033.
