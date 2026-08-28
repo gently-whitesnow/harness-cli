@@ -18,11 +18,14 @@ self-reported: адрес служит навигацией, а не доказ�
 ```
 
 Каждая shipped-проверка явно перечислена в `policy`: `required` делает находку blocking,
-`advisory` оставляет её видимой, `off` пропускает проверку. `settings`, applicability и
-policy полны — ридер не подставляет скрытые defaults. Поэтому состояние всех проверок видно
-в tracked-файле. Харнес валидирует
-полноту ответов, но не инспектирует их и не ищет опровержения.
-[ADR-0017](adrs/0017-required-by-default.md), [ADR-0027](adrs/0027-required-findings-are-blocking.md)
+`advisory` оставляет её видимой, `off` пропускает проверку. Переключатель един для всех
+проверок, включая топологический инвариант и ratchet-бюджет: запрещено адресное подавление
+файла или находки, а не выключение проверки целиком. `settings`, applicability и policy
+полны — ридер не подставляет скрытые defaults, поэтому состояние всех проверок видно в
+tracked-файле. Харнес валидирует полноту ответов, но не инспектирует их и не ищет
+опровержения. [ADR-0017](adrs/0017-required-by-default.md),
+[ADR-0027](adrs/0027-required-findings-are-blocking.md),
+[ADR-0035](adrs/0035-policy-switch-is-uniform.md)
 
 C#-проверки разделяют applicability `csharp`. Если весь этот анализ не относится к
 репозиторию, одна запись `"applicability": { "csharp": { "applicable": false, "reason":

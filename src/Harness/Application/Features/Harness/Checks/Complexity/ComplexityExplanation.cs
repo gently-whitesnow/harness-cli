@@ -50,6 +50,12 @@ internal static class ComplexityExplanation
           underestimate coupling. Authored test files are deliberately part of the graph and
           affect both N and its edges. Cross-language file dependencies are not yet represented.
 
+        Policy
+          A regression is blocking when the tracked policy for this check is required, and no
+          file is exempt from the measurement. A repository may run the whole check `advisory`
+          or `off`. A missing budget stays incomplete under `advisory`, because an unread
+          measurement is not a softened finding; a repository that keeps no budget answers `off`.
+
         Remediation
           Run `harness budget update` once to create `.harness.budget.json`. Commit both files.
           A rising propagation cost means more files lie downstream of typical changes. A

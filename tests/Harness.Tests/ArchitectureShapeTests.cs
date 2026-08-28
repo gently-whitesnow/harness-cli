@@ -34,15 +34,31 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
-    public void Architecture_invariants_cannot_be_disabled_by_repository_policy()
+    public void Advisory_policy_keeps_shape_violations_visible_without_failing()
     {
-        using var repository = Fixtures.Compliant(
-            Frame.AllPresent().Policy("architecture.sliced-dotnet", "off"));
+        using var repository = ArchitectureRepository("advisory")
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .Commit();
 
-        var run = HarnessCli.RunVerbose(repository.Path, "check");
+        var run = Shape(repository);
 
-        Assert.Equal(2, run.ExitCode);
-        Assert.Contains("cannot soften or disable blocking architecture invariants", run.Output, StringComparison.Ordinal);
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("missing required layer 'Host'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("advisory", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Off_policy_does_not_run_the_shape_check()
+    {
+        using var repository = ArchitectureRepository("off")
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("turns this check off", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("missing required layer", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -956,8 +972,10 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("member access", run.Output, StringComparison.Ordinal);
     }
 
-    private static RepositoryFixture ArchitectureRepository()
-        => Fixtures.Compliant(Frame.AllPresent().Architecture("""{ "standard": "sliced-dotnet/1" }"""));
+    private static RepositoryFixture ArchitectureRepository(string policy = "required")
+        => Fixtures.Compliant(Frame.AllPresent()
+            .Architecture("""{ "standard": "sliced-dotnet/1" }""")
+            .Policy("architecture.sliced-dotnet", policy));
 
     private static RepositoryFixture DependencyRepository(string from, string to, bool proven)
     {

@@ -100,6 +100,12 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           resolved incoming reference from their own input mirror, mixed singular/plural names, more
           than 20 ungrouped slices and generic Services, Helpers, Managers, Utils or Common folders.
 
+        Policy
+          A violation is blocking when the tracked policy for this check is required, and no
+          path, file or finding is exempt from it. A repository that has not moved to the
+          standard yet may run the whole check `advisory` or `off`; that broader decision is one
+          reviewable line in the tracked frame and the report states it on every run.
+
         Remediation
           Move application files under Host, Api, Consumers, Application, Domain, Infrastructure
           or Shared. Put use-case slices in Application/Features/<Slice>, or group them one level
