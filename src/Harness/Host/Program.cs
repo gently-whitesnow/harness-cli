@@ -22,18 +22,47 @@ switch (invocation.Kind)
 
     case CommandKind.Init:
     {
+        var (repositoryKind, interviewFailure) = invocation.RepositoryKind is { } selected
+            ? (selected, null)
+            : ArchitectureInterview.Ask(Console.In, Console.Out);
+        if (repositoryKind is null)
+        {
+            Console.Error.WriteLine(interviewFailure);
+            return ExitCodes.Incomplete;
+        }
+
+        var (initRepository, initOpenFailure) = GitRepository.Open(invocation.RepositoryPath);
+        if (initRepository is null)
+        {
+            Console.Error.WriteLine(initOpenFailure);
+            return ExitCodes.Incomplete;
+        }
+
+        var (initialBudget, budgetFailure) =
+            ComplexityBudgetUpdater.InitialContent(initRepository, CheckRegistry.LanguageAnalyzers);
+        if (initialBudget is null)
+        {
+            Console.Error.WriteLine(budgetFailure);
+            return ExitCodes.Incomplete;
+        }
+
         var result = ConfigInitializer.Create(
             invocation.RepositoryPath,
             invocation.Latest,
             invocation.CommitLanguage,
-            CheckRegistry.Describe(checks));
+            repositoryKind.Value,
+            CheckRegistry.Describe(checks),
+            initialBudget);
         if (result.Failure is not null)
         {
             Console.Error.WriteLine(result.Failure);
             return ExitCodes.Incomplete;
         }
 
-        Console.WriteLine($"Created '{result.Path}'.");
+        Console.WriteLine(
+            $"Created '{result.Path}' and "
+            + $"'{Path.Combine(Path.GetDirectoryName(result.Path)!, ".harness.budget.json")}' "
+            + "with the current tracked DSM metrics.");
         var (repository, openFailure) = GitRepository.Open(invocation.RepositoryPath);
         if (repository is null)
         {
@@ -54,6 +83,26 @@ switch (invocation.Kind)
         Console.WriteLine(
             "Review every answer; ask the repository owner when intent is unclear rather than guessing.");
         Console.WriteLine("Track the file, then run `harness check --verbose`.");
+        return ExitCodes.Success;
+    }
+
+    case CommandKind.Upgrade:
+    {
+        var (repository, openFailure) = GitRepository.Open(invocation.RepositoryPath);
+        if (repository is null)
+        {
+            Console.Error.WriteLine(openFailure);
+            return ExitCodes.Incomplete;
+        }
+
+        var (report, upgradeFailure) = FrameUpgrade.Raise(repository, invocation.DryRun);
+        if (report is null)
+        {
+            Console.Error.WriteLine(upgradeFailure);
+            return ExitCodes.Incomplete;
+        }
+
+        Console.Write(report);
         return ExitCodes.Success;
     }
 
@@ -208,7 +257,7 @@ switch (invocation.Kind)
     case CommandKind.Version:
         Console.WriteLine($"harness {HarnessVersion.Current}");
         Console.WriteLine(
-            $"Runs contract {HarnessVersion.Current}; every other pin requires a tracked config update.");
+            $"Runs contract {HarnessVersion.Current}; every other pin requires `harness upgrade`.");
         return ExitCodes.Success;
 
     case CommandKind.Help:

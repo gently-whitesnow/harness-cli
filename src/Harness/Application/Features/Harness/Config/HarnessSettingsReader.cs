@@ -17,10 +17,9 @@ internal static class HarnessSettingsReader
 
     public static (HarnessSettings? Settings, string? Failure) Read(JsonElement root)
     {
-        var defaults = HarnessSettings.Default;
         if (!root.TryGetProperty("settings", out var declared))
         {
-            return (defaults, null);
+            return (null, "'settings' must explicitly list every configurable section");
         }
 
         if (declared.ValueKind != JsonValueKind.Object)
@@ -52,18 +51,21 @@ internal static class HarnessSettingsReader
             }
         }
 
-        return Assemble(declared, defaults);
+        var missing = known.Where(section => !declared.TryGetProperty(section, out _)).ToList();
+        if (missing.Count > 0)
+        {
+            return (null, $"'settings' is missing explicit sections: {string.Join(", ", missing)}");
+        }
+
+        return Assemble(declared);
     }
 
-    private static (HarnessSettings? Settings, string? Failure) Assemble(
-        JsonElement declared,
-        HarnessSettings defaults)
+    private static (HarnessSettings? Settings, string? Failure) Assemble(JsonElement declared)
     {
         var (comments, commentFailure) = ReadSection(
             declared,
             Comments,
             ["minimumCommentLines", "percentageLimit"],
-            [defaults.Comments.MinimumCommentLines, defaults.Comments.PercentageLimit],
             [null, 100]);
         if (comments is null)
         {
@@ -73,8 +75,7 @@ internal static class HarnessSettingsReader
         var (duplication, duplicationFailure) = ReadSection(
             declared,
             Duplication,
-            ["windowLines", "minimumTokens"],
-            [defaults.Duplication.WindowLines, defaults.Duplication.MinimumTokens]);
+            ["windowLines", "minimumTokens"]);
         if (duplication is null)
         {
             return (null, duplicationFailure);
@@ -85,7 +86,7 @@ internal static class HarnessSettingsReader
             return (null, $"'settings.{Duplication}.windowLines' must be a positive integer");
         }
 
-        var (commits, commitFailure) = ReadCommits(declared, defaults.Commits);
+        var (commits, commitFailure) = ReadCommits(declared);
         return commits is null
             ? (null, commitFailure)
             : (new HarnessSettings(
@@ -94,13 +95,11 @@ internal static class HarnessSettingsReader
                 commits), null);
     }
 
-    private static (CommitSettings? Settings, string? Failure) ReadCommits(
-        JsonElement settings,
-        CommitSettings defaults)
+    private static (CommitSettings? Settings, string? Failure) ReadCommits(JsonElement settings)
     {
         if (!settings.TryGetProperty(Commits, out var declared))
         {
-            return (defaults, null);
+            return (null, $"'settings.{Commits}' must be present");
         }
 
         var failure = ValidateObject(declared, Commits, ["language", "requireSetup"], null);
@@ -109,29 +108,30 @@ internal static class HarnessSettingsReader
             return (null, failure);
         }
 
-        var language = defaults.Language;
-        if (declared.TryGetProperty("language", out var declaredLanguage))
+        if (!declared.TryGetProperty("language", out var declaredLanguage))
         {
-            var value = declaredLanguage.ValueKind == JsonValueKind.String ? declaredLanguage.GetString() : null;
-            if (value is not ("en" or "ru"))
-            {
-                return (null, "'settings.commits.language' must be 'en' or 'ru'");
-            }
-
-            language = value == "ru" ? CommitLanguage.Russian : CommitLanguage.English;
+            return (null, "'settings.commits.language' must be present");
         }
 
-        var requireSetup = defaults.RequireSetup;
-        if (declared.TryGetProperty("requireSetup", out var declaredRequirement))
+        var value = declaredLanguage.ValueKind == JsonValueKind.String ? declaredLanguage.GetString() : null;
+        if (value is not ("en" or "ru"))
         {
-            if (declaredRequirement.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
-            {
-                return (null, "'settings.commits.requireSetup' must be true or false");
-            }
-
-            requireSetup = declaredRequirement.ValueKind == JsonValueKind.True;
+            return (null, "'settings.commits.language' must be 'en' or 'ru'");
         }
 
+        var language = value == "ru" ? CommitLanguage.Russian : CommitLanguage.English;
+
+        if (!declared.TryGetProperty("requireSetup", out var declaredRequirement))
+        {
+            return (null, "'settings.commits.requireSetup' must be present");
+        }
+
+        if (declaredRequirement.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+        {
+            return (null, "'settings.commits.requireSetup' must be true or false");
+        }
+
+        var requireSetup = declaredRequirement.ValueKind == JsonValueKind.True;
         return (new CommitSettings(language, requireSetup), null);
     }
 
@@ -139,13 +139,12 @@ internal static class HarnessSettingsReader
         JsonElement settings,
         string section,
         string[] known,
-        int[] fallback,
         int?[]? maximum = null,
         IReadOnlyDictionary<string, string>? moved = null)
     {
         if (!settings.TryGetProperty(section, out var declared))
         {
-            return (fallback, null);
+            return (null, $"'settings.{section}' must be present");
         }
 
         var failure = ValidateObject(declared, section, known, moved);
@@ -157,8 +156,13 @@ internal static class HarnessSettingsReader
         var values = new int[known.Length];
         for (var index = 0; index < known.Length; index++)
         {
+            if (!declared.TryGetProperty(known[index], out _))
+            {
+                return (null, $"'settings.{section}.{known[index]}' must be present");
+            }
+
             var (value, valueFailure) = ReadInt(
-                declared, section, known[index], fallback[index], maximum?[index]);
+                declared, section, known[index], maximum?[index]);
             if (valueFailure is not null)
             {
                 return (null, valueFailure);
@@ -203,12 +207,11 @@ internal static class HarnessSettingsReader
         JsonElement declared,
         string section,
         string name,
-        int fallback,
         int? maximum)
     {
         if (!declared.TryGetProperty(name, out var value))
         {
-            return (fallback, null);
+            return (0, $"'settings.{section}.{name}' must be present");
         }
 
         var at = $"settings.{section}.{name}";

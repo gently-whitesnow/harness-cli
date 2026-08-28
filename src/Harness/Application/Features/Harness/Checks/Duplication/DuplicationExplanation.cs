@@ -10,7 +10,7 @@ internal static class DuplicationExplanation
           that an abstraction is missing, or that one was copied instead of called. The
           gate finds where that happened and stops there. Findings originate as advisory
           evidence because a lexical match is a reason to read two places, not proof that
-          they mean the same thing. The default required repository policy nevertheless
+          they mean the same thing. An explicit required repository policy nevertheless
           blocks every unresolved match; advisory is an explicit migration state.
 
         Discovery
@@ -39,7 +39,7 @@ internal static class DuplicationExplanation
 
         Unit of comparison
           The unit is a configurable window of consecutive normalized lines carrying a
-          configurable minimum number of tokens in total. The defaults are 30 lines and 90
+          configurable minimum number of tokens in total. The initialized profile uses 30 lines and 90
           tokens. Two windows repeat when their token sequences are identical. Windows
           below the token count are not compared at all: lines of braces, `return`s and
           closing parentheses are identical in every file and are not something anyone can
@@ -97,7 +97,7 @@ internal static class DuplicationExplanation
           for every difference. Engineering judgement decides here; the harness supplies
           the evidence and will not edit the code. Tune `settings.duplication.csharp.windowLines`
           and `minimumTokens` when the repository's ordinary explicit patterns make the
-          defaults noisy; use advisory policy temporarily while known matches are paid down,
+          initialized settings noisy; use advisory policy temporarily while known matches are paid down,
           or `off` only when the whole measurement is unwanted.
         """;
 }

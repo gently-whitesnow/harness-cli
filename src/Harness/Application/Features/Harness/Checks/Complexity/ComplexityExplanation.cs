@@ -8,7 +8,10 @@ internal static class ComplexityExplanation
           A dependency count describes one file. A design structure matrix (DSM) describes
           how a change can propagate through the repository as a whole. These measurements
           are compared with one repository-wide, tracked ratchet budget. A regression is
-          blocking; an improvement is visible until the repository records it.
+          blocking; an improvement is visible until the repository records it. This is tier 2
+          of contract 2.0: tier 1 fixes topology, tier 2 ratchets global DSM metrics, and tier 3
+          applies explicit deterministic policy. ADR-0032 defines the model; ADR-0033 fixes the
+          sliced-dotnet/1 vocabulary used by tier 1.
 
         Discovery
           Every authored, Git-tracked `.cs` file is one node. Generated, vendored and
@@ -53,5 +56,9 @@ internal static class ComplexityExplanation
           growing core means more files must change as a mutually dependent group; break an
           edge or extract a lower-level concept. The update command only lowers budgets;
           raising one requires an explicit tracked edit and review.
+
+        Decisions
+          adrs/0032-topology-over-thresholds.md
+          adrs/0033-canonical-standard-over-declarations.md
         """;
 }

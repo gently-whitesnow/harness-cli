@@ -12,8 +12,8 @@ internal static class FindingPolicy
         string? previousReason)
     {
         var reason = previousOutcome == CheckOutcome.Passed
-            ? "checks are required by default, so every enforceable finding is a blocking violation; "
-                + "use an advisory policy override while the repository is paying down known findings."
+            ? "the explicit required policy makes every enforceable finding a blocking violation; "
+                + "choose advisory explicitly while the repository is paying down known findings."
             : previousReason;
         return (RequireSeverity(findings), reason);
     }

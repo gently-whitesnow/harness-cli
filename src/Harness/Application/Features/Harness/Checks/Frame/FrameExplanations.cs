@@ -73,8 +73,8 @@ internal static class FrameExplanations
         {{specific}}
 
         Remediation and policy
-          Every applicable check is required by default, so an absent answer is a violation.
-          An explicit `advisory` policy override accepts the gap without hiding it; `off`
+          A `required` policy makes an absent answer a violation. An explicit `advisory`
+          policy accepts the gap without hiding it; `off`
           skips the question. Policy never makes the harness fact-check an answer.
         """;
 }

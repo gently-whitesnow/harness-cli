@@ -28,7 +28,10 @@
       "reason": "нет web-стека; типы этого репозитория проверяет компилятор C# на сборке"
     }
   },
-  "applicability": {},
+  "applicability": {
+    "csharp": { "applicable": true },
+    "dotnet": { "applicable": true }
+  },
   "settings": {
     "comments.csharp": {
       "minimumCommentLines": 10,
@@ -44,6 +47,24 @@
     }
   },
   "policy": {
-    "frame.tests.unit": "advisory"
+    "harness.config": "required",
+    "architecture.sliced-dotnet": "required",
+    "complexity.csharp": "required",
+    "docs.policy": "required",
+    "commits.setup": "required",
+    "comments.csharp": "required",
+    "types-per-file.csharp": "required",
+    "dependencies.csharp": "required",
+    "duplication.csharp": "advisory",
+    "build-properties.dotnet": "required",
+    "central-packages.dotnet": "required",
+    "solution-format.dotnet": "required",
+    "frame.tests.unit": "advisory",
+    "frame.tests.integration": "required",
+    "frame.tests.architecture": "required",
+    "frame.format": "required",
+    "frame.lint": "required",
+    "frame.build": "required",
+    "frame.typecheck": "required"
   }
 }

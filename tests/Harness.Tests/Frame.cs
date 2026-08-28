@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace Harness.Tests;
 
@@ -8,21 +9,40 @@ namespace Harness.Tests;
 /// </summary>
 public sealed class Frame
 {
+    private const string DefaultSettings =
+        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "commits": { "language": "ru", "requireSetup": false } }""";
+
     private static readonly string[] Questions =
         ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck"];
+
+    private static readonly string[] Checks =
+    [
+        "harness.config", "architecture.sliced-dotnet", "complexity.csharp", "docs.policy",
+        "commits.setup", "comments.csharp", "types-per-file.csharp", "dependencies.csharp",
+        "duplication.csharp", "build-properties.dotnet", "central-packages.dotnet",
+        "solution-format.dotnet", "frame.tests.unit", "frame.tests.integration",
+        "frame.tests.architecture", "frame.format", "frame.lint", "frame.build", "frame.typecheck",
+    ];
 
     private readonly Dictionary<string, string> answers = Questions.ToDictionary(
         question => question,
         _ => """{ "present": false, "reason": "fixture owns nothing here" }""",
         StringComparer.Ordinal);
 
-    private readonly Dictionary<string, string> policy = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> policy = Checks.ToDictionary(
+        check => check,
+        _ => "required",
+        StringComparer.Ordinal);
 
     // Unrelated acceptance tests opt out of clone-local setup explicitly. Tests of the
     // shipped settings profile replace this section and exercise the actual defaults.
-    private string? settings = """{ "commits": { "requireSetup": false } }""";
+    private string? settings = DefaultSettings;
 
-    private readonly Dictionary<string, string> applicability = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> applicability = new(StringComparer.Ordinal)
+    {
+        ["csharp"] = """{ "applicable": true }""",
+        ["dotnet"] = """{ "applicable": true }""",
+    };
 
     private string version = Quote(Release.Current);
 
@@ -73,6 +93,16 @@ public sealed class Frame
         return this;
     }
 
+    public Frame FramePolicy(string value)
+    {
+        foreach (var check in Checks.Where(check => check.StartsWith("frame.", StringComparison.Ordinal)))
+        {
+            policy[check] = value;
+        }
+
+        return this;
+    }
+
     public Frame NotApplicableTo(string key, string reason = "fixture does not use this stack")
     {
         applicability[key] = $$"""{ "applicable": false, "reason": {{Quote(reason)}} }""";
@@ -80,6 +110,14 @@ public sealed class Frame
     }
 
     public Frame Settings(string body)
+    {
+        var complete = JsonNode.Parse(DefaultSettings)!.AsObject();
+        Merge(complete, JsonNode.Parse(body)!.AsObject());
+        settings = complete.ToJsonString();
+        return this;
+    }
+
+    public Frame RawSettings(string body)
     {
         settings = body;
         return this;
@@ -107,30 +145,39 @@ public sealed class Frame
             answers.Select(entry => $"    {Quote(entry.Key)}: {entry.Value}")));
         text.Append("\n  }");
 
-        if (applicability.Count > 0)
-        {
-            text.Append(",\n  \"applicability\": {\n");
-            text.Append(string.Join(",\n", applicability.Select(entry =>
-                $"    {Quote(entry.Key)}: {entry.Value}")));
-            text.Append("\n  }");
-        }
+        text.Append(",\n  \"applicability\": {\n");
+        text.Append(string.Join(",\n", applicability.Select(entry =>
+            $"    {Quote(entry.Key)}: {entry.Value}")));
+        text.Append("\n  }");
 
         if (settings is not null)
         {
             text.Append(",\n  \"settings\": ").Append(settings);
         }
 
-        if (policy.Count > 0)
-        {
-            text.Append(",\n  \"policy\": {\n");
-            text.Append(string.Join(
-                ",\n",
-                policy.Select(entry => $"    {Quote(entry.Key)}: {Quote(entry.Value)}")));
-            text.Append("\n  }");
-        }
+        text.Append(",\n  \"policy\": {\n");
+        text.Append(string.Join(
+            ",\n",
+            policy.Select(entry => $"    {Quote(entry.Key)}: {Quote(entry.Value)}")));
+        text.Append("\n  }");
 
         return text.Append("\n}\n").ToString();
     }
 
     private static string Quote(string value) => $"\"{value.Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
+
+    private static void Merge(JsonObject target, JsonObject source)
+    {
+        foreach (var (key, value) in source)
+        {
+            if (value is JsonObject sourceObject && target[key] is JsonObject targetObject)
+            {
+                Merge(targetObject, sourceObject);
+            }
+            else
+            {
+                target[key] = value?.DeepClone();
+            }
+        }
+    }
 }

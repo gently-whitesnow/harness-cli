@@ -23,21 +23,6 @@ internal sealed class ComplexityCheck(
             return CheckEvaluation.Incomplete(failure!);
         }
 
-        if (graph.SourcePaths.Count == 0)
-        {
-            return CheckEvaluation.NotApplicable(Analyzer.NothingToAnalyze);
-        }
-
-        var metric = RepositoryComplexity.Measure(graph);
-        var possiblePairs = (long)metric.AuthoredFiles * metric.AuthoredFiles;
-        var observations = new[]
-        {
-            $"propagation cost: {Percent(metric.PropagationCostPercentage)} "
-                + $"({metric.ReachablePairs} reachable file pairs / {possiblePairs})",
-            $"core size: {metric.CoreFiles} files "
-                + $"({Percent(metric.CorePercentage)} of {metric.AuthoredFiles} authored files)",
-        };
-
         var budgetCheckIds = budgetAnalyzers
             .Where(candidate => context.Config?.NotApplicable(candidate.Language.Key) is null)
             .Select(candidate => candidate.Language.Qualify("complexity"))
@@ -45,9 +30,25 @@ internal sealed class ComplexityCheck(
         var (budget, budgetFailure) = ComplexityBudget.Load(context, BudgetEvidence, budgetCheckIds);
         if (budget is null || !budget.Entries.TryGetValue(Id, out var limit))
         {
-            return CheckEvaluation.Incomplete(budgetFailure!, observations);
+            return CheckEvaluation.Incomplete(budgetFailure!);
         }
 
+        var budgetObservation = $"DSM budget: propagation cost {Percent(limit.PropagationCost)} · core size {limit.CoreSize} files";
+        if (graph.SourcePaths.Count == 0)
+        {
+            return CheckEvaluation.NotApplicable(Analyzer.NothingToAnalyze, [budgetObservation]);
+        }
+
+        var metric = RepositoryComplexity.Measure(graph);
+        var possiblePairs = (long)metric.AuthoredFiles * metric.AuthoredFiles;
+        var observations = new[]
+        {
+            budgetObservation,
+            $"propagation cost: {Percent(metric.PropagationCostPercentage)} "
+                + $"({metric.ReachablePairs} reachable file pairs / {possiblePairs})",
+            $"core size: {metric.CoreFiles} files "
+                + $"({Percent(metric.CorePercentage)} of {metric.AuthoredFiles} authored files)",
+        };
         var current = ComplexityBudget.Entry.From(metric);
         if (current.PropagationCost > limit.PropagationCost || current.CoreSize > limit.CoreSize)
         {

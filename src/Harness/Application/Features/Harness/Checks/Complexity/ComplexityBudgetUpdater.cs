@@ -6,26 +6,24 @@ namespace Harness.Checks.Complexity;
 
 internal static class ComplexityBudgetUpdater
 {
+    public static (string? Content, string? Failure) InitialContent(
+        GitRepository repository,
+        IReadOnlyList<ILanguageAnalyzer> analyzers)
+    {
+        var (entries, failure) = Measure(repository, analyzers, allowEmpty: true);
+        return entries is null
+            ? (null, failure)
+            : (new ComplexityBudget(entries).Serialize(), null);
+    }
+
     public static ComplexityBudgetUpdate Update(
         GitRepository repository,
         IReadOnlyList<ILanguageAnalyzer> analyzers)
     {
-        var entries = new Dictionary<string, ComplexityBudget.Entry>(StringComparer.Ordinal);
-        foreach (var analyzer in analyzers)
+        var (entries, measureFailure) = Measure(repository, analyzers, allowEmpty: false);
+        if (entries is null)
         {
-            var (graph, graphFailure) = analyzer.ReadGraph(repository);
-            if (graph is null)
-            {
-                return new(ExitCodes.Incomplete, graphFailure!);
-            }
-
-            if (graph.SourcePaths.Count == 0)
-            {
-                return new(ExitCodes.Incomplete, analyzer.NothingToAnalyze);
-            }
-
-            entries[analyzer.Language.Qualify("complexity")] =
-                ComplexityBudget.Entry.From(RepositoryComplexity.Measure(graph));
+            return new(ExitCodes.Incomplete, measureFailure!);
         }
 
         var expectedIds = entries.Keys.Order(StringComparer.Ordinal).ToList();
@@ -79,5 +77,31 @@ internal static class ComplexityBudgetUpdater
         return new(
             ExitCodes.Success,
             $"{action}  '{ComplexityBudget.FileName}' at {metrics}.");
+    }
+
+    private static (Dictionary<string, ComplexityBudget.Entry>? Entries, string? Failure) Measure(
+        GitRepository repository,
+        IReadOnlyList<ILanguageAnalyzer> analyzers,
+        bool allowEmpty)
+    {
+        var entries = new Dictionary<string, ComplexityBudget.Entry>(StringComparer.Ordinal);
+        foreach (var analyzer in analyzers)
+        {
+            var (graph, graphFailure) = analyzer.ReadGraph(repository);
+            if (graph is null)
+            {
+                return (null, graphFailure);
+            }
+
+            if (!allowEmpty && graph.SourcePaths.Count == 0)
+            {
+                return (null, analyzer.NothingToAnalyze);
+            }
+
+            entries[analyzer.Language.Qualify("complexity")] =
+                ComplexityBudget.Entry.From(RepositoryComplexity.Measure(graph));
+        }
+
+        return (entries, null);
     }
 }

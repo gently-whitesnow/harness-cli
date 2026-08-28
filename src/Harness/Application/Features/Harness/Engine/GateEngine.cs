@@ -45,7 +45,17 @@ internal static class GateEngine
         var gates = new List<GateReport>();
         foreach (var check in checks)
         {
-            var policy = config?.PolicyFor(check.Id, check.Group) ?? CheckPolicy.Required;
+            var policy = CheckPolicy.Required;
+            if (config is not null && !config.TryPolicyFor(check.Id, out policy))
+            {
+                return new RunReport(
+                    repository.RootPath,
+                    gates,
+                    $"'{HarnessConfig.FileName}' does not declare policy for shipped check '{check.Id}'.",
+                    repository.ReadDuration,
+                    Pin(config));
+            }
+
             if (!IsSelected(check, only, skip) || policy == CheckPolicy.Off)
             {
                 gates.Add(Excluded(check, policy, skip.Any(selector => Matches(check, selector))));
@@ -57,7 +67,10 @@ internal static class GateEngine
             var evaluation = disabled is null
                 ? Evaluate(check, new CheckContext(repository, config, configFailure, check))
                 : CheckEvaluation.NotApplicable(
-                    $"{HarnessConfig.FileName} answers `{disabled.Key}` not applicable — \"{disabled.Reason}\".");
+                    $"{HarnessConfig.FileName} answers `{disabled.Key}` not applicable — \"{disabled.Reason}\".",
+                    check.Id.StartsWith("complexity.", StringComparison.Ordinal)
+                        ? [$"DSM budget: not applicable — {disabled.Reason}"]
+                        : null);
             stopwatch.Stop();
 
             var gate = Judge(check, evaluation, stopwatch.Elapsed, config, policy);
@@ -198,7 +211,7 @@ internal static class GateEngine
                 findings = [new Finding(FindingSeverity.Blocking, HarnessConfig.FileName, reason ?? "not satisfied")];
                 detailed = findings.ToList();
                 outcome = CheckOutcome.Failed;
-                reason = "checks are required by default; use an advisory policy override to accept this gap.";
+                reason = "the explicit required policy rejects this gap; choose advisory to accept it visibly.";
                 break;
         }
 

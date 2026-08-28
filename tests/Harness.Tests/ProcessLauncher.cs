@@ -15,13 +15,15 @@ public static class ProcessLauncher
         IReadOnlyList<string> arguments,
         string workingDirectory,
         IReadOnlyDictionary<string, string>? environment = null,
-        IReadOnlyList<string>? removeFromEnvironment = null)
+        IReadOnlyList<string>? removeFromEnvironment = null,
+        string? standardInput = null)
     {
         var startInfo = new ProcessStartInfo(executable)
         {
             WorkingDirectory = workingDirectory,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            RedirectStandardInput = true,
             UseShellExecute = false,
         };
 
@@ -46,6 +48,13 @@ public static class ProcessLauncher
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException($"Could not start {executable}.");
+
+        if (standardInput is not null)
+        {
+            process.StandardInput.Write(standardInput);
+        }
+
+        process.StandardInput.Close();
 
         var standardOutput = process.StandardOutput.ReadToEndAsync();
         var standardError = process.StandardError.ReadToEndAsync();

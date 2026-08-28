@@ -1,3 +1,5 @@
+using Harness.Contracts;
+
 namespace Harness.Cli;
 
 /// <summary>What the user asked the harness to do.</summary>
@@ -6,6 +8,7 @@ internal enum CommandKind
     Check,
     BudgetUpdate,
     Init,
+    Upgrade,
     Setup,
     CommitMessageCheck,
     CommitTemplate,
@@ -32,6 +35,8 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
 
     public bool Latest { get; init; }
 
+    public bool DryRun { get; init; }
+
     public string? CheckId { get; init; }
 
     public string? Error { get; init; }
@@ -41,6 +46,8 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
     public bool AllowFixup { get; init; }
 
     public CommitLanguage CommitLanguage { get; init; } = CommitSettings.Default.Language;
+
+    public RepositoryKind? RepositoryKind { get; init; }
 
     public static Invocation Parse(IReadOnlyList<string> arguments, string currentDirectory)
     {
@@ -57,6 +64,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             "check" => ParseCheck(rest, currentDirectory),
             "budget" => ParseBudget(rest, currentDirectory),
             "init" => ParseInit(rest, currentDirectory),
+            "upgrade" => ParseUpgrade(rest, currentDirectory),
             "setup" => ParseSetup(rest, currentDirectory),
             "commit-message" => ParseCommitMessage(rest, currentDirectory),
             "commits" => ParseCommits(rest, currentDirectory),
@@ -64,6 +72,43 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             "version" or "--version" or "-v" => new Invocation(CommandKind.Version, currentDirectory),
             "help" or "--help" or "-h" => new Invocation(CommandKind.Help, currentDirectory),
             _ => Usage(currentDirectory, $"Unknown command '{command}'."),
+        };
+    }
+
+    private static Invocation ParseUpgrade(List<string> arguments, string currentDirectory)
+    {
+        var dryRun = false;
+        string? path = null;
+        foreach (var argument in arguments)
+        {
+            if (argument == "--dry-run")
+            {
+                if (dryRun)
+                {
+                    return Usage(currentDirectory, "--dry-run may only be given once.");
+                }
+
+                dryRun = true;
+            }
+            else if (argument.StartsWith('-'))
+            {
+                return Usage(currentDirectory, $"Unknown option '{argument}'.");
+            }
+            else if (path is not null)
+            {
+                return Usage(currentDirectory, "Only one repository path may be given.");
+            }
+            else
+            {
+                path = argument;
+            }
+        }
+
+        return new Invocation(
+            CommandKind.Upgrade,
+            Path.GetFullPath(path ?? currentDirectory, currentDirectory))
+        {
+            DryRun = dryRun,
         };
     }
 
@@ -131,6 +176,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
         var latest = false;
         var language = CommitSettings.Default.Language;
         var languageSeen = false;
+        RepositoryKind? repositoryKind = null;
         string? path = null;
 
         for (var index = 0; index < arguments.Count; index++)
@@ -169,6 +215,27 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
                 continue;
             }
 
+            if (argument == "--kind")
+            {
+                if (repositoryKind is not null || index + 1 >= arguments.Count)
+                {
+                    return Usage(currentDirectory, "--kind requires one value and may only be given once.");
+                }
+
+                repositoryKind = arguments[++index] switch
+                {
+                    "application" => Harness.Contracts.RepositoryKind.Application,
+                    "library" => Harness.Contracts.RepositoryKind.StandaloneLibrary,
+                    _ => (Harness.Contracts.RepositoryKind)(-1),
+                };
+                if ((int)repositoryKind < 0)
+                {
+                    return Usage(currentDirectory, "--kind must be 'application' or 'library'.");
+                }
+
+                continue;
+            }
+
             if (argument.StartsWith('-'))
             {
                 return Usage(currentDirectory, $"Unknown option '{argument}'.");
@@ -187,6 +254,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
         {
             Latest = latest,
             CommitLanguage = language,
+            RepositoryKind = repositoryKind,
         };
     }
 

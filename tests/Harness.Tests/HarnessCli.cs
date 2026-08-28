@@ -9,6 +9,9 @@ public static class HarnessCli
     public static CliRun Run(string workingDirectory, params string[] arguments)
         => Run(workingDirectory, environment: null, arguments);
 
+    public static CliRun RunWithInput(string workingDirectory, string input, params string[] arguments)
+        => ProcessLauncher.Run(ExecutablePath, arguments, workingDirectory, standardInput: input);
+
     public static CliRun RunVerbose(string workingDirectory, params string[] arguments)
     {
         var verboseArguments = arguments.Concat(["--verbose"]).ToArray();

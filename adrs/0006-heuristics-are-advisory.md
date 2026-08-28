@@ -3,7 +3,8 @@
 ## Status
 
 Accepted; enforcement superseded by [ADR-0027](0027-required-findings-are-blocking.md),
-dependency counts removed by [ADR-0029](0029-dependency-counts-removed.md).
+dependency counts removed by [ADR-0029](0029-dependency-counts-removed.md), threshold
+scores replaced by topology and DSM budgets in [ADR-0032](0032-topology-over-thresholds.md).
 
 ## Context
 
@@ -35,6 +36,10 @@ logical LOC, lexical branch tokens, constructor parameters, public members, `usi
 неверным и когда читателю следует отказаться действовать. Default-отчёт ограничен: худшие
 субъекты по каждой метрике плюс счётчик остальных; начиная с 1.5 явный `--all` раскрывает
 полный измеренный список.
+
+Контракт 2.0 применяет это правило к DSM-метрикам: `explain complexity.csharp` называет
+формулы propagation cost/core size и их ограничения; решение об их ratchet-enforcement
+принадлежит ADR-0032, а не этому историческому правилу эвристик.
 
 ## Consequences
 

@@ -37,16 +37,15 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
 
         What it accepts
           version       required; the current harness contract, such as "2.0.0", or "latest"
-                        to follow the installed binary. A different pin must be updated in the
-                        tracked config before this binary can evaluate it.
+                        to follow the installed binary. For a different pin, run `harness upgrade`;
+                        it is the only supported path to update the tracked config.
           architecture  either the sliced-dotnet/1 standard, or not applicable with a reason
                         for a standalone library.
           answers       one self-reported answer for every current `frame` question, keyed
                         without the `frame.` prefix.
-          applicability shared analysis family (currently `csharp`) answered not applicable.
-          settings      deterministic policy and commit language/setup requirements.
-          policy        exceptions to the default `required`: `advisory` keeps findings visible
-                        without blocking, and `off` skips a check.
+          applicability every shared analysis family explicitly marked true or false with reason.
+          settings      every deterministic threshold and commit language/setup requirement.
+          policy        one explicit `required`, `advisory` or `off` value per shipped check.
 
         Why it is incomplete rather than a violation
           Without a readable frame the harness cannot state what this repository answers, so
@@ -88,7 +87,7 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
 
         if (config.Policy.Count > 0)
         {
-            parts.Add($"{config.Policy.Count} policy override{(config.Policy.Count == 1 ? "" : "s")}");
+            parts.Add($"{config.Policy.Count} explicit policy entr{(config.Policy.Count == 1 ? "y" : "ies")}");
         }
 
         return $"{HarnessConfig.FileName} contains {string.Join(", ", parts)}. Answers are self-reported; "

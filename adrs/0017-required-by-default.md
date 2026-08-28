@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted.
+Superseded for contract 2.0 by the explicit-policy decision in
+[ADR-0032](0032-topology-over-thresholds.md).
 
 ## Context
 
@@ -29,3 +30,10 @@ Accepted.
 - Новый конфиг строг без списка boilerplate-строк `required`.
 - Осознанные послабления видны непосредственно в `policy`.
 - Конфиги версии 2 требуют явного перехода на version 3.
+
+## Contract 2.0
+
+Скрытого default больше нет: `.harness.json` обязан перечислить каждый shipped check с
+`required`, `advisory` или `off`. Инварианты `architecture.sliced-dotnet` и
+`complexity.csharp` могут быть только `required`. Добавление новой проверки делает старый
+конфиг incomplete, пока владелец явно не выберет policy.
