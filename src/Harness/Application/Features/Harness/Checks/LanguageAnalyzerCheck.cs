@@ -16,7 +16,7 @@ internal abstract class LanguageAnalyzerCheck(
 
     public string Applicability => analyzer.Language.Key;
 
-    public IReadOnlyList<EvidenceFile> Evidence => [];
+    public virtual IReadOnlyList<EvidenceFile> Evidence => [];
 
     public string Summary => $"{analyzer.Language.Name} {summary}";
 

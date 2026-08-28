@@ -38,6 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 ```sh
 harness init /path/to/repository   # создать намеренно незавершённую рамку
 harness check                      # проверить репозиторий
+harness budget update              # создать или ужать DSM-бюджет
 harness setup                      # подготовить этот клон
 harness version                    # релиз бинаря и текущий контракт
 ```
@@ -50,6 +51,11 @@ harness version                    # релиз бинаря и текущий �
 `harness setup`. Если frame требует setup, обычный `check` явно падает в неподготовленном
 клоне. Для CI сообщения проверяются явным диапазоном:
 `harness commits check <base>..<head>`.
+
+Применимый `complexity.csharp` требует tracked `.harness.budget.json`. Рост propagation
+cost или core size относительно него блокирует `check`, а улучшение предлагает выполнить
+`harness budget update`. Команда создаёт baseline или атомарно ужимает оба значения; повышать
+бюджет она не умеет — такое изменение делается вручную как обычный tracked-дифф для ревью.
 
 Путь можно не указывать для текущего репозитория. `harness help` показывает команды и
 проверки. Обычный `check` печатает компактную строку со статусом для каждой проверки,

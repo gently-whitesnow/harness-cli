@@ -7,8 +7,8 @@ internal static class ComplexityExplanation
         Rationale
           A dependency count describes one file. A design structure matrix (DSM) describes
           how a change can propagate through the repository as a whole. These measurements
-          are informational in this contract; a separate ratchet budget may turn increases
-          into regressions later.
+          are compared with one repository-wide, tracked ratchet budget. A regression is
+          blocking; an improvement is visible until the repository records it.
 
         Discovery
           Every authored, Git-tracked `.cs` file is one node. Generated, vendored and
@@ -48,9 +48,10 @@ internal static class ComplexityExplanation
           affect both N and its edges. Cross-language file dependencies are not yet represented.
 
         Remediation
-          No remediation is required by this informational check. A rising propagation cost
-          means more files lie downstream of typical changes. A growing core means more files
-          must change as a mutually dependent group; break an edge or extract a lower-level
-          concept when that growth is unintended.
+          Run `harness budget update` once to create `.harness.budget.json`. Commit both files.
+          A rising propagation cost means more files lie downstream of typical changes. A
+          growing core means more files must change as a mutually dependent group; break an
+          edge or extract a lower-level concept. The update command only lowers budgets;
+          raising one requires an explicit tracked edit and review.
         """;
 }

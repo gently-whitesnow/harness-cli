@@ -4,6 +4,7 @@ namespace Harness.Cli;
 internal enum CommandKind
 {
     Check,
+    BudgetUpdate,
     Init,
     Setup,
     CommitMessageCheck,
@@ -54,6 +55,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
         return command switch
         {
             "check" => ParseCheck(rest, currentDirectory),
+            "budget" => ParseBudget(rest, currentDirectory),
             "init" => ParseInit(rest, currentDirectory),
             "setup" => ParseSetup(rest, currentDirectory),
             "commit-message" => ParseCommitMessage(rest, currentDirectory),
@@ -186,6 +188,18 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             Latest = latest,
             CommitLanguage = language,
         };
+    }
+
+    private static Invocation ParseBudget(List<string> arguments, string currentDirectory)
+    {
+        if (arguments.Count is < 1 or > 2 || arguments[0] != "update"
+            || arguments.Skip(1).Any(argument => argument.StartsWith('-')))
+        {
+            return Usage(currentDirectory, "budget requires `update [path]`.");
+        }
+
+        var repositoryPath = Path.GetFullPath(arguments.ElementAtOrDefault(1) ?? currentDirectory, currentDirectory);
+        return new Invocation(CommandKind.BudgetUpdate, repositoryPath);
     }
 
     private static Invocation ParseSetup(List<string> arguments, string currentDirectory)

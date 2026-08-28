@@ -14,6 +14,46 @@ internal sealed record RepositoryComplexity(
 
     public static RepositoryComplexity Measure(SourceGraph graph)
     {
+        var fileGraph = Build(graph);
+        var analysis = Analyze(fileGraph.Adjacency);
+        return new RepositoryComplexity(fileGraph.Paths.Count, analysis.ReachablePairs, analysis.CoreFiles);
+    }
+
+    public static IReadOnlyList<string> LargestCore(SourceGraph graph)
+    {
+        var fileGraph = Build(graph);
+        var analysis = Analyze(fileGraph.Adjacency);
+        return analysis.Components
+            .Where(component => component.Count > 1)
+            .OrderByDescending(component => component.Count)
+            .ThenBy(component => fileGraph.Paths[component.Min()], StringComparer.Ordinal)
+            .FirstOrDefault()?
+            .Select(index => fileGraph.Paths[index])
+            .Order(StringComparer.Ordinal)
+            .ToList() ?? [];
+    }
+
+    public static IReadOnlyList<PropagationEdge> HighestPropagationEdges(SourceGraph graph)
+    {
+        var fileGraph = Build(graph);
+        var analysis = Analyze(fileGraph.Adjacency);
+        return graph.Proven
+            .Where(edge => edge.From.Path != edge.To.Path)
+            .GroupBy(edge => (edge.From.Path, edge.To.Path))
+            .Select(group => group.First())
+            .Select(edge => new PropagationEdge(
+                edge,
+                PropagationSpan(
+                    analysis,
+                    analysis.ComponentOf[fileGraph.Indexes[edge.From.Path]],
+                    analysis.ComponentOf[fileGraph.Indexes[edge.To.Path]])))
+            .OrderByDescending(edge => edge.ReachablePairs)
+            .ThenBy(edge => edge.Edge.Location, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static FileGraph Build(SourceGraph graph)
+    {
         var paths = graph.SourcePaths
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
@@ -33,14 +73,14 @@ internal sealed record RepositoryComplexity(
             }
         }
 
-        return From(adjacency);
+        return new FileGraph(paths, indexes, adjacency);
     }
 
-    private static RepositoryComplexity From(List<List<int>> adjacency)
+    private static Analysis Analyze(List<List<int>> adjacency)
     {
         if (adjacency.Count == 0)
         {
-            return new RepositoryComplexity(0, 0, 0);
+            return new Analysis([], [], [], 0, 0);
         }
 
         var components = StronglyConnectedComponents.Of(adjacency);
@@ -103,8 +143,34 @@ internal sealed record RepositoryComplexity(
             .Select(component => component.Count)
             .DefaultIfEmpty(0)
             .Max();
-        return new RepositoryComplexity(adjacency.Count, pairs, core);
+        return new Analysis(components, componentOf, reachable, pairs, core);
     }
+
+    private static long PropagationSpan(Analysis analysis, int from, int to)
+    {
+        var ancestors = 0;
+        for (var component = 0; component < analysis.Components.Count; component++)
+        {
+            if (Reaches(analysis, component, from))
+            {
+                ancestors += analysis.Components[component].Count;
+            }
+        }
+
+        var descendants = 0;
+        for (var component = 0; component < analysis.Components.Count; component++)
+        {
+            if (Reaches(analysis, to, component))
+            {
+                descendants += analysis.Components[component].Count;
+            }
+        }
+
+        return (long)ancestors * descendants;
+    }
+
+    private static bool Reaches(Analysis analysis, int from, int to)
+        => (analysis.Reachable[from][to / 64] & (1UL << (to % 64))) != 0;
 
     private static List<int> TopologicalOrder(
         List<HashSet<int>> adjacency,
@@ -128,4 +194,18 @@ internal sealed record RepositoryComplexity(
 
         return order;
     }
+
+    internal sealed record PropagationEdge(ReferenceEdge Edge, long ReachablePairs);
+
+    private sealed record FileGraph(
+        IReadOnlyList<string> Paths,
+        IReadOnlyDictionary<string, int> Indexes,
+        List<List<int>> Adjacency);
+
+    private sealed record Analysis(
+        IReadOnlyList<List<int>> Components,
+        IReadOnlyList<int> ComponentOf,
+        IReadOnlyList<ulong[]> Reachable,
+        long ReachablePairs,
+        int CoreFiles);
 }

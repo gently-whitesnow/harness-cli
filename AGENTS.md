@@ -36,6 +36,10 @@ external imports удалены как контекстные counts без ун
 модуль — содержание, а не цикл. [ADR-0021](adrs/0021-coupling-evidence-grades.md),
 [ADR-0029](adrs/0029-dependency-counts-removed.md)
 
+DSM-метрики `complexity.csharp` сравниваются с tracked `.harness.budget.json`: рост
+блокирует check, снижение предлагает `harness budget update`. Команда только ужимает
+baseline; повышение делается вручную через ревью. [ADR-0032](adrs/0032-topology-over-thresholds.md)
+
 Проверка называется `<семейство>.<язык>`, `Group` — семейство, `Applicability` — язык.
 Язык-нейтральное ядро живёт в `Structure/`, чтение исходника — за `ILanguageAnalyzer` в
 `Languages/<Язык>/`. Второй язык — экземпляр `Language`, анализатор и строка в реестре, а не

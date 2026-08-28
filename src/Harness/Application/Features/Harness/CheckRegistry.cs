@@ -8,6 +8,7 @@ using Harness.Checks.Duplication;
 using Harness.Checks.Frame;
 using Harness.Checks.TypesPerFile;
 using Harness.Config;
+using Harness.Languages;
 using Harness.Languages.CSharp;
 
 namespace Harness.Checks;
@@ -20,27 +21,30 @@ namespace Harness.Checks;
 /// </remarks>
 internal static class CheckRegistry
 {
+    private static readonly CSharpSources CSharp = new();
+
+    public static readonly IReadOnlyList<ILanguageAnalyzer> LanguageAnalyzers =
+        [new CSharpAnalyzer(CSharp)];
+
     public static readonly IReadOnlyList<IRepositoryCheck> All = Shipped();
 
-    /// <summary>One reader is shared, so the tracked C# is discovered and read once a run.</summary>
     private static IReadOnlyList<IRepositoryCheck> Shipped()
     {
-        var csharp = new CSharpSources();
-        var analyzer = new CSharpAnalyzer(csharp);
+        var csharpAnalyzer = LanguageAnalyzers.Single(analyzer => analyzer.Language == Language.CSharp);
 
         return
         [
             new HarnessConfigCheck(),
 
-            new SlicedDotNetShapeCheck(analyzer),
-            new ComplexityCheck(analyzer),
+            new SlicedDotNetShapeCheck(csharpAnalyzer),
+            .. LanguageAnalyzers.Select(analyzer => new ComplexityCheck(analyzer, LanguageAnalyzers)),
 
             new DocumentationPolicyCheck(),
             new CommitSetupCheck(),
-            new CommentLineCheck(csharp),
-            new TypesPerFileCheck(csharp),
-            new DependenciesCheck(analyzer),
-            new DuplicationCheck(csharp),
+            new CommentLineCheck(CSharp),
+            new TypesPerFileCheck(CSharp),
+            new DependenciesCheck(csharpAnalyzer),
+            new DuplicationCheck(CSharp),
 
             new BuildPropertiesCheck(),
             new CentralPackagesCheck(),

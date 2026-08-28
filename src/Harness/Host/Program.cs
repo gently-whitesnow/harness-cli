@@ -1,4 +1,5 @@
 using Harness.Checks;
+using Harness.Checks.Complexity;
 using Harness.Cli;
 using Harness.Commits;
 using Harness.Config;
@@ -54,6 +55,30 @@ switch (invocation.Kind)
             "Review every answer; ask the repository owner when intent is unclear rather than guessing.");
         Console.WriteLine("Track the file, then run `harness check --verbose`.");
         return ExitCodes.Success;
+    }
+
+    case CommandKind.BudgetUpdate:
+    {
+        var (repository, config, failure) = LoadRepository(invocation.RepositoryPath, checks);
+        if (repository is null || config is null)
+        {
+            Console.Error.WriteLine(failure);
+            return ExitCodes.Incomplete;
+        }
+
+        var analyzers = CheckRegistry.LanguageAnalyzers
+            .Where(analyzer => config.NotApplicable(analyzer.Language.Key) is null)
+            .ToList();
+        if (analyzers.Count == 0)
+        {
+            Console.Error.WriteLine("Cannot update the DSM budget: no registered language is applicable.");
+            return ExitCodes.Incomplete;
+        }
+
+        var result = ComplexityBudgetUpdater.Update(repository, analyzers);
+        var writer = result.ExitCode == ExitCodes.Success ? Console.Out : Console.Error;
+        writer.WriteLine(result.Message);
+        return result.ExitCode;
     }
 
     case CommandKind.Setup:
