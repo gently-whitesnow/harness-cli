@@ -173,19 +173,38 @@ public sealed class ComplexityBudgetTests
     }
 
     [Fact]
-    public void Budget_check_cannot_be_softened_or_disabled_by_policy()
+    public void Advisory_policy_keeps_the_regression_visible_without_failing()
     {
-        using var repository = Fixtures.Compliant(Frame.AllPresent().Policy(Check, "off"));
+        using var repository = Graph("advisory", ("A", ["B"]), ("B", ["C"]), ("C", []))
+            .WriteFile(".harness.budget.json", Budget(30, 0))
+            .Commit();
 
-        var run = HarnessCli.RunVerbose(repository.Path, "check");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
-        Assert.Equal(2, run.ExitCode);
-        Assert.True(run.OutputContains("cannot soften or disable the blocking ratchet budget"), run.Output);
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("propagation cost +36.67%"), run.Output);
+        Assert.True(run.OutputContains("advisory"), run.Output);
+    }
+
+    [Fact]
+    public void Off_policy_does_not_run_the_budget_check()
+    {
+        using var repository = Graph("off", ("A", ["B"]), ("B", ["C"]), ("C", []))
+            .WriteFile(".harness.budget.json", Budget(30, 0))
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("turns this check off"), run.Output);
     }
 
     private static RepositoryFixture Graph(params (string Name, string[] Dependencies)[] files)
+        => Graph("required", files);
+
+    private static RepositoryFixture Graph(string policy, params (string Name, string[] Dependencies)[] files)
     {
-        var repository = Fixtures.Compliant(Frame.AllPresent());
+        var repository = Fixtures.Compliant(Frame.AllPresent().Policy(Check, policy));
         foreach (var (name, dependencies) in files)
         {
             var fields = string.Join(

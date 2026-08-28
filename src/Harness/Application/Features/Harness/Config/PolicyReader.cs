@@ -4,7 +4,10 @@ namespace Harness.Config;
 
 /// <summary>
 /// Reads explicit repository applicability and policy. Every shipped axis and check must be
-/// visible in the frame, so adding a check cannot silently inherit a hidden default.
+/// visible in the frame, so adding a check cannot silently inherit a hidden default. The three
+/// policy values apply to every shipped check without exception: what the harness refuses is
+/// the address-level suppression of a single file or finding, not the tracked, reviewable
+/// decision to run a check as advisory or not to run it at all.
 /// </summary>
 internal static class PolicyReader
 {
@@ -148,17 +151,6 @@ internal static class PolicyReader
         {
             return (null, ConfigJson.Failure(
                 $"'policy' is missing explicit checks: {string.Join(", ", missing)}"));
-        }
-
-        foreach (var required in new[] { "architecture.sliced-dotnet", "complexity.csharp" })
-        {
-            if (policy[required] != CheckPolicy.Required)
-            {
-                var explanation = required == "architecture.sliced-dotnet"
-                    ? "cannot soften or disable blocking architecture invariants"
-                    : "cannot soften or disable the blocking ratchet budget";
-                return (null, ConfigJson.Failure($"'policy.{required}' {explanation}"));
-            }
         }
 
         return (policy, null);

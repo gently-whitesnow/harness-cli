@@ -12,6 +12,9 @@
 
 - [ADR-0017](0017-required-by-default.md) — Исторический required-default; контракт 2.0
   требует полный явный `policy` для каждого shipped check, без fallback ридера.
+- [ADR-0035](0035-policy-switch-is-uniform.md) — `required`/`advisory`/`off` действуют для
+  каждой shipped-проверки без исключений, включая топологический инвариант и ratchet-бюджет;
+  запрещено адресное подавление файла или находки, а не выключение проверки целиком.
 - [ADR-0027](0027-required-findings-are-blocking.md) — `required` превращает каждую
   находку проверки в blocking-нарушение; `advisory` даёт явное время на исправление.
 - [ADR-0016](0016-versioned-frame-and-explicit-initialization.md) — Версионированные снимки
