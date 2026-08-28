@@ -1,4 +1,6 @@
-namespace Harness.Languages.CSharp;
+using Harness.Languages.CSharp;
+
+namespace Harness.Infrastructure.Languages.CSharp;
 
 /// <summary>
 /// Reads declarations out of masked C# by matching braces and handing the text that precedes

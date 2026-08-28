@@ -1,4 +1,4 @@
-namespace Harness.Languages.CSharp;
+namespace Harness.Infrastructure.Languages.CSharp;
 
 /// <summary>Shared lexical navigation for square-bracketed C# regions.</summary>
 internal static class CSharpBrackets

@@ -1,6 +1,6 @@
 using Harness.Structure;
 
-namespace Harness.Languages.CSharp;
+namespace Harness.Infrastructure.Languages.CSharp;
 
 /// <summary>
 /// The names the repository itself declares — a closed vocabulary that makes resolution

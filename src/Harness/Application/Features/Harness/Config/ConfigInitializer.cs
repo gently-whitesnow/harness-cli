@@ -1,6 +1,5 @@
 using System.Text;
 using Harness.Contracts;
-using Harness.Contracts.Files;
 using Harness.Repository;
 using Harness.Versioning;
 
@@ -11,7 +10,6 @@ internal static class ConfigInitializer
 {
     public static (string? Path, string? Failure) Create(
         IRepository repository,
-        IFileSystem files,
         bool latest,
         CommitLanguage commitLanguage,
         RepositoryKind repositoryKind,
@@ -21,13 +19,13 @@ internal static class ConfigInitializer
         var path = System.IO.Path.Combine(repository.RootPath, HarnessConfig.FileName);
         var budgetPath = System.IO.Path.Combine(repository.RootPath, ".harness.budget.json");
         var tracked = repository.TrackedEntries.Any(entry => entry.Path == HarnessConfig.FileName);
-        if (tracked || RootEntryExists(files, repository.RootPath, HarnessConfig.FileName))
+        if (tracked || RootEntryExists(repository.RootPath, HarnessConfig.FileName))
         {
             return (null, $"Refusing to overwrite existing '{path}'. Remove it explicitly before initializing.");
         }
 
         var budgetTracked = repository.TrackedEntries.Any(entry => entry.Path == ".harness.budget.json");
-        if (budgetTracked || RootEntryExists(files, repository.RootPath, ".harness.budget.json"))
+        if (budgetTracked || RootEntryExists(repository.RootPath, ".harness.budget.json"))
         {
             return (null, $"Refusing to overwrite existing '{budgetPath}'. Remove it explicitly before initializing.");
         }
@@ -36,15 +34,15 @@ internal static class ConfigInitializer
         var budgetCreated = false;
         try
         {
-            files.WriteNew(budgetPath, initialBudget);
+            WriteNew(budgetPath, initialBudget);
             budgetCreated = true;
-            files.WriteNew(path, content);
+            WriteNew(path, content);
         }
         catch (IOException exception)
         {
             if (budgetCreated)
             {
-                DeleteCreatedBudget(files, budgetPath);
+                DeleteCreatedBudget(budgetPath);
             }
 
             return (null, $"Could not create '{path}' without overwriting anything: {exception.Message}");
@@ -53,7 +51,7 @@ internal static class ConfigInitializer
         {
             if (budgetCreated)
             {
-                DeleteCreatedBudget(files, budgetPath);
+                DeleteCreatedBudget(budgetPath);
             }
 
             return (null, $"Could not create '{path}': {exception.Message}");
@@ -62,23 +60,30 @@ internal static class ConfigInitializer
         return (path, null);
     }
 
-    private static bool RootEntryExists(IFileSystem files, string rootPath, string fileName)
-        => files.EnumerateEntries(rootPath)
+    private static bool RootEntryExists(string rootPath, string fileName)
+        => Directory.EnumerateFileSystemEntries(rootPath)
             .Any(path => string.Equals(
                 System.IO.Path.GetFileName(path),
                 fileName,
                 StringComparison.Ordinal));
 
-    private static void DeleteCreatedBudget(IFileSystem files, string budgetPath)
+    private static void DeleteCreatedBudget(string budgetPath)
     {
         try
         {
-            files.Delete(budgetPath);
+            File.Delete(budgetPath);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             // Preserve the creation failure; rollback only removes the file this call created.
         }
+    }
+
+    private static void WriteNew(string path, string content)
+    {
+        using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+        using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        writer.Write(content);
     }
 
     private static string Render(

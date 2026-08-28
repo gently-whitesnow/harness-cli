@@ -4,14 +4,14 @@ using Harness.Cli;
 using Harness.Commits;
 using Harness.Config;
 using Harness.Engine;
-using Harness.Files;
 using Harness.Git;
+using Harness.Host;
+using Harness.Report;
 using Harness.Repository;
 using Harness.Versioning;
 
 var invocation = Invocation.Parse(args, Directory.GetCurrentDirectory());
 var checks = CheckRegistry.All;
-var files = new SystemFileSystem();
 
 switch (invocation.Kind)
 {
@@ -63,7 +63,6 @@ switch (invocation.Kind)
 
         var result = ConfigInitializer.Create(
             initRepository,
-            files,
             invocation.Latest,
             invocation.CommitLanguage,
             repositoryKind.Value,
@@ -79,16 +78,9 @@ switch (invocation.Kind)
             $"Created '{result.Path}' and "
             + $"'{Path.Combine(Path.GetDirectoryName(result.Path)!, ".harness.budget.json")}' "
             + "with the current tracked DSM metrics.");
-        var (repository, openFailure) = GitRepository.Open(invocation.RepositoryPath);
-        if (repository is null)
-        {
-            Console.Error.WriteLine(openFailure);
-            return ExitCodes.Incomplete;
-        }
-
         var commitSettings = new CommitSettings(invocation.CommitLanguage, RequireSetup: true);
         var (setup, setupFailure) = CheckRegistry.CommitIntegration.Install(
-            repository,
+            initRepository,
             commitSettings,
             CommitTemplate.Render(commitSettings));
         if (setup is null)
@@ -114,7 +106,7 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        var (report, upgradeFailure) = FrameUpgrade.Raise(repository, files, invocation.DryRun);
+        var (report, upgradeFailure) = FrameUpgrade.Raise(repository, invocation.DryRun);
         if (report is null)
         {
             Console.Error.WriteLine(upgradeFailure);
@@ -143,7 +135,7 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        var result = ComplexityBudgetUpdater.Update(repository, files, analyzers);
+        var result = ComplexityBudgetUpdater.Update(repository, analyzers);
         var writer = result.ExitCode == ExitCodes.Success ? Console.Out : Console.Error;
         writer.WriteLine(result.Message);
         return result.ExitCode;
@@ -197,7 +189,7 @@ switch (invocation.Kind)
         string message;
         try
         {
-            message = files.ReadText(invocation.Operand!);
+            message = File.ReadAllText(invocation.Operand!);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

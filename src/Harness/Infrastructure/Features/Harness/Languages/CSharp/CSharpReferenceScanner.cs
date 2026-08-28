@@ -1,6 +1,7 @@
+using Harness.Languages.CSharp;
 using Harness.Structure;
 
-namespace Harness.Languages.CSharp;
+namespace Harness.Infrastructure.Languages.CSharp;
 
 /// <summary>
 /// Finds every place a file names a type the repository declares, and grades each place by

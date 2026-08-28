@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using Harness.Versioning;
 
-namespace Harness.Cli;
+namespace Harness.Report;
 
 /// <summary>Renders a complete scan as compact status rows, with evidence on demand.</summary>
 internal static class ConsoleReport

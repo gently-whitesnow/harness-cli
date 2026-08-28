@@ -1,6 +1,7 @@
+using Harness.Languages.CSharp;
 using Harness.Structure;
 
-namespace Harness.Languages.CSharp;
+namespace Harness.Infrastructure.Languages.CSharp;
 
 /// <summary>
 /// Turns read files into the dependency graph of the repository. Every edge starts at the

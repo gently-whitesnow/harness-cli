@@ -9,7 +9,7 @@ internal enum MaskedContent
 }
 
 /// <summary>
-/// One tracked C# file, reduced to code by <see cref="CSharpMask"/> and indexed by line, so
+/// One tracked C# file, reduced to code by the infrastructure reader and indexed by line, so
 /// every measurement taken on it can be reported at the place it was taken.
 /// </summary>
 internal sealed class CSharpSource

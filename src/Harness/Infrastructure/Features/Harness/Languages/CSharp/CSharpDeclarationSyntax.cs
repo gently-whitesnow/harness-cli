@@ -1,4 +1,6 @@
-namespace Harness.Languages.CSharp;
+using Harness.Languages.CSharp;
+
+namespace Harness.Infrastructure.Languages.CSharp;
 
 /// <summary>
 /// Reads one declaration header — the masked text between the previous terminator and the

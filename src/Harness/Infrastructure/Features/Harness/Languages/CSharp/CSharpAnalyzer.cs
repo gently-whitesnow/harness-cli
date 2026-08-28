@@ -1,7 +1,9 @@
+using Harness.Languages;
+using Harness.Languages.CSharp;
 using Harness.Repository;
 using Harness.Structure;
 
-namespace Harness.Languages.CSharp;
+namespace Harness.Infrastructure.Languages.CSharp;
 
 /// <summary>
 /// The C# side of the structural checks. It reads tracked source, never a build output and

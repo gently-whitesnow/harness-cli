@@ -1,6 +1,7 @@
+using Harness.Languages.CSharp;
 using Harness.Repository;
 
-namespace Harness.Languages.CSharp;
+namespace Harness.Infrastructure.Languages.CSharp;
 
 /// <summary>
 /// The tracked C# a repository ships, discovered and read once for the whole run. Every C#

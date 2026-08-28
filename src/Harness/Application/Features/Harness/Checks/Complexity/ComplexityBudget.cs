@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
-using Harness.Contracts.Files;
 using Harness.Structure;
 
 namespace Harness.Checks.Complexity;
@@ -28,13 +27,12 @@ internal sealed record ComplexityBudget(IReadOnlyDictionary<string, ComplexityBu
     }
 
     public static (ComplexityBudget? Budget, string? Failure) LoadWorking(
-        IFileSystem files,
         string path,
         IReadOnlyList<string> expectedIds)
     {
         try
         {
-            return files.Exists(path) ? Parse(files.ReadText(path), expectedIds) : (null, null);
+            return File.Exists(path) ? Parse(File.ReadAllText(path), expectedIds) : (null, null);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

@@ -1,3 +1,4 @@
+using Harness.Checks;
 using Harness.Checks.Architecture;
 using Harness.Checks.Comments;
 using Harness.Checks.Commits;
@@ -8,10 +9,10 @@ using Harness.Checks.Duplication;
 using Harness.Checks.Frame;
 using Harness.Checks.TypesPerFile;
 using Harness.Git;
+using Harness.Infrastructure.Languages.CSharp;
 using Harness.Languages;
-using Harness.Languages.CSharp;
 
-namespace Harness.Checks;
+namespace Harness.Host;
 
 /// <summary>The checks this version of the harness ships, in execution order.</summary>
 /// <remarks>

@@ -1,5 +1,5 @@
 using Harness.Structure;
 
-namespace Harness.Languages.CSharp;
+namespace Harness.Infrastructure.Languages.CSharp;
 
 internal readonly record struct NameOccurrence(string Name, int Line, EvidenceGrade Grade);

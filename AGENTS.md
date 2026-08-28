@@ -88,13 +88,13 @@ setup` включает шаблон и `commit-msg` hook в общем ката
   - `Host/` — composition root, статический реестр и запуск процесса.
   - `Api/Features/Harness/Cli/` — входное зеркало с разбором командной строки.
   - `Application/Features/Harness/` — единый прикладной слайс: проверки, конфигурация,
-    движок, commit-команды, отчёт и публичные `Contracts/` для входа и адаптеров.
+    движок, commit-команды, отчёт и публичные `Contracts/` для входа и адаптеров; это одна
+    CLI-capability, а не набор независимых бизнес-слайсов ([ADR-0034](adrs/0034-language-axis-in-sliced-dotnet.md)).
   - `Domain/Harness/Structure/` — язык-нейтральная модель графа, модулей, циклов и DSM.
-  - `Domain/Harness/Languages/` — языковой порт ADR-0022; реализаций здесь нет.
+  - `Domain/Harness/Languages/` — языковой порт ADR-0022/0034; реализаций здесь нет.
   - `Domain/Harness/Repository/` — модель tracked evidence и порт репозитория.
   - `Infrastructure/Features/Harness/Git/` — Git-процесс и clone-local интеграция.
-  - `Infrastructure/Features/Harness/Languages/CSharp/` — C#-ридер, реализующий языковой порт.
-  - `Infrastructure/Features/Harness/Files/` — файловая система за прикладным портом.
+  - `Infrastructure/Features/Harness/Languages/CSharp/` — C#-ридер в отдельном infra namespace.
   - `Shared/Versioning/` — версия бинаря и граница текущего контракта.
 - `tests/Harness.Tests` — приёмочные тесты, которые гоняют скомпилированный исполняемый файл.
 - `adrs/` — долговременные решения; правила ниже ссылаются туда за обоснованием.

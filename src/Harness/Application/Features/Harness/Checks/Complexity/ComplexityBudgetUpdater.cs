@@ -1,4 +1,3 @@
-using Harness.Contracts.Files;
 using Harness.Languages;
 using Harness.Repository;
 using Harness.Structure;
@@ -19,7 +18,6 @@ internal static class ComplexityBudgetUpdater
 
     public static ComplexityBudgetUpdate Update(
         IRepository repository,
-        IFileSystem files,
         IReadOnlyList<ILanguageAnalyzer> analyzers)
     {
         var (entries, measureFailure) = Measure(repository, analyzers, allowEmpty: false);
@@ -31,7 +29,7 @@ internal static class ComplexityBudgetUpdater
         var expectedIds = entries.Keys.Order(StringComparer.Ordinal).ToList();
         var current = new ComplexityBudget(entries);
         var path = Path.Combine(repository.RootPath, ComplexityBudget.FileName);
-        var (existing, readFailure) = ComplexityBudget.LoadWorking(files, path, expectedIds);
+        var (existing, readFailure) = ComplexityBudget.LoadWorking(path, expectedIds);
         if (readFailure is not null)
         {
             return new(ExitCodes.Incomplete, readFailure);
@@ -54,14 +52,14 @@ internal static class ComplexityBudgetUpdater
         var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            files.WriteText(temporary, current.Serialize());
-            files.Move(temporary, path, overwrite: true);
+            File.WriteAllText(temporary, current.Serialize());
+            File.Move(temporary, path, overwrite: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             try
             {
-                files.Delete(temporary);
+                File.Delete(temporary);
             }
             catch (Exception cleanupException) when (cleanupException is IOException or UnauthorizedAccessException)
             {

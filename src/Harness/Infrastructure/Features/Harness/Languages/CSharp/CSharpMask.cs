@@ -1,4 +1,6 @@
-namespace Harness.Languages.CSharp;
+using Harness.Languages.CSharp;
+
+namespace Harness.Infrastructure.Languages.CSharp;
 
 /// <summary>
 /// Reduces C# to code by replacing comment text, literal content and preprocessor directives

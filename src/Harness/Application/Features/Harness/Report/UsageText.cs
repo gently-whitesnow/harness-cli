@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Harness.Cli;
+namespace Harness.Report;
 
 internal static class UsageText
 {
