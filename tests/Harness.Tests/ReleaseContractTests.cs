@@ -52,7 +52,7 @@ public sealed class ReleaseContractTests
         var run = HarnessCli.Run(repository.Path, "upgrade");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Contains("from 1.5.0 to 2.0.0", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains($"from 1.5.0 to {Release.Current}", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("removed  maintainability.csharp, cohesion.csharp", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("sliced-dotnet/1", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("explicit applicability, settings and policy", run.StandardOutput, StringComparison.Ordinal);
