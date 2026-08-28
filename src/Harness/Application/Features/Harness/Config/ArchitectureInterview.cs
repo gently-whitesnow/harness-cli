@@ -1,10 +1,6 @@
-namespace Harness.Config;
+using Harness.Contracts;
 
-internal enum RepositoryKind
-{
-    Application,
-    StandaloneLibrary,
-}
+namespace Harness.Config;
 
 internal static class ArchitectureInterview
 {
@@ -16,7 +12,8 @@ internal static class ArchitectureInterview
         {
             "application" or "app" => (RepositoryKind.Application, null),
             "library" or "standalone-library" => (RepositoryKind.StandaloneLibrary, null),
-            _ => (null, "Initialization requires one answer: 'application' or 'library'."),
+            _ => (null, "Initialization requires one answer: 'application' or 'library'; "
+                + "for non-interactive use, pass `--kind application` or `--kind library`."),
         };
     }
 }

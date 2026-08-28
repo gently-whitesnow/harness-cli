@@ -37,8 +37,8 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
 
         What it accepts
           version       required; the current harness contract, such as "2.0.0", or "latest"
-                        to follow the installed binary. A different pin must be updated in the
-                        tracked config before this binary can evaluate it.
+                        to follow the installed binary. For a different pin, run `harness upgrade`;
+                        it is the only supported path to update the tracked config.
           architecture  either the sliced-dotnet/1 standard, or not applicable with a reason
                         for a standalone library.
           answers       one self-reported answer for every current `frame` question, keyed

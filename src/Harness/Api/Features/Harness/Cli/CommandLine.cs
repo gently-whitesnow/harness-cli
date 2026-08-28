@@ -1,3 +1,5 @@
+using Harness.Contracts;
+
 namespace Harness.Cli;
 
 /// <summary>What the user asked the harness to do.</summary>
@@ -44,6 +46,8 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
     public bool AllowFixup { get; init; }
 
     public CommitLanguage CommitLanguage { get; init; } = CommitSettings.Default.Language;
+
+    public RepositoryKind? RepositoryKind { get; init; }
 
     public static Invocation Parse(IReadOnlyList<string> arguments, string currentDirectory)
     {
@@ -172,6 +176,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
         var latest = false;
         var language = CommitSettings.Default.Language;
         var languageSeen = false;
+        RepositoryKind? repositoryKind = null;
         string? path = null;
 
         for (var index = 0; index < arguments.Count; index++)
@@ -210,6 +215,27 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
                 continue;
             }
 
+            if (argument == "--kind")
+            {
+                if (repositoryKind is not null || index + 1 >= arguments.Count)
+                {
+                    return Usage(currentDirectory, "--kind requires one value and may only be given once.");
+                }
+
+                repositoryKind = arguments[++index] switch
+                {
+                    "application" => Harness.Contracts.RepositoryKind.Application,
+                    "library" => Harness.Contracts.RepositoryKind.StandaloneLibrary,
+                    _ => (Harness.Contracts.RepositoryKind)(-1),
+                };
+                if ((int)repositoryKind < 0)
+                {
+                    return Usage(currentDirectory, "--kind must be 'application' or 'library'.");
+                }
+
+                continue;
+            }
+
             if (argument.StartsWith('-'))
             {
                 return Usage(currentDirectory, $"Unknown option '{argument}'.");
@@ -228,6 +254,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
         {
             Latest = latest,
             CommitLanguage = language,
+            RepositoryKind = repositoryKind,
         };
     }
 

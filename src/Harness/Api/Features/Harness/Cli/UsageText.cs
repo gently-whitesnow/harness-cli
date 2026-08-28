@@ -11,7 +11,7 @@ internal static class UsageText
         Usage
           harness check [path] [--only <ids>] [--skip <ids>] [--verbose] [--all]
           harness budget update [path]
-          harness init [path] [--latest] [--language <en|ru>]
+          harness init [path] [--kind <application|library>] [--latest] [--language <en|ru>]
           harness upgrade [path] [--dry-run]
           harness setup [path]
           harness commit-message check <message-file>
@@ -26,6 +26,7 @@ internal static class UsageText
           --skip <ids>   exclude the given check or group identifiers; they stay visible in the summary
           --verbose      show findings, reasons and timings
           --all          show every measured subject instead of top findings; implies --verbose
+          --kind         repository kind for non-interactive initialization
           --latest       make an initialized frame follow the installed binary's contract
           --dry-run      describe the contract migration without changing the pin
           --language     language for human-written commit subjects and bodies (default: ru)

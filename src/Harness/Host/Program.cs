@@ -22,10 +22,27 @@ switch (invocation.Kind)
 
     case CommandKind.Init:
     {
-        var (repositoryKind, interviewFailure) = ArchitectureInterview.Ask(Console.In, Console.Out);
+        var (repositoryKind, interviewFailure) = invocation.RepositoryKind is { } selected
+            ? (selected, null)
+            : ArchitectureInterview.Ask(Console.In, Console.Out);
         if (repositoryKind is null)
         {
             Console.Error.WriteLine(interviewFailure);
+            return ExitCodes.Incomplete;
+        }
+
+        var (initRepository, initOpenFailure) = GitRepository.Open(invocation.RepositoryPath);
+        if (initRepository is null)
+        {
+            Console.Error.WriteLine(initOpenFailure);
+            return ExitCodes.Incomplete;
+        }
+
+        var (initialBudget, budgetFailure) =
+            ComplexityBudgetUpdater.InitialContent(initRepository, CheckRegistry.LanguageAnalyzers);
+        if (initialBudget is null)
+        {
+            Console.Error.WriteLine(budgetFailure);
             return ExitCodes.Incomplete;
         }
 
@@ -34,14 +51,18 @@ switch (invocation.Kind)
             invocation.Latest,
             invocation.CommitLanguage,
             repositoryKind.Value,
-            CheckRegistry.Describe(checks));
+            CheckRegistry.Describe(checks),
+            initialBudget);
         if (result.Failure is not null)
         {
             Console.Error.WriteLine(result.Failure);
             return ExitCodes.Incomplete;
         }
 
-        Console.WriteLine($"Created '{result.Path}' and an empty '.harness.budget.json'.");
+        Console.WriteLine(
+            $"Created '{result.Path}' and "
+            + $"'{Path.Combine(Path.GetDirectoryName(result.Path)!, ".harness.budget.json")}' "
+            + "with the current tracked DSM metrics.");
         var (repository, openFailure) = GitRepository.Open(invocation.RepositoryPath);
         if (repository is null)
         {

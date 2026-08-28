@@ -37,6 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 
 ```sh
 harness init /path/to/repository   # выбрать application/library и создать явную рамку
+harness init --kind application    # то же без интерактивного stdin
 harness upgrade                    # поднять pin и получить маршрут миграции
 harness check                      # проверить репозиторий
 harness budget update              # создать или ужать DSM-бюджет
@@ -47,10 +48,11 @@ harness version                    # релиз бинаря и текущий �
 `init` задаёт один вопрос — приложение это или standalone-библиотека. Для приложения он
 фиксирует `architecture.standard: sliced-dotnet/1`, для библиотеки — явный
 `architecture.applicable: false`; карту каталогов он не генерирует. Команда создаёт
-`.harness.json` и начальный `.harness.budget.json`, перечисляет все settings, applicability
+`.harness.json` и `.harness.budget.json` с текущими DSM-метриками, перечисляет все settings, applicability
 и policy без скрытых defaults, а неотвеченные frame-вопросы явно оставляет `off`.
 По умолчанию фиксируется текущий релиз; `--latest` включает rolling-контракт. Существующие
-файлы команда не перезаписывает и в Git не добавляет. `init` также активирует шаблон
+файлы команда не перезаписывает и в Git не добавляет. В скриптах и CI тот же выбор задаётся
+через `--kind application|library`. `init` также активирует шаблон
 коммита и `commit-msg` hook; после нового клонирования это делает идемпотентный
 `harness setup`. Если frame требует setup, обычный `check` явно падает в неподготовленном
 клоне. Для CI сообщения проверяются явным диапазоном:

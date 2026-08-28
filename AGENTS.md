@@ -63,7 +63,8 @@ FSD 2.1), верхние слои читают любой `Domain`-слайс. S
 [ADR-0033](adrs/0033-canonical-standard-over-declarations.md)
 
 `"latest"` включает rolling-контракт. `harness init` спрашивает только application или
-standalone-library, создаёт соответствующую `architecture`, начальный DSM-бюджет и полный
+standalone-library (либо принимает `--kind application|library` без stdin), создаёт
+соответствующую `architecture`, DSM-бюджет текущих tracked-исходников и полный
 явный конфиг. Нерешённые answer-ключи остаются `{}` и `off`: исследуй репозиторий, замени
 каждый честным ответом и включи его policy. Не выдумывай положительный ответ.
 

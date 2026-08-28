@@ -61,8 +61,8 @@ internal sealed record HarnessConfig
     public string? AnswerFailure(string key)
         => AnswerFailures.TryGetValue(key, out var failure) ? failure : null;
 
-    public CheckPolicy PolicyFor(string checkId)
-        => Policy[checkId];
+    public bool TryPolicyFor(string checkId, out CheckPolicy policy)
+        => Policy.TryGetValue(checkId, out policy);
 
     public ApplicabilityAnswer? NotApplicable(string? key)
         => key is not null

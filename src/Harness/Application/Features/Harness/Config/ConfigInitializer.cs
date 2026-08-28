@@ -1,4 +1,5 @@
 using System.Text;
+using Harness.Contracts;
 using Harness.Git;
 using Harness.Versioning;
 
@@ -12,7 +13,8 @@ internal static class ConfigInitializer
         bool latest,
         CommitLanguage commitLanguage,
         RepositoryKind repositoryKind,
-        IReadOnlyList<CheckDescriptor> checks)
+        IReadOnlyList<CheckDescriptor> checks,
+        string initialBudget)
     {
         var (repository, openFailure) = GitRepository.Open(repositoryPath);
         if (repository is null)
@@ -38,9 +40,7 @@ internal static class ConfigInitializer
         var budgetCreated = false;
         try
         {
-            WriteNew(
-                budgetPath,
-                "{\n  \"complexity.csharp\": {\n    \"propagationCost\": 0,\n    \"coreSize\": 0\n  }\n}\n");
+            WriteNew(budgetPath, initialBudget);
             budgetCreated = true;
             using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
             using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
@@ -142,6 +142,7 @@ internal static class ConfigInitializer
               },
               "policy": {
             """);
+        text.Append('\n');
         for (var index = 0; index < checks.Count; index++)
         {
             var check = checks[index];

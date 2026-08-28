@@ -49,7 +49,15 @@ public sealed class InitCommandTests
                 ? "off"
                 : entry.Name == "duplication.csharp" ? "advisory" : "required", entry.Value.GetString()));
         Assert.True(File.Exists(repository.Absolute(".harness.budget.json")));
+        Assert.StartsWith("{\n", File.ReadAllText(path), StringComparison.Ordinal);
+        Assert.Contains("\n  \"policy\": {\n", File.ReadAllText(path), StringComparison.Ordinal);
         Assert.False(root.TryGetProperty("suppress", out _));
+
+        repository.CommitAs("chore(harness): инициализировать рамку репозитория");
+        Assert.Equal(0, HarnessCli.Run(repository.Path, "check", "--only", "complexity.csharp").ExitCode);
+        var budgetUpdate = HarnessCli.Run(repository.Path, "budget", "update");
+        Assert.Equal(0, budgetUpdate.ExitCode);
+        Assert.Contains("UNCHANGED", budgetUpdate.StandardOutput, StringComparison.Ordinal);
     }
 
     private static void AssertDefaultSettings(JsonElement settings)
@@ -115,6 +123,31 @@ public sealed class InitCommandTests
     }
 
     [Fact]
+    public void Kind_option_initializes_without_reading_stdin()
+    {
+        using var repository = RepositoryFixture.CreateGitRepository();
+
+        var run = HarnessCli.RunWithInput(repository.Path, string.Empty, "init", "--kind", "library");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("Repository kind", run.StandardOutput, StringComparison.Ordinal);
+        using var document = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
+        Assert.False(document.RootElement.GetProperty("architecture").GetProperty("applicable").GetBoolean());
+    }
+
+    [Fact]
+    public void Closed_stdin_explains_the_non_interactive_kind_option()
+    {
+        using var repository = RepositoryFixture.CreateGitRepository();
+
+        var run = HarnessCli.RunWithInput(repository.Path, string.Empty, "init");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("--kind application", run.StandardError, StringComparison.Ordinal);
+        Assert.False(File.Exists(repository.Absolute(".harness.json")));
+    }
+
+    [Fact]
     public void Canonical_empty_dotnet_application_is_green_after_init()
     {
         using var repository = RepositoryFixture.CreateGitRepository()
@@ -123,9 +156,13 @@ public sealed class InitCommandTests
             .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
             .WriteFile("Directory.Build.props", Fixtures.HardenedBuildProps)
             .WriteFile("src/App/App.csproj", Fixtures.SimpleSdkProject)
-            .WriteFile("src/App/Host/host.txt", "composition\n")
-            .WriteFile("src/App/Api/Features/Example/entry.txt", "input\n")
-            .WriteFile("src/App/Application/Features/Example/usecase.txt", "use case\n")
+            .WriteFile("src/App/Host/Program.cs", "namespace App.Host; sealed class Program;\n")
+            .WriteFile(
+                "src/App/Api/Features/Example/Endpoint.cs",
+                "namespace App.Api.Features.Example; sealed class Endpoint(App.Application.Features.Example.UseCase useCase);\n")
+            .WriteFile(
+                "src/App/Application/Features/Example/UseCase.cs",
+                "namespace App.Application.Features.Example; sealed class UseCase;\n")
             .Commit();
 
         Assert.Equal(0, HarnessCli.RunWithInput(repository.Path, "application\n", "init").ExitCode);
@@ -136,6 +173,10 @@ public sealed class InitCommandTests
         Assert.Equal(0, check.ExitCode);
         Assert.Contains("architecture map: zone src/App", check.Output, StringComparison.Ordinal);
         Assert.Contains("DSM budget:", check.Output, StringComparison.Ordinal);
+        Assert.Contains(
+            "\"propagationCost\": 33.333333",
+            File.ReadAllText(repository.Absolute(".harness.budget.json")),
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -227,6 +268,8 @@ public sealed class InitCommandTests
     [InlineData("--force")]
     [InlineData("--language", "de")]
     [InlineData("--latest", "--latest")]
+    [InlineData("--kind", "service")]
+    [InlineData("--kind", "application", "--kind", "library")]
     [InlineData("one", "two")]
     public void Invalid_init_arguments_show_usage_and_fail(params string[] arguments)
     {
@@ -237,7 +280,7 @@ public sealed class InitCommandTests
 
         Assert.Equal(2, run.ExitCode);
         Assert.Empty(run.StandardOutput);
-        Assert.Contains("harness init [path] [--latest]", run.StandardError, StringComparison.Ordinal);
+        Assert.Contains("harness init [path] [--kind", run.StandardError, StringComparison.Ordinal);
         Assert.False(File.Exists(repository.Absolute(".harness.json")));
     }
 

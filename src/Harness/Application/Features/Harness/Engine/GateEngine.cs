@@ -45,7 +45,17 @@ internal static class GateEngine
         var gates = new List<GateReport>();
         foreach (var check in checks)
         {
-            var policy = config?.PolicyFor(check.Id) ?? CheckPolicy.Required;
+            var policy = CheckPolicy.Required;
+            if (config is not null && !config.TryPolicyFor(check.Id, out policy))
+            {
+                return new RunReport(
+                    repository.RootPath,
+                    gates,
+                    $"'{HarnessConfig.FileName}' does not declare policy for shipped check '{check.Id}'.",
+                    repository.ReadDuration,
+                    Pin(config));
+            }
+
             if (!IsSelected(check, only, skip) || policy == CheckPolicy.Off)
             {
                 gates.Add(Excluded(check, policy, skip.Any(selector => Matches(check, selector))));
