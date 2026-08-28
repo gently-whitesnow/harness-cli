@@ -195,8 +195,8 @@ public sealed class ArchitectureShapeTests
         var run = Shape(repository);
 
         Assert.Equal(1, run.ExitCode);
-        Assert.Contains("empty-slice-group", run.Output, StringComparison.Ordinal);
-        Assert.Contains("group 'EmptyGroup'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("empty-slice-or-group", run.Output, StringComparison.Ordinal);
+        Assert.Contains("name 'EmptyGroup'", run.Output, StringComparison.Ordinal);
         Assert.Contains("dimension 'Application'", run.Output, StringComparison.Ordinal);
         Assert.Contains("Application/Features/EmptyGroup/", run.Output, StringComparison.Ordinal);
     }
@@ -249,6 +249,60 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
+    public void Empty_orphan_mirror_is_reported_once_at_the_mirror_boundary()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Domain/Ghost/.gitkeep", "")
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Equal(1, Occurrences(run.Output, "orphan-slice-mirror: slice 'Ghost'"));
+        Assert.DoesNotContain("empty-slice-mirror: slice 'Ghost'", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void File_directly_in_a_known_mirror_group_names_the_group_and_a_valid_slice_path()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Finance/Base.cs", "sealed class Base;")
+            .WriteFile("src/Orders/Consumers/Features/Finance/Invoices/Handler.cs", "sealed class Handler;")
+            .WriteFile("src/Orders/Application/Features/Finance/Invoices/Create.cs", "sealed class Create;")
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("file-in-slice-group: group 'Finance'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("dimension 'Api'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Api/Features/Finance/Invoices/", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("orphan-slice-mirror: slice 'Finance'", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Optional_mirrors_do_not_satisfy_the_required_input_mirror()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Infrastructure/Features/Sales/Adapter.cs", "sealed class Adapter;")
+            .WriteFile("src/Orders/Domain/Sales/Entity.cs", "sealed class Entity;")
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("slice-mirror-missing: slice 'Sales'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("dimension 'input'", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Reserved_domain_and_infrastructure_directories_are_not_mirrors()
     {
         using var repository = ArchitectureRepository()
@@ -297,6 +351,26 @@ public sealed class ArchitectureShapeTests
             .WriteFile(
                 "src/Orders/Api/Features/Sales/Endpoint.cs",
                 ProvenReference("Fixture.Api", "Endpoint", "Fixture.Sales", "SalesContract"))
+            .WriteFile(
+                "src/Orders/Application/Features/Sales/Contracts/SalesContract.cs",
+                EmptyType("Fixture.Sales", "SalesContract"))
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("insignificant-slice", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Inferred_reference_from_own_input_mirror_also_makes_slice_significant()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile(
+                "src/Orders/Api/Features/Sales/Endpoint.cs",
+                InferredReference("Fixture.Api", "Endpoint", "Fixture.Sales", "SalesContract"))
             .WriteFile(
                 "src/Orders/Application/Features/Sales/Contracts/SalesContract.cs",
                 EmptyType("Fixture.Sales", "SalesContract"))
@@ -878,6 +952,7 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("Slice isolation is evaluated within one layer", run.Output, StringComparison.Ordinal);
         Assert.Contains("makes <Name> a slice", run.Output, StringComparison.Ordinal);
         Assert.Contains("Inferred", run.Output, StringComparison.Ordinal);
+        Assert.Contains("insignificant-slice convention accepts both Proven and Inferred", run.Output, StringComparison.Ordinal);
         Assert.Contains("member access", run.Output, StringComparison.Ordinal);
     }
 

@@ -52,7 +52,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           graph. A directory containing Application/ starts one zone. The check discovers
           canonical layer directories and Application/Features slices, including one optional
           grouping level. Dependency edges are lexical evidence: only Proven edges can fail this
-          fitness function; Inferred edges are deliberately ignored.
+          fitness function; Inferred edges are ignored by blocking invariants. The advisory
+          insignificant-slice convention accepts both Proven and Inferred resolved edges from the
+          slice's own input mirrors to avoid claiming that a referenced slice is unused.
 
         What it accepts
           Every zone contains Host, Application and at least one of Api or Consumers. Every
@@ -106,9 +108,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           Give every Application slice a synchronous or asynchronous input mirror, remove orphaned
           mirrors, and replace placeholder-only architecture directories with working code or remove
           the dead form.
-          A type-like name in a member access can look connected to the lexical reader, but that
-          edge is Inferred and cannot produce this finding; use the named files to inspect a
-          reported Proven declaration position.
+          A type-like name in a member access can look connected to the lexical reader. That
+          Inferred edge cannot produce a blocking finding, but it can establish a reference for
+          insignificant-slice; inspect the named files behind every reported Proven violation.
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)
@@ -683,8 +685,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         {
             findings.Add(Block(
                 At(zone, $"Application/Features/{group}"),
-                $"empty-slice-group: group '{group}', dimension 'Application', expected at least one slice "
-                + $"under 'Application/Features/{group}/'"));
+                $"empty-slice-or-group: name '{group}', dimension 'Application', expected a non-placeholder file "
+                + $"for slice 'Application/Features/{group}/' or at least one slice under "
+                + $"'Application/Features/{group}/<Slice>/'"));
         }
 
         var rootsByLayer = MirrorLayers.ToDictionary(
@@ -718,12 +721,27 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             foreach (var slice in roots)
             {
                 var mirrorPath = MirrorPath(layer, slice);
+                if (map.Groups.Contains(slice, StringComparer.Ordinal))
+                {
+                    var expectedSlice = map.Slices.FirstOrDefault(candidate =>
+                        candidate.StartsWith(slice + "/", StringComparison.Ordinal));
+                    var expectedPath = expectedSlice is null
+                        ? $"{mirrorPath}<Slice>/"
+                        : MirrorPath(layer, expectedSlice);
+                    findings.Add(Block(
+                        At(zone, mirrorPath.TrimEnd('/')),
+                        $"file-in-slice-group: group '{slice}', dimension '{layer}', expected files under a group "
+                        + $"slice such as '{expectedPath}'"));
+                    continue;
+                }
+
                 if (!map.Slices.Contains(slice, StringComparer.Ordinal))
                 {
                     findings.Add(Block(
                         At(zone, mirrorPath.TrimEnd('/')),
                         $"orphan-slice-mirror: slice '{slice}', dimension '{layer}', expected "
                         + $"'Application/Features/{slice}/'"));
+                    continue;
                 }
 
                 if (!HasContent(entries, mirrorPath))
