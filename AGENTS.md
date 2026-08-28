@@ -53,7 +53,7 @@ baseline; повышение делается вручную через ревь
 `.slnx` вместо `.sln`; он читает tracked XML, но не выполняет MSBuild evaluation.
 [ADR-0019](adrs/0019-dotnet-repository-policy.md)
 
-`version` — строка текущего контракта (`"2.1.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.2.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
