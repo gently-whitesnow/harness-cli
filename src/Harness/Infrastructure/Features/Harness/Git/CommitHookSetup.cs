@@ -1,16 +1,17 @@
 using System.Text;
-using Harness.Commits;
+using Harness.Repository;
 
 namespace Harness.Git;
 
 /// <summary>Installs and inspects the opt-in, clone-local commit message integration.</summary>
-internal static class CommitHookSetup
+internal sealed class CommitHookSetup : ICommitIntegration
 {
     private const string Marker = "# Managed by Harness CLI.";
 
-    public static (CommitHookStatus? Status, string? Failure) Inspect(
-        GitRepository repository,
-        CommitSettings settings)
+    public (CommitHookStatus? Status, string? Failure) Inspect(
+        IRepository repository,
+        CommitSettings settings,
+        string template)
     {
         var (paths, pathFailure) = ResolvePaths(repository.RootPath);
         if (paths is null)
@@ -41,7 +42,7 @@ internal static class CommitHookSetup
         }
 
         var expectedHook = HookContent(ExecutablePath());
-        var expectedTemplate = TemplateContent(settings);
+        var expectedTemplate = TemplateContent(template);
         if (!FileMatches(paths.HookPath, expectedHook))
         {
             return (new CommitHookStatus(false, "the managed commit-msg hook is missing or stale"), null);
@@ -61,9 +62,10 @@ internal static class CommitHookSetup
         return (new CommitHookStatus(true, "commit template and commit-msg hook are active for this clone"), null);
     }
 
-    public static (CommitHookStatus? Status, string? Failure) Install(
-        GitRepository repository,
-        CommitSettings settings)
+    public (CommitHookStatus? Status, string? Failure) Install(
+        IRepository repository,
+        CommitSettings settings,
+        string template)
     {
         var (paths, pathFailure) = ResolvePaths(repository.RootPath);
         if (paths is null)
@@ -82,7 +84,7 @@ internal static class CommitHookSetup
         {
             Directory.CreateDirectory(paths.HooksDirectory);
             WriteManaged(paths.HookPath, HookContent(ExecutablePath()));
-            WriteManaged(paths.TemplatePath, TemplateContent(settings));
+            WriteManaged(paths.TemplatePath, TemplateContent(template));
             if (!OperatingSystem.IsWindows())
             {
                 File.SetUnixFileMode(
@@ -100,7 +102,7 @@ internal static class CommitHookSetup
         var configFailure = WriteConfig(repository.RootPath, "core.hooksPath", paths.HooksDirectory)
             ?? WriteConfig(repository.RootPath, "commit.template", paths.TemplatePath);
         return configFailure is null
-            ? Inspect(repository, settings)
+            ? Inspect(repository, settings, template)
             : (null, configFailure);
     }
 
@@ -195,8 +197,7 @@ internal static class CommitHookSetup
         return $"#!/bin/sh\n{Marker}\nexec {ShellQuote(executablePath)} commit-message check --allow-fixup \"$1\"\n";
     }
 
-    private static string TemplateContent(CommitSettings settings)
-        => $"{Marker}\n{CommitTemplate.Render(settings)}";
+    private static string TemplateContent(string template) => $"{Marker}\n{template}";
 
     private static string ShellQuote(string value)
         => "'" + value.Replace("'", "'\"'\"'", StringComparison.Ordinal) + "'";

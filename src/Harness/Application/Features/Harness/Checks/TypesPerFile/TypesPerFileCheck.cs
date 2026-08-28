@@ -2,7 +2,7 @@ using Harness.Languages.CSharp;
 
 namespace Harness.Checks.TypesPerFile;
 
-internal sealed class TypesPerFileCheck(CSharpSources sources)
+internal sealed class TypesPerFileCheck(ICSharpSources sources)
     : CSharpSourceCheck(
         sources,
         "types-per-file",

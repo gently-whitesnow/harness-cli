@@ -1,4 +1,4 @@
-using Harness.Git;
+using Harness.Repository;
 using Harness.Structure;
 
 namespace Harness.Languages.CSharp;
@@ -11,9 +11,9 @@ internal sealed class CSharpAnalyzer(CSharpSources sources) : ILanguageAnalyzer
 {
     public Language Language => Language.CSharp;
 
-    public string NothingToAnalyze => CSharpSources.NothingToAnalyze;
+    public string NothingToAnalyze => ICSharpSources.NothingToAnalyze;
 
-    public (SourceGraph? Graph, string? Failure) ReadGraph(GitRepository repository)
+    public (SourceGraph? Graph, string? Failure) ReadGraph(IRepository repository)
     {
         var (files, failure) = sources.Read(repository);
         return failure is not null ? (null, failure) : (CSharpGraphBuilder.Build(files), null);

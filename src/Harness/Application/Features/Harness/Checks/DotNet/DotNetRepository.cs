@@ -1,5 +1,5 @@
 using System.Xml.Linq;
-using Harness.Git;
+using Harness.Repository;
 
 namespace Harness.Checks.DotNet;
 
@@ -75,7 +75,7 @@ internal static class DotNetRepository
         return string.Join('/', segments);
     }
 
-    private static (DotNetFile? File, string? Failure) ReadXml(GitRepository repository, TrackedEntry entry)
+    private static (DotNetFile? File, string? Failure) ReadXml(IRepository repository, TrackedEntry entry)
     {
         var (text, readFailure) = repository.ReadTrackedText(entry);
         if (text is null)

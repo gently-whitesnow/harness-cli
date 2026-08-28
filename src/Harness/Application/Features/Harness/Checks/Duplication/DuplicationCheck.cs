@@ -11,7 +11,7 @@ namespace Harness.Checks.Duplication;
 /// policy enforces the configured window, while advisory policy leaves it visible during
 /// migration.
 /// </summary>
-internal sealed class DuplicationCheck(CSharpSources sources)
+internal sealed class DuplicationCheck(ICSharpSources sources)
     : CSharpSourceCheck(
         sources,
         "duplication",

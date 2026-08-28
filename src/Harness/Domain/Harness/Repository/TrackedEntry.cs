@@ -1,4 +1,4 @@
-namespace Harness.Git;
+namespace Harness.Repository;
 
 /// <summary>One entry of the Git index.</summary>
 /// <param name="Path">Repository-relative path, always with '/' separators.</param>

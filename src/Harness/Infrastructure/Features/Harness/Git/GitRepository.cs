@@ -1,3 +1,5 @@
+using Harness.Repository;
+
 namespace Harness.Git;
 
 /// <summary>
@@ -6,7 +8,7 @@ namespace Harness.Git;
 /// reason rather than guessed at, so callers can end a check as incomplete instead of
 /// inventing a pass or a violation.
 /// </summary>
-internal sealed class GitRepository
+internal sealed class GitRepository : IRepository
 {
     private readonly Dictionary<string, string> blobs = new(StringComparer.Ordinal);
 

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Harness.Git;
+using Harness.Repository;
 using Harness.Versioning;
 
 namespace Harness.Config;
@@ -79,7 +79,7 @@ internal sealed record HarnessConfig
     /// unreliable remain global.
     /// </summary>
     public static (HarnessConfig? Config, string? Failure) Load(
-        GitRepository repository,
+        IRepository repository,
         IReadOnlyList<CheckDescriptor> checks)
     {
         var entry = repository.TrackedEntries.FirstOrDefault(candidate => candidate.Path == FileName);

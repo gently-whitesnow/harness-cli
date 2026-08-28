@@ -1,8 +1,8 @@
-using Harness.Git;
+using Harness.Commits;
 
 namespace Harness.Checks.Commits;
 
-internal sealed class CommitSetupCheck : IRepositoryCheck
+internal sealed class CommitSetupCheck(ICommitIntegration integration) : IRepositoryCheck
 {
     public string Id => "commits.setup";
 
@@ -49,7 +49,10 @@ internal sealed class CommitSetupCheck : IRepositoryCheck
                 ".harness.json does not require clone-local commit setup.");
         }
 
-        var (status, failure) = CommitHookSetup.Inspect(context.Repository, settings);
+        var (status, failure) = integration.Inspect(
+            context.Repository,
+            settings,
+            CommitTemplate.Render(settings));
         if (status is null)
         {
             return CheckEvaluation.Incomplete(failure!);

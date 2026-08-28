@@ -1,4 +1,4 @@
-using Harness.Git;
+using Harness.Repository;
 
 namespace Harness.Languages.CSharp;
 
@@ -8,17 +8,14 @@ namespace Harness.Languages.CSharp;
 /// spend the work again for an answer that cannot have changed. What is handed out is read
 /// only, so sharing it shares a reading and not a state.
 /// </summary>
-internal sealed class CSharpSources
+internal sealed class CSharpSources : ICSharpSources
 {
-    public const string NothingToAnalyze =
-        "no tracked C# source outside generated and build-output locations";
-
     private static readonly string[] GeneratedSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
 
-    private GitRepository? read;
+    private IRepository? read;
     private (IReadOnlyList<CSharpFile> Files, string? Failure) result;
 
-    public (IReadOnlyList<CSharpFile> Files, string? Failure) Read(GitRepository repository)
+    public (IReadOnlyList<CSharpFile> Files, string? Failure) Read(IRepository repository)
     {
         if (!ReferenceEquals(read, repository))
         {
@@ -29,7 +26,7 @@ internal sealed class CSharpSources
         return result;
     }
 
-    private static (IReadOnlyList<CSharpFile> Files, string? Failure) Discover(GitRepository repository)
+    private static (IReadOnlyList<CSharpFile> Files, string? Failure) Discover(IRepository repository)
     {
         var candidates = repository.TrackedEntries
             .Where(entry => entry.Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
@@ -49,7 +46,9 @@ internal sealed class CSharpSources
 
             if (!IsGeneratedContent(text))
             {
-                files.Add(new CSharpFile(CSharpSource.Read(entry.Path, text)));
+                var (masked, regions) = CSharpMask.Apply(text);
+                var source = CSharpSource.Create(entry.Path, masked, regions);
+                files.Add(new CSharpFile(source, () => CSharpStructureReader.Read(source)));
             }
         }
 

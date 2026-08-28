@@ -1,4 +1,4 @@
-namespace Harness.Git;
+namespace Harness.Repository;
 
 /// <summary>
 /// Where tracked content describes someone else's code or a build product rather than the

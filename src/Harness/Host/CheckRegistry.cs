@@ -7,7 +7,7 @@ using Harness.Checks.DotNet;
 using Harness.Checks.Duplication;
 using Harness.Checks.Frame;
 using Harness.Checks.TypesPerFile;
-using Harness.Config;
+using Harness.Git;
 using Harness.Languages;
 using Harness.Languages.CSharp;
 
@@ -22,6 +22,8 @@ namespace Harness.Checks;
 internal static class CheckRegistry
 {
     private static readonly CSharpSources CSharp = new();
+
+    public static readonly ICommitIntegration CommitIntegration = new CommitHookSetup();
 
     public static readonly IReadOnlyList<ILanguageAnalyzer> LanguageAnalyzers =
         [new CSharpAnalyzer(CSharp)];
@@ -40,7 +42,7 @@ internal static class CheckRegistry
             .. LanguageAnalyzers.Select(analyzer => new ComplexityCheck(analyzer, LanguageAnalyzers)),
 
             new DocumentationPolicyCheck(),
-            new CommitSetupCheck(),
+            new CommitSetupCheck(CommitIntegration),
             new CommentLineCheck(CSharp),
             new TypesPerFileCheck(CSharp),
             new DependenciesCheck(csharpAnalyzer),
@@ -60,16 +62,4 @@ internal static class CheckRegistry
         ];
     }
 
-    /// <summary>How the frame sees the shipped checks, so it never has to reach for one.</summary>
-    public static IReadOnlyList<CheckDescriptor> Describe(IReadOnlyList<IRepositoryCheck> checks)
-        => checks
-            .Select(check => new CheckDescriptor(
-                check.Id,
-                check.Group,
-                check.Applicability,
-                (check as FrameQuestionCheck)?.AnswerKey))
-            .ToList();
-
-    public static IReadOnlyList<CheckSummary> Summaries(IReadOnlyList<IRepositoryCheck> checks)
-        => checks.Select(check => new CheckSummary(check.Id, check.Group, check.Summary)).ToList();
 }

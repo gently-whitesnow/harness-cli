@@ -1,4 +1,4 @@
-using Harness.Git;
+using Harness.Repository;
 using Harness.Structure;
 
 namespace Harness.Languages;
@@ -15,5 +15,5 @@ internal interface ILanguageAnalyzer
     /// <summary>Why the repository has nothing for this language to read.</summary>
     string NothingToAnalyze { get; }
 
-    (SourceGraph? Graph, string? Failure) ReadGraph(GitRepository repository);
+    (SourceGraph? Graph, string? Failure) ReadGraph(IRepository repository);
 }

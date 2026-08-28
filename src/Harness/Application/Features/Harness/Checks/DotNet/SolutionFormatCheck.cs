@@ -1,6 +1,6 @@
 using System.Xml;
 using System.Xml.Linq;
-using Harness.Git;
+using Harness.Repository;
 
 namespace Harness.Checks.DotNet;
 

@@ -4,17 +4,32 @@ using Harness.Cli;
 using Harness.Commits;
 using Harness.Config;
 using Harness.Engine;
+using Harness.Files;
 using Harness.Git;
+using Harness.Repository;
 using Harness.Versioning;
 
 var invocation = Invocation.Parse(args, Directory.GetCurrentDirectory());
 var checks = CheckRegistry.All;
+var files = new SystemFileSystem();
 
 switch (invocation.Kind)
 {
     case CommandKind.Check:
     {
-        var report = GateEngine.Run(invocation.RepositoryPath, invocation.Only, invocation.Skip, checks);
+        var (repository, openFailure) = GitRepository.Open(invocation.RepositoryPath);
+        if (repository is null)
+        {
+            var incomplete = new RunReport(invocation.RepositoryPath, [], openFailure);
+            Console.Error.Write(ConsoleReport.Render(
+                incomplete,
+                invocation.Verbose,
+                invocation.Only.Count > 0,
+                invocation.All));
+            return incomplete.ExitCode;
+        }
+
+        var report = GateEngine.Run(repository, invocation.Only, invocation.Skip, checks);
         var writer = report.ExitCode == ExitCodes.Incomplete ? Console.Error : Console.Out;
         writer.Write(ConsoleReport.Render(report, invocation.Verbose, invocation.Only.Count > 0, invocation.All));
         return report.ExitCode;
@@ -47,11 +62,12 @@ switch (invocation.Kind)
         }
 
         var result = ConfigInitializer.Create(
-            invocation.RepositoryPath,
+            initRepository,
+            files,
             invocation.Latest,
             invocation.CommitLanguage,
             repositoryKind.Value,
-            CheckRegistry.Describe(checks),
+            CheckCatalog.Describe(checks),
             initialBudget);
         if (result.Failure is not null)
         {
@@ -71,7 +87,10 @@ switch (invocation.Kind)
         }
 
         var commitSettings = new CommitSettings(invocation.CommitLanguage, RequireSetup: true);
-        var (setup, setupFailure) = CommitHookSetup.Install(repository, commitSettings);
+        var (setup, setupFailure) = CheckRegistry.CommitIntegration.Install(
+            repository,
+            commitSettings,
+            CommitTemplate.Render(commitSettings));
         if (setup is null)
         {
             Console.Error.WriteLine(setupFailure);
@@ -95,7 +114,7 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        var (report, upgradeFailure) = FrameUpgrade.Raise(repository, invocation.DryRun);
+        var (report, upgradeFailure) = FrameUpgrade.Raise(repository, files, invocation.DryRun);
         if (report is null)
         {
             Console.Error.WriteLine(upgradeFailure);
@@ -124,7 +143,7 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        var result = ComplexityBudgetUpdater.Update(repository, analyzers);
+        var result = ComplexityBudgetUpdater.Update(repository, files, analyzers);
         var writer = result.ExitCode == ExitCodes.Success ? Console.Out : Console.Error;
         writer.WriteLine(result.Message);
         return result.ExitCode;
@@ -139,7 +158,10 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        var (status, setupFailure) = CommitHookSetup.Install(repository, config.Settings.Commits);
+        var (status, setupFailure) = CheckRegistry.CommitIntegration.Install(
+            repository,
+            config.Settings.Commits,
+            CommitTemplate.Render(config.Settings.Commits));
         if (status is null)
         {
             Console.Error.WriteLine(setupFailure);
@@ -175,7 +197,7 @@ switch (invocation.Kind)
         string message;
         try
         {
-            message = File.ReadAllText(invocation.Operand!);
+            message = files.ReadText(invocation.Operand!);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -261,11 +283,11 @@ switch (invocation.Kind)
         return ExitCodes.Success;
 
     case CommandKind.Help:
-        Console.Write(UsageText.For(CheckRegistry.Summaries(checks)));
+        Console.Write(UsageText.For(CheckCatalog.Summaries(checks)));
         return ExitCodes.Success;
 
     default:
-        Console.Error.Write(UsageText.For(CheckRegistry.Summaries(checks)));
+        Console.Error.Write(UsageText.For(CheckCatalog.Summaries(checks)));
         if (invocation.Error is not null)
         {
             Console.Error.WriteLine();
@@ -275,7 +297,7 @@ switch (invocation.Kind)
         return ExitCodes.Incomplete;
 }
 
-static (GitRepository? Repository, HarnessConfig? Config, string? Failure) LoadRepository(
+static (IRepository? Repository, HarnessConfig? Config, string? Failure) LoadRepository(
     string path,
     IReadOnlyList<IRepositoryCheck> checks)
 {
@@ -285,7 +307,7 @@ static (GitRepository? Repository, HarnessConfig? Config, string? Failure) LoadR
         return (null, null, openFailure);
     }
 
-    var (config, configFailure) = HarnessConfig.Load(repository, CheckRegistry.Describe(checks));
+    var (config, configFailure) = HarnessConfig.Load(repository, CheckCatalog.Describe(checks));
     return config is null
         ? (repository, null, configFailure)
         : (repository, config, null);

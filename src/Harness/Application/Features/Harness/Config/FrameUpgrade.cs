@@ -1,12 +1,16 @@
 using System.Text.Json;
-using Harness.Git;
+using Harness.Contracts.Files;
+using Harness.Repository;
 using Harness.Versioning;
 
 namespace Harness.Config;
 
 internal static class FrameUpgrade
 {
-    public static (string? Report, string? Failure) Raise(GitRepository repository, bool dryRun)
+    public static (string? Report, string? Failure) Raise(
+        IRepository repository,
+        IFileSystem files,
+        bool dryRun)
     {
         var path = Path.Combine(repository.RootPath, HarnessConfig.FileName);
         if (!repository.TrackedEntries.Any(entry => entry.Path == HarnessConfig.FileName))
@@ -17,7 +21,7 @@ internal static class FrameUpgrade
         string text;
         try
         {
-            text = File.ReadAllText(path);
+            text = files.ReadText(path);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -47,7 +51,7 @@ internal static class FrameUpgrade
 
         if (!dryRun)
         {
-            var rewriteFailure = Rewrite(path, text, pin, HarnessVersion.Current.ToString());
+            var rewriteFailure = Rewrite(files, path, text, pin, HarnessVersion.Current.ToString());
             if (rewriteFailure is not null)
             {
                 return (null, rewriteFailure);
@@ -97,7 +101,7 @@ internal static class FrameUpgrade
                 && candidate.Minor == current.Minor
                 && candidate.Patch > current.Patch);
 
-    private static string? Rewrite(string path, string text, string from, string target)
+    private static string? Rewrite(IFileSystem files, string path, string text, string from, string target)
     {
         var current = $"\"{from}\"";
         var key = text.IndexOf("\"version\"", StringComparison.Ordinal);
@@ -109,7 +113,7 @@ internal static class FrameUpgrade
 
         try
         {
-            File.WriteAllText(path, string.Concat(
+            files.WriteText(path, string.Concat(
                 text.AsSpan(0, value),
                 $"\"{target}\"",
                 text.AsSpan(value + current.Length)));

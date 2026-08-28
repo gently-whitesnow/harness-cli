@@ -49,9 +49,11 @@ internal sealed class CSharpSource
     public int AuthoredLines
         => Enumerable.Range(0, LineCount).Count(line => isLogical[line] || hasComment[line]);
 
-    public static CSharpSource Read(string path, string text)
+    public static CSharpSource Create(
+        string path,
+        string masked,
+        List<MaskedRegion> regions)
     {
-        var (masked, regions) = CSharpMask.Apply(text);
         var lineStarts = LineStarts(masked);
         return new CSharpSource(
             path,
