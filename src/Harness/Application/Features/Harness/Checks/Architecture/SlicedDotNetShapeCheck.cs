@@ -13,6 +13,13 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private static readonly string[] PlaceholderFiles = [".gitkeep", ".keep", ".gitignore"];
 
+    private static readonly string[] MirrorLayers = ["Api", "Consumers", "Infrastructure", "Domain"];
+
+    private static readonly string[] SliceDimensions = ["Application", .. MirrorLayers];
+
+    private static readonly HashSet<string> GenericSliceDirectories =
+        new(StringComparer.OrdinalIgnoreCase) { "Services", "Helpers", "Managers", "Utils", "Common" };
+
     private static readonly Dictionary<string, HashSet<string>> AllowedDependencies =
         new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
         {
@@ -45,7 +52,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           graph. A directory containing Application/ starts one zone. The check discovers
           canonical layer directories and Application/Features slices, including one optional
           grouping level. Dependency edges are lexical evidence: only Proven edges can fail this
-          fitness function; Inferred edges are deliberately ignored.
+          fitness function; Inferred edges are ignored by blocking invariants. The advisory
+          insignificant-slice convention accepts both Proven and Inferred resolved edges from the
+          slice's own input mirrors to avoid claiming that a referenced slice is unused.
 
         What it accepts
           Every zone contains Host, Application and at least one of Api or Consumers. Every
@@ -79,6 +88,16 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           A file directly inside Features/<Name>/ makes <Name> a slice. Without such a file, that
           directory is a group and its child directories are the slices.
 
+          Application/Features is the source of slice names. Every slice has a non-empty mirror in
+          Api/Features or Consumers/Features. Api, Consumers, Infrastructure/Features and Domain
+          mirrors cannot introduce a slice that Application does not contain. Domain/Shared and
+          Infrastructure/Persistence are reserved non-slice directories. Placeholder-only slices,
+          groups and mirrors are empty architecture forms and fail the check.
+
+          Until negative fixtures justify blocking rules, the check advises on slices without a
+          resolved incoming reference from their own input mirror, mixed singular/plural names, more
+          than 20 ungrouped slices and generic Services, Helpers, Managers, Utils or Common folders.
+
         Remediation
           Move application files under Host, Api, Consumers, Application, Domain, Infrastructure
           or Shared. Put use-case slices in Application/Features/<Slice>, or group them one level
@@ -86,9 +105,12 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           Turn a forbidden dependency around or move the shared concept to an allowed lower layer.
           For a cross-slice dependency, prefer merging slices, then moving the shared concept down
           to Domain or Shared, and use an explicit X/<Consumer> cross-API only as a last resort.
-          A type-like name in a member access can look connected to the lexical reader, but that
-          edge is Inferred and cannot produce this finding; use the named files to inspect a
-          reported Proven declaration position.
+          Give every Application slice a synchronous or asynchronous input mirror, remove orphaned
+          mirrors, and replace placeholder-only architecture directories with working code or remove
+          the dead form.
+          A type-like name in a member access can look connected to the lexical reader. That
+          Inferred edge cannot produce a blocking finding, but it can establish a reference for
+          insignificant-slice; inspect the named files behind every reported Proven violation.
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)
@@ -120,10 +142,10 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
         var findings = new List<Finding>();
         var maps = new List<string>();
-        var slicesByZone = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        var slicesByZone = new Dictionary<string, SliceMap>(StringComparer.Ordinal);
         foreach (var zone in zones)
         {
-            slicesByZone[zone] = InspectZone(zone, paths, findings, maps).Slices;
+            slicesByZone[zone] = InspectZone(zone, paths, findings, maps);
         }
 
         if (findings.Count > 0)
@@ -137,11 +159,118 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             return CheckEvaluation.Incomplete(failure!, maps);
         }
 
-        var dependencies = InspectDependencies(zones, slicesByZone, graph);
+        var dependencies = InspectDependencies(
+            zones,
+            slicesByZone.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value.Slices),
+            graph);
+        maps.AddRange(InspectConventions(zones, slicesByZone, paths, graph));
         var detailed = dependencies.Select(dependency => dependency.Finding).ToList();
         var summary = Summarize(dependencies);
 
         return CheckEvaluation.From(summary, detailedFindings: detailed, observations: maps);
+    }
+
+    private static List<string> InspectConventions(
+        IReadOnlyList<string> zones,
+        IReadOnlyDictionary<string, SliceMap> slicesByZone,
+        IReadOnlyList<string> paths,
+        SourceGraph graph)
+    {
+        var observations = new List<string>();
+        foreach (var zone in zones)
+        {
+            var map = slicesByZone[zone];
+            var entries = paths
+                .Select(path => Relative(path, zone))
+                .Where(path => path.Length > 0 && !path.StartsWith("../", StringComparison.Ordinal))
+                .ToList();
+
+            foreach (var slice in map.Slices)
+            {
+                var referencedByOwnInput = graph.Edges.Any(edge =>
+                {
+                    var from = Address(edge.From.Path, zones);
+                    var to = Address(edge.To.Path, zones);
+                    return string.Equals(from.Zone, zone, StringComparison.Ordinal)
+                        && from.Layer is "Api" or "Consumers"
+                        && string.Equals(SliceOf(from, map.Slices)?.Name, slice, StringComparison.Ordinal)
+                        && to.Layer == "Application"
+                        && string.Equals(SliceOf(to, map.Slices)?.Name, slice, StringComparison.Ordinal);
+                });
+                if (!referencedByOwnInput)
+                {
+                    observations.Add(
+                        $"advisory {At(zone, $"Application/Features/{slice}")}: insignificant-slice: slice '{slice}', "
+                        + $"dimension 'Application', has no resolved incoming reference from its own "
+                        + $"Api/Features/{slice}/ or Consumers/Features/{slice}/ mirror");
+                }
+
+                foreach (var dimension in SliceDimensions)
+                {
+                    var slicePrefix = dimension == "Domain"
+                        ? $"Domain/{slice}/"
+                        : $"{dimension}/Features/{slice}/";
+                    foreach (var directory in entries
+                        .Where(path => path.StartsWith(slicePrefix, StringComparison.Ordinal))
+                        .SelectMany(path => DirectorySegments(path[slicePrefix.Length..]))
+                        .Where(GenericSliceDirectories.Contains)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Order(StringComparer.OrdinalIgnoreCase))
+                    {
+                        observations.Add(
+                            $"advisory {At(zone, $"{slicePrefix}{directory}")}: generic-slice-directory: "
+                            + $"slice '{slice}', dimension '{dimension}', directory '{directory}' hides its business purpose");
+                    }
+                }
+            }
+
+            AddPluralizationAdvice(zone, map, observations);
+            var ungrouped = map.Slices.Where(slice => !slice.Contains('/')).ToList();
+            if (ungrouped.Count > 20)
+            {
+                observations.Add(
+                    $"advisory {At(zone, "Application/Features")}: excessive-slicing: dimension 'Application' has "
+                    + $"{ungrouped.Count} ungrouped slices; group slices by business area when the flat list exceeds 20");
+            }
+        }
+
+        return observations;
+    }
+
+    private static void AddPluralizationAdvice(string zone, SliceMap map, List<string> observations)
+    {
+        foreach (var group in map.Slices.GroupBy(
+            slice => slice.Contains('/') ? slice[..slice.LastIndexOf('/')] : string.Empty,
+            StringComparer.Ordinal))
+        {
+            var names = group.Select(slice => slice.Split('/')[^1]).ToList();
+            var plural = names.Where(LooksPlural).ToList();
+            var singular = names.Where(name => !LooksPlural(name)).ToList();
+            if (plural.Count == 0 || singular.Count == 0)
+            {
+                continue;
+            }
+
+            var preference = plural.Count >= singular.Count ? "plural" : "singular";
+            var location = group.Key.Length == 0
+                ? At(zone, "Application/Features")
+                : At(zone, $"Application/Features/{group.Key}");
+            observations.Add(
+                $"advisory {location}: inconsistent-slice-pluralization: dimension 'Application', slices "
+                + $"[{string.Join(", ", names)}] mix singular and plural names; prefer {preference} names in this group");
+        }
+    }
+
+    private static bool LooksPlural(string name)
+        => name.EndsWith('s')
+            && !name.EndsWith("ss", StringComparison.OrdinalIgnoreCase)
+            && !name.EndsWith("us", StringComparison.OrdinalIgnoreCase)
+            && !name.Equals("Status", StringComparison.OrdinalIgnoreCase);
+
+    private static IEnumerable<string> DirectorySegments(string relativePath)
+    {
+        var parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Take(Math.Max(0, parts.Length - 1));
     }
 
     private static List<DependencyViolation> InspectDependencies(
@@ -482,6 +611,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         }
 
         var sliceMap = DiscoverSlices(entries);
+        InspectMirrors(zone, entries, sliceMap, findings);
         maps.Add($"architecture map: zone {Display(zone)} · layers [{string.Join(", ", presentLayers)}] "
             + $"· slices [{string.Join(", ", sliceMap.Slices)}]"
             + (sliceMap.Nested.Count == 0
@@ -495,18 +625,23 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         const string prefix = "Application/Features/";
         var featurePaths = entries
             .Where(path => path.StartsWith(prefix, StringComparison.Ordinal))
-            .Select(path => path[prefix.Length..].Split('/'))
-            .Where(parts => parts.Length >= 2)
+            .Select(path => new SliceEntry(
+                path[prefix.Length..].Split('/'),
+                IsPlaceholder(path)))
+            .Where(entry => entry.Parts.Length >= 2)
             .ToList();
         var slices = new HashSet<string>(StringComparer.Ordinal);
         var nestedPaths = new HashSet<string>(StringComparer.Ordinal);
+        var groups = new HashSet<string>(StringComparer.Ordinal);
+        var emptyGroups = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var feature in featurePaths.GroupBy(parts => parts[0], StringComparer.Ordinal))
+        foreach (var feature in featurePaths.GroupBy(entry => entry.Parts[0], StringComparer.Ordinal))
         {
-            if (feature.Any(parts => parts.Length == 2 || parts[1] == "Contracts"))
+            if (feature.Any(entry => (!entry.IsPlaceholder && entry.Parts.Length == 2)
+                || entry.Parts[1] == "Contracts"))
             {
                 slices.Add(feature.Key);
-                foreach (var child in feature.Where(parts => parts.Length >= 3).Select(parts => parts[1]))
+                foreach (var child in feature.Where(entry => entry.Parts.Length >= 3).Select(entry => entry.Parts[1]))
                 {
                     nestedPaths.Add($"{feature.Key}/{child}");
                 }
@@ -514,10 +649,19 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                 continue;
             }
 
-            foreach (var child in feature.Where(parts => parts.Length >= 3).GroupBy(parts => parts[1], StringComparer.Ordinal))
+            groups.Add(feature.Key);
+            var children = feature
+                .Where(entry => entry.Parts.Length >= 3)
+                .GroupBy(entry => entry.Parts[1], StringComparer.Ordinal)
+                .ToList();
+            if (children.Count == 0)
+            {
+                emptyGroups.Add(feature.Key);
+            }
+            foreach (var child in children)
             {
                 slices.Add($"{feature.Key}/{child.Key}");
-                foreach (var nested in child.Where(parts => parts.Length >= 4).Select(parts => parts[2]))
+                foreach (var nested in child.Where(entry => entry.Parts.Length >= 4).Select(entry => entry.Parts[2]))
                 {
                     nestedPaths.Add($"{feature.Key}/{child.Key}/{nested}");
                 }
@@ -526,8 +670,135 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
         return new SliceMap(
             slices.Order(StringComparer.Ordinal).ToList(),
-            nestedPaths.Order(StringComparer.Ordinal).ToList());
+            nestedPaths.Order(StringComparer.Ordinal).ToList(),
+            groups.Order(StringComparer.Ordinal).ToList(),
+            emptyGroups.Order(StringComparer.Ordinal).ToList());
     }
+
+    private static void InspectMirrors(
+        string zone,
+        IReadOnlyList<string> entries,
+        SliceMap map,
+        List<Finding> findings)
+    {
+        foreach (var group in map.EmptyGroups)
+        {
+            findings.Add(Block(
+                At(zone, $"Application/Features/{group}"),
+                $"empty-slice-or-group: name '{group}', dimension 'Application', expected a non-placeholder file "
+                + $"for slice 'Application/Features/{group}/' or at least one slice under "
+                + $"'Application/Features/{group}/<Slice>/'"));
+        }
+
+        var rootsByLayer = MirrorLayers.ToDictionary(
+            layer => layer,
+            layer => DiscoverMirrorRoots(layer, entries, map),
+            StringComparer.Ordinal);
+
+        foreach (var slice in map.Slices)
+        {
+            var applicationPath = $"Application/Features/{slice}/";
+            if (!HasContent(entries, applicationPath))
+            {
+                findings.Add(Block(
+                    At(zone, applicationPath.TrimEnd('/')),
+                    $"empty-slice: slice '{slice}', dimension 'Application', expected non-placeholder content "
+                    + $"under '{applicationPath}'"));
+            }
+
+            if (!rootsByLayer["Api"].Contains(slice, StringComparer.Ordinal)
+                && !rootsByLayer["Consumers"].Contains(slice, StringComparer.Ordinal))
+            {
+                findings.Add(Block(
+                    At(zone, applicationPath.TrimEnd('/')),
+                    $"slice-mirror-missing: slice '{slice}', dimension 'input', expected 'Api/Features/{slice}/' "
+                    + $"or 'Consumers/Features/{slice}/'"));
+            }
+        }
+
+        foreach (var (layer, roots) in rootsByLayer)
+        {
+            foreach (var slice in roots)
+            {
+                var mirrorPath = MirrorPath(layer, slice);
+                if (map.Groups.Contains(slice, StringComparer.Ordinal))
+                {
+                    var expectedSlice = map.Slices.FirstOrDefault(candidate =>
+                        candidate.StartsWith(slice + "/", StringComparison.Ordinal));
+                    var expectedPath = expectedSlice is null
+                        ? $"{mirrorPath}<Slice>/"
+                        : MirrorPath(layer, expectedSlice);
+                    findings.Add(Block(
+                        At(zone, mirrorPath.TrimEnd('/')),
+                        $"file-in-slice-group: group '{slice}', dimension '{layer}', expected files under a group "
+                        + $"slice such as '{expectedPath}'"));
+                    continue;
+                }
+
+                if (!map.Slices.Contains(slice, StringComparer.Ordinal))
+                {
+                    findings.Add(Block(
+                        At(zone, mirrorPath.TrimEnd('/')),
+                        $"orphan-slice-mirror: slice '{slice}', dimension '{layer}', expected "
+                        + $"'Application/Features/{slice}/'"));
+                    continue;
+                }
+
+                if (!HasContent(entries, mirrorPath))
+                {
+                    findings.Add(Block(
+                        At(zone, mirrorPath.TrimEnd('/')),
+                        $"empty-slice-mirror: slice '{slice}', dimension '{layer}', expected non-placeholder content "
+                        + $"under '{mirrorPath}'"));
+                }
+            }
+        }
+    }
+
+    private static List<string> DiscoverMirrorRoots(string layer, IReadOnlyList<string> entries, SliceMap map)
+    {
+        var prefix = layer == "Domain" ? "Domain/" : $"{layer}/Features/";
+        return entries
+            .Where(path => path.StartsWith(prefix, StringComparison.Ordinal))
+            .Select(path => path[prefix.Length..])
+            .Where(path => path.Contains('/'))
+            .Select(path => MirrorSlice(path, map))
+            .Where(slice => slice is not null && !(layer == "Domain" && slice == "Shared"))
+            .Cast<string>()
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static string? MirrorSlice(string path, SliceMap map)
+    {
+        var known = map.Slices
+            .OrderByDescending(slice => slice.Length)
+            .FirstOrDefault(slice => path.StartsWith(slice + "/", StringComparison.Ordinal));
+        if (known is not null)
+        {
+            return known;
+        }
+
+        var parts = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2)
+        {
+            return null;
+        }
+
+        return map.Groups.Contains(parts[0], StringComparer.Ordinal) && parts.Length >= 3
+            ? $"{parts[0]}/{parts[1]}"
+            : parts[0];
+    }
+
+    private static string MirrorPath(string layer, string slice)
+        => layer == "Domain" ? $"Domain/{slice}/" : $"{layer}/Features/{slice}/";
+
+    private static bool HasContent(IReadOnlyList<string> entries, string prefix)
+        => entries.Any(path => path.StartsWith(prefix, StringComparison.Ordinal) && !IsPlaceholder(path));
+
+    private static bool IsPlaceholder(string path)
+        => PlaceholderFiles.Contains(Path.GetFileName(path), StringComparer.Ordinal);
 
     private static void RequireLayer(
         string zone,
@@ -559,7 +830,13 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
     private static Finding Block(string location, string message)
         => new(FindingSeverity.Blocking, location, message);
 
-    private sealed record SliceMap(List<string> Slices, List<string> Nested);
+    private sealed record SliceMap(
+        List<string> Slices,
+        List<string> Nested,
+        List<string> Groups,
+        List<string> EmptyGroups);
+
+    private sealed record SliceEntry(string[] Parts, bool IsPlaceholder);
 
     private sealed record SliceAddress(string Name, string Path);
 
