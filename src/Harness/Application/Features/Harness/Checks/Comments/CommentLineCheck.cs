@@ -4,7 +4,7 @@ using Harness.Languages.CSharp;
 
 namespace Harness.Checks.Comments;
 
-internal sealed class CommentLineCheck(CSharpSources sources)
+internal sealed class CommentLineCheck(ICSharpSources sources)
     : CSharpSourceCheck(sources, "comments", "C# comment density limit", CommentLineExplanation.Text)
 {
     protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)

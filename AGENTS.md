@@ -85,19 +85,17 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 ## Раскладка
 
 - `src/Harness` — сам CLI. NativeAOT, установленный .NET runtime в момент использования не нужен.
-  - `Host/` — composition root и запуск процесса.
-  - `Api/Features/Harness/Cli/` — входное зеркало с разбором командной строки, usage и консольным отчётом.
-  - `Application/Features/Harness/` — единый прикладной слайс CLI.
-  - `Application/Features/Harness/Contracts/` — типы, через которые `Api` обращается к слайсу.
-  - `Application/Features/Harness/Versioning/` — релиз и граница текущего контракта.
-  - `Application/Features/Harness/Config/` — чтение и полная валидация `.harness.json`.
-  - `Application/Features/Harness/Engine/` — селекция, порядок, policy и коды возврата.
-  - `Application/Features/Harness/Structure/` — язык-нейтральное ядро: типы, рёбра,
-    границы модулей, циклы и кратчайшее кольцо в них.
-  - `Application/Features/Harness/Languages/` — анализаторы языков, сейчас C#.
-  - `Application/Features/Harness/Checks/` — поставляемые проверки и тексты `explain`.
-  - `Application/Features/Harness/Git/` — безопасное чтение tracked evidence через Git.
-  - `Application/Features/Harness/Commits/` — commit-шаблон и общий валидатор hook/CI.
+  - `Host/` — composition root, статический реестр и запуск процесса.
+  - `Api/Features/Harness/Cli/` — входное зеркало с разбором командной строки.
+  - `Application/Features/Harness/` — единый прикладной слайс: проверки, конфигурация,
+    движок, commit-команды, отчёт и публичные `Contracts/` для входа и адаптеров; это одна
+    CLI-capability, а не набор независимых бизнес-слайсов ([ADR-0034](adrs/0034-language-axis-in-sliced-dotnet.md)).
+  - `Domain/Harness/Structure/` — язык-нейтральная модель графа, модулей, циклов и DSM.
+  - `Domain/Harness/Languages/` — языковой порт ADR-0022/0034; реализаций здесь нет.
+  - `Domain/Harness/Repository/` — модель tracked evidence и порт репозитория.
+  - `Infrastructure/Features/Harness/Git/` — Git-процесс и clone-local интеграция.
+  - `Infrastructure/Features/Harness/Languages/CSharp/` — C#-ридер в отдельном infra namespace.
+  - `Shared/Versioning/` — версия бинаря и граница текущего контракта.
 - `tests/Harness.Tests` — приёмочные тесты, которые гоняют скомпилированный исполняемый файл.
 - `adrs/` — долговременные решения; правила ниже ссылаются туда за обоснованием.
   Реестр — [`adrs/REGISTRY.md`](adrs/REGISTRY.md), шаблон — `adrs/.template.md`.

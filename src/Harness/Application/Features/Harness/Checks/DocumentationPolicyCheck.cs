@@ -1,4 +1,4 @@
-using Harness.Git;
+using Harness.Repository;
 
 namespace Harness.Checks;
 
@@ -58,7 +58,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
     /// One evaluation of one repository: the tracked inventory, the findings collected so
     /// far, and the first evidence gap that made the audit unreliable.
     /// </summary>
-    private sealed class DocumentationAudit(GitRepository repository)
+    private sealed class DocumentationAudit(IRepository repository)
     {
         private readonly Dictionary<string, TrackedEntry> tracked =
             repository.TrackedEntries.ToDictionary(entry => entry.Path, StringComparer.Ordinal);

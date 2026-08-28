@@ -1,5 +1,5 @@
 using Harness.Config;
-using Harness.Git;
+using Harness.Repository;
 
 namespace Harness.Checks;
 
@@ -8,12 +8,12 @@ namespace Harness.Checks;
 /// evidence is refused, so a check cannot depend on a file the report cannot explain.
 /// </summary>
 internal sealed class CheckContext(
-    GitRepository repository,
+    IRepository repository,
     HarnessConfig? config,
     string? configFailure,
     IRepositoryCheck check)
 {
-    public GitRepository Repository { get; } = repository;
+    public IRepository Repository { get; } = repository;
 
     public HarnessConfig? Config { get; } = config;
 

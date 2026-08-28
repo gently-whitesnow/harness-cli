@@ -1,5 +1,5 @@
-using Harness.Git;
 using Harness.Languages;
+using Harness.Repository;
 using Harness.Structure;
 
 namespace Harness.Checks.Complexity;
@@ -7,7 +7,7 @@ namespace Harness.Checks.Complexity;
 internal static class ComplexityBudgetUpdater
 {
     public static (string? Content, string? Failure) InitialContent(
-        GitRepository repository,
+        IRepository repository,
         IReadOnlyList<ILanguageAnalyzer> analyzers)
     {
         var (entries, failure) = Measure(repository, analyzers, allowEmpty: true);
@@ -17,7 +17,7 @@ internal static class ComplexityBudgetUpdater
     }
 
     public static ComplexityBudgetUpdate Update(
-        GitRepository repository,
+        IRepository repository,
         IReadOnlyList<ILanguageAnalyzer> analyzers)
     {
         var (entries, measureFailure) = Measure(repository, analyzers, allowEmpty: false);
@@ -80,7 +80,7 @@ internal static class ComplexityBudgetUpdater
     }
 
     private static (Dictionary<string, ComplexityBudget.Entry>? Entries, string? Failure) Measure(
-        GitRepository repository,
+        IRepository repository,
         IReadOnlyList<ILanguageAnalyzer> analyzers,
         bool allowEmpty)
     {

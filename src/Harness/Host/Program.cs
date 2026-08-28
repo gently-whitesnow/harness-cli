@@ -5,6 +5,9 @@ using Harness.Commits;
 using Harness.Config;
 using Harness.Engine;
 using Harness.Git;
+using Harness.Host;
+using Harness.Report;
+using Harness.Repository;
 using Harness.Versioning;
 
 var invocation = Invocation.Parse(args, Directory.GetCurrentDirectory());
@@ -14,7 +17,19 @@ switch (invocation.Kind)
 {
     case CommandKind.Check:
     {
-        var report = GateEngine.Run(invocation.RepositoryPath, invocation.Only, invocation.Skip, checks);
+        var (repository, openFailure) = GitRepository.Open(invocation.RepositoryPath);
+        if (repository is null)
+        {
+            var incomplete = new RunReport(invocation.RepositoryPath, [], openFailure);
+            Console.Error.Write(ConsoleReport.Render(
+                incomplete,
+                invocation.Verbose,
+                invocation.Only.Count > 0,
+                invocation.All));
+            return incomplete.ExitCode;
+        }
+
+        var report = GateEngine.Run(repository, invocation.Only, invocation.Skip, checks);
         var writer = report.ExitCode == ExitCodes.Incomplete ? Console.Error : Console.Out;
         writer.Write(ConsoleReport.Render(report, invocation.Verbose, invocation.Only.Count > 0, invocation.All));
         return report.ExitCode;
@@ -47,11 +62,11 @@ switch (invocation.Kind)
         }
 
         var result = ConfigInitializer.Create(
-            invocation.RepositoryPath,
+            initRepository,
             invocation.Latest,
             invocation.CommitLanguage,
             repositoryKind.Value,
-            CheckRegistry.Describe(checks),
+            CheckCatalog.Describe(checks),
             initialBudget);
         if (result.Failure is not null)
         {
@@ -63,15 +78,11 @@ switch (invocation.Kind)
             $"Created '{result.Path}' and "
             + $"'{Path.Combine(Path.GetDirectoryName(result.Path)!, ".harness.budget.json")}' "
             + "with the current tracked DSM metrics.");
-        var (repository, openFailure) = GitRepository.Open(invocation.RepositoryPath);
-        if (repository is null)
-        {
-            Console.Error.WriteLine(openFailure);
-            return ExitCodes.Incomplete;
-        }
-
         var commitSettings = new CommitSettings(invocation.CommitLanguage, RequireSetup: true);
-        var (setup, setupFailure) = CommitHookSetup.Install(repository, commitSettings);
+        var (setup, setupFailure) = CheckRegistry.CommitIntegration.Install(
+            initRepository,
+            commitSettings,
+            CommitTemplate.Render(commitSettings));
         if (setup is null)
         {
             Console.Error.WriteLine(setupFailure);
@@ -139,7 +150,10 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        var (status, setupFailure) = CommitHookSetup.Install(repository, config.Settings.Commits);
+        var (status, setupFailure) = CheckRegistry.CommitIntegration.Install(
+            repository,
+            config.Settings.Commits,
+            CommitTemplate.Render(config.Settings.Commits));
         if (status is null)
         {
             Console.Error.WriteLine(setupFailure);
@@ -261,11 +275,11 @@ switch (invocation.Kind)
         return ExitCodes.Success;
 
     case CommandKind.Help:
-        Console.Write(UsageText.For(CheckRegistry.Summaries(checks)));
+        Console.Write(UsageText.For(CheckCatalog.Summaries(checks)));
         return ExitCodes.Success;
 
     default:
-        Console.Error.Write(UsageText.For(CheckRegistry.Summaries(checks)));
+        Console.Error.Write(UsageText.For(CheckCatalog.Summaries(checks)));
         if (invocation.Error is not null)
         {
             Console.Error.WriteLine();
@@ -275,7 +289,7 @@ switch (invocation.Kind)
         return ExitCodes.Incomplete;
 }
 
-static (GitRepository? Repository, HarnessConfig? Config, string? Failure) LoadRepository(
+static (IRepository? Repository, HarnessConfig? Config, string? Failure) LoadRepository(
     string path,
     IReadOnlyList<IRepositoryCheck> checks)
 {
@@ -285,7 +299,7 @@ static (GitRepository? Repository, HarnessConfig? Config, string? Failure) LoadR
         return (null, null, openFailure);
     }
 
-    var (config, configFailure) = HarnessConfig.Load(repository, CheckRegistry.Describe(checks));
+    var (config, configFailure) = HarnessConfig.Load(repository, CheckCatalog.Describe(checks));
     return config is null
         ? (repository, null, configFailure)
         : (repository, config, null);

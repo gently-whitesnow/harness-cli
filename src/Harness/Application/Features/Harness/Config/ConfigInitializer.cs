@@ -1,6 +1,6 @@
 using System.Text;
 using Harness.Contracts;
-using Harness.Git;
+using Harness.Repository;
 using Harness.Versioning;
 
 namespace Harness.Config;
@@ -9,19 +9,13 @@ namespace Harness.Config;
 internal static class ConfigInitializer
 {
     public static (string? Path, string? Failure) Create(
-        string repositoryPath,
+        IRepository repository,
         bool latest,
         CommitLanguage commitLanguage,
         RepositoryKind repositoryKind,
         IReadOnlyList<CheckDescriptor> checks,
         string initialBudget)
     {
-        var (repository, openFailure) = GitRepository.Open(repositoryPath);
-        if (repository is null)
-        {
-            return (null, openFailure);
-        }
-
         var path = System.IO.Path.Combine(repository.RootPath, HarnessConfig.FileName);
         var budgetPath = System.IO.Path.Combine(repository.RootPath, ".harness.budget.json");
         var tracked = repository.TrackedEntries.Any(entry => entry.Path == HarnessConfig.FileName);
@@ -42,9 +36,7 @@ internal static class ConfigInitializer
         {
             WriteNew(budgetPath, initialBudget);
             budgetCreated = true;
-            using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-            using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            writer.Write(content);
+            WriteNew(path, content);
         }
         catch (IOException exception)
         {

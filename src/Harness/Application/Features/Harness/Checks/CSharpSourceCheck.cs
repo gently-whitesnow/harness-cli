@@ -5,7 +5,7 @@ namespace Harness.Checks;
 
 /// <summary>Handles the shared tracked-source and applicability contract for C# checks.</summary>
 internal abstract class CSharpSourceCheck(
-    CSharpSources sources,
+    ICSharpSources sources,
     string group,
     string summary,
     string explanation) : IRepositoryCheck
@@ -31,7 +31,7 @@ internal abstract class CSharpSourceCheck(
         }
 
         return files.Count == 0
-            ? CheckEvaluation.NotApplicable(CSharpSources.NothingToAnalyze)
+            ? CheckEvaluation.NotApplicable(ICSharpSources.NothingToAnalyze)
             : Evaluate(context, files);
     }
 

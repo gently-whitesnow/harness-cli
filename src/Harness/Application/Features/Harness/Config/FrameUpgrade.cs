@@ -1,12 +1,12 @@
 using System.Text.Json;
-using Harness.Git;
+using Harness.Repository;
 using Harness.Versioning;
 
 namespace Harness.Config;
 
 internal static class FrameUpgrade
 {
-    public static (string? Report, string? Failure) Raise(GitRepository repository, bool dryRun)
+    public static (string? Report, string? Failure) Raise(IRepository repository, bool dryRun)
     {
         var path = Path.Combine(repository.RootPath, HarnessConfig.FileName);
         if (!repository.TrackedEntries.Any(entry => entry.Path == HarnessConfig.FileName))

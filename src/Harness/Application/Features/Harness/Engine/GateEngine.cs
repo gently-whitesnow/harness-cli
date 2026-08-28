@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Harness.Checks;
 using Harness.Config;
-using Harness.Git;
+using Harness.Repository;
 
 namespace Harness.Engine;
 
@@ -16,7 +16,7 @@ namespace Harness.Engine;
 internal static class GateEngine
 {
     public static RunReport Run(
-        string repositoryPath,
+        IRepository repository,
         IReadOnlyList<string> only,
         IReadOnlyList<string> skip,
         IReadOnlyList<IRepositoryCheck> checks)
@@ -27,13 +27,7 @@ internal static class GateEngine
             return invalidSelection;
         }
 
-        var (repository, failure) = GitRepository.Open(repositoryPath);
-        if (repository is null)
-        {
-            return new RunReport(repositoryPath, [], failure);
-        }
-
-        var (config, configFailure) = HarnessConfig.Load(repository, CheckRegistry.Describe(checks));
+        var (config, configFailure) = HarnessConfig.Load(repository, CheckCatalog.Describe(checks));
         var invalidConfig = InvalidConfigReport(repository, config, configFailure, checks);
         if (invalidConfig is not null)
         {
@@ -107,7 +101,7 @@ internal static class GateEngine
     }
 
     private static RunReport? InvalidConfigReport(
-        GitRepository repository,
+        IRepository repository,
         HarnessConfig? config,
         string? configFailure,
         IReadOnlyList<IRepositoryCheck> checks)
@@ -156,7 +150,7 @@ internal static class GateEngine
     /// ordinary state of a repository being brought under the harness. The verdict is
     /// untouched; Git is asked once, and only when a question stayed open.
     /// </summary>
-    private static List<string> UntrackedEvidence(GitRepository repository, HashSet<EvidenceFile> evidence)
+    private static List<string> UntrackedEvidence(IRepository repository, HashSet<EvidenceFile> evidence)
     {
         if (evidence.Count == 0)
         {
