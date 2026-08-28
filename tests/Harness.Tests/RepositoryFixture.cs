@@ -61,6 +61,46 @@ public sealed class RepositoryFixture : TemporaryDirectory
         return this;
     }
 
+    public RepositoryFixture WithInputMirrors()
+    {
+        foreach (var application in Directory.EnumerateDirectories(Path, "Application", SearchOption.AllDirectories))
+        {
+            var features = System.IO.Path.Combine(application, "Features");
+            if (!Directory.Exists(features))
+            {
+                continue;
+            }
+
+            var zone = Directory.GetParent(application)!.FullName;
+            foreach (var top in Directory.EnumerateDirectories(features))
+            {
+                var directContent = Directory.EnumerateFiles(top)
+                    .Any(file => System.IO.Path.GetFileName(file) is not ".gitkeep" and not ".keep" and not ".gitignore");
+                var slices = directContent || Directory.Exists(System.IO.Path.Combine(top, "Contracts"))
+                    ? new[] { top }
+                    : Directory.EnumerateDirectories(top).ToArray();
+                foreach (var slice in slices)
+                {
+                    var relativeSlice = System.IO.Path.GetRelativePath(features, slice);
+                    var apiMirror = System.IO.Path.Combine(zone, "Api", "Features", relativeSlice);
+                    var consumerMirror = System.IO.Path.Combine(zone, "Consumers", "Features", relativeSlice);
+                    if (!Directory.Exists(apiMirror) && !Directory.Exists(consumerMirror))
+                    {
+                        var mirror = Directory.Exists(System.IO.Path.Combine(zone, "Consumers"))
+                            && !Directory.Exists(System.IO.Path.Combine(zone, "Api"))
+                            ? consumerMirror
+                            : apiMirror;
+                        WriteFile(
+                            System.IO.Path.GetRelativePath(Path, System.IO.Path.Combine(mirror, ".fixture")),
+                            "mirror");
+                    }
+                }
+            }
+        }
+
+        return this;
+    }
+
     /// <summary>Stages everything and commits, so tracked state is unambiguous.</summary>
     public RepositoryFixture Commit()
     {

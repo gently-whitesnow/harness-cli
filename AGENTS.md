@@ -85,7 +85,7 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 
 - `src/Harness` — сам CLI. NativeAOT, установленный .NET runtime в момент использования не нужен.
   - `Host/` — composition root и запуск процесса.
-  - `Api/Cli/` — разбор командной строки, usage, компактный консольный отчёт.
+  - `Api/Features/Harness/Cli/` — входное зеркало с разбором командной строки, usage и консольным отчётом.
   - `Application/Features/Harness/` — единый прикладной слайс CLI.
   - `Application/Features/Harness/Contracts/` — типы, через которые `Api` обращается к слайсу.
   - `Application/Features/Harness/Versioning/` — релиз и граница текущего контракта.
