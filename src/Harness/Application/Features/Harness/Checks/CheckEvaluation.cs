@@ -31,6 +31,12 @@ internal sealed record CheckEvaluation(
     public static CheckEvaluation Incomplete(string reason, IReadOnlyList<string>? observations = null)
         => new(CheckOutcome.Incomplete, [], reason, [], observations ?? []);
 
+    public static CheckEvaluation Incomplete(
+        string reason,
+        IReadOnlyList<Finding> findings,
+        IReadOnlyList<string>? observations = null)
+        => new(CheckOutcome.Incomplete, findings, reason, findings, observations ?? []);
+
     public static CheckEvaluation Skipped(string reason) => new(CheckOutcome.Skipped, [], reason, [], []);
 
     public static CheckEvaluation NotApplicable(string reason, IReadOnlyList<string>? observations = null)

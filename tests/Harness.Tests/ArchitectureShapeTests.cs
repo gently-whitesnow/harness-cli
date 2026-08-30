@@ -9,8 +9,8 @@ public sealed class ArchitectureShapeTests
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["Host"] = Layers,
-            ["Api"] = ["Application", "Shared"],
-            ["Consumers"] = ["Application", "Shared"],
+            ["Api"] = ["Application", "Domain", "Shared"],
+            ["Consumers"] = ["Application", "Domain", "Shared"],
             ["Application"] = ["Domain", "Shared"],
             ["Domain"] = ["Shared"],
             ["Infrastructure"] = ["Application", "Domain", "Shared"],
@@ -337,15 +337,13 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
-    public void Slice_conventions_are_advisory()
+    public void Heuristic_slice_conventions_remain_advisory()
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
             .WriteFile("src/Orders/Api/Features/Sale/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Api/Features/Sale/Helpers/Mapper.cs", "sealed class Mapper;")
             .WriteFile("src/Orders/Api/Features/Invoices/Endpoint.cs", "sealed class Endpoint;")
             .WriteFile("src/Orders/Application/Features/Sale/Marker.cs", "sealed class Marker;")
-            .WriteFile("src/Orders/Application/Features/Sale/Services/Create.cs", "sealed class Create;")
             .WriteFile("src/Orders/Application/Features/Invoices/List.cs", "sealed class List;")
             .WithInputMirrors()
             .Commit();
@@ -354,9 +352,192 @@ public sealed class ArchitectureShapeTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.Contains("insignificant-slice", run.Output, StringComparison.Ordinal);
-        Assert.Contains("generic-slice-directory", run.Output, StringComparison.Ordinal);
-        Assert.Contains("dimension 'Api', directory 'Helpers'", run.Output, StringComparison.Ordinal);
         Assert.Contains("inconsistent-slice-pluralization", run.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Api/Features/Sales/Validators/Input.cs", "Api", "Validators")]
+    [InlineData("Consumers/Features/Sales/Types/Message.cs", "Consumers", "Types")]
+    [InlineData("Application/Features/Sales/Services/Create.cs", "Application", "Services")]
+    [InlineData("Domain/Sales/Constants/Status.cs", "Domain", "Constants")]
+    [InlineData("Infrastructure/Features/Sales/Common/Adapter.cs", "Infrastructure", "Common")]
+    [InlineData("Infrastructure/Features/Sales/Managers/Adapter.cs", "Infrastructure", "Managers")]
+    [InlineData("Infrastructure/Features/Sales/Repository/Adapter.cs", "Infrastructure", "Repository")]
+    [InlineData("Infrastructure/Features/Sales/Repositories/Adapter.cs", "Infrastructure", "Repositories")]
+    public void Essence_based_direct_segments_are_blocking_when_architecture_is_required(
+        string relativePath,
+        string dimension,
+        string segment)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile($"src/Orders/{relativePath}", "sealed class Content;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
+        Assert.Contains($"dimension '{dimension}', segment '{segment}'", run.Output, StringComparison.Ordinal);
+        Assert.Contains("names what its contents are", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Advisory_policy_reports_an_essence_based_segment_without_failing()
+    {
+        using var repository = ArchitectureRepository("advisory")
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", "sealed class Create;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
+        Assert.Contains("advisory", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Segment_finding_does_not_hide_dependency_violations()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile(
+                "src/Orders/Api/Features/Sales/Endpoint.cs",
+                ProvenReference("Fixture.Api", "Endpoint", "Fixture.Infrastructure", "Adapter"))
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", EmptyType("Fixture.Application", "Marker"))
+            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile(
+                "src/Orders/Infrastructure/Features/Sales/Persistence/Adapter.cs",
+                EmptyType("Fixture.Infrastructure", "Adapter"))
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
+        Assert.Contains("layer dependency Api -> Infrastructure", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Purpose_segment_is_allowed_and_nested_essence_name_is_not_reclassified()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Features/Sales/Persistence/Validators/Input.cs", "sealed class Input;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("segments-by-purpose", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Essence_based_leaf_below_a_group_is_not_misclassified_as_a_business_slice()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", "sealed class Create;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("no-segments-on-sliced-layers", run.Output, StringComparison.Ordinal);
+        Assert.Contains("application slice 'Sales/Services'", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Business_named_leaf_below_a_group_is_a_valid_grouped_slice()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Ordering/Create.cs", "sealed class Create;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("no-segments-on-sliced-layers", run.Output, StringComparison.Ordinal);
+        Assert.Contains("slices [Sales/Ordering]", run.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Host/Services/Startup.cs", "Host", "Services")]
+    [InlineData("Shared/Utils/Text.cs", "Shared", "Utils")]
+    public void Sliceless_layers_also_require_purpose_named_direct_segments(
+        string relativePath,
+        string layer,
+        string segment)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile($"src/Orders/{relativePath}", "sealed class Content;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
+        Assert.Contains($"sliceless layer '{layer}', segment '{segment}'", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Required_policy_fails_on_segment_finding_even_when_the_csharp_graph_is_unreadable()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Broken.cs", "sealed class Broken;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", "sealed class Create;")
+            .WithInputMirrors()
+            .Commit()
+            .PointIndexAtMissingObject("src/Orders/Host/Broken.cs")
+            .Remove("src/Orders/Host/Broken.cs");
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
+        Assert.Contains("outcome: failed", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Advisory_policy_keeps_graph_failure_incomplete_and_preserves_segment_findings()
+    {
+        using var repository = ArchitectureRepository("advisory")
+            .WriteFile("src/Orders/Host/Broken.cs", "sealed class Broken;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", "sealed class Create;")
+            .WithInputMirrors()
+            .Commit()
+            .PointIndexAtMissingObject("src/Orders/Host/Broken.cs")
+            .Remove("src/Orders/Host/Broken.cs");
+
+        var run = Shape(repository);
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
+        Assert.Contains("outcome: incomplete", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -501,6 +682,28 @@ public sealed class ArchitectureShapeTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.DoesNotContain("layer dependency", run.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Api")]
+    [InlineData("Consumers")]
+    public void Input_layers_may_read_any_domain_slice(string inputLayer)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
+            .WriteFile(
+                $"src/Orders/{inputLayer}/Features/Sales/Endpoint.cs",
+                ProvenReference("Fixture.Input", "Endpoint", "Fixture.Domain", "InventoryItem"))
+            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Sales", "Create"))
+            .WriteFile("src/Orders/Application/Features/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "Baseline"))
+            .WriteFile("src/Orders/Domain/Inventory/InventoryItem.cs", EmptyType("Fixture.Domain", "InventoryItem"))
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain($"layer dependency {inputLayer} -> Domain", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -969,6 +1172,11 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("makes <Name> a slice", run.Output, StringComparison.Ordinal);
         Assert.Contains("Inferred", run.Output, StringComparison.Ordinal);
         Assert.Contains("insignificant-slice convention accepts both Proven and Inferred", run.Output, StringComparison.Ordinal);
+        Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
+        Assert.Contains("no-segments-on-sliced-layers", run.Output, StringComparison.Ordinal);
+        Assert.Contains("do not prove semantic slice cohesion", run.Output, StringComparison.Ordinal);
+        Assert.Contains("adrs/0036-input-layers-read-domain.md", run.Output, StringComparison.Ordinal);
+        Assert.Contains("adrs/0037-segments-by-purpose.md", run.Output, StringComparison.Ordinal);
         Assert.Contains("member access", run.Output, StringComparison.Ordinal);
     }
 

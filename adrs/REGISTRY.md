@@ -96,6 +96,14 @@
   per-repo декларации `layers`/`modules`/`mirrors` не реализуются,
   кросс-импорт слайсов — только явный cross-API `X/<Потребитель>`,
   standalone-библиотека отвечает `applicable: false`.
+- [ADR-0036](0036-input-layers-read-domain.md) — Исправляет реализацию инварианта
+  «Domain — общий словарь»: `Api` и `Consumers`, как и `Application` с
+  `Infrastructure`, могут читать любой `Domain`-слайс. Контракт `sliced-dotnet/1` не
+  меняется; релиз 2.3.0 устраняет расхождение кода с ADR-0033.
+- [ADR-0037](0037-segments-by-purpose.md) — Переносит generic-словарь Steiger
+  `segments-by-purpose` на непосредственные сегменты sliced-dotnet; находка подчиняется
+  общей policy, backend-расширение блокирует `Repositories`, а технический leaf не может
+  притвориться grouped-слайсом.
 
 ## Сборка и документация
 <!-- Инварианты, которые ограничивают код и тексты репозитория -->
