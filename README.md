@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 остаётся общим для всех linked worktree клона. User-каталоги и tracked-файлы этот режим не
 меняет.
 
-`HARNESS_VERSION=2.3.1` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+`HARNESS_VERSION=2.4.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
@@ -91,7 +91,7 @@ GitLab:
 
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:2.3.1
+  image: ghcr.io/gently-whitesnow/harness:2.4.0
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"

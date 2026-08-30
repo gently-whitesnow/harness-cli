@@ -62,6 +62,10 @@ internal static class FrameUpgrade
           added    architecture: { "standard": "sliced-dotnet/1" } or { "applicable": false, "reason": "..." }
           added    explicit applicability, settings and policy entries for every shipped check
           added    tracked .harness.budget.json with complexity.csharp propagationCost and coreSize
+        Release 2.4 additions:
+          added    architecture.sliced-dotnet advisory observations flat-directory-grouping,
+                   mutual-cross-api, cross-api-fan-in and directories-by-purpose; they never
+                   change the exit code, and no config change is needed
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }
