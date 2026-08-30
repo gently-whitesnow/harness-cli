@@ -19,7 +19,8 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private static readonly string[] SlicelessSegmentLayers = ["Host", "Shared"];
 
-    private static readonly HashSet<string> EssenceBasedSegmentNames =
+    // Literal port of Steiger's BAD_NAMES_GENERIC pinned by ADR-0037. Keep local policy out of this set.
+    private static readonly HashSet<string> SteigerBadNamesGeneric =
         new(StringComparer.OrdinalIgnoreCase)
         {
             "Component", "Components",
@@ -43,7 +44,15 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             "Resolver", "Resolvers",
             "Mutation", "Mutations",
             "Asset", "Assets",
-            "Common", "Manager", "Managers", "Repository", "Repositories",
+        };
+
+    // Backend vocabulary owned by sliced-dotnet/1, not by Feature-Sliced Design or Steiger.
+    private static readonly HashSet<string> BackendEssenceBasedSegmentNames =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Common",
+            "Manager", "Managers",
+            "Repository", "Repositories",
         };
 
     private static readonly Dictionary<string, HashSet<string>> AllowedDependencies =
@@ -123,8 +132,11 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           groups and mirrors are empty architecture forms and fail the check.
 
           Direct segments in slices and in the sliceless Host and Shared layers are named by purpose
-          rather than by the kind of code they contain. The segments-by-purpose finding ports the
-          generic vocabulary of the corresponding Steiger rule and extends it with backend terms.
+          rather than by the kind of code they contain. The segments-by-purpose finding literally
+          ports BAD_NAMES_GENERIC from the Steiger commit pinned by ADR-0037. The five backend
+          additions — Common, Manager, Managers, Repository and Repositories — belong to the
+          sliced-dotnet/1 policy. Steiger's frontend framework vocabularies are intentionally not
+          part of this .NET standard.
           An essence-based leaf below a slice group is rejected as an ambiguous segment on a sliced
           dimension, following Steiger's no-segments-on-sliced-layers rule. The check still advises
           on slices without a resolved incoming reference from their own input mirror, mixed
@@ -290,7 +302,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         foreach (var slice in map.Slices)
         {
             var leaf = slice.Split('/')[^1];
-            if (EssenceBasedSegmentNames.Contains(leaf))
+            if (IsEssenceBasedSegmentName(leaf))
             {
                 findings.Add(Advice(
                     At(zone, $"Application/Features/{slice}"),
@@ -306,7 +318,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                 foreach (var segment in entries
                     .Where(path => path.StartsWith(slicePrefix, StringComparison.Ordinal))
                     .Select(path => ImmediateDirectory(path[slicePrefix.Length..]))
-                    .Where(segment => segment is not null && EssenceBasedSegmentNames.Contains(segment))
+                    .Where(segment => segment is not null && IsEssenceBasedSegmentName(segment))
                     .Select(segment => segment!)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Order(StringComparer.OrdinalIgnoreCase))
@@ -325,7 +337,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             foreach (var segment in entries
                 .Where(path => path.StartsWith(layerPrefix, StringComparison.Ordinal))
                 .Select(path => ImmediateDirectory(path[layerPrefix.Length..]))
-                .Where(segment => segment is not null && EssenceBasedSegmentNames.Contains(segment))
+                .Where(segment => segment is not null && IsEssenceBasedSegmentName(segment))
                 .Select(segment => segment!)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Order(StringComparer.OrdinalIgnoreCase))
@@ -337,6 +349,10 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             }
         }
     }
+
+    private static bool IsEssenceBasedSegmentName(string name)
+        => SteigerBadNamesGeneric.Contains(name)
+            || BackendEssenceBasedSegmentNames.Contains(name);
 
     private static string? ImmediateDirectory(string relativePath)
     {
