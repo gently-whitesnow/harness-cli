@@ -5,6 +5,40 @@ public sealed class ArchitectureShapeTests
     private static readonly string[] Layers =
         ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure", "Shared"];
 
+    private static readonly string[] SteigerBadNamesGeneric =
+    [
+        "Component", "Components",
+        "Helper", "Helpers",
+        "Util", "Utils",
+        "Constant", "Constants", "Const", "Consts",
+        "Type", "Types",
+        "Store", "Stores",
+        "Modal", "Modals",
+        "Service", "Services",
+        "Function", "Functions",
+        "Class", "Classes",
+        "Enum", "Enums",
+        "Interface", "Interfaces",
+        "Decorator", "Decorators",
+        "Schema", "Schemas",
+        "Handler", "Handlers",
+        "Fixture", "Fixtures",
+        "Middleware", "Middlewares",
+        "Validator", "Validators", "Validation", "Validations",
+        "Resolver", "Resolvers",
+        "Mutation", "Mutations",
+        "Asset", "Assets",
+    ];
+
+    private static readonly string[] SteigerFrontendSpecificBadNames =
+    [
+        "Hook", "Hooks", "Context", "Provider", "Providers",
+        "Composable", "Composables", "Directive", "Directives",
+        "Action", "Actions", "Reducer", "Reducers", "Selector", "Selectors",
+        "Effect", "Effects", "Saga", "Sagas", "Thunk", "Thunks",
+        "Pipe", "Pipes",
+    ];
+
     private static readonly Dictionary<string, string[]> AllowedDependencies =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
@@ -360,11 +394,25 @@ public sealed class ArchitectureShapeTests
     [InlineData("Consumers/Features/Sales/Types/Message.cs", "Consumers", "Types")]
     [InlineData("Application/Features/Sales/Services/Create.cs", "Application", "Services")]
     [InlineData("Domain/Sales/Constants/Status.cs", "Domain", "Constants")]
+    public void Steiger_generic_essence_based_direct_segments_are_blocking_when_architecture_is_required(
+        string relativePath,
+        string dimension,
+        string segment)
+        => AssertEssenceBasedDirectSegmentIsBlocking(relativePath, dimension, segment);
+
+    [Theory]
     [InlineData("Infrastructure/Features/Sales/Common/Adapter.cs", "Infrastructure", "Common")]
+    [InlineData("Infrastructure/Features/Sales/Manager/Adapter.cs", "Infrastructure", "Manager")]
     [InlineData("Infrastructure/Features/Sales/Managers/Adapter.cs", "Infrastructure", "Managers")]
     [InlineData("Infrastructure/Features/Sales/Repository/Adapter.cs", "Infrastructure", "Repository")]
     [InlineData("Infrastructure/Features/Sales/Repositories/Adapter.cs", "Infrastructure", "Repositories")]
-    public void Essence_based_direct_segments_are_blocking_when_architecture_is_required(
+    public void Sliced_dotnet_backend_essence_based_direct_segments_are_blocking_when_architecture_is_required(
+        string relativePath,
+        string dimension,
+        string segment)
+        => AssertEssenceBasedDirectSegmentIsBlocking(relativePath, dimension, segment);
+
+    private static void AssertEssenceBasedDirectSegmentIsBlocking(
         string relativePath,
         string dimension,
         string segment)
@@ -383,6 +431,88 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
         Assert.Contains($"dimension '{dimension}', segment '{segment}'", run.Output, StringComparison.Ordinal);
         Assert.Contains("names what its contents are", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Steiger_generic_vocabulary_matches_the_pinned_bad_names_generic_snapshot()
+    {
+        var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;");
+        foreach (var segment in SteigerBadNamesGeneric)
+        {
+            repository.WriteFile($"src/Orders/Application/Features/Sales/{segment}/Content.cs", "sealed class Content;");
+        }
+        using var committed = repository.WithInputMirrors().Commit();
+
+        var run = Shape(committed);
+
+        Assert.Equal(1, run.ExitCode);
+        foreach (var segment in SteigerBadNamesGeneric)
+        {
+            Assert.Contains($"dimension 'Application', segment '{segment}'", run.Output, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void Frontend_specific_steiger_vocabularies_are_not_part_of_sliced_dotnet()
+    {
+        var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;");
+        foreach (var segment in SteigerFrontendSpecificBadNames)
+        {
+            repository.WriteFile($"src/Orders/Application/Features/Sales/{segment}/Content.cs", "sealed class Content;");
+        }
+        using var committed = repository.WithInputMirrors().Commit();
+
+        var run = Shape(committed);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("segments-by-purpose", run.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("sErViCeS")]
+    [InlineData("rEpOsItOrIeS")]
+    public void Upstream_and_backend_vocabularies_are_case_insensitive(string segment)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile($"src/Orders/Application/Features/Sales/{segment}/Content.cs", "sealed class Content;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains($"dimension 'Application', segment '{segment}'", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Upstream_backend_and_allowed_boundaries_keep_the_existing_two_findings()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/Features/Sales/Repositories/Store.cs", "sealed class Store;")
+            .WriteFile("src/Orders/Application/Features/Sales/Hooks/Observe.cs", "sealed class Observe;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Equal(2, Occurrences(run.Output, "names what its contents are"));
+        Assert.Contains("segment 'Services' names what its contents are", run.Output, StringComparison.Ordinal);
+        Assert.Contains("segment 'Repositories' names what its contents are", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("segment 'Hooks'", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
