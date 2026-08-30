@@ -17,8 +17,34 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private static readonly string[] SliceDimensions = ["Application", .. MirrorLayers];
 
-    private static readonly HashSet<string> GenericSliceDirectories =
-        new(StringComparer.OrdinalIgnoreCase) { "Services", "Helpers", "Managers", "Utils", "Common" };
+    private static readonly string[] SlicelessSegmentLayers = ["Host", "Shared"];
+
+    private static readonly HashSet<string> EssenceBasedSegmentNames =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "Component", "Components",
+            "Helper", "Helpers",
+            "Util", "Utils",
+            "Constant", "Constants", "Const", "Consts",
+            "Type", "Types",
+            "Store", "Stores",
+            "Modal", "Modals",
+            "Service", "Services",
+            "Function", "Functions",
+            "Class", "Classes",
+            "Enum", "Enums",
+            "Interface", "Interfaces",
+            "Decorator", "Decorators",
+            "Schema", "Schemas",
+            "Handler", "Handlers",
+            "Fixture", "Fixtures",
+            "Middleware", "Middlewares",
+            "Validator", "Validators", "Validation", "Validations",
+            "Resolver", "Resolvers",
+            "Mutation", "Mutations",
+            "Asset", "Assets",
+            "Common", "Manager", "Managers", "Repository", "Repositories",
+        };
 
     private static readonly Dictionary<string, HashSet<string>> AllowedDependencies =
         new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
@@ -96,9 +122,13 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           Infrastructure/Persistence are reserved non-slice directories. Placeholder-only slices,
           groups and mirrors are empty architecture forms and fail the check.
 
-          Until negative fixtures justify blocking rules, the check advises on slices without a
-          resolved incoming reference from their own input mirror, mixed singular/plural names, more
-          than 20 ungrouped slices and generic Services, Helpers, Managers, Utils or Common folders.
+          Direct segments in slices and in the sliceless Host and Shared layers are named by purpose
+          rather than by the kind of code they contain. The segments-by-purpose finding ports the
+          generic vocabulary of the corresponding Steiger rule and extends it with backend terms.
+          An essence-based leaf below a slice group is rejected as an ambiguous segment on a sliced
+          dimension, following Steiger's no-segments-on-sliced-layers rule. The check still advises
+          on slices without a resolved incoming reference from their own input mirror, mixed
+          singular/plural names and more than 20 ungrouped slices.
 
         Policy
           A violation is blocking when the tracked policy for this check is required, and no
@@ -115,7 +145,10 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           to Domain or Shared, and use an explicit X/<Consumer> cross-API only as a last resort.
           Give every Application slice a synchronous or asynchronous input mirror, remove orphaned
           mirrors, and replace placeholder-only architecture directories with working code or remove
-          the dead form.
+          the dead form. Rename an essence-based segment such as Services, Validators or Repositories
+          after the purpose it serves. If the name is a leaf below a slice group, either choose a
+          business slice name or move the segment inside a named slice. These naming checks expose
+          structural ambiguity; they do not prove semantic slice cohesion.
           A type-like name in a member access can look connected to the lexical reader. That
           Inferred edge cannot produce a blocking finding, but it can establish a reference for
           insignificant-slice; inspect the named files behind every reported Proven violation.
@@ -123,6 +156,8 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         Decisions
           adrs/0032-topology-over-thresholds.md
           adrs/0033-canonical-standard-over-declarations.md
+          adrs/0036-input-layers-read-domain.md
+          adrs/0037-segments-by-purpose.md
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)
@@ -152,23 +187,28 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                 observations: ["architecture map: no zones"]);
         }
 
-        var findings = new List<Finding>();
+        var shapeFindings = new List<Finding>();
+        var segmentFindings = new List<Finding>();
         var maps = new List<string>();
         var slicesByZone = new Dictionary<string, SliceMap>(StringComparer.Ordinal);
         foreach (var zone in zones)
         {
-            slicesByZone[zone] = InspectZone(zone, paths, findings, maps);
+            var map = InspectZone(zone, paths, shapeFindings, maps);
+            slicesByZone[zone] = map;
+            InspectSegmentPurposes(zone, map, paths, segmentFindings);
         }
 
-        if (findings.Count > 0)
+        if (shapeFindings.Count > 0)
         {
-            return CheckEvaluation.From(findings, observations: maps);
+            return CheckEvaluation.From(
+                [.. shapeFindings, .. segmentFindings],
+                observations: maps);
         }
 
         var (graph, failure) = analyzer.ReadGraph(context.Repository);
         if (graph is null)
         {
-            return CheckEvaluation.Incomplete(failure!, maps);
+            return CheckEvaluation.Incomplete(failure!, segmentFindings, maps);
         }
 
         var dependencies = InspectDependencies(
@@ -176,8 +216,12 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             slicesByZone.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value.Slices),
             graph);
         maps.AddRange(InspectConventions(zones, slicesByZone, paths, graph));
-        var detailed = dependencies.Select(dependency => dependency.Finding).ToList();
-        var summary = Summarize(dependencies);
+        var detailed = segmentFindings
+            .Concat(dependencies.Select(dependency => dependency.Finding))
+            .ToList();
+        var summary = segmentFindings
+            .Concat(Summarize(dependencies))
+            .ToList();
 
         return CheckEvaluation.From(summary, detailedFindings: detailed, observations: maps);
     }
@@ -217,23 +261,6 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                         + $"Api/Features/{slice}/ or Consumers/Features/{slice}/ mirror");
                 }
 
-                foreach (var dimension in SliceDimensions)
-                {
-                    var slicePrefix = dimension == "Domain"
-                        ? $"Domain/{slice}/"
-                        : $"{dimension}/Features/{slice}/";
-                    foreach (var directory in entries
-                        .Where(path => path.StartsWith(slicePrefix, StringComparison.Ordinal))
-                        .SelectMany(path => DirectorySegments(path[slicePrefix.Length..]))
-                        .Where(GenericSliceDirectories.Contains)
-                        .Distinct(StringComparer.OrdinalIgnoreCase)
-                        .Order(StringComparer.OrdinalIgnoreCase))
-                    {
-                        observations.Add(
-                            $"advisory {At(zone, $"{slicePrefix}{directory}")}: generic-slice-directory: "
-                            + $"slice '{slice}', dimension '{dimension}', directory '{directory}' hides its business purpose");
-                    }
-                }
             }
 
             AddPluralizationAdvice(zone, map, observations);
@@ -247,6 +274,74 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         }
 
         return observations;
+    }
+
+    private static void InspectSegmentPurposes(
+        string zone,
+        SliceMap map,
+        IReadOnlyList<string> paths,
+        List<Finding> findings)
+    {
+        var entries = paths
+            .Select(path => Relative(path, zone))
+            .Where(path => path.Length > 0 && !path.StartsWith("../", StringComparison.Ordinal))
+            .ToList();
+
+        foreach (var slice in map.Slices)
+        {
+            var leaf = slice.Split('/')[^1];
+            if (EssenceBasedSegmentNames.Contains(leaf))
+            {
+                findings.Add(Advice(
+                    At(zone, $"Application/Features/{slice}"),
+                    $"no-segments-on-sliced-layers: application slice '{slice}' ends in essence-based "
+                    + $"name '{leaf}'; choose a business slice name or move that segment inside a named slice"));
+            }
+
+            foreach (var dimension in SliceDimensions)
+            {
+                var slicePrefix = dimension == "Domain"
+                    ? $"Domain/{slice}/"
+                    : $"{dimension}/Features/{slice}/";
+                foreach (var segment in entries
+                    .Where(path => path.StartsWith(slicePrefix, StringComparison.Ordinal))
+                    .Select(path => ImmediateDirectory(path[slicePrefix.Length..]))
+                    .Where(segment => segment is not null && EssenceBasedSegmentNames.Contains(segment))
+                    .Select(segment => segment!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Order(StringComparer.OrdinalIgnoreCase))
+                {
+                    findings.Add(Advice(
+                        At(zone, $"{slicePrefix}{segment}"),
+                        $"segments-by-purpose: slice '{slice}', dimension '{dimension}', segment '{segment}' "
+                        + "names what its contents are; rename it after the purpose those contents serve"));
+                }
+            }
+        }
+
+        foreach (var layer in SlicelessSegmentLayers)
+        {
+            var layerPrefix = $"{layer}/";
+            foreach (var segment in entries
+                .Where(path => path.StartsWith(layerPrefix, StringComparison.Ordinal))
+                .Select(path => ImmediateDirectory(path[layerPrefix.Length..]))
+                .Where(segment => segment is not null && EssenceBasedSegmentNames.Contains(segment))
+                .Select(segment => segment!)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Order(StringComparer.OrdinalIgnoreCase))
+            {
+                findings.Add(Advice(
+                    At(zone, $"{layerPrefix}{segment}"),
+                    $"segments-by-purpose: sliceless layer '{layer}', segment '{segment}' names what its "
+                    + "contents are; rename it after the purpose those contents serve"));
+            }
+        }
+    }
+
+    private static string? ImmediateDirectory(string relativePath)
+    {
+        var separator = relativePath.IndexOf('/');
+        return separator > 0 ? relativePath[..separator] : null;
     }
 
     private static void AddPluralizationAdvice(string zone, SliceMap map, List<string> observations)
@@ -278,12 +373,6 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             && !name.EndsWith("ss", StringComparison.OrdinalIgnoreCase)
             && !name.EndsWith("us", StringComparison.OrdinalIgnoreCase)
             && !name.Equals("Status", StringComparison.OrdinalIgnoreCase);
-
-    private static IEnumerable<string> DirectorySegments(string relativePath)
-    {
-        var parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Take(Math.Max(0, parts.Length - 1));
-    }
 
     private static List<DependencyViolation> InspectDependencies(
         IReadOnlyList<string> zones,
@@ -841,6 +930,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private static Finding Block(string location, string message)
         => new(FindingSeverity.Blocking, location, message);
+
+    private static Finding Advice(string location, string message)
+        => new(FindingSeverity.Advisory, location, message);
 
     private sealed record SliceMap(
         List<string> Slices,

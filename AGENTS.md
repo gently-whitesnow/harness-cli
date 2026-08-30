@@ -53,7 +53,7 @@ baseline; повышение делается вручную через ревь
 `.slnx` вместо `.sln`; он читает tracked XML, но не выполняет MSBuild evaluation.
 [ADR-0019](adrs/0019-dotnet-repository-policy.md)
 
-`version` — строка текущего контракта (`"2.2.1"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.3.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -61,9 +61,11 @@ baseline; повышение делается вручную через ревь
 Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`,
 `Infrastructure`, `Shared`) × сквозные слайсы `Features/<Слайс>`; публичный API слайса —
 его `Contracts/`, кросс-импорт — только явный cross-API `X/<Потребитель>` (аналог `@x`
-FSD 2.1), верхние слои читают любой `Domain`-слайс. Standalone-библиотека отвечает
+FSD 2.1), верхние слои читают любой `Domain`-слайс, прямой сегмент именуется по назначению.
+Standalone-библиотека отвечает
 `"architecture": { "applicable": false, "reason": "..." }`.
-[ADR-0033](adrs/0033-canonical-standard-over-declarations.md)
+[ADR-0033](adrs/0033-canonical-standard-over-declarations.md),
+[ADR-0037](adrs/0037-segments-by-purpose.md)
 
 `"latest"` включает rolling-контракт. `harness init` спрашивает только application или
 standalone-library (либо принимает `--kind application|library` без stdin), создаёт
@@ -95,7 +97,7 @@ setup` включает шаблон и `commit-msg` hook в общем ката
     CLI-capability, а не набор независимых бизнес-слайсов ([ADR-0034](adrs/0034-language-axis-in-sliced-dotnet.md)).
   - `Domain/Harness/Structure/` — язык-нейтральная модель графа, модулей, циклов и DSM.
   - `Domain/Harness/Languages/` — языковой порт ADR-0022/0034; реализаций здесь нет.
-  - `Domain/Harness/Repository/` — модель tracked evidence и порт репозитория.
+  - `Domain/Harness/Evidence/` — модель tracked evidence и порт репозитория.
   - `Infrastructure/Features/Harness/Git/` — Git-процесс и clone-local интеграция.
   - `Infrastructure/Features/Harness/Languages/CSharp/` — C#-ридер в отдельном infra namespace.
   - `Shared/Versioning/` — версия бинаря и граница текущего контракта.
