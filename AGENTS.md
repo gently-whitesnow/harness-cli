@@ -62,10 +62,12 @@ Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`
 `Infrastructure`, `Shared`) × сквозные слайсы `Features/<Слайс>`; публичный API слайса —
 его `Contracts/`, кросс-импорт — только явный cross-API `X/<Потребитель>` (аналог `@x`
 FSD 2.1), верхние слои читают любой `Domain`-слайс, прямой сегмент именуется по назначению.
-Standalone-библиотека отвечает
+Плоский каталог 20+ файлов, плотность X-контрактов и essence-имена вне сегментных позиций —
+неблокирующие advisory-observations. Standalone-библиотека отвечает
 `"architecture": { "applicable": false, "reason": "..." }`.
 [ADR-0033](adrs/0033-canonical-standard-over-declarations.md),
-[ADR-0037](adrs/0037-segments-by-purpose.md)
+[ADR-0037](adrs/0037-segments-by-purpose.md),
+[ADR-0038](adrs/0038-flat-directory-grouping.md)–[ADR-0040](adrs/0040-zone-wide-vocabulary.md)
 
 `"latest"` включает rolling-контракт. `harness init` спрашивает только application или
 standalone-library (либо принимает `--kind application|library` без stdin), создаёт
