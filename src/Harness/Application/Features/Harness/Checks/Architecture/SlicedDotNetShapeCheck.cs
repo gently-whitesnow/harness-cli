@@ -8,6 +8,15 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 {
     private const int ShownDependencyGroups = 5;
 
+    // ADR-0038: adapted from Steiger's shared-lib-grouping THRESHOLD of direct children.
+    private const int FlatDirectoryFileLimit = 20;
+
+    // ADR-0039: distinct cross-API consumers that make a slice look like a lower layer.
+    private const int CrossApiFanInLimit = 4;
+
+    // Mirrors the generated-suffix judgement of the C# source reader.
+    private static readonly string[] GeneratedSourceSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
+
     private static readonly string[] Layers =
         ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure", "Shared"];
 
@@ -141,6 +150,14 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           dimension, following Steiger's no-segments-on-sliced-layers rule. The check still advises
           on slices without a resolved incoming reference from their own input mirror, mixed
           singular/plural names and more than 20 ungrouped slices.
+          Three further structure conventions are printed as advisory observations under every
+          policy, including required: a directory anywhere in the zone that directly holds 20 or
+          more authored .cs files (flat-directory-grouping, adapting Steiger's shared-lib-grouping
+          threshold), a pair of slices publishing cross-APIs for each other (mutual-cross-api) and
+          a slice whose cross-APIs are consumed by 4 or more distinct slices (cross-api-fan-in) —
+          the density of the X graph is the only layering signal on the single slice layer — and an
+          essence-named directory at any depth outside the positions the segment rules already
+          classify (directories-by-purpose). These observations never change the exit code.
 
         Policy
           A violation is blocking when the tracked policy for this check is required, and no
@@ -170,6 +187,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           adrs/0033-canonical-standard-over-declarations.md
           adrs/0036-input-layers-read-domain.md
           adrs/0037-segments-by-purpose.md
+          adrs/0038-flat-directory-grouping.md
+          adrs/0039-cross-api-density.md
+          adrs/0040-zone-wide-vocabulary.md
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)
@@ -208,6 +228,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             var map = InspectZone(zone, paths, shapeFindings, maps);
             slicesByZone[zone] = map;
             InspectSegmentPurposes(zone, map, paths, segmentFindings);
+            InspectStructureAdvisories(zone, map, paths, maps);
         }
 
         if (shapeFindings.Count > 0)
@@ -348,6 +369,202 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                     + "contents are; rename it after the purpose those contents serve"));
             }
         }
+    }
+
+    /// <summary>
+    /// Non-blocking structure conventions from ADR-0038, ADR-0039 and ADR-0040. Following the
+    /// insignificant-slice precedent, they are printed as advisory observations rather than
+    /// findings, so no policy — including required — can turn them into a blocking verdict.
+    /// </summary>
+    private static void InspectStructureAdvisories(
+        string zone,
+        SliceMap map,
+        IReadOnlyList<string> paths,
+        List<string> observations)
+    {
+        var entries = paths
+            .Select(path => Relative(path, zone))
+            .Where(path => path.Length > 0 && !path.StartsWith("../", StringComparison.Ordinal))
+            .ToList();
+
+        AddFlatDirectoryAdvice(zone, entries, observations);
+        AddCrossApiDensityAdvice(zone, map, entries, observations);
+        AddZoneVocabularyAdvice(zone, map, entries, observations);
+    }
+
+    private static void AddFlatDirectoryAdvice(
+        string zone,
+        IReadOnlyList<string> entries,
+        List<string> observations)
+    {
+        foreach (var directory in entries
+            .Where(IsAuthoredSource)
+            .Select(ParentDirectory)
+            .Where(directory => directory.Length > 0)
+            .GroupBy(directory => directory, StringComparer.Ordinal)
+            .Where(group => group.Count() >= FlatDirectoryFileLimit)
+            .Select(group => (Path: group.Key, Count: group.Count()))
+            .OrderBy(group => group.Path, StringComparer.Ordinal))
+        {
+            observations.Add(
+                $"advisory {At(zone, directory.Path)}: flat-directory-grouping: directory directly holds "
+                + $"{directory.Count} source files; group files by purpose when the flat list reaches "
+                + $"{FlatDirectoryFileLimit}");
+        }
+    }
+
+    private static void AddCrossApiDensityAdvice(
+        string zone,
+        SliceMap map,
+        IReadOnlyList<string> entries,
+        List<string> observations)
+    {
+        var consumersByProducer = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
+        foreach (var producer in map.Slices)
+        {
+            var consumers = CrossApiConsumers(producer, map, entries);
+            if (consumers.Count > 0)
+            {
+                consumersByProducer[producer] = consumers;
+            }
+        }
+
+        foreach (var producer in consumersByProducer.Keys.Order(StringComparer.Ordinal))
+        {
+            foreach (var partner in consumersByProducer[producer]
+                .Where(partner => string.CompareOrdinal(producer, partner) < 0
+                    && consumersByProducer.TryGetValue(partner, out var back)
+                    && back.Contains(producer)))
+            {
+                observations.Add(
+                    $"advisory {At(zone, $"Application/Features/{producer}")}: mutual-cross-api: slices "
+                    + $"'{producer}' and '{partner}' publish cross-APIs for each other; extract the shared "
+                    + "concept into Domain or Shared, or merge the slices");
+            }
+
+            var consumers = consumersByProducer[producer];
+            if (consumers.Count >= CrossApiFanInLimit)
+            {
+                observations.Add(
+                    $"advisory {At(zone, $"Application/Features/{producer}")}: cross-api-fan-in: slice "
+                    + $"'{producer}' publishes cross-APIs for {consumers.Count} consumers "
+                    + $"[{string.Join(", ", consumers)}]; the slice behaves like a lower layer; move the "
+                    + "shared concept down to Domain or Shared");
+            }
+        }
+    }
+
+    private static SortedSet<string> CrossApiConsumers(
+        string producer,
+        SliceMap map,
+        IReadOnlyList<string> entries)
+    {
+        var consumers = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var dimension in SliceDimensions)
+        {
+            var prefix = dimension == "Domain"
+                ? $"Domain/{producer}/X/"
+                : $"{dimension}/Features/{producer}/Contracts/X/";
+            foreach (var consumerPath in entries
+                .Where(path => path.StartsWith(prefix, StringComparison.Ordinal) && !IsPlaceholder(path))
+                .Select(path => path[prefix.Length..])
+                .Where(path => path.Contains('/')))
+            {
+                var consumer = map.Slices
+                    .OrderByDescending(candidate => candidate.Length)
+                    .FirstOrDefault(candidate => consumerPath.StartsWith(candidate + "/", StringComparison.Ordinal))
+                    ?? consumerPath.Split('/', StringSplitOptions.RemoveEmptyEntries)[0];
+                if (!string.Equals(consumer, producer, StringComparison.Ordinal))
+                {
+                    consumers.Add(consumer);
+                }
+            }
+        }
+
+        return consumers;
+    }
+
+    private static void AddZoneVocabularyAdvice(
+        string zone,
+        SliceMap map,
+        IReadOnlyList<string> entries,
+        List<string> observations)
+    {
+        var directories = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var entry in entries)
+        {
+            var separator = -1;
+            while ((separator = entry.IndexOf('/', separator + 1)) >= 0)
+            {
+                directories.Add(entry[..separator]);
+            }
+        }
+
+        foreach (var directory in directories)
+        {
+            var name = directory[(directory.LastIndexOf('/') + 1)..];
+            if (!IsEssenceBasedSegmentName(name) || IsSegmentRulePosition(directory, map))
+            {
+                continue;
+            }
+
+            observations.Add(
+                $"advisory {At(zone, directory)}: directories-by-purpose: directory '{name}' names what its "
+                + "contents are; rename it after the purpose those contents serve");
+        }
+    }
+
+    /// <summary>
+    /// True when ADR-0037 already classifies this directory: a slice, group or mirror position
+    /// owned by the slice-naming rules, a direct segment of a slice, or a direct segment of a
+    /// sliceless layer. Those keep their existing findings; the whole-zone vocabulary scan of
+    /// ADR-0040 reports only positions outside them.
+    /// </summary>
+    private static bool IsSegmentRulePosition(string directory, SliceMap map)
+    {
+        var parts = directory.Split('/');
+        if (parts.Length == 2 && SlicelessSegmentLayers.Contains(parts[0], StringComparer.Ordinal))
+        {
+            return true;
+        }
+
+        foreach (var dimension in SliceDimensions)
+        {
+            var prefix = dimension == "Domain" ? "Domain/" : $"{dimension}/Features/";
+            if (!directory.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var inside = directory[prefix.Length..];
+            var slice = map.Slices
+                .OrderByDescending(candidate => candidate.Length)
+                .FirstOrDefault(candidate => inside.Equals(candidate, StringComparison.Ordinal)
+                    || inside.StartsWith(candidate + "/", StringComparison.Ordinal));
+            if (slice is not null)
+            {
+                // The slice position itself belongs to the slice-naming rules; its direct
+                // segment belongs to segments-by-purpose. Deeper nesting is scanned here.
+                return inside.Length == slice.Length || !inside[(slice.Length + 1)..].Contains('/');
+            }
+
+            // A group position in a mirror dimension echoes the Application group, which is
+            // the one place the group name is reported.
+            return map.Groups.Contains(inside, StringComparer.Ordinal) && dimension != "Application";
+        }
+
+        return false;
+    }
+
+    private static bool IsAuthoredSource(string path)
+        => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+            && !GeneratedSourceSuffixes.Any(suffix =>
+                path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+
+    private static string ParentDirectory(string path)
+    {
+        var separator = path.LastIndexOf('/');
+        return separator < 0 ? string.Empty : path[..separator];
     }
 
     private static bool IsEssenceBasedSegmentName(string name)

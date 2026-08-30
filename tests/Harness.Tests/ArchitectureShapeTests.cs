@@ -630,6 +630,192 @@ public sealed class ArchitectureShapeTests
         Assert.Contains($"sliceless layer '{layer}', segment '{segment}'", run.Output, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(19, false)]
+    [InlineData(20, true)]
+    [InlineData(21, true)]
+    public void Flat_directory_grouping_advisory_starts_at_twenty_direct_source_files(int files, bool advised)
+    {
+        var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;");
+        for (var index = 1; index <= files; index++)
+        {
+            repository.WriteFile(
+                $"src/Orders/Application/Features/Sales/Pricing/Rule{index}.cs",
+                $"sealed class Rule{index};");
+        }
+        using var committed = repository.WithInputMirrors().Commit();
+
+        var run = Shape(committed);
+
+        Assert.Equal(0, run.ExitCode);
+        if (advised)
+        {
+            Assert.Contains(
+                $"advisory src/Orders/Application/Features/Sales/Pricing: flat-directory-grouping: "
+                + $"directory directly holds {files} source files",
+                run.Output,
+                StringComparison.Ordinal);
+        }
+        else
+        {
+            Assert.DoesNotContain("flat-directory-grouping", run.Output, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void Generated_and_placeholder_files_do_not_count_toward_flat_directory_grouping()
+    {
+        var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Features/Sales/Pricing/.gitkeep", "")
+            .WriteFile("src/Orders/Application/Features/Sales/Pricing/Extra.g.cs", "sealed class Extra;")
+            .WriteFile("src/Orders/Application/Features/Sales/Pricing/Extra2.generated.cs", "sealed class Extra2;");
+        for (var index = 1; index <= 19; index++)
+        {
+            repository.WriteFile(
+                $"src/Orders/Application/Features/Sales/Pricing/Rule{index}.cs",
+                $"sealed class Rule{index};");
+        }
+        using var committed = repository.WithInputMirrors().Commit();
+
+        var run = Shape(committed);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("flat-directory-grouping", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Mutual_cross_api_pair_is_an_advisory_observation()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Features/Sales/Contracts/X/Billing/ForBilling.cs", "sealed class ForBilling;")
+            .WriteFile("src/Orders/Application/Features/Billing/Marker.cs", "sealed class BillingMarker;")
+            .WriteFile("src/Orders/Domain/Billing/X/Sales/ForSales.cs", "sealed class ForSales;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains(
+            "advisory src/Orders/Application/Features/Billing: mutual-cross-api: slices 'Billing' and 'Sales' "
+            + "publish cross-APIs for each other",
+            run.Output,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void One_directional_cross_api_is_not_a_mutual_pair()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Features/Sales/Contracts/X/Billing/ForBilling.cs", "sealed class ForBilling;")
+            .WriteFile("src/Orders/Application/Features/Billing/Marker.cs", "sealed class BillingMarker;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("mutual-cross-api", run.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(3, false)]
+    [InlineData(4, true)]
+    public void Cross_api_fan_in_advisory_starts_at_four_distinct_consumers(int consumers, bool advised)
+    {
+        string[] names = ["Billing", "Sales", "Shipping", "Support"];
+        var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Application/Features/Catalog/Marker.cs", "sealed class Marker;");
+        foreach (var consumer in names.Take(consumers))
+        {
+            repository
+                .WriteFile($"src/Orders/Application/Features/{consumer}/Marker.cs", $"sealed class {consumer}Marker;")
+                .WriteFile(
+                    $"src/Orders/Application/Features/Catalog/Contracts/X/{consumer}/For{consumer}.cs",
+                    $"sealed class For{consumer};");
+        }
+        using var committed = repository.WithInputMirrors().Commit();
+
+        var run = Shape(committed);
+
+        Assert.Equal(0, run.ExitCode);
+        if (advised)
+        {
+            Assert.Contains(
+                "advisory src/Orders/Application/Features/Catalog: cross-api-fan-in: slice 'Catalog' "
+                + "publishes cross-APIs for 4 consumers [Billing, Sales, Shipping, Support]",
+                run.Output,
+                StringComparison.Ordinal);
+        }
+        else
+        {
+            Assert.DoesNotContain("cross-api-fan-in", run.Output, StringComparison.Ordinal);
+        }
+    }
+
+    [Theory]
+    [InlineData("Application/Contracts/Common/Model.cs", "Application/Contracts/Common", "Common")]
+    [InlineData("Api/Validation/Rule.cs", "Api/Validation", "Validation")]
+    [InlineData("Shared/Kernel/Utils/Text.cs", "Shared/Kernel/Utils", "Utils")]
+    [InlineData(
+        "Application/Features/Sales/Persistence/Validators/Input.cs",
+        "Application/Features/Sales/Persistence/Validators",
+        "Validators")]
+    public void Essence_named_directories_outside_segment_positions_are_advisory_observations(
+        string relativePath,
+        string directory,
+        string name)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile($"src/Orders/{relativePath}", "sealed class Content;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains(
+            $"advisory src/Orders/{directory}: directories-by-purpose: directory '{name}' names what its "
+            + "contents are",
+            run.Output,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("segments-by-purpose", run.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Application/Features/Sales/Services/Create.cs")]
+    [InlineData("Host/Services/Startup.cs")]
+    public void Segment_positions_keep_their_verdict_and_are_not_double_reported(string relativePath)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile($"src/Orders/{relativePath}", "sealed class Content;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("directories-by-purpose", run.Output, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Required_policy_fails_on_segment_finding_even_when_the_csharp_graph_is_unreadable()
     {

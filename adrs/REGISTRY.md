@@ -104,6 +104,17 @@
   `segments-by-purpose` на непосредственные сегменты sliced-dotnet; находка подчиняется
   общей policy, backend-расширение блокирует `Repositories`, а технический leaf не может
   притвориться grouped-слайсом.
+- [ADR-0038](0038-flat-directory-grouping.md) — Каталог architecture-zone с 20+
+  непосредственными authored `.cs`-файлами получает advisory-observation
+  `flat-directory-grouping` (адаптация Steiger `shared-lib-grouping`); сигнал не меняет
+  код возврата ни при какой policy.
+- [ADR-0039](0039-cross-api-density.md) — Плотность X-контрактов — единственный сигнал
+  скрытой слоистости на едином слое слайсов: взаимная пара — `mutual-cross-api`, четыре и
+  более потребителей — `cross-api-fan-in`; оба — advisory-observations без влияния на код
+  возврата.
+- [ADR-0040](0040-zone-wide-vocabulary.md) — Словарь ADR-0037 сканирует все
+  tracked-каталоги architecture-zone на любой глубине; прежние позиции сохраняют прежние
+  находки, новые получают advisory-observation `directories-by-purpose`.
 
 ## Сборка и документация
 <!-- Инварианты, которые ограничивают код и тексты репозитория -->
