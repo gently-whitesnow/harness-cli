@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>harness</AssemblyName>
+    <RootNamespace>Harness</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <IsAotCompatible>true</IsAotCompatible>
+    <PublishAot>true</PublishAot>
+    <StripSymbols>true</StripSymbols>
+  </PropertyGroup>
+
+  <!-- The application slice publishes its Contracts as global usings for its own assembly;
+       a referencing layer opts in the same way (ADR-0041 splits the layers into projects). -->
+  <ItemGroup>
+    <Using Include="Harness.Contracts.Checks" />
+    <Using Include="Harness.Contracts.Commits" />
+    <Using Include="Harness.Contracts.Engine" />
+  </ItemGroup>
+
+  <!-- Composition root wires every layer together (ADR-0041): Host is the one project the
+       sliced-dotnet/1 layer table allows to reference them all. -->
+  <ItemGroup>
+    <ProjectReference Include="../Api/Harness.Api.csproj" />
+    <ProjectReference Include="../Application/Harness.Application.csproj" />
+    <ProjectReference Include="../Domain/Harness.Domain.csproj" />
+    <ProjectReference Include="../Infrastructure/Harness.Infrastructure.csproj" />
+    <ProjectReference Include="../Shared/Harness.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

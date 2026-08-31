@@ -1,0 +1,11 @@
+<Project>
+
+  <!-- Default source exclusions follow BaseIntermediateOutputPath, so a build that redirects
+       it elsewhere would glob whatever an in-tree build left behind. Sources come from each
+       project, never from an output directory. Removed here, after the SDK default items. -->
+  <ItemGroup>
+    <Compile Remove="$(MSBuildProjectDirectory)/bin/**" />
+    <Compile Remove="$(MSBuildProjectDirectory)/obj/**" />
+  </ItemGroup>
+
+</Project>

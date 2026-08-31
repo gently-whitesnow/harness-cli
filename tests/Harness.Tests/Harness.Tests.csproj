@@ -13,13 +13,13 @@
   <!-- The compiled CLI process is the only test seam: the reference exists to
        build the executable and locate it, not to call into its types. -->
   <ItemGroup>
-    <ProjectReference Include="../../src/Harness/Harness.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../src/Harness/Host/Harness.Host.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <!-- Default location of the executable under test; HARNESS_CLI overrides it so the
        same suite can be pointed at a published NativeAOT binary. -->
   <PropertyGroup>
-    <HarnessCliPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../src/Harness/bin/$(Configuration)/$(TargetFramework)/harness'))</HarnessCliPath>
+    <HarnessCliPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../src/Harness/Host/bin/$(Configuration)/$(TargetFramework)/harness'))</HarnessCliPath>
   </PropertyGroup>
 
   <ItemGroup>

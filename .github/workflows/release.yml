@@ -63,7 +63,7 @@ jobs:
 
       - name: Publish
         if: ${{ !matrix.musl }}
-        run: dotnet publish src/Harness/Harness.csproj -c Release -r ${{ matrix.rid }} -o out
+        run: dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r ${{ matrix.rid }} -o out
 
       # A musl build has to happen against musl. The SDK image supplies it, which also keeps
       # the runner free of an Alpine container that the checkout action cannot run in.
@@ -72,7 +72,7 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/src" -w /src mcr.microsoft.com/dotnet/sdk:10.0-alpine sh -c \
             "apk add --no-cache clang build-base zlib-dev && \
-             dotnet publish src/Harness/Harness.csproj -c Release -r ${{ matrix.rid }} -o /src/out"
+             dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r ${{ matrix.rid }} -o /src/out"
 
       - name: Package
         run: |

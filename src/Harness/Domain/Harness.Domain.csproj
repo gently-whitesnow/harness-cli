@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Harness</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!-- ADR-0001 keeps every type internal; the layers above read the domain model through
+       assembly visibility rather than a public surface invented for them. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Harness.Application" />
+    <InternalsVisibleTo Include="Harness.Api" />
+    <InternalsVisibleTo Include="Harness.Infrastructure" />
+    <InternalsVisibleTo Include="harness" />
+  </ItemGroup>
+
+</Project>

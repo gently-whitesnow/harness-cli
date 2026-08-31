@@ -25,7 +25,7 @@ jobs:
         run: dotnet test Harness.slnx --configuration Release
 
       - name: Publish
-        run: dotnet publish src/Harness/Harness.csproj -c Release -r linux-x64 -o out
+        run: dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r linux-x64 -o out
 
       # The harness verifies its own repository with the binary this run produced.
       - name: Prepare the clone
