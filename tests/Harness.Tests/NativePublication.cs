@@ -18,7 +18,7 @@ public static class NativePublication
         var publication = ProcessLauncher.Run(
             "dotnet",
             [
-                "publish", Path.Combine("src", "Harness", "Harness.csproj"),
+                "publish", Path.Combine("src", "Harness", "Host", "Harness.Host.csproj"),
                 "--configuration", "Release",
                 "--runtime", RuntimeInformation.RuntimeIdentifier,
                 "--output", outputDirectory,

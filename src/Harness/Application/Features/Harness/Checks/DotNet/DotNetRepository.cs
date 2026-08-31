@@ -25,14 +25,23 @@ internal static class DotNetRepository
                 return ([], failure);
             }
 
-            if (file!.Root.Attribute("Sdk") is not null || file.Root.Elements().Any(element => element.Name.LocalName == "Sdk"))
+            if (IsSdkStyle(file!))
             {
-                projects.Add(file);
+                projects.Add(file!);
             }
         }
 
         return (projects, null);
     }
+
+    /// <summary>Reads one tracked project or props file as XML for a check that found it itself.</summary>
+    public static (DotNetFile? File, string? Failure) Read(IRepository repository, TrackedEntry entry)
+        => ReadXml(repository, entry);
+
+    /// <summary>The SDK judgement shared by every reader of tracked project XML.</summary>
+    public static bool IsSdkStyle(DotNetFile file)
+        => file.Root.Attribute("Sdk") is not null
+            || file.Root.Elements().Any(element => element.Name.LocalName == "Sdk");
 
     public static (DotNetFile? File, string? Failure) ReadNearest(
         CheckContext context,

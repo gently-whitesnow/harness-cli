@@ -1,22 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <AssemblyName>harness</AssemblyName>
     <RootNamespace>Harness</RootNamespace>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <EnableAotAnalyzer>true</EnableAotAnalyzer>
     <IsAotCompatible>true</IsAotCompatible>
-    <PublishAot>true</PublishAot>
-    <StripSymbols>true</StripSymbols>
   </PropertyGroup>
 
-  <!-- Default source exclusions follow BaseIntermediateOutputPath, so a build that redirects
-       it elsewhere would glob whatever an in-tree build left behind. Sources come from the
-       project, never from an output directory. -->
+  <!-- ADR-0001 keeps every type internal; every layer reads the shared kernel through
+       assembly visibility rather than a public surface invented for them. -->
   <ItemGroup>
-    <Compile Remove="bin/**" />
-    <Compile Remove="obj/**" />
+    <InternalsVisibleTo Include="Harness.Domain" />
+    <InternalsVisibleTo Include="Harness.Application" />
+    <InternalsVisibleTo Include="Harness.Api" />
+    <InternalsVisibleTo Include="Harness.Infrastructure" />
+    <InternalsVisibleTo Include="harness" />
   </ItemGroup>
 
   <!-- The release number reaches the binary as a compiled constant rather than an assembly

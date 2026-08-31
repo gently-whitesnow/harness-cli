@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Harness</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!-- ADR-0001 keeps every type internal; upper layers and the composition root see this
+       assembly's internals instead of a public surface invented for them. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Harness.Api" />
+    <InternalsVisibleTo Include="Harness.Infrastructure" />
+    <InternalsVisibleTo Include="harness" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Harness.Domain.csproj" />
+    <ProjectReference Include="../Shared/Harness.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

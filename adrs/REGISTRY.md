@@ -115,6 +115,10 @@
 - [ADR-0040](0040-zone-wide-vocabulary.md) — Словарь ADR-0037 сканирует все
   tracked-каталоги architecture-zone на любой глубине; прежние позиции сохраняют прежние
   находки, новые получают advisory-observation `directories-by-purpose`.
+- [ADR-0041](0041-layer-is-the-assembly.md) — Слой — это сборка: канонический слой с
+  C#-кодом — ровно один `.csproj`, linked-компиляция чужих слоёв — blocking, ProjectReference
+  между проектами зоны идут строго по таблице слоёв; читается только tracked XML без MSBuild
+  evaluation, репозиторий без SDK-style проектов не судится.
 
 ## Сборка и документация
 <!-- Инварианты, которые ограничивают код и тексты репозитория -->

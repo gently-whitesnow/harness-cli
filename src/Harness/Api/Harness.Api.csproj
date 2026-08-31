@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Harness</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <IsAotCompatible>true</IsAotCompatible>
+  </PropertyGroup>
+
+  <!-- ADR-0001 keeps every type internal; the composition root still composes them, so the
+       assembly is visible to Host rather than made public. -->
+  <!-- The application slice publishes its Contracts as global usings for its own assembly;
+       a referencing layer opts in the same way (ADR-0041 splits the layers into projects). -->
+  <ItemGroup>
+    <Using Include="Harness.Contracts.Checks" />
+    <Using Include="Harness.Contracts.Commits" />
+    <Using Include="Harness.Contracts.Engine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="harness" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Application/Harness.Application.csproj" />
+  </ItemGroup>
+
+</Project>

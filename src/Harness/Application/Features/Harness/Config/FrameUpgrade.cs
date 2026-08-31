@@ -66,6 +66,13 @@ internal static class FrameUpgrade
           added    architecture.sliced-dotnet advisory observations flat-directory-grouping,
                    mutual-cross-api, cross-api-fan-in and directories-by-purpose; they never
                    change the exit code, and no config change is needed
+        Release 2.5 additions:
+          added    architecture.sliced-dotnet layer = assembly invariants: every canonical
+                   layer holding C# sources is exactly one .csproj, a Compile Include cannot
+                   reach another layer, and ProjectReference edges between the zone's
+                   projects follow the layer table; blocking for repositories that still
+                   compile several layers into one project — split the projects, no config
+                   change is needed
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }

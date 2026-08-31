@@ -154,8 +154,26 @@ public sealed class InitCommandTests
             .WriteFile("AGENTS.md", "# Navigation\n")
             .WriteFile("README.md", "# Overview\n")
             .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
-            .WriteFile("Directory.Build.props", Fixtures.HardenedBuildProps)
-            .WriteFile("src/App/App.csproj", Fixtures.SimpleSdkProject)
+            .WriteFile(
+                "Directory.Build.props",
+                Fixtures.HardenedBuildProps.Replace(
+                    "<PropertyGroup>",
+                    "<PropertyGroup>\n    <TargetFramework>net10.0</TargetFramework>",
+                    StringComparison.Ordinal))
+            .WriteFile(
+                "App.slnx",
+                """
+                <Solution>
+                  <Project Path="src/App/Host/App.Host.csproj" />
+                  <Project Path="src/App/Api/App.Api.csproj" />
+                  <Project Path="src/App/Application/App.Application.csproj" />
+                </Solution>
+                """)
+            .WriteFile(
+                "src/App/Host/App.Host.csproj",
+                LayerProject("../Api/App.Api.csproj", "../Application/App.Application.csproj"))
+            .WriteFile("src/App/Api/App.Api.csproj", LayerProject("../Application/App.Application.csproj"))
+            .WriteFile("src/App/Application/App.Application.csproj", LayerProject())
             .WriteFile("src/App/Host/Program.cs", "namespace App.Host; sealed class Program;\n")
             .WriteFile(
                 "src/App/Api/Features/Example/Endpoint.cs",
@@ -286,6 +304,14 @@ public sealed class InitCommandTests
 
     private static int Occurrences(string text, string value)
         => text.Split(value, StringSplitOptions.None).Length - 1;
+
+    // ADR-0041: the canonical application builds every layer as its own project; the shared
+    // TargetFramework lives in Directory.Build.props.
+    private static string LayerProject(params string[] references)
+        => "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <ItemGroup>\n"
+            + string.Concat(references.Select(reference =>
+                $"    <ProjectReference Include=\"{reference}\" />\n"))
+            + "  </ItemGroup>\n</Project>\n";
 
     private static void AssertSection(
         JsonElement settings,
