@@ -1,5 +1,7 @@
+using Harness.Checks.DotNet;
 using Harness.Config;
 using Harness.Languages;
+using Harness.Repository;
 using Harness.Structure;
 
 namespace Harness.Checks.Architecture;
@@ -21,6 +23,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure", "Shared"];
 
     private static readonly string[] PlaceholderFiles = [".gitkeep", ".keep", ".gitignore"];
+
+    // ADR-0041: the layer = assembly invariant reads tracked C# project XML by name.
+    private static readonly EvidenceFile ProjectEvidence = new("*.csproj");
 
     private static readonly string[] MirrorLayers = ["Api", "Consumers", "Infrastructure", "Domain"];
 
@@ -80,7 +85,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     public string Group => "architecture";
 
-    public IReadOnlyList<EvidenceFile> Evidence => [];
+    public IReadOnlyList<EvidenceFile> Evidence => [ProjectEvidence];
 
     public string Summary => "sliced-dotnet zones, layers and slices";
 
@@ -94,8 +99,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           policy. ADR-0032 defines the tiers and ADR-0033 defines sliced-dotnet/1.
 
         What it reads
-          Every tracked path in Git and the non-generated C# sources used by the dependency
-          graph. A directory containing Application/ starts one zone. The check discovers
+          Every tracked path in Git, the non-generated C# sources used by the dependency
+          graph, and every tracked *.csproj as XML — the way the .NET policy checks of
+          ADR-0019 read it, without MSBuild evaluation. A directory containing Application/ starts one zone. The check discovers
           canonical layer directories and Application/Features slices, including one optional
           grouping level. Dependency edges are lexical evidence: only Proven edges can fail this
           fitness function; Inferred edges are ignored by blocking invariants. The advisory
@@ -121,6 +127,15 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           API invariant separately restricts its destination to Contracts/. It also accepts all
           Infrastructure -> Domain edges because Domain is the common vocabulary available to
           every upper layer.
+
+          The layer is also the assembly. When the repository tracks SDK-style C# projects at
+          all, every canonical layer holding C# sources is exactly one .csproj, a project
+          compiles only its own layer — a literal Compile Include reaching another layer is
+          linked compilation and fails — and ProjectReference edges between the zone's
+          projects follow the same layer DAG as the source graph. A reference into another
+          zone is never allowed. Item paths carrying MSBuild properties are not evaluated and
+          not judged. Without any tracked SDK-style project there is no build layout to hold
+          to the standard, and these invariants stay silent.
 
           Slices inside one layer do not reference each other directly, including through an
           ordinary Contracts/ directory. A producer can expose a consumer-specific cross-API at
@@ -170,6 +185,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           or Shared. Put use-case slices in Application/Features/<Slice>, or group them one level
           deeper as Application/Features/<Group>/<Slice> without files in the group directory.
           Turn a forbidden dependency around or move the shared concept to an allowed lower layer.
+          Give every layer that holds C# sources its own project, replace a Compile Include of
+          another layer's sources with a ProjectReference to that layer's project, and remove a
+          ProjectReference the layer table does not allow.
           For a cross-slice dependency, prefer merging slices, then moving the shared concept down
           to Domain or Shared, and use an explicit X/<Consumer> cross-API only as a last resort.
           Give every Application slice a synchronous or asynchronous input mirror, remove orphaned
@@ -190,6 +208,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           adrs/0038-flat-directory-grouping.md
           adrs/0039-cross-api-density.md
           adrs/0040-zone-wide-vocabulary.md
+          adrs/0041-layer-is-the-assembly.md
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)
@@ -219,6 +238,12 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                 observations: ["architecture map: no zones"]);
         }
 
+        var (projects, projectFailure) = ReadProjects(context);
+        if (projectFailure is not null)
+        {
+            return CheckEvaluation.Incomplete(projectFailure);
+        }
+
         var shapeFindings = new List<Finding>();
         var segmentFindings = new List<Finding>();
         var maps = new List<string>();
@@ -227,6 +252,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         {
             var map = InspectZone(zone, paths, shapeFindings, maps);
             slicesByZone[zone] = map;
+            InspectLayerProjects(zone, zones, paths, projects, shapeFindings);
             InspectSegmentPurposes(zone, map, paths, segmentFindings);
             InspectStructureAdvisories(zone, map, paths, maps);
         }
@@ -555,6 +581,171 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
         return false;
     }
+
+    private static (IReadOnlyList<DotNetFile> Projects, string? Failure) ReadProjects(CheckContext context)
+    {
+        var projects = new List<DotNetFile>();
+        foreach (var entry in context.Tracked(ProjectEvidence)
+            .Where(entry => !RepositoryLocations.IsGenerated(entry.Path)))
+        {
+            var (file, failure) = DotNetRepository.Read(context.Repository, entry);
+            if (failure is not null)
+            {
+                return ([], failure);
+            }
+
+            if (DotNetRepository.IsSdkStyle(file!))
+            {
+                projects.Add(file!);
+            }
+        }
+
+        return (projects, null);
+    }
+
+    /// <summary>
+    /// ADR-0041: layer = assembly. Every canonical layer holding C# sources is exactly one
+    /// project, a project compiles only its own layer, and project references between the
+    /// zone's projects follow the same layer DAG the source graph is held to. Judged only
+    /// when the repository tracks SDK-style C# projects at all: without them there is no
+    /// build layout to hold to the standard.
+    /// </summary>
+    private static void InspectLayerProjects(
+        string zone,
+        IReadOnlyList<string> zones,
+        IReadOnlyList<string> paths,
+        IReadOnlyList<DotNetFile> projects,
+        List<Finding> findings)
+    {
+        if (projects.Count == 0)
+        {
+            return;
+        }
+
+        var entries = paths
+            .Select(path => Relative(path, zone))
+            .Where(path => path.Length > 0 && !path.StartsWith("../", StringComparison.Ordinal))
+            .ToList();
+        var byLayer = new Dictionary<string, List<DotNetFile>>(StringComparer.Ordinal);
+        foreach (var project in projects)
+        {
+            var relative = Relative(project.Path, zone);
+            if (relative.StartsWith("../", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var layer = relative.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            if (layer is null || !Layers.Contains(layer, StringComparer.Ordinal))
+            {
+                findings.Add(Block(project.Path,
+                    $"project-outside-layer: project '{project.Path}' is inside architecture zone but outside "
+                    + "every canonical layer; sliced-dotnet/1 builds every layer as its own project"));
+                continue;
+            }
+
+            if (!byLayer.TryGetValue(layer, out var owned))
+            {
+                byLayer[layer] = owned = [];
+            }
+
+            owned.Add(project);
+        }
+
+        foreach (var layer in Layers)
+        {
+            var layerProjects = byLayer.TryGetValue(layer, out var owned) ? owned : [];
+            if (layerProjects.Count == 0
+                && entries.Any(path => path.StartsWith(layer + "/", StringComparison.Ordinal)
+                    && IsAuthoredSource(path)))
+            {
+                findings.Add(Block(At(zone, layer),
+                    $"layer-project-missing: layer '{layer}' contains C# sources but no tracked .csproj; "
+                    + "sliced-dotnet/1 builds every layer as its own project"));
+            }
+
+            if (layerProjects.Count > 1)
+            {
+                findings.Add(Block(At(zone, layer),
+                    $"layer-project-count: layer '{layer}' contains {layerProjects.Count} projects "
+                    + $"[{string.Join(", ", layerProjects.Select(project => project.Path))}]; "
+                    + "sliced-dotnet/1 builds every layer as exactly one project"));
+            }
+
+            foreach (var project in layerProjects)
+            {
+                InspectCompiledSources(zone, layer, project, findings);
+                InspectProjectReferences(zone, zones, layer, project, findings);
+            }
+        }
+    }
+
+    private static void InspectCompiledSources(
+        string zone,
+        string layer,
+        DotNetFile project,
+        List<Finding> findings)
+    {
+        var layerPrefix = At(zone, layer) + "/";
+        foreach (var include in ItemPaths(project, "Compile"))
+        {
+            var resolved = DotNetRepository.NormalizeRelative(project.Path, include);
+            if (!resolved.StartsWith(layerPrefix, StringComparison.Ordinal))
+            {
+                findings.Add(Block(project.Path,
+                    $"linked-compilation: Compile Include '{include}' reaches outside layer '{layer}'; "
+                    + "every layer compiles only its own sources — reference the owning layer's project instead"));
+            }
+        }
+    }
+
+    private static void InspectProjectReferences(
+        string zone,
+        IReadOnlyList<string> zones,
+        string layer,
+        DotNetFile project,
+        List<Finding> findings)
+    {
+        foreach (var reference in ItemPaths(project, "ProjectReference"))
+        {
+            var resolved = DotNetRepository.NormalizeRelative(project.Path, reference);
+            var target = Address(resolved, zones);
+            if (target.Zone is null)
+            {
+                continue;
+            }
+
+            if (!string.Equals(target.Zone, zone, StringComparison.Ordinal))
+            {
+                findings.Add(Block(project.Path,
+                    $"cross-zone project reference is forbidden: {layer} project '{project.Path}' references "
+                    + $"'{resolved}' in zone '{Display(target.Zone)}'"));
+                continue;
+            }
+
+            if (target.Layer is not null
+                && target.Layer != layer
+                && !AllowedDependencies[layer].Contains(target.Layer))
+            {
+                findings.Add(Block(project.Path,
+                    $"layer project reference {layer} -> {target.Layer} is forbidden by sliced-dotnet/1: "
+                    + $"'{project.Path}' references '{resolved}'"));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Literal item paths of one MSBuild item name. A value carrying an MSBuild property is
+    /// not evaluated: ADR-0019 keeps the harness out of MSBuild evaluation, so only literal
+    /// paths are judged.
+    /// </summary>
+    private static IEnumerable<string> ItemPaths(DotNetFile project, string itemName)
+        => DotNetRepository.Elements(project, itemName)
+            .Select(element => element.Attribute("Include")?.Value)
+            .OfType<string>()
+            .SelectMany(value => value.Split(
+                ';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Where(value => !value.Contains("$(", StringComparison.Ordinal));
 
     private static bool IsAuthoredSource(string path)
         => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
