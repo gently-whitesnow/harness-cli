@@ -53,7 +53,7 @@ baseline; повышение делается вручную через ревь
 `.slnx` вместо `.sln`; он читает tracked XML, но не выполняет MSBuild evaluation.
 [ADR-0019](adrs/0019-dotnet-repository-policy.md)
 
-`version` — строка текущего контракта (`"2.4.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.5.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -61,13 +61,13 @@ baseline; повышение делается вручную через ревь
 Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`,
 `Infrastructure`, `Shared`) × сквозные слайсы `Features/<Слайс>`; публичный API слайса —
 его `Contracts/`, кросс-импорт — только явный cross-API `X/<Потребитель>` (аналог `@x`
-FSD 2.1), верхние слои читают любой `Domain`-слайс, прямой сегмент именуется по назначению.
-Плоский каталог 20+ файлов, плотность X-контрактов и essence-имена вне сегментных позиций —
-неблокирующие advisory-observations. Standalone-библиотека отвечает
-`"architecture": { "applicable": false, "reason": "..." }`.
+FSD 2.1), верхние слои читают любой `Domain`-слайс, прямой сегмент именуется по назначению;
+слой = сборка: ровно один `.csproj` на слой с C#-кодом, без linked-компиляции чужих слоёв,
+ProjectReference — по той же таблице слоёв. Плоский каталог 20+ файлов, плотность
+X-контрактов и essence-имена вне сегментных позиций — неблокирующие advisory-observations.
+Standalone-библиотека отвечает `"architecture": { "applicable": false, "reason": "..." }`.
 [ADR-0033](adrs/0033-canonical-standard-over-declarations.md),
-[ADR-0037](adrs/0037-segments-by-purpose.md),
-[ADR-0038](adrs/0038-flat-directory-grouping.md)–[ADR-0040](adrs/0040-zone-wide-vocabulary.md)
+[ADR-0037](adrs/0037-segments-by-purpose.md)–[ADR-0041](adrs/0041-layer-is-the-assembly.md)
 
 `"latest"` включает rolling-контракт. `harness init` спрашивает только application или
 standalone-library (либо принимает `--kind application|library` без stdin), создаёт
@@ -91,7 +91,7 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 
 ## Раскладка
 
-- `src/Harness` — сам CLI. NativeAOT, установленный .NET runtime в момент использования не нужен.
+- `src/Harness` — сам CLI: NativeAOT, слой = отдельный проект `Harness.<Слой>.csproj`, публикуется `Host`.
   - `Host/` — composition root, статический реестр и запуск процесса.
   - `Api/Features/Harness/Cli/` — входное зеркало с разбором командной строки.
   - `Application/Features/Harness/` — единый прикладной слайс: проверки, конфигурация,
@@ -123,7 +123,7 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 dotnet test                                        # полный набор, включая NativeAOT-публикацию
 dotnet build                                       # быстрая обратная связь
 dotnet format Harness.slnx --verify-no-changes --severity warn # формат и code style без правок
-dotnet publish src/Harness/Harness.csproj -c Release -r osx-arm64
+dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
 ./src/Harness/bin/Release/net10.0/osx-arm64/publish/harness check
 ```
 
