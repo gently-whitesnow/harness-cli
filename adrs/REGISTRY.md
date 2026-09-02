@@ -67,6 +67,9 @@
   `ILanguageAnalyzer`. Второй язык не создаёт вторую проверку.
 - [ADR-0034](0034-language-axis-in-sliced-dotnet.md) — Уточняет физическую раскладку
   языковой оси ADR-0022 внутри одного слайса `Harness` стандарта sliced-dotnet/1.
+- [ADR-0042](0042-comment-density-across-languages.md) — Плотность комментариев считается
+  и для YAML и TypeScript/JavaScript через лексические ридеры за общим портом; свои
+  applicability и `settings.comments.<язык>`, дефолт 10/8; контракт 2.6.
 - [ADR-0018](0018-csharp-applicability-and-one-type-per-file.md) — Все C#-проверки имеют
   общий applicability `csharp`; `types-per-file.csharp` блокирует второй верхнеуровневый
   `class` или `record` в одном authored-файле.

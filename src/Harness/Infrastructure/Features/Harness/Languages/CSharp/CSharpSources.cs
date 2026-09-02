@@ -1,3 +1,5 @@
+using Harness.Languages;
+using Harness.Languages.Comments;
 using Harness.Languages.CSharp;
 using Harness.Repository;
 
@@ -9,8 +11,12 @@ namespace Harness.Infrastructure.Languages.CSharp;
 /// spend the work again for an answer that cannot have changed. What is handed out is read
 /// only, so sharing it shares a reading and not a state.
 /// </summary>
-internal sealed class CSharpSources : ICSharpSources
+internal sealed class CSharpSources : ICSharpSources, ICommentedSources
 {
+    public Language Language => Language.CSharp;
+
+    public string NothingToAnalyze => ICSharpSources.NothingToAnalyze;
+
     private static readonly string[] GeneratedSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
 
     private IRepository? read;
@@ -25,6 +31,15 @@ internal sealed class CSharpSources : ICSharpSources
         }
 
         return result;
+    }
+
+    (IReadOnlyList<CommentedSource> Files, string? Failure) ICommentedSources.Read(IRepository repository)
+    {
+        var (files, failure) = Read(repository);
+        return (
+            files.Select(file => new CommentedSource(file.Path, file.Source.CommentLines, file.Source.AuthoredLines))
+                .ToList(),
+            failure);
     }
 
     private static (IReadOnlyList<CSharpFile> Files, string? Failure) Discover(IRepository repository)

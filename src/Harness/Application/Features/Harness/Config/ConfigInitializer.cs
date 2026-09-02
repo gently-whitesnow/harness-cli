@@ -1,5 +1,6 @@
 using System.Text;
 using Harness.Contracts;
+using Harness.Languages;
 using Harness.Repository;
 using Harness.Versioning;
 
@@ -111,18 +112,28 @@ internal static class ConfigInitializer
             text.Append(index == questions.Count - 1 ? '\n' : ",\n");
         }
 
+        text.Append("  },\n  \"applicability\": {\n");
+        text.Append(string.Join(",\n", checks
+            .Select(check => check.Applicability)
+            .Where(axis => axis is not null)
+            .Distinct(StringComparer.Ordinal)
+            .Select(axis => $"    \"{axis}\": {{ \"applicable\": true }}")));
+        text.Append("\n  },\n  \"settings\": {\n");
+        foreach (var language in Language.All)
+        {
+            var comments = defaults.CommentsFor(language);
+            text.Append(
+                $$"""
+                    "{{language.Qualify("comments")}}": {
+                      "minimumCommentLines": {{comments.MinimumCommentLines}},
+                      "percentageLimit": {{comments.PercentageLimit}}
+                    },
+
+                """);
+        }
+
         text.Append(
             $$"""
-              },
-              "applicability": {
-                "csharp": { "applicable": true },
-                "dotnet": { "applicable": true }
-              },
-              "settings": {
-                "comments.csharp": {
-                  "minimumCommentLines": {{defaults.Comments.MinimumCommentLines}},
-                  "percentageLimit": {{defaults.Comments.PercentageLimit}}
-                },
                 "duplication.csharp": {
                   "windowLines": {{defaults.Duplication.WindowLines}},
                   "minimumTokens": {{defaults.Duplication.MinimumTokens}}

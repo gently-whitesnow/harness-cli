@@ -73,6 +73,12 @@ internal static class FrameUpgrade
                    projects follow the layer table; blocking for repositories that still
                    compile several layers into one project — split the projects, no config
                    change is needed
+        Release 2.6 additions:
+          added    comments.yaml and comments.typescript: the comment density rule now reads
+                   tracked YAML and TypeScript/JavaScript through their own lexical readers;
+                   declare applicability yaml and typescript, settings comments.yaml and
+                   comments.typescript (minimumCommentLines, percentageLimit) and a policy
+                   entry for each check
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }

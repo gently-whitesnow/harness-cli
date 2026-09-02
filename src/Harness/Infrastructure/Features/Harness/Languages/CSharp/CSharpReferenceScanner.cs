@@ -85,10 +85,8 @@ internal sealed class CSharpReferenceScanner
         return next >= 0 && IsNameStart(text, next) ? EvidenceGrade.Proven : EvidenceGrade.Inferred;
     }
 
-    /// <summary>
-    /// Past a nullable mark and any array ranks, so that `Store? held` and `Store[] held` are
-    /// read the same way `Store held` is: a type followed by the name it introduces.
-    /// </summary>
+    /// <summary>Past a nullable mark and any array ranks, so `Store? held` and `Store[] held` are
+    /// read as `Store held`: a type followed by the name it introduces.</summary>
     private int AfterTypeSuffix(int end)
     {
         var text = source.Masked;
@@ -113,10 +111,8 @@ internal sealed class CSharpReferenceScanner
         return -1;
     }
 
-    /// <summary>
-    /// A keyword may be separated from the type it introduces by an opening parenthesis, as
-    /// in `typeof(` and `catch (`, and by nothing else.
-    /// </summary>
+    /// <summary>A keyword may be separated from the type it introduces by an opening parenthesis,
+    /// as in `typeof(` and `catch (`, and by nothing else.</summary>
     private bool OnlySeparators(int from, int to)
     {
         var text = source.Masked;

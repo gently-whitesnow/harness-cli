@@ -133,9 +133,7 @@ internal static class GateEngine
     }
 
     /// <summary>
-    /// Whether the check ended with a question open, and so with a place where a file Git
-    /// cannot see may be the reason. A clean pass explains itself; an excluded check and one
-    /// the repository answered not applicable asked nothing and are left out by the caller.
+    /// Whether the check ended with a question open, so a file Git cannot see may be the reason.
     /// </summary>
     private static bool LeftSomethingUnexplained(GateReport gate)
         => gate.Findings.Count > 0
@@ -145,10 +143,8 @@ internal static class GateEngine
                 or CheckOutcome.NotApplicable;
 
     /// <summary>
-    /// Named evidence that is in the working tree and not in the index. Otherwise "never
-    /// written" and "written but never staged" read identically, and the second is the
-    /// ordinary state of a repository being brought under the harness. The verdict is
-    /// untouched; Git is asked once, and only when a question stayed open.
+    /// Named evidence in the working tree but not in the index: otherwise "never written" and
+    /// "written but never staged" read identically. Git is asked once, only when a question stayed open.
     /// </summary>
     private static List<string> UntrackedEvidence(IRepository repository, HashSet<EvidenceFile> evidence)
     {

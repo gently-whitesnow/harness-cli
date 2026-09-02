@@ -23,8 +23,7 @@ self-reported: адрес служит навигацией, а не доказ�
 файла или находки, а не выключение проверки целиком. `settings`, applicability и policy
 полны — ридер не подставляет скрытые defaults, поэтому состояние всех проверок видно в
 tracked-файле. Харнес валидирует полноту ответов, но не инспектирует их и не ищет
-опровержения. [ADR-0017](adrs/0017-required-by-default.md),
-[ADR-0027](adrs/0027-required-findings-are-blocking.md),
+опровержения. [ADR-0017](adrs/0017-required-by-default.md), [ADR-0027](adrs/0027-required-findings-are-blocking.md),
 [ADR-0035](adrs/0035-policy-switch-is-uniform.md)
 
 C#-проверки разделяют applicability `csharp`. Если весь этот анализ не относится к
@@ -33,11 +32,10 @@ C#-проверки разделяют applicability `csharp`. Если весь
 [ADR-0018](adrs/0018-csharp-applicability-and-one-type-per-file.md)
 
 Граф C# строится по tracked-исходникам средствами BCL. Ребро несёт `Proven` (позиция
-допускает только тип, кандидат по имени один) или `Inferred`. Начиная с 1.5
-`dependencies.csharp` строит из `Proven` только blocking-циклы модулей; raw fan-in/out и
-external imports удалены как контекстные counts без универсального remediation. Вложенный
-модуль — содержание, а не цикл. [ADR-0021](adrs/0021-coupling-evidence-grades.md),
-[ADR-0029](adrs/0029-dependency-counts-removed.md)
+допускает только тип, кандидат по имени один) или `Inferred`. `dependencies.csharp` строит
+из `Proven` только blocking-циклы модулей; raw fan-in/out и external imports удалены как
+counts без универсального remediation. Вложенный модуль — содержание, а не цикл.
+[ADR-0021](adrs/0021-coupling-evidence-grades.md), [ADR-0029](adrs/0029-dependency-counts-removed.md)
 
 DSM-метрики `complexity.csharp` сравниваются с tracked `.harness.budget.json`: рост
 блокирует check, снижение предлагает `harness budget update`. Команда только ужимает
@@ -45,15 +43,17 @@ baseline; повышение делается вручную через ревь
 
 Проверка называется `<семейство>.<язык>`, `Group` — семейство, `Applicability` — язык.
 Язык-нейтральное ядро живёт в `Structure/`, чтение исходника — за `ILanguageAnalyzer` в
-`Languages/<Язык>/`. Второй язык — экземпляр `Language`, анализатор и строка в реестре, а не
-копия проверки. [ADR-0022](adrs/0022-language-axis.md)
+`Languages/<Язык>/`. Второй язык — экземпляр `Language`, ридер и строка в реестре, а не
+копия проверки; так `comments.yaml` и `comments.typescript` считают плотность комментариев
+в YAML и TypeScript со своими applicability и `settings`. [ADR-0022](adrs/0022-language-axis.md),
+[ADR-0042](adrs/0042-comment-density-across-languages.md)
 
 .NET-проекты разделяют applicability `dotnet`. Харнес статически требует общий hardened
 `Directory.Build.props`, central package versions в ближайшем `Directory.Packages.props` и
 `.slnx` вместо `.sln`; он читает tracked XML, но не выполняет MSBuild evaluation.
 [ADR-0019](adrs/0019-dotnet-repository-policy.md)
 
-`version` — строка текущего контракта (`"2.5.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.6.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 

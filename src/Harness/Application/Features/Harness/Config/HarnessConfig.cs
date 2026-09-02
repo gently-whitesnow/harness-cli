@@ -73,10 +73,8 @@ internal sealed record HarnessConfig
 
     /// <summary>
     /// Reads the tracked config and validates its envelope before preserving per-answer results.
-    /// An untracked config does not exist for the harness, the same as any untracked file: what
-    /// verifies a repository has to be part of it. Every failure names what to fix rather than
-    /// degrading to a default; answer failures stay local, while failures that make policy
-    /// unreliable remain global.
+    /// An untracked config does not exist for the harness, the same as any untracked file. Every
+    /// failure names what to fix; answer failures stay local, policy-breaking failures stay global.
     /// </summary>
     public static (HarnessConfig? Config, string? Failure) Load(
         IRepository repository,
@@ -226,11 +224,11 @@ internal sealed record HarnessConfig
     /// who has never seen this file should not have to find documentation to start.
     /// </summary>
     public static string Template =>
-        """
+        $$"""
         A minimal .harness.json, committed at the repository root:
 
           {
-            "version": "2.5.0",
+            "version": "{{HarnessVersion.Current}}",
             "architecture": { "standard": "sliced-dotnet/1" },
             "answers": {
               "tests.unit": { "paths": ["tests/Unit"] },
@@ -243,10 +241,20 @@ internal sealed record HarnessConfig
             },
             "applicability": {
               "csharp": { "applicable": true },
-              "dotnet": { "applicable": true }
+              "dotnet": { "applicable": true },
+              "yaml": { "applicable": true },
+              "typescript": { "applicable": true }
             },
             "settings": {
               "comments.csharp": {
+                "minimumCommentLines": 10,
+                "percentageLimit": 8
+              },
+              "comments.yaml": {
+                "minimumCommentLines": 10,
+                "percentageLimit": 8
+              },
+              "comments.typescript": {
                 "minimumCommentLines": 10,
                 "percentageLimit": 8
               },
@@ -266,6 +274,8 @@ internal sealed record HarnessConfig
               "docs.policy": "required",
               "commits.setup": "required",
               "comments.csharp": "required",
+              "comments.yaml": "required",
+              "comments.typescript": "required",
               "types-per-file.csharp": "required",
               "dependencies.csharp": "required",
               "duplication.csharp": "advisory",
