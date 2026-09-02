@@ -4,7 +4,7 @@
        release in its frame, so the binary, the Git tag and the published asset all read
        this value rather than restating it. -->
   <PropertyGroup>
-    <HarnessVersion>2.5.0</HarnessVersion>
+    <HarnessVersion>2.6.0</HarnessVersion>
   </PropertyGroup>
 
 </Project>

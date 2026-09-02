@@ -18,7 +18,9 @@ internal sealed class CSharpAnalyzer(CSharpSources sources) : ILanguageAnalyzer
     public (SourceGraph? Graph, string? Failure) ReadGraph(IRepository repository)
     {
         var (files, failure) = sources.Read(repository);
-        return failure is not null ? (null, failure) : (CSharpGraphBuilder.Build(files), null);
+        return failure is not null
+            ? (null, failure)
+            : (CSharpGraphBuilder.Build(files, sources.MarkedGenerated(repository)), null);
     }
 
 }

@@ -4,21 +4,6 @@ using Harness.Versioning;
 
 namespace Harness.Config;
 
-internal enum FrameAnswerKind
-{
-    Located,
-    Present,
-    Absent,
-    NotApplicable,
-}
-
-internal enum CheckPolicy
-{
-    Required,
-    Advisory,
-    Off,
-}
-
 /// <summary>
 /// The repository's own answers to the harness frame and how strictly each check is treated.
 /// </summary>
@@ -230,7 +215,7 @@ internal sealed record HarnessConfig
         A minimal .harness.json, committed at the repository root:
 
           {
-            "version": "2.5.0",
+            "version": "2.6.0",
             "architecture": { "standard": "sliced-dotnet/1" },
             "answers": {
               "tests.unit": { "paths": ["tests/Unit"] },

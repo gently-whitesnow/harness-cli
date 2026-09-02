@@ -9,7 +9,10 @@ internal sealed record ComplexityBudget(IReadOnlyDictionary<string, ComplexityBu
 {
     public const string FileName = ".harness.budget.json";
 
-    public const double NoticeablePropagationDelta = 0.01;
+    /// <summary>An improvement smaller than this is noise between two honest runs, not progress.</summary>
+    public const double NoticeableReachDelta = 0.1;
+
+    private const string LegacyKey = "propagationCost";
 
     public static (ComplexityBudget? Budget, string? Failure) Load(
         CheckContext context,
@@ -40,6 +43,28 @@ internal sealed record ComplexityBudget(IReadOnlyDictionary<string, ComplexityBu
         }
     }
 
+    /// <summary>A budget written by contract 2.5 or earlier, which recorded propagation cost.</summary>
+    public static bool IsLegacy(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return false;
+            }
+
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.EnumerateObject().Any(entry =>
+                    entry.Value.ValueKind == JsonValueKind.Object
+                    && entry.Value.TryGetProperty(LegacyKey, out _));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+            return false;
+        }
+    }
+
     public string Serialize()
     {
         var text = new StringBuilder("{\n");
@@ -48,8 +73,8 @@ internal sealed record ComplexityBudget(IReadOnlyDictionary<string, ComplexityBu
         {
             var (id, value) = entries[index];
             text.Append("  \"").Append(id).Append("\": {\n")
-                .Append("    \"propagationCost\": ")
-                .Append(value.PropagationCost.ToString("0.######", CultureInfo.InvariantCulture))
+                .Append("    \"meanReach\": ")
+                .Append(value.MeanReach.ToString("0.######", CultureInfo.InvariantCulture))
                 .Append(",\n")
                 .Append("    \"coreSize\": ")
                 .Append(value.CoreSize.ToString(CultureInfo.InvariantCulture))
@@ -79,13 +104,22 @@ internal sealed record ComplexityBudget(IReadOnlyDictionary<string, ComplexityBu
             var entries = new Dictionary<string, Entry>(StringComparer.Ordinal);
             foreach (var id in expected)
             {
-                if (!root.TryGetProperty(id, out var complexity)
-                    || complexity.ValueKind != JsonValueKind.Object
-                    || complexity.EnumerateObject().Count() != 2
-                    || !complexity.TryGetProperty("propagationCost", out var propagation)
-                    || !propagation.TryGetDouble(out var propagationCost)
-                    || !double.IsFinite(propagationCost)
-                    || propagationCost is < 0 or > 100
+                if (!root.TryGetProperty(id, out var complexity) || complexity.ValueKind != JsonValueKind.Object)
+                {
+                    return (null, InvalidShape(expected));
+                }
+
+                if (complexity.TryGetProperty(LegacyKey, out _))
+                {
+                    return (null, $"'{FileName}' records propagationCost from contract 2.5 or earlier; "
+                        + "contract 2.6 budgets mean reach — run `harness budget update`, review it, and commit the file.");
+                }
+
+                if (complexity.EnumerateObject().Count() != 2
+                    || !complexity.TryGetProperty("meanReach", out var reach)
+                    || !reach.TryGetDouble(out var meanReach)
+                    || !double.IsFinite(meanReach)
+                    || meanReach < 0
                     || !complexity.TryGetProperty("coreSize", out var core)
                     || !core.TryGetInt32(out var coreSize)
                     || coreSize < 0)
@@ -93,7 +127,7 @@ internal sealed record ComplexityBudget(IReadOnlyDictionary<string, ComplexityBu
                     return (null, InvalidShape(expected));
                 }
 
-                entries[id] = new Entry(propagationCost, coreSize);
+                entries[id] = new Entry(meanReach, coreSize);
             }
 
             return (new ComplexityBudget(entries), null);
@@ -106,11 +140,11 @@ internal sealed record ComplexityBudget(IReadOnlyDictionary<string, ComplexityBu
 
     private static string InvalidShape(IReadOnlyList<string> expectedIds)
         => $"'{FileName}' must contain exactly {string.Join(", ", expectedIds)} with numeric "
-            + "propagationCost (0..100) and integer coreSize (>= 0).";
+            + "meanReach (>= 0) and integer coreSize (>= 0).";
 
-    internal sealed record Entry(double PropagationCost, int CoreSize)
+    internal sealed record Entry(double MeanReach, int CoreSize)
     {
         public static Entry From(RepositoryComplexity metric)
-            => new(Math.Round(metric.PropagationCostPercentage, 6, MidpointRounding.AwayFromZero), metric.CoreFiles);
+            => new(Math.Round(metric.MeanReach, 6, MidpointRounding.AwayFromZero), metric.CoreFiles);
     }
 }

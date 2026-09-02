@@ -11,7 +11,8 @@ internal sealed record SourceGraph(
     IReadOnlyList<ReferenceEdge> Edges,
     IReadOnlyList<ExternalImports> Imports,
     int ResolvedReferences,
-    int AmbiguousReferences)
+    int AmbiguousReferences,
+    IReadOnlyList<string> MarkedGenerated)
 {
     public int CandidateReferences => ResolvedReferences + AmbiguousReferences;
 
@@ -21,4 +22,15 @@ internal sealed record SourceGraph(
 
     public IEnumerable<ReferenceEdge> Proven
         => Edges.Where(edge => edge.Grade == EvidenceGrade.Proven);
+
+    /// <summary>The graph over a subset of its files; an edge survives only with both ends inside.</summary>
+    public SourceGraph Within(Func<string, bool> keep)
+        => this with
+        {
+            SourcePaths = SourcePaths.Where(keep).ToList(),
+            Types = Types.Where(type => keep(type.Path)).ToList(),
+            Edges = Edges.Where(edge => keep(edge.From.Path) && keep(edge.To.Path)).ToList(),
+            Imports = Imports.Where(import => keep(import.Path)).ToList(),
+            MarkedGenerated = MarkedGenerated.Where(keep).ToList(),
+        };
 }

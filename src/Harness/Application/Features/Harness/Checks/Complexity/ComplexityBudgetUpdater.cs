@@ -8,9 +8,10 @@ internal static class ComplexityBudgetUpdater
 {
     public static (string? Content, string? Failure) InitialContent(
         IRepository repository,
-        IReadOnlyList<ILanguageAnalyzer> analyzers)
+        IReadOnlyList<ILanguageAnalyzer> analyzers,
+        bool architectureApplicable)
     {
-        var (entries, failure) = Measure(repository, analyzers, allowEmpty: true);
+        var (entries, failure) = Measure(repository, analyzers, architectureApplicable, allowEmpty: true);
         return entries is null
             ? (null, failure)
             : (new ComplexityBudget(entries).Serialize(), null);
@@ -18,9 +19,10 @@ internal static class ComplexityBudgetUpdater
 
     public static ComplexityBudgetUpdate Update(
         IRepository repository,
-        IReadOnlyList<ILanguageAnalyzer> analyzers)
+        IReadOnlyList<ILanguageAnalyzer> analyzers,
+        bool architectureApplicable)
     {
-        var (entries, measureFailure) = Measure(repository, analyzers, allowEmpty: false);
+        var (entries, measureFailure) = Measure(repository, analyzers, architectureApplicable, allowEmpty: false);
         if (entries is null)
         {
             return new(ExitCodes.Incomplete, measureFailure!);
@@ -29,14 +31,15 @@ internal static class ComplexityBudgetUpdater
         var expectedIds = entries.Keys.Order(StringComparer.Ordinal).ToList();
         var current = new ComplexityBudget(entries);
         var path = Path.Combine(repository.RootPath, ComplexityBudget.FileName);
-        var (existing, readFailure) = ComplexityBudget.LoadWorking(path, expectedIds);
+        var legacy = ComplexityBudget.IsLegacy(path);
+        var (existing, readFailure) = legacy ? (null, null) : ComplexityBudget.LoadWorking(path, expectedIds);
         if (readFailure is not null)
         {
             return new(ExitCodes.Incomplete, readFailure);
         }
 
         if (existing is not null && entries.Any(entry =>
-            entry.Value.PropagationCost > existing.Entries[entry.Key].PropagationCost
+            entry.Value.MeanReach > existing.Entries[entry.Key].MeanReach
             || entry.Value.CoreSize > existing.Entries[entry.Key].CoreSize))
         {
             return new(
@@ -68,20 +71,30 @@ internal static class ComplexityBudgetUpdater
             return new(ExitCodes.Incomplete, $"Could not write '{ComplexityBudget.FileName}': {exception.Message}");
         }
 
-        var action = existing is null ? "CREATED" : "UPDATED";
+        var action = legacy ? "MIGRATED" : existing is null ? "CREATED" : "UPDATED";
         var metrics = string.Join(
             "; ",
             entries.OrderBy(entry => entry.Key, StringComparer.Ordinal).Select(entry =>
-                $"{entry.Key}: propagation cost {entry.Value.PropagationCost:F6}% "
+                $"{entry.Key}: mean reach {entry.Value.MeanReach:F6} files "
                     + $"and core size {entry.Value.CoreSize} files"));
         return new(
             ExitCodes.Success,
             $"{action}  '{ComplexityBudget.FileName}' at {metrics}.");
     }
 
+    public static DsmScope Scope(IRepository repository, SourceGraph graph, bool architectureApplicable)
+        => DsmScope.Of(graph, architectureApplicable, TrackedPaths(repository));
+
+    private static List<string> TrackedPaths(IRepository repository)
+        => repository.TrackedEntries
+            .Where(entry => !entry.IsSymbolicLink)
+            .Select(entry => entry.Path)
+            .ToList();
+
     private static (Dictionary<string, ComplexityBudget.Entry>? Entries, string? Failure) Measure(
         IRepository repository,
         IReadOnlyList<ILanguageAnalyzer> analyzers,
+        bool architectureApplicable,
         bool allowEmpty)
     {
         var entries = new Dictionary<string, ComplexityBudget.Entry>(StringComparer.Ordinal);
@@ -98,8 +111,9 @@ internal static class ComplexityBudgetUpdater
                 return (null, analyzer.NothingToAnalyze);
             }
 
+            var scope = Scope(repository, graph, architectureApplicable);
             entries[analyzer.Language.Qualify("complexity")] =
-                ComplexityBudget.Entry.From(RepositoryComplexity.Measure(graph));
+                ComplexityBudget.Entry.From(RepositoryComplexity.Measure(scope.Graph));
         }
 
         return (entries, null);
