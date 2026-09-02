@@ -33,26 +33,34 @@ internal sealed class ComplexityCheck(
             return CheckEvaluation.Incomplete(budgetFailure!);
         }
 
-        var budgetObservation = $"DSM budget: propagation cost {Percent(limit.PropagationCost)} · core size {limit.CoreSize} files";
+        var budgetObservation = $"DSM budget: mean reach {Files(limit.MeanReach)} · core size {limit.CoreSize} files";
         if (graph.SourcePaths.Count == 0)
         {
             return CheckEvaluation.NotApplicable(Analyzer.NothingToAnalyze, [budgetObservation]);
         }
 
-        var metric = RepositoryComplexity.Measure(graph);
-        var possiblePairs = (long)metric.AuthoredFiles * metric.AuthoredFiles;
-        var observations = new[]
+        var architectureApplicable = context.Config?.Architecture is { IsApplicable: true };
+        var scope = ComplexityBudgetUpdater.Scope(context.Repository, graph, architectureApplicable);
+        var metric = RepositoryComplexity.Measure(scope.Graph);
+        var observations = new List<string>
         {
             budgetObservation,
-            $"propagation cost: {Percent(metric.PropagationCostPercentage)} "
-                + $"({metric.ReachablePairs} reachable file pairs / {possiblePairs})",
+            $"mean reach: {Files(metric.MeanReach)} "
+                + $"({metric.ReachablePairs} reachable file pairs / {metric.AuthoredFiles} files; "
+                + $"propagation cost {Percent(metric.PropagationCostPercentage)})",
             $"core size: {metric.CoreFiles} files "
-                + $"({Percent(metric.CorePercentage)} of {metric.AuthoredFiles} authored files)",
+                + $"({Percent(metric.CorePercentage)} of {metric.AuthoredFiles} files)",
+            scope.Describe(),
         };
-        var current = ComplexityBudget.Entry.From(metric);
-        if (current.PropagationCost > limit.PropagationCost || current.CoreSize > limit.CoreSize)
+        if (scope.DescribeMarkedGenerated() is { } marked)
         {
-            var findings = RegressionFindings(graph, limit, current);
+            observations.Add(marked);
+        }
+
+        var current = ComplexityBudget.Entry.From(metric);
+        if (current.MeanReach > limit.MeanReach || current.CoreSize > limit.CoreSize)
+        {
+            var findings = RegressionFindings(scope.Graph, limit, current);
             var regression = new Finding(
                 FindingSeverity.Blocking,
                 ComplexityBudget.FileName,
@@ -75,7 +83,7 @@ internal sealed class ComplexityCheck(
         ComplexityBudget.Entry current)
     {
         var findings = new List<Finding>();
-        if (current.PropagationCost > budget.PropagationCost)
+        if (current.MeanReach > budget.MeanReach)
         {
             findings.AddRange(RepositoryComplexity.HighestPropagationEdges(graph)
                 .Take(5)
@@ -102,9 +110,9 @@ internal sealed class ComplexityCheck(
     private static string RegressionMessage(ComplexityBudget.Entry budget, ComplexityBudget.Entry current)
     {
         var deltas = new List<string>();
-        if (current.PropagationCost > budget.PropagationCost)
+        if (current.MeanReach > budget.MeanReach)
         {
-            deltas.Add($"propagation cost +{Percent(current.PropagationCost - budget.PropagationCost)}");
+            deltas.Add($"mean reach +{Files(current.MeanReach - budget.MeanReach)}");
         }
 
         if (current.CoreSize > budget.CoreSize)
@@ -118,9 +126,9 @@ internal sealed class ComplexityCheck(
     private static string? ProgressMessage(ComplexityBudget.Entry budget, ComplexityBudget.Entry current)
     {
         var progress = new List<string>();
-        if (budget.PropagationCost - current.PropagationCost >= ComplexityBudget.NoticeablePropagationDelta)
+        if (budget.MeanReach - current.MeanReach >= ComplexityBudget.NoticeableReachDelta)
         {
-            progress.Add($"propagation cost -{Percent(budget.PropagationCost - current.PropagationCost)}");
+            progress.Add($"mean reach -{Files(budget.MeanReach - current.MeanReach)}");
         }
 
         if (current.CoreSize < budget.CoreSize)
@@ -132,6 +140,9 @@ internal sealed class ComplexityCheck(
             ? null
             : $"DSM complexity improved ({string.Join(", ", progress)}); run `harness budget update` to record the progress.";
     }
+
+    private static string Files(double value)
+        => value.ToString("F2", CultureInfo.InvariantCulture) + " files";
 
     private static string Percent(double value)
         => value.ToString("F2", CultureInfo.InvariantCulture) + "%";

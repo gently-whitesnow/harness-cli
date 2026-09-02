@@ -10,15 +10,20 @@ namespace Harness.Infrastructure.Languages.CSharp;
 internal sealed class CSharpGraphBuilder
 {
     private readonly IReadOnlyList<CSharpFile> files;
+    private readonly IReadOnlyList<string> markedGenerated;
     private readonly Dictionary<(string From, string To), ReferenceEdge> edges = [];
     private readonly List<ExternalImports> imports = [];
     private int resolved;
     private int ambiguous;
 
-    private CSharpGraphBuilder(IReadOnlyList<CSharpFile> files) => this.files = files;
+    private CSharpGraphBuilder(IReadOnlyList<CSharpFile> files, IReadOnlyList<string> markedGenerated)
+    {
+        this.files = files;
+        this.markedGenerated = markedGenerated;
+    }
 
-    public static SourceGraph Build(IReadOnlyList<CSharpFile> files)
-        => new CSharpGraphBuilder(files).Read();
+    public static SourceGraph Build(IReadOnlyList<CSharpFile> files, IReadOnlyList<string> markedGenerated)
+        => new CSharpGraphBuilder(files, markedGenerated).Read();
 
     private SourceGraph Read()
     {
@@ -41,7 +46,8 @@ internal sealed class CSharpGraphBuilder
             edges.Values.OrderBy(edge => edge.Location, StringComparer.Ordinal).ToList(),
             imports,
             resolved,
-            ambiguous);
+            ambiguous,
+            markedGenerated);
     }
 
     private static TypeNode NodeOf(CSharpFile file, Declaration type)

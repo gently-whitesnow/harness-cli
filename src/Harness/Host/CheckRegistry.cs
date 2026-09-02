@@ -50,7 +50,7 @@ internal static class CheckRegistry
 
             new DocumentationPolicyCheck(),
             new CommitSetupCheck(CommitIntegration),
-            new CommentLineCheck(CSharp),
+            new CommentLineCheck(new CSharpCommentedSources(CSharp)),
             new CommentLineCheck(Yaml),
             new CommentLineCheck(TypeScript),
             new TypesPerFileCheck(CSharp),

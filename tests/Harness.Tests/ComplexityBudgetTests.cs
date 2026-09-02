@@ -24,13 +24,13 @@ public sealed class ComplexityBudgetTests
     public void Propagation_regression_is_blocking_and_names_delta_and_proven_edges()
     {
         using var repository = Graph(("A", ["B"]), ("B", ["C"]), ("C", []))
-            .WriteFile(".harness.budget.json", Budget(30, 0))
+            .WriteFile(".harness.budget.json", Budget(1, 0))
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("propagation cost +36.67%"), run.Output);
+        Assert.True(run.OutputContains("mean reach +1.00 files"), run.Output);
         Assert.True(run.OutputContains("Proven file edge src/Graph/A.cs -> src/Graph/B.cs"), run.Output);
     }
 
@@ -45,7 +45,7 @@ public sealed class ComplexityBudgetTests
                 ("O", []),
                 ("P", ["M"]),
                 ("Q", ["P"]))
-            .WriteFile(".harness.budget.json", Budget(10, 0))
+            .WriteFile(".harness.budget.json", Budget(1, 0))
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
@@ -103,7 +103,7 @@ public sealed class ComplexityBudgetTests
     public void Sub_threshold_improvement_does_not_emit_an_advisory()
     {
         using var repository = Graph(("A", ["B"]), ("B", []))
-            .WriteFile(".harness.budget.json", Budget(75.009, 0))
+            .WriteFile(".harness.budget.json", Budget(1.55, 0))
             .Commit();
 
         var run = HarnessCli.Run(repository.Path, "check", "--only", Check);
@@ -123,7 +123,7 @@ public sealed class ComplexityBudgetTests
         var content = File.ReadAllText(Path.Combine(repository.Path, ".harness.budget.json"));
 
         Assert.Equal(0, update.ExitCode);
-        Assert.Equal(Budget(75, 0), content);
+        Assert.Equal(Budget(1.5, 0), content);
         Assert.Equal(2, HarnessCli.Run(repository.Path, "check", "--only", Check).ExitCode);
 
         repository.Commit();
@@ -135,7 +135,7 @@ public sealed class ComplexityBudgetTests
     public void Budget_update_refuses_an_increase_and_keeps_the_file_unchanged()
     {
         using var repository = Graph(("A", []), ("B", []))
-            .WriteFile(".harness.budget.json", Budget(50, 0))
+            .WriteFile(".harness.budget.json", Budget(1, 0))
             .Commit();
         repository.WriteFile(
             "src/Graph/A.cs",
@@ -169,20 +169,51 @@ public sealed class ComplexityBudgetTests
 
         Assert.Equal(0, update.ExitCode);
         Assert.True(update.OutputContains("UPDATED"), update.Output);
-        Assert.Equal(Budget(75, 0), File.ReadAllText(Path.Combine(repository.Path, ".harness.budget.json")));
+        Assert.Equal(Budget(1.5, 0), File.ReadAllText(Path.Combine(repository.Path, ".harness.budget.json")));
+    }
+
+    [Fact]
+    public void A_contract_2_5_budget_is_incomplete_until_budget_update_migrates_it()
+    {
+        using var repository = Graph(("A", ["B"]), ("B", []))
+            .WriteFile(
+                ".harness.budget.json",
+                """
+                {
+                  "complexity.csharp": {
+                    "propagationCost": 75,
+                    "coreSize": 0
+                  }
+                }
+
+                """)
+            .Commit();
+
+        var check = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+        Assert.Equal(2, check.ExitCode);
+        Assert.True(check.OutputContains("records propagationCost from contract 2.5"), check.Output);
+        Assert.True(check.OutputContains("harness budget update"), check.Output);
+
+        var update = HarnessCli.Run(repository.Path, "budget", "update");
+        Assert.Equal(0, update.ExitCode);
+        Assert.StartsWith("MIGRATED", update.StandardOutput, StringComparison.Ordinal);
+        Assert.Equal(Budget(1.5, 0), File.ReadAllText(Path.Combine(repository.Path, ".harness.budget.json")));
+
+        repository.Commit();
+        Assert.Equal(0, HarnessCli.Run(repository.Path, "check", "--only", Check).ExitCode);
     }
 
     [Fact]
     public void Advisory_policy_keeps_the_regression_visible_without_failing()
     {
         using var repository = Graph("advisory", ("A", ["B"]), ("B", ["C"]), ("C", []))
-            .WriteFile(".harness.budget.json", Budget(30, 0))
+            .WriteFile(".harness.budget.json", Budget(1, 0))
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("propagation cost +36.67%"), run.Output);
+        Assert.True(run.OutputContains("mean reach +1.00 files"), run.Output);
         Assert.True(run.OutputContains("advisory"), run.Output);
     }
 
@@ -190,7 +221,7 @@ public sealed class ComplexityBudgetTests
     public void Off_policy_does_not_run_the_budget_check()
     {
         using var repository = Graph("off", ("A", ["B"]), ("B", ["C"]), ("C", []))
-            .WriteFile(".harness.budget.json", Budget(30, 0))
+            .WriteFile(".harness.budget.json", Budget(1, 0))
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
@@ -226,11 +257,11 @@ public sealed class ComplexityBudgetTests
         return repository.Commit();
     }
 
-    private static string Budget(double propagationCost, int coreSize)
+    private static string Budget(double meanReach, int coreSize)
         => $$"""
         {
           "complexity.csharp": {
-            "propagationCost": {{propagationCost.ToString(CultureInfo.InvariantCulture)}},
+            "meanReach": {{meanReach.ToString(CultureInfo.InvariantCulture)}},
             "coreSize": {{coreSize}}
           }
         }

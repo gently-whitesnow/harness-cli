@@ -11,7 +11,8 @@ internal sealed class CheckContext(
     IRepository repository,
     HarnessConfig? config,
     string? configFailure,
-    IRepositoryCheck check)
+    string checkId,
+    IReadOnlyList<EvidenceFile> declaredEvidence)
 {
     public IRepository Repository { get; } = repository;
 
@@ -31,7 +32,7 @@ internal sealed class CheckContext(
         if (file.IsPattern)
         {
             throw new InvalidOperationException(
-                $"{check.Id} asks for the nearest '{file.Name}', which names a shape rather than a file.");
+                $"{checkId} asks for the nearest '{file.Name}', which names a shape rather than a file.");
         }
 
         var candidates = Tracked(file).ToDictionary(entry => entry.Path, StringComparer.Ordinal);
@@ -55,10 +56,10 @@ internal sealed class CheckContext(
 
     private void RequireDeclared(EvidenceFile file)
     {
-        if (!check.Evidence.Contains(file))
+        if (!declaredEvidence.Contains(file))
         {
             throw new InvalidOperationException(
-                $"{check.Id} reads '{file.Name}' without naming it in Evidence, so a run could not say when "
+                $"{checkId} reads '{file.Name}' without naming it in Evidence, so a run could not say when "
                     + "that file is present but untracked.");
         }
     }

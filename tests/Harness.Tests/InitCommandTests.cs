@@ -194,7 +194,7 @@ public sealed class InitCommandTests
         Assert.Contains("architecture map: zone src/App", check.Output, StringComparison.Ordinal);
         Assert.Contains("DSM budget:", check.Output, StringComparison.Ordinal);
         Assert.Contains(
-            "\"propagationCost\": 33.333333",
+            "\"meanReach\": 1,\n",
             File.ReadAllText(repository.Absolute(".harness.budget.json")),
             StringComparison.Ordinal);
     }

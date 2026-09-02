@@ -9,7 +9,7 @@ public static class Fixtures
             .WriteFile(".harness.json", Frame.AllPresent().ToString())
             .WriteFile(
                 ".harness.budget.json",
-                """{ "complexity.csharp": { "propagationCost": 0, "coreSize": 0 } }""");
+                """{ "complexity.csharp": { "meanReach": 0, "coreSize": 0 } }""");
 
     public static RepositoryFixture Compliant(Frame frame)
         => RepositoryFixture.CreateGitRepository()
@@ -22,7 +22,7 @@ public static class Fixtures
                 """
                 {
                   "complexity.csharp": {
-                    "propagationCost": 100,
+                    "meanReach": 1000000000,
                     "coreSize": 2147483647
                   }
                 }

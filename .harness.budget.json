@@ -1,6 +1,6 @@
 {
   "complexity.csharp": {
-    "propagationCost": 4.41341,
-    "coreSize": 2
+    "meanReach": 8.541985,
+    "coreSize": 0
   }
 }

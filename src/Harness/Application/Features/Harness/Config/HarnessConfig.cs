@@ -4,21 +4,6 @@ using Harness.Versioning;
 
 namespace Harness.Config;
 
-internal enum FrameAnswerKind
-{
-    Located,
-    Present,
-    Absent,
-    NotApplicable,
-}
-
-internal enum CheckPolicy
-{
-    Required,
-    Advisory,
-    Off,
-}
-
 /// <summary>
 /// The repository's own answers to the harness frame and how strictly each check is treated.
 /// </summary>

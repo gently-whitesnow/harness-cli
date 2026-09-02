@@ -37,23 +37,23 @@ C#-проверки разделяют applicability `csharp`. Если весь
 counts без универсального remediation. Вложенный модуль — содержание, а не цикл.
 [ADR-0021](adrs/0021-coupling-evidence-grades.md), [ADR-0029](adrs/0029-dependency-counts-removed.md)
 
-DSM-метрики `complexity.csharp` сравниваются с tracked `.harness.budget.json`: рост
-блокирует check, снижение предлагает `harness budget update`. Команда только ужимает
-baseline; повышение делается вручную через ревью. [ADR-0032](adrs/0032-topology-over-thresholds.md)
+DSM `complexity.csharp` — mean reach (файлов на изменение) и core size по файлам внутри зон
+sliced-dotnet, тесты вне зоны не входят; превышение tracked `.harness.budget.json` блокирует check,
+`harness budget update` только ужимает потолок. [ADR-0032](adrs/0032-topology-over-thresholds.md), [ADR-0042](adrs/0042-dsm-over-the-product-in-files.md)
 
 Проверка называется `<семейство>.<язык>`, `Group` — семейство, `Applicability` — язык.
 Язык-нейтральное ядро живёт в `Structure/`, чтение исходника — за `ILanguageAnalyzer` в
 `Languages/<Язык>/`. Второй язык — экземпляр `Language`, ридер и строка в реестре, а не
 копия проверки; так `comments.yaml` и `comments.typescript` считают плотность комментариев
 в YAML и TypeScript со своими applicability и `settings`. [ADR-0022](adrs/0022-language-axis.md),
-[ADR-0042](adrs/0042-comment-density-across-languages.md)
+[ADR-0043](adrs/0043-comment-density-across-languages.md)
 
 .NET-проекты разделяют applicability `dotnet`. Харнес статически требует общий hardened
 `Directory.Build.props`, central package versions в ближайшем `Directory.Packages.props` и
 `.slnx` вместо `.sln`; он читает tracked XML, но не выполняет MSBuild evaluation.
 [ADR-0019](adrs/0019-dotnet-repository-policy.md)
 
-`version` — строка текущего контракта (`"2.6.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.7.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
