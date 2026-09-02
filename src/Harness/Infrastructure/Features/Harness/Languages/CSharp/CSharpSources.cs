@@ -14,22 +14,35 @@ internal sealed class CSharpSources : ICSharpSources
     private static readonly string[] GeneratedSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
 
     private IRepository? read;
-    private (IReadOnlyList<CSharpFile> Files, string? Failure) result;
+    private (IReadOnlyList<CSharpFile> Files, IReadOnlyList<string> MarkedGenerated, string? Failure) result;
 
     public (IReadOnlyList<CSharpFile> Files, string? Failure) Read(IRepository repository)
     {
+        var (files, _, failure) = Discover(repository);
+        return (files, failure);
+    }
+
+    /// <summary>Tracked C# in authored locations that a leading auto-generated marker excluded.</summary>
+    public IReadOnlyList<string> MarkedGenerated(IRepository repository)
+        => Discover(repository).MarkedGenerated;
+
+    private (IReadOnlyList<CSharpFile> Files, IReadOnlyList<string> MarkedGenerated, string? Failure) Discover(
+        IRepository repository)
+    {
         if (!ReferenceEquals(read, repository))
         {
-            result = Discover(repository);
+            result = Read(repository.TrackedEntries, repository);
             read = repository;
         }
 
         return result;
     }
 
-    private static (IReadOnlyList<CSharpFile> Files, string? Failure) Discover(IRepository repository)
+    private static (IReadOnlyList<CSharpFile> Files, IReadOnlyList<string> MarkedGenerated, string? Failure) Read(
+        IReadOnlyList<TrackedEntry> entries,
+        IRepository repository)
     {
-        var candidates = repository.TrackedEntries
+        var candidates = entries
             .Where(entry => entry.Path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
             .Where(entry => !RepositoryLocations.IsGenerated(entry.Path))
             .Where(entry => !GeneratedSuffixes.Any(suffix =>
@@ -37,23 +50,27 @@ internal sealed class CSharpSources : ICSharpSources
             .OrderBy(entry => entry.Path, StringComparer.Ordinal);
 
         var files = new List<CSharpFile>();
+        var marked = new List<string>();
         foreach (var entry in candidates)
         {
             var (text, failure) = repository.ReadTrackedText(entry);
             if (text is null)
             {
-                return ([], failure ?? $"Could not read '{entry.Path}'.");
+                return ([], [], failure ?? $"Could not read '{entry.Path}'.");
             }
 
-            if (!IsGeneratedContent(text))
+            if (IsGeneratedContent(text))
             {
-                var (masked, regions) = CSharpMask.Apply(text);
-                var source = CSharpSource.Create(entry.Path, masked, regions);
-                files.Add(new CSharpFile(source, () => CSharpStructureReader.Read(source)));
+                marked.Add(entry.Path);
+                continue;
             }
+
+            var (masked, regions) = CSharpMask.Apply(text);
+            var source = CSharpSource.Create(entry.Path, masked, regions);
+            files.Add(new CSharpFile(source, () => CSharpStructureReader.Read(source)));
         }
 
-        return (files, null);
+        return (files, marked, null);
     }
 
     // Generated markers are conventionally emitted at the start of a file.

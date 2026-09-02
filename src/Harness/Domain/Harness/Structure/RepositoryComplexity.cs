@@ -6,6 +6,10 @@ internal sealed record RepositoryComplexity(
     long ReachablePairs,
     int CoreFiles)
 {
+    /// <summary>Files a change reaches on average: the file itself plus everything downstream.</summary>
+    public double MeanReach
+        => AuthoredFiles == 0 ? 0 : (double)ReachablePairs / AuthoredFiles;
+
     public double PropagationCostPercentage
         => AuthoredFiles == 0 ? 0 : 100.0 * ReachablePairs / ((long)AuthoredFiles * AuthoredFiles);
 

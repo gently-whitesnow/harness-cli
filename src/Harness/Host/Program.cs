@@ -3,6 +3,7 @@ using Harness.Checks.Complexity;
 using Harness.Cli;
 using Harness.Commits;
 using Harness.Config;
+using Harness.Contracts;
 using Harness.Engine;
 using Harness.Git;
 using Harness.Host;
@@ -54,7 +55,10 @@ switch (invocation.Kind)
         }
 
         var (initialBudget, budgetFailure) =
-            ComplexityBudgetUpdater.InitialContent(initRepository, CheckRegistry.LanguageAnalyzers);
+            ComplexityBudgetUpdater.InitialContent(
+                initRepository,
+                CheckRegistry.LanguageAnalyzers,
+                repositoryKind.Value == RepositoryKind.Application);
         if (initialBudget is null)
         {
             Console.Error.WriteLine(budgetFailure);
@@ -135,7 +139,10 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        var result = ComplexityBudgetUpdater.Update(repository, analyzers);
+        var result = ComplexityBudgetUpdater.Update(
+            repository,
+            analyzers,
+            config.Architecture is { IsApplicable: true });
         var writer = result.ExitCode == ExitCodes.Success ? Console.Out : Console.Error;
         writer.WriteLine(result.Message);
         return result.ExitCode;

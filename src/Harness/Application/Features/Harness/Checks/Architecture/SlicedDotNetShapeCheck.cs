@@ -19,8 +19,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
     // Mirrors the generated-suffix judgement of the C# source reader.
     private static readonly string[] GeneratedSourceSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
 
-    private static readonly string[] Layers =
-        ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure", "Shared"];
+    private static readonly string[] Layers = ArchitectureZones.Layers;
 
     private static readonly string[] PlaceholderFiles = [".gitkeep", ".keep", ".gitignore"];
 
@@ -230,7 +229,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             .Where(entry => !entry.IsSymbolicLink)
             .Select(entry => entry.Path)
             .ToList();
-        var zones = DiscoverZones(paths);
+        var zones = ArchitectureZones.Discover(paths);
         if (zones.Count == 0)
         {
             return CheckEvaluation.From(
@@ -1044,46 +1043,6 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         return new LayerAddress(null, null, null);
     }
 
-    private static List<string> DiscoverZones(IReadOnlyList<string> paths)
-    {
-        var candidates = paths
-            .SelectMany(path => CandidateZones(path))
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(zone => zone.Count(character => character == '/'))
-            .ThenBy(zone => zone, StringComparer.Ordinal)
-            .ToList();
-
-        var zones = new List<string>();
-        foreach (var candidate in candidates)
-        {
-            if (!zones.Any(zone => IsInsideExistingLayer(candidate, zone)))
-            {
-                zones.Add(candidate);
-            }
-        }
-
-        return zones;
-    }
-
-    private static IEnumerable<string> CandidateZones(string path)
-    {
-        var parts = path.Split('/');
-        for (var index = 0; index < parts.Length - 1; index++)
-        {
-            if (parts[index] == "Application")
-            {
-                yield return string.Join('/', parts.Take(index));
-            }
-        }
-    }
-
-    private static bool IsInsideExistingLayer(string candidate, string zone)
-    {
-        var relative = Relative(candidate, zone);
-        var first = relative.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-        return first is not null && Layers.Contains(first, StringComparer.Ordinal);
-    }
-
     private static SliceMap InspectZone(
         string zone,
         IReadOnlyList<string> paths,
@@ -1337,18 +1296,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         }
     }
 
-    private static string Relative(string path, string zone)
-    {
-        if (zone.Length == 0)
-        {
-            return path;
-        }
+    private static string Display(string zone) => ArchitectureZones.Display(zone);
 
-        var prefix = zone + "/";
-        return path.StartsWith(prefix, StringComparison.Ordinal) ? path[prefix.Length..] : "../";
-    }
-
-    private static string Display(string zone) => zone.Length == 0 ? "." : zone;
+    private static string Relative(string path, string zone) => ArchitectureZones.Relative(path, zone);
 
     private static string At(string zone, string name) => zone.Length == 0 ? name : $"{zone}/{name}";
 
