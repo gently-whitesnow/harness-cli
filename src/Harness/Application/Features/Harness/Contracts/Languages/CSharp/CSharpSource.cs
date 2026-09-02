@@ -1,13 +1,5 @@
 namespace Harness.Languages.CSharp;
 
-internal enum MaskedContent
-{
-    Comment,
-    Preprocessor,
-    StringLiteral,
-    CharacterLiteral,
-}
-
 /// <summary>
 /// One tracked C# file, reduced to code by the infrastructure reader and indexed by line, so
 /// every measurement taken on it can be reported at the place it was taken.
