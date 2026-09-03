@@ -2,11 +2,8 @@ using Harness.Repository;
 
 namespace Harness.Checks;
 
-/// <summary>
-/// Audits the Markdown documentation policy of a repository. Tracked state comes from
-/// the Git index, so generated, vendored and build-output content stays out of scope and
-/// symbolic links are judged by what Git actually stores.
-/// </summary>
+/// <summary>Audits the Markdown documentation policy from the Git index, so generated and
+/// vendored content stays out of scope and symbolic links are judged by what Git stores.</summary>
 internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 {
     private const int LineLimit = DocumentationPolicyExplanation.LineLimit;
@@ -54,10 +51,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
         return separator < 0 ? string.Empty : path[..(separator + 1)];
     }
 
-    /// <summary>
-    /// One evaluation of one repository: the tracked inventory, the findings collected so
-    /// far, and the first evidence gap that made the audit unreliable.
-    /// </summary>
+    /// <summary>One evaluation of one repository: inventory, findings and the first evidence gap.</summary>
     private sealed class DocumentationAudit(IRepository repository)
     {
         private readonly Dictionary<string, TrackedEntry> tracked =
@@ -234,10 +228,8 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
             }
         }
 
-        /// <summary>
-        /// Resolves a relative link target against the directory holding the link, so a
-        /// target that climbs is compared as the path Git would actually follow.
-        /// </summary>
+        /// <summary>Resolves a relative link target against the directory holding the link, so a
+        /// target that climbs is compared as the path Git would follow.</summary>
         private static string? Resolve(string directory, string target)
         {
             List<string> segments = directory.Length == 0

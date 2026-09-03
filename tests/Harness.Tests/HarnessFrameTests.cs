@@ -110,7 +110,7 @@ public sealed class HarnessFrameTests
     }
 
     [Theory]
-    [InlineData("typescript", """{ "applicable": false, "reason": "not used" }""", "not an applicability")]
+    [InlineData("python", """{ "applicable": false, "reason": "not used" }""", "not an applicability")]
     [InlineData("csharp", """{ "applicable": true, "reason": "used" }""", "reason' is only valid")]
     [InlineData("csharp", """{ "applicable": false }""", "must say why")]
     public void Invalid_applicability_ends_the_run_as_incomplete(

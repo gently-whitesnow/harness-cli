@@ -1,17 +1,40 @@
 using System.Globalization;
 using Harness.Config;
-using Harness.Languages.CSharp;
+using Harness.Languages.Comments;
 
 namespace Harness.Checks.Comments;
 
-internal sealed class CommentLineCheck(ICSharpSources sources)
-    : CSharpSourceCheck(sources, "comments", "C# comment density limit", CommentLineExplanation.Text)
+internal sealed class CommentLineCheck(ICommentedSources sources) : IRepositoryCheck
 {
-    protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
+    private const string Family = "comments";
+
+    public string Id => sources.Language.Qualify(Family);
+
+    public string Group => Family;
+
+    public string Applicability => sources.Language.Key;
+
+    public IReadOnlyList<EvidenceFile> Evidence => [];
+
+    public string Summary => $"{sources.Language.Name} comment density limit";
+
+    public string Explanation => CommentLineExplanation.For(sources.Language);
+
+    public CheckEvaluation Evaluate(CheckContext context)
     {
-        var settings = context.Config?.Settings.Comments ?? CommentSettings.Default;
+        var (files, failure) = sources.Read(context.Repository);
+        if (failure is not null)
+        {
+            return CheckEvaluation.Incomplete(failure);
+        }
+
+        if (files.Count == 0)
+        {
+            return CheckEvaluation.NotApplicable(sources.NothingToAnalyze);
+        }
+
+        var settings = context.Config?.Settings.CommentsFor(sources.Language) ?? CommentSettings.Default;
         var findings = files
-            .Select(file => file.Source)
             .Where(source => ExceedsLimit(source, settings))
             .Select(source => new Finding(
                 FindingSeverity.Blocking,
@@ -27,11 +50,11 @@ internal sealed class CommentLineCheck(ICSharpSources sources)
         return CheckEvaluation.From(findings);
     }
 
-    private static bool ExceedsLimit(CSharpSource source, CommentSettings settings)
+    private static bool ExceedsLimit(CommentedSource source, CommentSettings settings)
         => source.CommentLines >= settings.MinimumCommentLines
             && (long)source.CommentLines * 100 > (long)source.AuthoredLines * settings.PercentageLimit;
 
-    private static string Percentage(CSharpSource source)
+    private static string Percentage(CommentedSource source)
         => (100m * source.CommentLines / source.AuthoredLines)
             .ToString("F1", CultureInfo.InvariantCulture);
 }

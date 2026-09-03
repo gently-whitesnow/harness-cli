@@ -1,5 +1,5 @@
 {
-  "version": "2.6.0",
+  "version": "2.7.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -30,12 +30,22 @@
   },
   "applicability": {
     "csharp": { "applicable": true },
-    "dotnet": { "applicable": true }
+    "dotnet": { "applicable": true },
+    "yaml": { "applicable": true },
+    "typescript": { "applicable": true }
   },
   "settings": {
     "comments.csharp": {
       "minimumCommentLines": 10,
-      "percentageLimit": 15
+      "percentageLimit": 8
+    },
+    "comments.yaml": {
+      "minimumCommentLines": 10,
+      "percentageLimit": 8
+    },
+    "comments.typescript": {
+      "minimumCommentLines": 10,
+      "percentageLimit": 8
     },
     "duplication.csharp": {
       "windowLines": 30,
@@ -53,6 +63,8 @@
     "docs.policy": "required",
     "commits.setup": "required",
     "comments.csharp": "required",
+    "comments.yaml": "required",
+    "comments.typescript": "required",
     "types-per-file.csharp": "required",
     "dependencies.csharp": "required",
     "duplication.csharp": "advisory",

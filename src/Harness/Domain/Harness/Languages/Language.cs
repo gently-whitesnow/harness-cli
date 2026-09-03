@@ -10,6 +10,13 @@ internal sealed class Language
 {
     public static readonly Language CSharp = new("csharp", "C#");
 
+    public static readonly Language Yaml = new("yaml", "YAML");
+
+    public static readonly Language TypeScript = new("typescript", "TypeScript");
+
+    /// <summary>Every language the harness ships, in the order the frame lists them.</summary>
+    public static readonly IReadOnlyList<Language> All = [CSharp, Yaml, TypeScript];
+
     private Language(string key, string name)
     {
         Key = key;
