@@ -7,8 +7,9 @@ internal static class WarningSuppressionsExplanation
         Rationale
           build-properties.dotnet requires warnings to be errors; that baseline holds only while
           nobody silences the warnings one by one. Suppressions accumulate quietly and each looks
-          reasonable in its own diff, so the repository decides once, in the tracked frame, which
-          diagnostics it accepts silencing and why.
+          reasonable in its own diff. The harness applies its own policy rule (ADR-0035) to the
+          compiler's diagnostics: a rule is either on for the repository or off for it, and no
+          file, project or path gets a private exception.
 
         What it reads
           Tracked authored .cs files (generated suffixes, generated directories and files with an
@@ -16,27 +17,25 @@ internal static class WarningSuppressionsExplanation
           Directory.Build.props, and every tracked .editorconfig. The toolchain is not executed.
 
         What fails
-          `#pragma warning disable` with any code, or with none; `[SuppressMessage]` and
-          `[UnconditionalSuppressMessage]`; `NoWarn` and `WarningsNotAsErrors` entries;
-          `dotnet_diagnostic.<code>.severity` set to none, silent or suggestion in a section that
-          is not `generated_code = true`; and any `dotnet_analyzer_diagnostic` severity that
-          silences a whole category — unless the code is allowed in settings:
+          Address-level silencing: `#pragma warning disable` with any code, or with none;
+          `[SuppressMessage]` and `[UnconditionalSuppressMessage]`; `NoWarn` and
+          `WarningsNotAsErrors` inside a project file; `dotnet_diagnostic.<code>.severity` set to
+          none, silent or suggestion in an .editorconfig section whose glob names a path or a
+          name prefix (`[tests/**/*.cs]`, `[*.g.cs]`) without `generated_code = true`; and any
+          `dotnet_analyzer_diagnostic` severity that silences a whole category.
 
-          "settings": {
-            "warning-suppressions.dotnet": {
-              "allowed": { "CS1591": "public API is not documented; IDE0005 needs the XML file" }
-            }
-          }
-
-          An allowed code is a repository-wide comparison point with a reviewed reason; it is not
-          the address-level suppression of a file or a finding that ADR-0035 refuses. Allowed
-          codes in use are listed in the report so the list stays honest.
+        What is printed instead
+          A rule switched off for the whole repository — `dotnet_diagnostic.<code>.severity =
+          none` in a section such as `[*.cs]` or `[*]`, or `NoWarn` in Directory.Build.props — is
+          the tracked, reviewable decision `policy: off` is for harness checks. It never fails
+          the run; every such switch is listed as an observation on every run, so the list stays
+          visible instead of accumulating.
 
         Remediation
-          Fix the code the diagnostic points at. When the diagnostic is wrong for this repository
-          as a whole, add its code to `allowed` with the reason, in the same change. If the
-          repository rejects the rule entirely, record that through
-          `policy.warning-suppressions.dotnet`.
+          Fix the code the diagnostic points at. When the rule is wrong for this repository as a
+          whole, switch it off for the whole repository and say why in the same file, as the
+          reference .editorconfig does for CA1707. If the repository rejects this check entirely,
+          record that through `policy.warning-suppressions.dotnet`.
 
         Applicability
           Disable all .NET repository checks together only when they do not apply:

@@ -1,15 +1,14 @@
 using System.Text.RegularExpressions;
 using System.Xml;
-using Harness.Config;
 using Harness.Repository;
 
 namespace Harness.Checks.DotNet;
 
 /// <summary>
 /// Warnings-as-errors only means something while nobody silences the warnings. This check
-/// reads every place a .NET repository can do that — pragmas, suppression attributes,
-/// NoWarn, editorconfig severities — and blocks each code the frame has not allowed with a
-/// reason, repository-wide.
+/// reads every place a .NET repository can do that and applies the ADR-0035 rule to the
+/// compiler's diagnostics: silencing a rule at an address — a file, a project, a path — is
+/// blocking; switching a rule off for the whole repository is a decision the report prints.
 /// </summary>
 internal sealed partial class WarningSuppressionsCheck : DotNetCheck
 {
@@ -40,7 +39,6 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
 
     protected override CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects)
     {
-        var settings = context.Config?.Settings.WarningSuppressions ?? WarningSuppressionSettings.Default;
         var sites = new List<Site>();
 
         var failure = CollectFromSources(context, sites);
@@ -51,7 +49,7 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
 
         foreach (var project in projects)
         {
-            CollectFromXml(project, sites);
+            CollectFromXml(project, sites, repositoryWide: false);
         }
 
         foreach (var entry in context.Tracked(BuildProps))
@@ -62,7 +60,7 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
                 return CheckEvaluation.Incomplete(readFailure!);
             }
 
-            CollectFromXml(props, sites);
+            CollectFromXml(props, sites, repositoryWide: true);
         }
 
         foreach (var entry in context.Tracked(EditorConfig))
@@ -77,23 +75,23 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
         }
 
         var findings = sites
-            .Where(site => site.Code is null || !settings.Allows(site.Code))
+            .Where(site => !site.RepositoryWide)
             .Select(site => Block(site.Location, site.Code is null
-                ? $"silences every warning via {site.Form}; name the codes instead"
-                : $"silences {site.Code} via {site.Form}; fix the code, or allow {site.Code} with a reason in "
-                    + "settings.warning-suppressions.dotnet"))
+                ? $"silences every warning via {site.Form}; a rule is switched off by name, for the whole repository"
+                : $"silences {site.Code} via {site.Form} at one address; fix the code, or switch {site.Code} off "
+                    + "for the whole repository in .editorconfig [*.cs] or Directory.Build.props"))
             .ToList();
 
         var observations = sites
-            .Where(site => site.Code is not null && settings.Allows(site.Code))
-            .GroupBy(site => site.Code!, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(group => $"{group.Key} allowed at {group.Count()} site(s): {settings.Allowed[group.Key]}")
+            .Where(site => site.RepositoryWide)
+            .OrderBy(site => site.Code, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(site => site.Location, StringComparer.Ordinal)
+            .Select(site => $"{site.Code} is switched off repository-wide via {site.Form} at {site.Location}")
             .ToList();
 
         return CheckEvaluation.From(
             findings,
-            findings.Count == 0 ? "no diagnostic is silenced outside the allowed list" : null,
+            findings.Count == 0 ? "no diagnostic is silenced at an address" : null,
             observations: observations);
     }
 
@@ -137,10 +135,11 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
             var codes = Codes(match.Groups[1].Value, ',');
             if (codes.Count == 0)
             {
-                sites.Add(new Site($"{path}:{index + 1}", null, "#pragma warning disable"));
+                sites.Add(new Site($"{path}:{index + 1}", null, "#pragma warning disable", false));
             }
 
-            sites.AddRange(codes.Select(code => new Site($"{path}:{index + 1}", code, "#pragma warning disable")));
+            sites.AddRange(codes.Select(code =>
+                new Site($"{path}:{index + 1}", code, "#pragma warning disable", false)));
         }
     }
 
@@ -149,11 +148,13 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
         foreach (Match match in SuppressionAttribute().Matches(text))
         {
             var line = text.AsSpan(0, match.Index).Count('\n') + 1;
-            sites.Add(new Site($"{path}:{line}", Normalize(match.Groups[1].Value), "SuppressMessage"));
+            sites.Add(new Site($"{path}:{line}", Normalize(match.Groups[1].Value), "SuppressMessage", false));
         }
     }
 
-    private static void CollectFromXml(DotNetFile file, List<Site> sites)
+    // NoWarn in Directory.Build.props switches a rule off for every project it covers; the
+    // same element in one .csproj is that project's private exception.
+    private static void CollectFromXml(DotNetFile file, List<Site> sites, bool repositoryWide)
     {
         foreach (var property in ProjectProperties)
         {
@@ -163,7 +164,7 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
                 var location = line > 0 ? $"{file.Path}:{line}" : file.Path;
                 var value = DotNetRepository.Value(element) ?? string.Empty;
                 sites.AddRange(Codes(value, ';', ',', ' ', '\n', '\t')
-                    .Select(code => new Site(location, code, property)));
+                    .Select(code => new Site(location, code, property, repositoryWide)));
             }
         }
     }
@@ -183,16 +184,26 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
                 var diagnostic = DiagnosticSeverity().Match(entry.Key);
                 if (diagnostic.Success)
                 {
-                    sites.Add(new Site(location, Normalize(diagnostic.Groups[1].Value), $"severity = {entry.Value}"));
+                    sites.Add(new Site(
+                        location,
+                        Normalize(diagnostic.Groups[1].Value),
+                        $"[{section.Glob}] severity = {entry.Value}",
+                        IsRepositoryWide(section.Glob)));
                 }
                 else if (entry.Key.StartsWith("dotnet_analyzer_diagnostic.", StringComparison.Ordinal)
                     && entry.Key.EndsWith(".severity", StringComparison.Ordinal))
                 {
-                    sites.Add(new Site(location, null, $"{entry.Key} = {entry.Value}"));
+                    sites.Add(new Site(location, null, $"{entry.Key} = {entry.Value}", false));
                 }
             }
         }
     }
+
+    // A section addresses the whole repository when its glob names every file or every file
+    // of an extension: `*`, `*.cs`, `*.{cs,vb}`. Anything with a path or a name prefix is an
+    // address.
+    private static bool IsRepositoryWide(string glob)
+        => RepositoryWideGlob().IsMatch(glob.Trim());
 
     private static string Severity(string value)
     {
@@ -228,5 +239,8 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
     [GeneratedRegex(@"^dotnet_diagnostic\.([a-z]+\d+)\.severity$", RegexOptions.CultureInvariant)]
     private static partial Regex DiagnosticSeverity();
 
-    private sealed record Site(string Location, string? Code, string Form);
+    [GeneratedRegex(@"^\*(\.(\{[A-Za-z0-9,]+\}|[A-Za-z0-9]+))?$", RegexOptions.CultureInvariant)]
+    private static partial Regex RepositoryWideGlob();
+
+    private sealed record Site(string Location, string? Code, string Form, bool RepositoryWide);
 }

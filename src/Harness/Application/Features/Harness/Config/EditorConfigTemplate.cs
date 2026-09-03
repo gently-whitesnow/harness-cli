@@ -36,9 +36,8 @@ internal static class EditorConfigTemplate
         dotnet_diagnostic.IDE0055.severity = warning
 
         # Keep imports deterministic and outside file-scoped namespaces. IDE0005 reports on
-        # build only when Directory.Build.props sets GenerateDocumentationFile; that in turn
-        # needs CS1573 and CS1591 allowed in settings.warning-suppressions.dotnet unless the
-        # public API is documented.
+        # build only when Directory.Build.props sets GenerateDocumentationFile, so every
+        # <param> block must then be complete (CS1573) and public API documented (CS1591).
         dotnet_sort_system_directives_first = true
         dotnet_separate_import_directive_groups = false
         csharp_using_directive_placement = outside_namespace
@@ -80,6 +79,12 @@ internal static class EditorConfigTemplate
         # Naming is enforced for product code below. Private mutable fields deliberately
         # use camelCase; constants and static readonly fields use PascalCase.
         dotnet_diagnostic.IDE1006.severity = warning
+
+        # Sentence-style xUnit names carry underscores, and CA1707 has no per-path form that
+        # the harness would accept: a rule is either on for the repository or off for it.
+        # This switch is repository-wide, printed by warning-suppressions.dotnet on every
+        # run; delete it when tests follow product naming.
+        dotnet_diagnostic.CA1707.severity = none
 
         dotnet_naming_rule.interfaces_start_with_i.symbols = interfaces
         dotnet_naming_rule.interfaces_start_with_i.style = interface_name
@@ -128,18 +133,17 @@ internal static class EditorConfigTemplate
         dotnet_naming_style.camel_case.capitalization = camel_case
 
         [tests/**/*.cs]
-        # Sentence-style xUnit names are the executable specification. Both codes are
-        # allowed in settings.warning-suppressions.dotnet; drop the section and the entries
-        # together if tests follow product naming.
-        dotnet_diagnostic.CA1707.severity = none
-        dotnet_diagnostic.IDE1006.severity = none
+        # Sentence-style xUnit names are the executable specification: an explicit naming
+        # rule for public test methods, not a silenced diagnostic.
+        dotnet_naming_rule.test_methods_are_sentences.symbols = test_methods
+        dotnet_naming_rule.test_methods_are_sentences.style = sentence_case
+        dotnet_naming_rule.test_methods_are_sentences.severity = warning
+
+        dotnet_naming_symbols.test_methods.applicable_kinds = method
+        dotnet_naming_symbols.test_methods.applicable_accessibilities = public
+
+        dotnet_naming_style.sentence_case.capitalization = first_word_upper
+        dotnet_naming_style.sentence_case.word_separator = _
 
         """;
-
-    /// <summary>The suppressions the template itself carries, allowed by the frame `init` writes.</summary>
-    public static readonly IReadOnlyList<KeyValuePair<string, string>> AllowedSuppressions =
-    [
-        new("CA1707", "sentence-style xUnit names under tests/ use underscores"),
-        new("IDE1006", "sentence-style xUnit names under tests/ are not PascalCase"),
-    ];
 }

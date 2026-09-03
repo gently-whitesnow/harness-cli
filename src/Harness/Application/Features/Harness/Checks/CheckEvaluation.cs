@@ -1,10 +1,11 @@
 namespace Harness.Checks;
 
-/// <param name="OutcomeReason">
-/// What the outcome means for this repository, in one line: why the check is incomplete,
-/// not applicable or a readiness gap, or what a check that passed established and did not.
-/// Absent when the outcome speaks for itself.
-/// </param>
+/// <summary>What one check concluded, with the findings and observations behind it.</summary>
+/// <remarks>
+/// <c>OutcomeReason</c> says what the outcome means for this repository, in one line: why
+/// the check is incomplete, not applicable or a readiness gap, or what a check that passed
+/// established and did not. Absent when the outcome speaks for itself.
+/// </remarks>
 internal sealed record CheckEvaluation(
     CheckOutcome Outcome,
     IReadOnlyList<Finding> Findings,

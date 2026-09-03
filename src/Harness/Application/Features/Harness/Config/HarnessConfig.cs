@@ -242,9 +242,6 @@ internal sealed record HarnessConfig
               "commits": {
                 "language": "ru",
                 "requireSetup": true
-              },
-              "warning-suppressions.dotnet": {
-                "allowed": {}
               }
             },
             "policy": {

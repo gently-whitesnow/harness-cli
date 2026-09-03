@@ -52,8 +52,8 @@ sliced-dotnet, тесты вне зоны не входят; превышени�
 central package versions в ближайшем `Directory.Packages.props`, `.slnx` вместо `.sln`,
 эталонный code-style baseline в цепочке `.editorconfig` над каждым проектом (`explain
 editorconfig.dotnet` печатает эталон, `init` записывает его) и учёт подавлений warnings:
-pragma, `SuppressMessage`, `NoWarn`, `severity = none` вне generated-кода блокируются, кроме
-кодов, разрешённых с причиной в `settings."warning-suppressions.dotnet"`. Читается только
+адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
+блокируются; выключение правила для всего репозитория печатается observation. Читается только
 tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0043](adrs/0043-editorconfig-baseline-and-warning-suppressions.md)
 
 `version` — строка текущего контракта (`"2.7.0"`). Бинарь исполняет только этот контракт;

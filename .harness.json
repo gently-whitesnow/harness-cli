@@ -44,14 +44,6 @@
     "commits": {
       "language": "ru",
       "requireSetup": true
-    },
-    "warning-suppressions.dotnet": {
-      "allowed": {
-        "CS1573": "GenerateDocumentationFile is on only so IDE0005 can run; the public API is not documented",
-        "CS1591": "GenerateDocumentationFile is on only so IDE0005 can run; the public API is not documented",
-        "CA1707": "sentence-style xUnit names under tests/ use underscores",
-        "IDE1006": "sentence-style xUnit names under tests/ are not PascalCase"
-      }
     }
   },
   "policy": {

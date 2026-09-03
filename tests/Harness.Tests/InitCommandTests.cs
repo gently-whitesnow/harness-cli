@@ -66,7 +66,7 @@ public sealed class InitCommandTests
     {
         Assert.Equal(
             [
-                "comments.csharp", "duplication.csharp", "commits", "warning-suppressions.dotnet",
+                "comments.csharp", "duplication.csharp", "commits",
             ],
             settings.EnumerateObject().Select(section => section.Name));
         AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));

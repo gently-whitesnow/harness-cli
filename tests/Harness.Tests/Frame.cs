@@ -10,7 +10,7 @@ namespace Harness.Tests;
 public sealed class Frame
 {
     private const string DefaultSettings =
-        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "commits": { "language": "ru", "requireSetup": false }, "warning-suppressions.dotnet": { "allowed": {} } }""";
+        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "commits": { "language": "ru", "requireSetup": false } }""";
 
     private static readonly string[] Questions =
         ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck"];

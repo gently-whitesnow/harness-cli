@@ -14,7 +14,6 @@ internal static class HarnessSettingsReader
     private static readonly string Dependencies = Language.CSharp.Qualify("dependencies");
     private static readonly string Duplication = Language.CSharp.Qualify("duplication");
     private const string Commits = "commits";
-    private const string WarningSuppressions = "warning-suppressions.dotnet";
 
     public static (HarnessSettings? Settings, string? Failure) Read(JsonElement root)
     {
@@ -42,7 +41,7 @@ internal static class HarnessSettingsReader
             }
         }
 
-        string[] known = [Comments, Duplication, Commits, WarningSuppressions];
+        string[] known = [Comments, Duplication, Commits];
         foreach (var property in declared.EnumerateObject())
         {
             if (!known.Contains(property.Name, StringComparer.Ordinal))
@@ -88,64 +87,12 @@ internal static class HarnessSettingsReader
         }
 
         var (commits, commitFailure) = ReadCommits(declared);
-        if (commits is null)
-        {
-            return (null, commitFailure);
-        }
-
-        var (suppressions, suppressionFailure) = ReadWarningSuppressions(declared);
-        return suppressions is null
-            ? (null, suppressionFailure)
+        return commits is null
+            ? (null, commitFailure)
             : (new HarnessSettings(
                 new CommentSettings(comments[0], comments[1]),
                 new DuplicationSettings(duplication[0], duplication[1]),
-                commits,
-                suppressions), null);
-    }
-
-    private static (WarningSuppressionSettings? Settings, string? Failure) ReadWarningSuppressions(
-        JsonElement settings)
-    {
-        if (!settings.TryGetProperty(WarningSuppressions, out var declared))
-        {
-            return (null, $"'settings.{WarningSuppressions}' must be present");
-        }
-
-        var failure = ValidateObject(declared, WarningSuppressions, ["allowed"], null);
-        if (failure is not null)
-        {
-            return (null, failure);
-        }
-
-        var at = $"settings.{WarningSuppressions}.allowed";
-        if (!declared.TryGetProperty("allowed", out var allowed) || allowed.ValueKind != JsonValueKind.Object)
-        {
-            return (null, $"'{at}' must be an object mapping a diagnostic code to its reason");
-        }
-
-        var codes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var property in allowed.EnumerateObject())
-        {
-            var code = property.Name.Trim();
-            if (code.Length < 2 || !char.IsAsciiLetter(code[0]) || !code.Any(char.IsAsciiDigit)
-                || !code.All(char.IsAsciiLetterOrDigit))
-            {
-                return (null, $"'{at}.{property.Name}' is not a diagnostic code such as CS1591 or CA1716");
-            }
-
-            var reason = property.Value.ValueKind == JsonValueKind.String ? property.Value.GetString() : null;
-            if (string.IsNullOrWhiteSpace(reason))
-            {
-                return (null, $"'{at}.{property.Name}' must say why silencing this diagnostic is accepted");
-            }
-
-            if (!codes.TryAdd(code, reason.Trim()))
-            {
-                return (null, $"'{at}.{property.Name}' is listed twice");
-            }
-        }
-
-        return (new WarningSuppressionSettings(codes), null);
+                commits), null);
     }
 
     private static (CommitSettings? Settings, string? Failure) ReadCommits(JsonElement settings)

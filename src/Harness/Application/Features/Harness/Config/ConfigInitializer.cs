@@ -36,7 +36,7 @@ internal static class ConfigInitializer
         var writeEditorConfig = !repository.TrackedEntries.Any(entry => entry.Path == EditorConfigTemplate.FileName)
             && !RootEntryExists(repository.RootPath, EditorConfigTemplate.FileName);
 
-        var content = Render(latest, commitLanguage, repositoryKind, checks, writeEditorConfig);
+        var content = Render(latest, commitLanguage, repositoryKind, checks);
         var created = new List<string>();
         try
         {
@@ -96,15 +96,9 @@ internal static class ConfigInitializer
         bool latest,
         CommitLanguage commitLanguage,
         RepositoryKind repositoryKind,
-        IReadOnlyList<CheckDescriptor> checks,
-        bool withTemplateSuppressions)
+        IReadOnlyList<CheckDescriptor> checks)
     {
         var defaults = HarnessSettings.Default;
-        var allowed = withTemplateSuppressions
-            ? string.Join(",\n", EditorConfigTemplate.AllowedSuppressions.Select(pair =>
-                $"        \"{pair.Key}\": \"{pair.Value}\""))
-            : string.Empty;
-        var allowedBlock = allowed.Length == 0 ? "{}" : $"{{\n{allowed}\n      }}";
         var version = latest ? "latest" : HarnessVersion.Current.ToString();
         var questions = checks
             .Where(check => check.AnswerKey is not null)
@@ -142,9 +136,6 @@ internal static class ConfigInitializer
                 "commits": {
                   "language": "{{new CommitSettings(commitLanguage, defaults.Commits.RequireSetup).Code}}",
                   "requireSetup": {{defaults.Commits.RequireSetup.ToString().ToLowerInvariant()}}
-                },
-                "warning-suppressions.dotnet": {
-                  "allowed": {{allowedBlock}}
                 }
               },
               "policy": {
