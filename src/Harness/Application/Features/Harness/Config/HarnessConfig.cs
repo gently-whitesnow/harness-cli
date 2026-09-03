@@ -215,7 +215,7 @@ internal sealed record HarnessConfig
         A minimal .harness.json, committed at the repository root:
 
           {
-            "version": "2.6.0",
+            "version": "2.7.0",
             "architecture": { "standard": "sliced-dotnet/1" },
             "answers": {
               "tests.unit": { "paths": ["tests/Unit"] },
@@ -242,6 +242,9 @@ internal sealed record HarnessConfig
               "commits": {
                 "language": "ru",
                 "requireSetup": true
+              },
+              "warning-suppressions.dotnet": {
+                "allowed": {}
               }
             },
             "policy": {
@@ -257,6 +260,8 @@ internal sealed record HarnessConfig
               "build-properties.dotnet": "required",
               "central-packages.dotnet": "required",
               "solution-format.dotnet": "required",
+              "editorconfig.dotnet": "required",
+              "warning-suppressions.dotnet": "required",
               "frame.tests.unit": "required",
               "frame.tests.integration": "required",
               "frame.tests.architecture": "required",

@@ -1,5 +1,5 @@
 {
-  "version": "2.6.0",
+  "version": "2.7.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -44,6 +44,14 @@
     "commits": {
       "language": "ru",
       "requireSetup": true
+    },
+    "warning-suppressions.dotnet": {
+      "allowed": {
+        "CS1573": "GenerateDocumentationFile is on only so IDE0005 can run; the public API is not documented",
+        "CS1591": "GenerateDocumentationFile is on only so IDE0005 can run; the public API is not documented",
+        "CA1707": "sentence-style xUnit names under tests/ use underscores",
+        "IDE1006": "sentence-style xUnit names under tests/ are not PascalCase"
+      }
     }
   },
   "policy": {
@@ -59,6 +67,8 @@
     "build-properties.dotnet": "required",
     "central-packages.dotnet": "required",
     "solution-format.dotnet": "required",
+    "editorconfig.dotnet": "required",
+    "warning-suppressions.dotnet": "required",
     "frame.tests.unit": "advisory",
     "frame.tests.integration": "required",
     "frame.tests.architecture": "required",

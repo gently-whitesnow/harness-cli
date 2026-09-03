@@ -94,7 +94,7 @@ internal static class DotNetRepository
 
         try
         {
-            var document = XDocument.Parse(text, LoadOptions.None);
+            var document = XDocument.Parse(text, LoadOptions.SetLineInfo);
             return document.Root is null
                 ? (null, $"'{entry.Path}' has no XML root element")
                 : (new DotNetFile(entry.Path, document.Root), null);

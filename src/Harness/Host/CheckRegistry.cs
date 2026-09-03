@@ -52,6 +52,8 @@ internal static class CheckRegistry
             new BuildPropertiesCheck(),
             new CentralPackagesCheck(),
             new SolutionFormatCheck(),
+            new EditorConfigCheck(),
+            new WarningSuppressionsCheck(),
 
             new UnitTestFrameCheck(),
             new IntegrationTestFrameCheck(),

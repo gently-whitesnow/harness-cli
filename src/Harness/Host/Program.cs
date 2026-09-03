@@ -82,6 +82,9 @@ switch (invocation.Kind)
             $"Created '{result.Path}' and "
             + $"'{Path.Combine(Path.GetDirectoryName(result.Path)!, ".harness.budget.json")}' "
             + "with the current tracked DSM metrics.");
+        Console.WriteLine(result.EditorConfigPath is not null
+            ? $"Created '{result.EditorConfigPath}' with the shared code-style baseline."
+            : "Kept the existing '.editorconfig'; `harness explain editorconfig.dotnet` prints the baseline it must carry.");
         var commitSettings = new CommitSettings(invocation.CommitLanguage, RequireSetup: true);
         var (setup, setupFailure) = CheckRegistry.CommitIntegration.Install(
             initRepository,

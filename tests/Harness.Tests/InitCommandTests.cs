@@ -28,7 +28,9 @@ public sealed class InitCommandTests
         var path = repository.Absolute(".harness.json");
         Assert.True(File.Exists(path));
         Assert.False(File.Exists(repository.Absolute("src/Feature/.harness.json")));
-        Assert.Equal("?? .harness.budget.json\n?? .harness.json\n", repository.Git("status", "--porcelain=v1"));
+        Assert.Equal("?? .editorconfig\n?? .harness.budget.json\n?? .harness.json\n", repository.Git("status", "--porcelain=v1"));
+        Assert.Contains(".editorconfig' with the shared code-style baseline.", run.StandardOutput, StringComparison.Ordinal);
+        Assert.StartsWith("root = true\n", File.ReadAllText(repository.Absolute(".editorconfig")), StringComparison.Ordinal);
 
         using var document = JsonDocument.Parse(File.ReadAllText(path));
         var root = document.RootElement;
@@ -64,7 +66,7 @@ public sealed class InitCommandTests
     {
         Assert.Equal(
             [
-                "comments.csharp", "duplication.csharp", "commits",
+                "comments.csharp", "duplication.csharp", "commits", "warning-suppressions.dotnet",
             ],
             settings.EnumerateObject().Select(section => section.Name));
         AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));

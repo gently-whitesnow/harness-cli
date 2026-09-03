@@ -10,7 +10,7 @@ namespace Harness.Tests;
 public sealed class Frame
 {
     private const string DefaultSettings =
-        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "commits": { "language": "ru", "requireSetup": false } }""";
+        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "commits": { "language": "ru", "requireSetup": false }, "warning-suppressions.dotnet": { "allowed": {} } }""";
 
     private static readonly string[] Questions =
         ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck"];
@@ -20,7 +20,7 @@ public sealed class Frame
         "harness.config", "architecture.sliced-dotnet", "complexity.csharp", "docs.policy",
         "commits.setup", "comments.csharp", "types-per-file.csharp", "dependencies.csharp",
         "duplication.csharp", "build-properties.dotnet", "central-packages.dotnet",
-        "solution-format.dotnet", "frame.tests.unit", "frame.tests.integration",
+        "solution-format.dotnet", "editorconfig.dotnet", "warning-suppressions.dotnet", "frame.tests.unit", "frame.tests.integration",
         "frame.tests.architecture", "frame.format", "frame.lint", "frame.build", "frame.typecheck",
     ];
 

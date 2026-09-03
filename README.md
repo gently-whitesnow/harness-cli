@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 остаётся общим для всех linked worktree клона. User-каталоги и tracked-файлы этот режим не
 меняет.
 
-`HARNESS_VERSION=2.6.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+`HARNESS_VERSION=2.7.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
@@ -51,7 +51,9 @@ harness version                    # релиз бинаря и текущий �
 `.harness.json` и `.harness.budget.json` с текущими DSM-метриками, перечисляет все settings, applicability
 и policy без скрытых defaults, а неотвеченные frame-вопросы явно оставляет `off`.
 По умолчанию фиксируется текущий релиз; `--latest` включает rolling-контракт. Существующие
-файлы команда не перезаписывает и в Git не добавляет. В скриптах и CI тот же выбор задаётся
+файлы команда не перезаписывает и в Git не добавляет. Если в корне нет `.editorconfig`,
+`init` записывает эталонный файл харнеса — тот же baseline, который затем требует
+`editorconfig.dotnet`. В скриптах и CI тот же выбор задаётся
 через `--kind application|library`. `init` также активирует шаблон
 коммита и `commit-msg` hook; после нового клонирования это делает идемпотентный
 `harness setup`. Если frame требует setup, обычный `check` явно падает в неподготовленном
@@ -93,7 +95,7 @@ GitLab:
 
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:2.6.0
+  image: ghcr.io/gently-whitesnow/harness:2.7.0
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"
@@ -132,7 +134,9 @@ GitHub Actions или любой контур без доступа к ghcr.io:
 - DSM-сложность: mean reach и core size файлового графа продукта, propagation cost как справка;
 - не больше одного верхнеуровневого C# `class` или `record` в authored-файле;
 - нормализованные межфайловые повторы C#;
-- документационная политика: один корневой навигационный документ и симлинки на него.
+- документационная политика: один корневой навигационный документ и симлинки на него;
+- .NET-рамка: hardened `Directory.Build.props`, central packages, `.slnx`, эталонный
+  `.editorconfig` и учёт подавленных warnings — каждый разрешённый код записан с причиной.
 
 Харнес несёт общий стандарт формы, который иначе копировался бы между репозиториями.
 
