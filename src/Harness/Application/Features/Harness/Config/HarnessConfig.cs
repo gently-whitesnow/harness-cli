@@ -267,6 +267,8 @@ internal sealed record HarnessConfig
               "build-properties.dotnet": "required",
               "central-packages.dotnet": "required",
               "solution-format.dotnet": "required",
+              "editorconfig.dotnet": "required",
+              "warning-suppressions.dotnet": "required",
               "frame.tests.unit": "required",
               "frame.tests.integration": "required",
               "frame.tests.architecture": "required",

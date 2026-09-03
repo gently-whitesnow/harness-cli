@@ -1,9 +1,11 @@
 namespace Harness.Contracts.Engine;
 
-/// <param name="UntrackedEvidence">
-/// Paths a finding looked for that exist in the working tree without being tracked. They
-/// change no verdict; they tell the author that the file they wrote is invisible to Git.
-/// </param>
+/// <summary>The outcome of one run: what was verified, what stopped it, what it took.</summary>
+/// <remarks>
+/// <c>UntrackedEvidence</c> lists paths a finding looked for that exist in the working tree
+/// without being tracked. They change no verdict; they tell the author that the file they
+/// wrote is invisible to Git.
+/// </remarks>
 internal sealed record RunReport(
     string? RepositoryPath,
     IReadOnlyList<GateReport> Gates,

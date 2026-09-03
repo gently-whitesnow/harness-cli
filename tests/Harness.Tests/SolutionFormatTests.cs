@@ -63,7 +63,7 @@ public sealed class SolutionFormatTests
     }
 
     [Fact]
-    public void Dotnet_applicability_disables_all_three_checks()
+    public void Dotnet_applicability_disables_every_dotnet_check()
     {
         using var repository = Fixtures.Compliant(
                 Frame.AllPresent().NotApplicableTo("dotnet", "repository keeps example projects only"))
@@ -74,7 +74,7 @@ public sealed class SolutionFormatTests
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "dotnet");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Equal(3, run.Output.Split("outcome: not applicable", StringSplitOptions.None).Length - 1);
+        Assert.Equal(5, run.Output.Split("outcome: not applicable", StringSplitOptions.None).Length - 1);
         Assert.True(run.OutputContains("repository keeps example projects only"), run.Output);
     }
 }

@@ -48,12 +48,15 @@ sliced-dotnet, тесты вне зоны не входят; превышени�
 в YAML и TypeScript со своими applicability и `settings`. [ADR-0022](adrs/0022-language-axis.md),
 [ADR-0043](adrs/0043-comment-density-across-languages.md)
 
-.NET-проекты разделяют applicability `dotnet`. Харнес статически требует общий hardened
-`Directory.Build.props`, central package versions в ближайшем `Directory.Packages.props` и
-`.slnx` вместо `.sln`; он читает tracked XML, но не выполняет MSBuild evaluation.
-[ADR-0019](adrs/0019-dotnet-repository-policy.md)
+.NET-проекты разделяют applicability `dotnet`: общий hardened `Directory.Build.props`,
+central package versions в ближайшем `Directory.Packages.props`, `.slnx` вместо `.sln`,
+эталонный code-style baseline в цепочке `.editorconfig` над каждым проектом (`explain
+editorconfig.dotnet` печатает эталон, `init` записывает его) и учёт подавлений warnings:
+адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
+блокируются; выключение правила для всего репозитория печатается observation. Читается только
+tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"2.7.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.8.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -114,7 +117,6 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 перед сдачей проверь tracked diff на инфраструктурные имена.
 
 ```sh
-./harness version                                  # релиз бинаря и текущий контракт
 ./harness init /path/to/repository                 # создать незавершённую рамку
 ./harness upgrade                                  # поднять pin и увидеть миграцию 2.0
 ./harness setup                                    # активировать hook и шаблон в этом клоне
@@ -126,9 +128,6 @@ dotnet format Harness.slnx --verify-no-changes --severity warn # формат и
 dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
 ./src/Harness/bin/Release/net10.0/osx-arm64/publish/harness check
 ```
-
-Прогон харнеса над собственным репозиторием занимает доли секунды и ничего не собирает,
-поэтому отдельного быстрого режима не нужно.
 
 ## Коды возврата
 

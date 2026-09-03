@@ -15,11 +15,14 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
 
     <!-- IDE0005 can only tell a needed using from an unnecessary one on build when the
-         compiler tracks documentation references, so enabling the style rule requires this.
-         The XML file is a by-product: CS1573 and CS1591 would demand full API documentation,
-         which is a separate decision this repository has not taken. -->
+         compiler tracks documentation references, so enabling the style rule requires this
+         in every project, tests included. The XML file is a by-product: the product has no
+         public API (every type is internal), and xUnit requires public test classes that are
+         not an API to document. CS1591 is therefore switched off for the whole repository —
+         a decision warning-suppressions.dotnet prints on every run. A <param> block that
+         starts documenting a record still documents it completely (CS1573). -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1573;CS1591</NoWarn>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>

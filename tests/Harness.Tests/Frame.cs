@@ -21,7 +21,7 @@ public sealed class Frame
         "commits.setup", "comments.csharp", "comments.yaml", "comments.typescript",
         "types-per-file.csharp", "dependencies.csharp",
         "duplication.csharp", "build-properties.dotnet", "central-packages.dotnet",
-        "solution-format.dotnet", "frame.tests.unit", "frame.tests.integration",
+        "solution-format.dotnet", "editorconfig.dotnet", "warning-suppressions.dotnet", "frame.tests.unit", "frame.tests.integration",
         "frame.tests.architecture", "frame.format", "frame.lint", "frame.build", "frame.typecheck",
     ];
 

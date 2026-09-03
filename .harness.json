@@ -1,5 +1,5 @@
 {
-  "version": "2.7.0",
+  "version": "2.8.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -71,6 +71,8 @@
     "build-properties.dotnet": "required",
     "central-packages.dotnet": "required",
     "solution-format.dotnet": "required",
+    "editorconfig.dotnet": "required",
+    "warning-suppressions.dotnet": "required",
     "frame.tests.unit": "advisory",
     "frame.tests.integration": "required",
     "frame.tests.architecture": "required",

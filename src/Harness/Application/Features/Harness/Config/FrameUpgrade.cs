@@ -88,6 +88,19 @@ internal static class FrameUpgrade
                    declare applicability yaml and typescript, settings comments.yaml and
                    comments.typescript (minimumCommentLines, percentageLimit) and a policy
                    entry for each check
+        Release 2.8 additions:
+          added    editorconfig.dotnet requires the tracked .editorconfig chain above every
+                   SDK-style project to carry the shared code-style baseline (LF, final
+                   newline, 4 spaces, IDE0055/0065/0161/0011/0040/0007 as warnings and the
+                   options behind them, Allman braces); `harness explain editorconfig.dotnet`
+                   prints the reference file, `harness init` writes it where none exists
+          added    warning-suppressions.dotnet blocks address-level silencing: #pragma
+                   warning disable, SuppressMessage, NoWarn in a project file and
+                   editorconfig severities none/silent/suggestion in a path-scoped
+                   section, outside generated code; a rule switched off for the whole
+                   repository ([*.cs] in .editorconfig or NoWarn in Directory.Build.props)
+                   stays allowed and is printed as an observation on every run
+          added    policy entries for both checks are required; no settings section
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }

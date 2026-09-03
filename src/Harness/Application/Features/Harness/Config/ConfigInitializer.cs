@@ -9,7 +9,7 @@ namespace Harness.Config;
 /// <summary>Creates the deliberately unanswered frame an author or agent can work through.</summary>
 internal static class ConfigInitializer
 {
-    public static (string? Path, string? Failure) Create(
+    public static (string? Path, string? EditorConfigPath, string? Failure) Create(
         IRepository repository,
         bool latest,
         CommitLanguage commitLanguage,
@@ -22,43 +22,46 @@ internal static class ConfigInitializer
         var tracked = repository.TrackedEntries.Any(entry => entry.Path == HarnessConfig.FileName);
         if (tracked || RootEntryExists(repository.RootPath, HarnessConfig.FileName))
         {
-            return (null, $"Refusing to overwrite existing '{path}'. Remove it explicitly before initializing.");
+            return (null, null, $"Refusing to overwrite existing '{path}'. Remove it explicitly before initializing.");
         }
 
         var budgetTracked = repository.TrackedEntries.Any(entry => entry.Path == ".harness.budget.json");
         if (budgetTracked || RootEntryExists(repository.RootPath, ".harness.budget.json"))
         {
-            return (null, $"Refusing to overwrite existing '{budgetPath}'. Remove it explicitly before initializing.");
+            return (null, null, $"Refusing to overwrite existing '{budgetPath}'. Remove it explicitly before initializing.");
         }
 
+        // An existing .editorconfig is the repository's own answer and is kept; the reference
+        // file is offered only where there is none at the root, tracked or not.
+        var editorConfigPath = System.IO.Path.Combine(repository.RootPath, EditorConfigTemplate.FileName);
+        var writeEditorConfig = !repository.TrackedEntries.Any(entry => entry.Path == EditorConfigTemplate.FileName)
+            && !RootEntryExists(repository.RootPath, EditorConfigTemplate.FileName);
+
         var content = Render(latest, commitLanguage, repositoryKind, checks);
-        var budgetCreated = false;
+        var created = new List<string>();
         try
         {
             WriteNew(budgetPath, initialBudget);
-            budgetCreated = true;
+            created.Add(budgetPath);
             WriteNew(path, content);
+            created.Add(path);
+            if (writeEditorConfig)
+            {
+                WriteNew(editorConfigPath, EditorConfigTemplate.Text);
+            }
         }
         catch (IOException exception)
         {
-            if (budgetCreated)
-            {
-                DeleteCreatedBudget(budgetPath);
-            }
-
-            return (null, $"Could not create '{path}' without overwriting anything: {exception.Message}");
+            DeleteCreated(created);
+            return (null, null, $"Could not create '{path}' without overwriting anything: {exception.Message}");
         }
         catch (UnauthorizedAccessException exception)
         {
-            if (budgetCreated)
-            {
-                DeleteCreatedBudget(budgetPath);
-            }
-
-            return (null, $"Could not create '{path}': {exception.Message}");
+            DeleteCreated(created);
+            return (null, null, $"Could not create '{path}': {exception.Message}");
         }
 
-        return (path, null);
+        return (path, writeEditorConfig ? editorConfigPath : null, null);
     }
 
     private static bool RootEntryExists(string rootPath, string fileName)
@@ -68,15 +71,18 @@ internal static class ConfigInitializer
                 fileName,
                 StringComparison.Ordinal));
 
-    private static void DeleteCreatedBudget(string budgetPath)
+    private static void DeleteCreated(IEnumerable<string> paths)
     {
-        try
+        foreach (var created in paths)
         {
-            File.Delete(budgetPath);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            // Preserve the creation failure; rollback only removes the file this call created.
+            try
+            {
+                File.Delete(created);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Preserve the creation failure; rollback only removes files this call created.
+            }
         }
     }
 

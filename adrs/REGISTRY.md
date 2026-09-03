@@ -76,6 +76,11 @@
 - [ADR-0019](0019-dotnet-repository-policy.md) — Три blocking-проверки applicability
   `dotnet` требуют hardened `Directory.Build.props`, Central Package Management через
   ближайший `Directory.Packages.props` и `.slnx`, покрывающий authored-проекты.
+- [ADR-0044](0044-editorconfig-baseline-and-warning-suppressions.md) — `editorconfig.dotnet`
+  требует эталонный code-style baseline в tracked-цепочке `.editorconfig` над каждым
+  проектом (эталон печатает `explain`, записывает `init`); `warning-suppressions.dotnet`
+  блокирует адресное подавление — pragma, `SuppressMessage`, `NoWarn` в `.csproj`,
+  path-scoped `severity = none` — а repository-wide выключение правила печатает observation.
 - [ADR-0028](0028-recalibrated-csharp-defaults.md) — Начиная с 1.4.0 дефолты C#-эвристик:
   comments `10/8`, cohesion `6/2`, duplication `30/90`. Порог cohesion отменён ADR-0032;
   comments и duplication остаются с текущими значениями.
