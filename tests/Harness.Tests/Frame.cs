@@ -10,7 +10,7 @@ namespace Harness.Tests;
 public sealed class Frame
 {
     private const string DefaultSettings =
-        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "commits": { "language": "ru", "requireSetup": false } }""";
+        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.typescript": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "commits": { "language": "ru", "requireSetup": false } }""";
 
     private static readonly string[] Questions =
         ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck"];
@@ -18,7 +18,8 @@ public sealed class Frame
     private static readonly string[] Checks =
     [
         "harness.config", "architecture.sliced-dotnet", "complexity.csharp", "docs.policy",
-        "commits.setup", "comments.csharp", "types-per-file.csharp", "dependencies.csharp",
+        "commits.setup", "comments.csharp", "comments.yaml", "comments.typescript",
+        "types-per-file.csharp", "dependencies.csharp",
         "duplication.csharp", "build-properties.dotnet", "central-packages.dotnet",
         "solution-format.dotnet", "editorconfig.dotnet", "warning-suppressions.dotnet", "frame.tests.unit", "frame.tests.integration",
         "frame.tests.architecture", "frame.format", "frame.lint", "frame.build", "frame.typecheck",
@@ -42,6 +43,8 @@ public sealed class Frame
     {
         ["csharp"] = """{ "applicable": true }""",
         ["dotnet"] = """{ "applicable": true }""",
+        ["yaml"] = """{ "applicable": true }""",
+        ["typescript"] = """{ "applicable": true }""",
     };
 
     private string version = Quote(Release.Current);

@@ -29,12 +29,10 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   # NativeAOT does not cross-compile between operating systems or C libraries, so every
-  # runtime identifier is published on a machine that matches it.
-  #
-  # The matrix follows demonstrated need, not the set of platforms .NET can target: an
-  # artifact nobody runs still has to keep working, and nobody notices when it stops. These
-  # three cover the machines in use — Apple Silicon — and any x64 CI container, whichever C
-  # library its base image uses. Adding a runtime identifier back is one entry.
+  # runtime identifier is published on a machine that matches it. The matrix follows
+  # demonstrated need, not every platform .NET can target: an artifact nobody runs still has
+  # to keep working, and nobody notices when it stops. These three cover Apple Silicon and
+  # any x64 CI container, whichever C library its base image uses.
   build:
     needs: verify
     strategy:
@@ -65,8 +63,7 @@ jobs:
         if: ${{ !matrix.musl }}
         run: dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r ${{ matrix.rid }} -o out
 
-      # A musl build has to happen against musl. The SDK image supplies it, which also keeps
-      # the runner free of an Alpine container that the checkout action cannot run in.
+      # A musl build has to happen against musl; the SDK image supplies it without an Alpine container the checkout action cannot run in.
       - name: Publish against musl
         if: ${{ matrix.musl }}
         run: |

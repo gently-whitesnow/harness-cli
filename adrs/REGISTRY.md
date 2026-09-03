@@ -67,13 +67,16 @@
   `ILanguageAnalyzer`. Второй язык не создаёт вторую проверку.
 - [ADR-0034](0034-language-axis-in-sliced-dotnet.md) — Уточняет физическую раскладку
   языковой оси ADR-0022 внутри одного слайса `Harness` стандарта sliced-dotnet/1.
+- [ADR-0043](0043-comment-density-across-languages.md) — Плотность комментариев считается
+  и для YAML и TypeScript/JavaScript через лексические ридеры за общим портом; свои
+  applicability и `settings.comments.<язык>`, дефолт 10/8; контракт 2.7.
 - [ADR-0018](0018-csharp-applicability-and-one-type-per-file.md) — Все C#-проверки имеют
   общий applicability `csharp`; `types-per-file.csharp` блокирует второй верхнеуровневый
   `class` или `record` в одном authored-файле.
 - [ADR-0019](0019-dotnet-repository-policy.md) — Три blocking-проверки applicability
   `dotnet` требуют hardened `Directory.Build.props`, Central Package Management через
   ближайший `Directory.Packages.props` и `.slnx`, покрывающий authored-проекты.
-- [ADR-0043](0043-editorconfig-baseline-and-warning-suppressions.md) — `editorconfig.dotnet`
+- [ADR-0044](0044-editorconfig-baseline-and-warning-suppressions.md) — `editorconfig.dotnet`
   требует эталонный code-style baseline в tracked-цепочке `.editorconfig` над каждым
   проектом (эталон печатает `explain`, записывает `init`); `warning-suppressions.dotnet`
   блокирует адресное подавление — pragma, `SuppressMessage`, `NoWarn` в `.csproj`,

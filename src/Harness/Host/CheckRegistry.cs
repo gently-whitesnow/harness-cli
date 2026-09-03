@@ -10,6 +10,8 @@ using Harness.Checks.Frame;
 using Harness.Checks.TypesPerFile;
 using Harness.Git;
 using Harness.Infrastructure.Languages.CSharp;
+using Harness.Infrastructure.Languages.TypeScript;
+using Harness.Infrastructure.Languages.Yaml;
 using Harness.Languages;
 
 namespace Harness.Host;
@@ -23,6 +25,10 @@ namespace Harness.Host;
 internal static class CheckRegistry
 {
     private static readonly CSharpSources CSharp = new();
+
+    private static readonly YamlSources Yaml = new();
+
+    private static readonly TypeScriptSources TypeScript = new();
 
     public static readonly ICommitIntegration CommitIntegration = new CommitHookSetup();
 
@@ -44,7 +50,9 @@ internal static class CheckRegistry
 
             new DocumentationPolicyCheck(),
             new CommitSetupCheck(CommitIntegration),
-            new CommentLineCheck(CSharp),
+            new CommentLineCheck(new CSharpCommentedSources(CSharp)),
+            new CommentLineCheck(Yaml),
+            new CommentLineCheck(TypeScript),
             new TypesPerFileCheck(CSharp),
             new DependenciesCheck(csharpAnalyzer),
             new DuplicationCheck(CSharp),

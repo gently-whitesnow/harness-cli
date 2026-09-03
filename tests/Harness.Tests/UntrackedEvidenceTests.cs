@@ -1,9 +1,8 @@
 namespace Harness.Tests;
 
 /// <summary>
-/// A file that exists on disk but not in the Git index is invisible to the harness, and the
-/// verdict says so. These tests pin the diagnostic that tells the two invisible cases apart:
-/// the file was never written, or it was written and never staged.
+/// A file on disk but not in the Git index is invisible to the harness; these tests pin the
+/// diagnostic that tells "never written" from "written and never staged".
 /// </summary>
 public sealed class UntrackedEvidenceTests
 {
@@ -96,11 +95,8 @@ public sealed class UntrackedEvidenceTests
         Assert.True(run.OutputContains("not in the index  AGENTS.md"), run.Output);
     }
 
-    /// <summary>
-    /// The first thing every repository does: `harness init` writes the frame and deliberately
-    /// leaves it unstaged. The frame carries no finding — the run is incomplete — so only a
-    /// declaration made by the check itself can explain it.
-    /// </summary>
+    /// <summary>`harness init` leaves the frame unstaged and the run incomplete without a finding,
+    /// so only the check's own declaration can explain it.</summary>
     [Fact]
     public void An_unstaged_frame_written_by_init_is_named()
     {
@@ -113,10 +109,8 @@ public sealed class UntrackedEvidenceTests
         Assert.True(run.OutputContains("not in the index  .harness.json"), run.Output);
     }
 
-    /// <summary>
-    /// An outcome of "not applicable" hides the same trap: a project nobody staged looks
-    /// exactly like a repository that has no .NET projects at all.
-    /// </summary>
+    /// <summary>"Not applicable" hides the same trap: a project nobody staged looks exactly like
+    /// a repository with no .NET projects at all.</summary>
     [Fact]
     public void An_unstaged_project_is_named_although_nothing_was_applicable()
     {
@@ -130,10 +124,8 @@ public sealed class UntrackedEvidenceTests
         Assert.True(run.OutputContains("not in the index  src/App/App.csproj"), run.Output);
     }
 
-    /// <summary>
-    /// The declaration is required of every check and printed, so a check that reports a file
-    /// as missing cannot answer this question silently or leave the answer invisible.
-    /// </summary>
+    /// <summary>The declaration is required of every check and printed, so a missing file cannot
+    /// be reported silently.</summary>
     [Fact]
     public void Every_shipped_check_states_its_named_evidence()
     {

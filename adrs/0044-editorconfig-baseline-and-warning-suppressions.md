@@ -1,4 +1,4 @@
-# ADR-0043: Общий `.editorconfig` и учёт подавленных warnings
+# ADR-0044: Общий `.editorconfig` и учёт подавленных warnings
 
 ## Status
 

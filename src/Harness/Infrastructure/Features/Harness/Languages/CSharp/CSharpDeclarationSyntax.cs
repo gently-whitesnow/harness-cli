@@ -11,10 +11,8 @@ internal static class CSharpDeclarationSyntax
 {
     private static readonly string[] TypeKeywords = ["class", "struct", "interface", "record", "enum"];
 
-    /// <summary>
-    /// An expression body is the member's implementation, not part of its header. Cutting it
-    /// away keeps a call inside it from being read as the declaration itself.
-    /// </summary>
+    /// <summary>An expression body is the member's implementation, not its header; cutting it
+    /// away keeps a call inside it from being read as the declaration itself.</summary>
     public static string WithoutExpressionBody(string text)
     {
         var arrow = TopLevelIndexOf(text, "=>");
@@ -52,11 +50,8 @@ internal static class CSharpDeclarationSyntax
         => StartsWithWord(text, "using")
             || (StartsWithWord(text, "global") && StartsWithWord(text["global".Length..].TrimStart(), "using"));
 
-    /// <summary>
-    /// The namespace a `using` directive imports. An alias names one type or namespace under
-    /// a local name, so what it imports is the right-hand side; `using static` imports the
-    /// members of the type it names, so the type itself is what the file depends on.
-    /// </summary>
+    /// <summary>The namespace a `using` directive imports: the right-hand side of an alias, and
+    /// for `using static` the type whose members are imported.</summary>
     public static string? ImportNameOf(string text)
     {
         var name = text.TrimStart();

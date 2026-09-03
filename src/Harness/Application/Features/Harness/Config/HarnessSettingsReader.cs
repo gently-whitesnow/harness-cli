@@ -10,7 +10,8 @@ namespace Harness.Config;
 /// </summary>
 internal static class HarnessSettingsReader
 {
-    private static readonly string Comments = Language.CSharp.Qualify("comments");
+    private static readonly string[] Comments =
+        [.. Language.All.Select(language => language.Qualify("comments"))];
     private static readonly string Dependencies = Language.CSharp.Qualify("dependencies");
     private static readonly string Duplication = Language.CSharp.Qualify("duplication");
     private const string Commits = "commits";
@@ -41,7 +42,7 @@ internal static class HarnessSettingsReader
             }
         }
 
-        string[] known = [Comments, Duplication, Commits];
+        string[] known = [.. Comments, Duplication, Commits];
         foreach (var property in declared.EnumerateObject())
         {
             if (!known.Contains(property.Name, StringComparer.Ordinal))
@@ -62,14 +63,20 @@ internal static class HarnessSettingsReader
 
     private static (HarnessSettings? Settings, string? Failure) Assemble(JsonElement declared)
     {
-        var (comments, commentFailure) = ReadSection(
-            declared,
-            Comments,
-            ["minimumCommentLines", "percentageLimit"],
-            [null, 100]);
-        if (comments is null)
+        var comments = new Dictionary<string, CommentSettings>(StringComparer.Ordinal);
+        foreach (var language in Language.All)
         {
-            return (null, commentFailure);
+            var (values, commentFailure) = ReadSection(
+                declared,
+                language.Qualify("comments"),
+                ["minimumCommentLines", "percentageLimit"],
+                [null, 100]);
+            if (values is null)
+            {
+                return (null, commentFailure);
+            }
+
+            comments[language.Key] = new CommentSettings(values[0], values[1]);
         }
 
         var (duplication, duplicationFailure) = ReadSection(
@@ -90,7 +97,7 @@ internal static class HarnessSettingsReader
         return commits is null
             ? (null, commitFailure)
             : (new HarnessSettings(
-                new CommentSettings(comments[0], comments[1]),
+                comments,
                 new DuplicationSettings(duplication[0], duplication[1]),
                 commits), null);
     }
