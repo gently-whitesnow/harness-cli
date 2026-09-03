@@ -2,9 +2,6 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <!-- xUnit needs public test classes, and the XML documentation file exists in this
-         repository only so IDE0005 can run on build; tests are not an API to document. -->
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
