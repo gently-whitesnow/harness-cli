@@ -263,7 +263,7 @@ internal sealed record HarnessConfig
               "comments.typescript": "required",
               "types-per-file.csharp": "required",
               "dependencies.csharp": "required",
-              "duplication.csharp": "advisory",
+              "duplication.csharp": "required",
               "build-properties.dotnet": "required",
               "central-packages.dotnet": "required",
               "solution-format.dotnet": "required",

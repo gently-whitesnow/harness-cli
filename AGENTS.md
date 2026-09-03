@@ -56,7 +56,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 блокируются; выключение правила для всего репозитория печатается observation. Читается только
 tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"2.8.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.9.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -75,8 +75,9 @@ Standalone-библиотека отвечает `"architecture": { "applicable"
 `"latest"` включает rolling-контракт. `harness init` спрашивает только application или
 standalone-library (либо принимает `--kind application|library` без stdin), создаёт
 соответствующую `architecture`, DSM-бюджет текущих tracked-исходников и полный
-явный конфиг. Нерешённые answer-ключи остаются `{}` и `off`: исследуй репозиторий, замени
-каждый честным ответом и включи его policy. Не выдумывай положительный ответ.
+явный конфиг. `duplication.csharp` стартует `required` с `30/90`; нерешённые answer-ключи
+остаются `{}` и `off`: исследуй репозиторий, замени каждый честным ответом и включи его policy.
+Не выдумывай положительный ответ. [ADR-0045](adrs/0045-duplication-required-by-default.md)
 
 `settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness
 setup` включает шаблон и `commit-msg` hook в общем каталоге клона, поэтому одна подготовка

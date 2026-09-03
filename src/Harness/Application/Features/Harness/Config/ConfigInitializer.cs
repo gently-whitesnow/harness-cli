@@ -157,7 +157,7 @@ internal static class ConfigInitializer
             var check = checks[index];
             var policy = check.Id.StartsWith("frame.", StringComparison.Ordinal)
                 ? "off"
-                : check.Id == "duplication.csharp" ? "advisory" : "required";
+                : "required";
             text.Append("    \"").Append(check.Id).Append("\": \"").Append(policy).Append('"')
                 .Append(index == checks.Count - 1 ? '\n' : ",\n");
         }

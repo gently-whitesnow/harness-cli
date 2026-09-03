@@ -57,6 +57,7 @@ public sealed class ReleaseContractTests
         Assert.Contains("sliced-dotnet/1", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("explicit applicability, settings and policy", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains(".harness.budget.json", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("duplication.csharp as required", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains($"\"version\": \"{Release.Current}\"", File.ReadAllText(repository.Absolute(".harness.json")), StringComparison.Ordinal);
     }
 

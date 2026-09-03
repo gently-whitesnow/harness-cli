@@ -101,6 +101,10 @@ internal static class FrameUpgrade
                    repository ([*.cs] in .editorconfig or NoWarn in Directory.Build.props)
                    stays allowed and is printed as an observation on every run
           added    policy entries for both checks are required; no settings section
+        Release 2.9 changes:
+          changed  harness init writes duplication.csharp as required with the existing
+                   calibrated 30-line / 90-token profile; existing explicit advisory or off
+                   policy remains valid and upgrade changes only the version pin
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }
