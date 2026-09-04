@@ -223,7 +223,7 @@ internal sealed record HarnessConfig
               "lint": { "present": true, "reason": "analyzers enabled in Directory.Build.props" },
               "build": { "paths": ["Repository.sln"] },
               "typecheck": { "applicable": false, "reason": "no web stack" },
-              "verify": { "paths": ["verify"] }
+              "verify": { "paths": ["verify.sh"] }
             },
             "applicability": {
               "csharp": { "applicable": true },

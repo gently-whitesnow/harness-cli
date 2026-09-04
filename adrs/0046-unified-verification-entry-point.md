@@ -21,7 +21,7 @@ manager, целей и интерпретацию чужого вывода. К�
 `frame.verify`. Положительный ответ называет tracked repository-owned скрипт:
 
 ```json
-"verify": { "paths": ["verify"] }
+"verify": { "paths": ["verify.sh"] }
 ```
 
 Скрипт одним вызовом запускает все применимые quality checks репозитория, включая

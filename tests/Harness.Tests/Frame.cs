@@ -63,7 +63,7 @@ public sealed class Frame
             frame.Present(question, "fixture provides it");
         }
 
-        frame.Located("verify", "verify");
+        frame.Located("verify", "verify.sh");
 
         return frame;
     }

@@ -122,7 +122,7 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 ./harness setup                                    # активировать hook и шаблон в этом клоне
 ./harness commit-message template                  # показать шаблон выбранного языка
 ./harness commits check <base>..<head>             # проверить диапазон для CI
-./verify                                           # harness, format/code style, тесты и NativeAOT
+./verify.sh                                        # harness, format/code style, тесты и NativeAOT
 dotnet build                                       # быстрая обратная связь
 dotnet format Harness.slnx --verify-no-changes --severity warn # формат и code style без правок
 dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64

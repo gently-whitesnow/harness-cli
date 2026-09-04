@@ -28,7 +28,7 @@
       "reason": "нет web-стека; типы этого репозитория проверяет компилятор C# на сборке"
     },
     "verify": {
-      "paths": ["verify"]
+      "paths": ["verify.sh"]
     }
   },
   "applicability": {

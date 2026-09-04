@@ -61,7 +61,7 @@ applicability и policy. Неотвеченные frame-вопросы — `off`
 `harness commits check <base>..<head>`.
 
 `answers.verify.paths` называет tracked скрипт всех проверок, включая `harness check`; харнес
-его не запускает и не инспектирует. Здесь это `./verify`; commit range задаёт отдельно CI.
+его не запускает и не инспектирует. Здесь это `./verify.sh`; commit range задаёт отдельно CI.
 
 Применимый `complexity.csharp` требует tracked `.harness.budget.json`. Он измеряет файлы
 внутри архитектурных зон sliced-dotnet (тесты вне зоны не входят) и бюджетирует mean reach —

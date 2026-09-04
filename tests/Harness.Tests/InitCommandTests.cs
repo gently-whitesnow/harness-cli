@@ -195,7 +195,7 @@ public sealed class InitCommandTests
             framePath,
             File.ReadAllText(framePath).Replace(
                 "\"verify\": {}",
-                "\"verify\": { \"paths\": [\"verify\"] }",
+                "\"verify\": { \"paths\": [\"verify.sh\"] }",
                 StringComparison.Ordinal));
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
 

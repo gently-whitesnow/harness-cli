@@ -98,12 +98,12 @@ public sealed class FrameQuestionTests
     [Fact]
     public void Verify_names_one_repository_owned_entry_point_without_running_it()
     {
-        using var repository = Fixtures.Compliant(Frame.Answering().Located("verify", "verify"));
+        using var repository = Fixtures.Compliant(Frame.Answering().Located("verify", "verify.sh"));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.verify");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("verify"), run.Output);
+        Assert.True(run.OutputContains("verify.sh"), run.Output);
         Assert.True(run.OutputContains("does not inspect"), run.Output);
 
         var explanation = HarnessCli.Run(repository.Path, "explain", "frame.verify");

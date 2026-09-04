@@ -50,7 +50,7 @@ internal static class FrameExplanations
     public static string Verify => For(
         "verify",
         "one repository-owned entry point that runs every applicable quality check",
-        "verify",
+        "verify.sh",
         "This question applies to every repository, and only `paths` is a complete positive answer. The tracked "
             + "script composes the repository's toolchain and `harness check`; the harness records its address "
             + "but never executes it.");
