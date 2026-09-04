@@ -82,21 +82,18 @@ internal static class ComplexityBudgetUpdater
             $"{action}  '{ComplexityBudget.FileName}' at {metrics}.");
     }
 
-    public static DsmScope Scope(IRepository repository, SourceGraph graph, bool architectureApplicable)
-        => DsmScope.Of(graph, architectureApplicable, TrackedPaths(repository));
-
-    private static List<string> TrackedPaths(IRepository repository)
-        => repository.TrackedEntries
-            .Where(entry => !entry.IsSymbolicLink)
-            .Select(entry => entry.Path)
-            .ToList();
-
     private static (Dictionary<string, ComplexityBudget.Entry>? Entries, string? Failure) Measure(
         IRepository repository,
         IReadOnlyList<ILanguageAnalyzer> analyzers,
         bool architectureApplicable,
         bool allowEmpty)
     {
+        var (projects, projectFailure) = DotNetRepository.ReadProjects(repository);
+        if (projectFailure is not null)
+        {
+            return (null, projectFailure);
+        }
+
         var entries = new Dictionary<string, ComplexityBudget.Entry>(StringComparer.Ordinal);
         foreach (var analyzer in analyzers)
         {
@@ -111,7 +108,11 @@ internal static class ComplexityBudgetUpdater
                 return (null, analyzer.NothingToAnalyze);
             }
 
-            var scope = Scope(repository, graph, architectureApplicable);
+            var scope = DsmScope.Of(
+                graph,
+                architectureApplicable,
+                repository.TrackedEntries.Where(entry => !entry.IsSymbolicLink).Select(entry => entry.Path).ToList(),
+                projects.Select(project => (project.Path, DotNetRepository.IsTestProject(project))).ToList());
             entries[analyzer.Language.Qualify("complexity")] =
                 ComplexityBudget.Entry.From(RepositoryComplexity.Measure(scope.Graph));
         }

@@ -37,9 +37,9 @@ C#-проверки разделяют applicability `csharp`. Если весь
 counts без универсального remediation. Вложенный модуль — содержание, а не цикл.
 [ADR-0021](adrs/0021-coupling-evidence-grades.md), [ADR-0029](adrs/0029-dependency-counts-removed.md)
 
-DSM `complexity.csharp` — mean reach (файлов на изменение) и core size по файлам внутри зон
-sliced-dotnet, тесты вне зоны не входят; превышение tracked `.harness.budget.json` блокирует check,
-`harness budget update` только ужимает потолок. [ADR-0032](adrs/0032-topology-over-thresholds.md), [ADR-0042](adrs/0042-dsm-over-the-product-in-files.md)
+DSM `complexity.csharp` — mean reach (файлов на изменение) и core size по продукту: внутри зон
+sliced-dotnet, а без зоны — вне tracked тестовых проектов; граница из дерева, не из ответа. Превышение
+`.harness.budget.json` блокирует, `budget update` только ужимает. [ADR-0042](adrs/0042-dsm-over-the-product-in-files.md), [ADR-0048](adrs/0048-dsm-product-boundary-without-a-zone.md)
 
 Проверка называется `<семейство>.<язык>`, `Group` — семейство, `Applicability` — язык.
 Язык-нейтральное ядро живёт в `Structure/`, чтение исходника — за `ILanguageAnalyzer` в
@@ -56,7 +56,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 блокируются; выключение правила для всего репозитория печатается observation. Читается только
 tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"2.9.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.10.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 

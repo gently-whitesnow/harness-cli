@@ -3,7 +3,8 @@
 ## Status
 
 Accepted. Уточняет ярус 2 из [ADR-0032](0032-topology-over-thresholds.md); формулы
-ядра и источники не меняются.
+ядра и источники не меняются. Границу без зоны уточняет
+[ADR-0048](0048-dsm-product-boundary-without-a-zone.md).
 
 ## Context
 
