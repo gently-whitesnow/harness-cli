@@ -123,6 +123,12 @@ internal static class FrameUpgrade
                    entry ending in .cs, .ts, .tsx, .js or another source suffix the harness
                    reads makes the question Incomplete and the report names the directories
                    to list instead; every paths answer holds at most 5 addresses
+        Release 2.12 changes:
+          changed  sliced-dotnet/1 no longer names a Shared layer: Domain is the bottom of the
+                   layer DAG and references no other layer, and Domain/Shared stays the reserved
+                   home of concepts that belong to no slice; a Shared directory directly below a
+                   zone is now outside every canonical layer, so move its code into Domain (a
+                   slice or Domain/Shared) and fold the Shared project into the Domain project
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }

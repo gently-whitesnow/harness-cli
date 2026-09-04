@@ -9,7 +9,7 @@ namespace Harness.Structure;
 internal static class ArchitectureZones
 {
     public static readonly string[] Layers =
-        ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure", "Shared"];
+        ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure"];
 
     public static List<string> Discover(IReadOnlyList<string> paths)
     {

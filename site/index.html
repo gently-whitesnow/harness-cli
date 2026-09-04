@@ -38,11 +38,11 @@
           <path d="M8 12.5l2.5 2.5L16 9.5" />
         </svg>
         <span>harness</span>
-        <span class="brand__version">2.11.0</span>
+        <span class="brand__version">2.12.0</span>
       </a>
       <nav class="site-nav" aria-label="Основная навигация">
-        <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#checks">Проверки</a>
-        <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#deep">Как считает</a>
+        <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#catches">Что ловит</a>
+        <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#how">Как работает</a>
         <a class="btn btn-ghost btn-sm" href="#builder">Конструктор</a>
         <a class="btn btn-ghost btn-sm" href="https://github.com/gently-whitesnow/harness-cli" target="_blank" rel="noreferrer noopener">GitHub</a>
         <button type="button" class="btn btn-ghost theme-toggle" id="theme-toggle" aria-label="Переключить тему" title="Переключить тему">
@@ -56,84 +56,120 @@
   <main id="main">
     <!-- ── Hero ─────────────────────────────────────────────────────── -->
     <section class="section hero" id="top">
+      <div class="container hero__grid">
+        <div class="hero__copy">
+          <h1 class="hero__title">Одна рамка качества над разными репозиториями.</h1>
+          <p class="section__body hero__lead">
+            CLI для CI, который ловит то, что не видят тесты и линтеры: циклы модулей, рост связанности, повторы кода
+            и отход от формы sliced-dotnet. Единственная зависимость — <code>git</code>.
+          </p>
+          <div class="install-cmd">
+            <code class="install-cmd__text" id="install-cmd">curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh | sh</code>
+            <button type="button" class="copy-btn" data-copy-target="install-cmd" aria-label="Скопировать команду установки">
+              <svg class="icon-copy" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M5 15V5a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+              <svg class="icon-check" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+            </button>
+          </div>
+          <div class="hero__actions">
+            <a class="btn btn-primary" href="#builder">Собрать .harness.json</a>
+            <a class="btn btn-secondary" href="#how">Как работает</a>
+            <a class="btn btn-secondary" href="https://github.com/gently-whitesnow/harness-cli" target="_blank" rel="noreferrer noopener">Репозиторий</a>
+          </div>
+        </div>
+        <figure class="hero__demo">
+<pre class="code-block code-block--terminal"><code><span class="c-dim">$</span> harness check
+<span class="c-err">FAIL</span>  ./shop · harness 2.12.0
+   CHECK ID                FINDINGS
+✅ harness.config          8 answers · 24 policy entries
+❌ dependencies.csharp     cycle Orders → Billing → Orders
+<span class="c-dim">                           ↳ expose Contracts/ or X/Orders API</span>
+❌ complexity.csharp       reach 11.2 &gt; budget 9.4 · core 6 &gt; 0
+⚠️ duplication.csharp      2 repeated blocks <span class="c-dim">(advisory)</span>
+✅ architecture.sliced-dotnet
+✅ warning-suppressions.dotnet
+<span class="c-dim">…</span>
+<span class="c-dim">exit 1</span></code></pre>
+          <figcaption class="figure-note">Каждая находка называет норму, а не только нарушение. Подробности — <code>harness explain &lt;check-id&gt;</code>.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ── What it catches ──────────────────────────────────────────── -->
+    <section class="section" id="catches">
       <div class="container">
-        <span class="badge badge--mono">контракт 2.11.0 · NativeAOT · только git</span>
-        <h1 class="hero__title">Одна рамка качества над разными репозиториями.</h1>
-        <p class="section__body hero__lead">
-          Harness — standalone CLI, который читает tracked <code>.harness.json</code>, измеряет то, что можно одинаково
-          проверить в любом репозитории, и объясняет через ошибки, как должно быть. Тесты, сборку и линтеры проекта он
-          не запускает: за них отвечает CI самого проекта. Харнес держит рамку и считает то, что не воспроизводит чужой
-          пайплайн — доказанные циклы, DSM-бюджет, межфайловые повторы, форму sliced-dotnet.
-        </p>
-        <div class="install-cmd">
-          <code class="install-cmd__text" id="install-cmd">curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh | sh</code>
-          <button type="button" class="copy-btn" data-copy-target="install-cmd" aria-label="Скопировать команду установки">
-            <svg class="icon-copy" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M5 15V5a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
-            <svg class="icon-check" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-          </button>
-        </div>
-        <div class="hero__actions">
-          <a class="btn btn-primary" href="#builder">Собрать .harness.json</a>
-          <a class="btn btn-secondary" href="#deep">Как это считается</a>
-          <a class="btn btn-secondary" href="https://github.com/gently-whitesnow/harness-cli" target="_blank" rel="noreferrer noopener">Репозиторий</a>
-        </div>
-        <div class="hero__facts">
-          <div class="fact">
-            <span class="fact__label">Единственный внешний процесс</span>
-            <span class="fact__value"><code>git</code>. Toolchain репозитория харнес не запускает и не инспектирует.</span>
+        <div class="section__kicker">Что ловит</div>
+        <h2 class="section__title">То, что не поймают тесты, линтер и код-ревью на бегу</h2>
+        <div class="features">
+          <div class="feature">
+            <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2.2" /><circle cx="5" cy="17" r="2.2" /><circle cx="19" cy="17" r="2.2" /><path d="M10.4 6.6L6.6 14.8M7.2 17h9.6M17.4 14.8l-3.8-8.2" /><path d="M14.6 8.4l-1-1.8 2-.4" /><path d="M8.6 15.5l-1.5 1.5 2 .4" /><path d="M15.8 17.6l1.2 1.4.9-1.9" /></svg></span>
+            <h3>Циклы модулей</h3>
+            <p>Цикл между модулями, доказанный по коду, блокирует прогон. Вложенный модуль — содержание, а не цикл.</p>
           </div>
-          <div class="fact">
-            <span class="fact__label">24 проверки</span>
-            <span class="fact__value">Каждая явно перечислена в <code>policy</code>. Defaults в ридере нет — тихих фич нет.</span>
+          <div class="feature">
+            <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none" /><circle cx="4.5" cy="6" r="1.8" /><circle cx="19.5" cy="6" r="1.8" /><circle cx="4.5" cy="18" r="1.8" /><circle cx="19.5" cy="18" r="1.8" /><circle cx="12" cy="3.5" r="1.4" opacity=".5" /><path d="M10.2 10.8L6 7.4M13.8 10.8L18 7.4M10.2 13.2L6 16.6M13.8 13.2L18 16.6" /><path d="M12 9.6V5" opacity=".5" /></svg></span>
+            <h3>Бюджет связанности</h3>
+            <p>DSM по продукту: сколько файлов затронет изменение и как велико ядро. Бюджет в git можно только ужать.</p>
           </div>
-          <div class="fact">
-            <span class="fact__label">Три кода возврата</span>
-            <span class="fact__value"><code>0</code> прошло · <code>1</code> доказано нарушение · <code>2</code> проверить достоверно не удалось.</span>
+          <div class="feature">
+            <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="12" height="14" rx="2" /><path d="M6 7h6M6 10h6M6 13h4" /><path d="M9 21h10a2 2 0 0 0 2-2V9" /><path d="M12 17h6M12 14h6" opacity=".5" /></svg></span>
+            <h3>Повторы между файлами</h3>
+            <p>Одинаковая лексическая форма в разных файлах — находка, а не подозрение. Порог задаётся в settings.</p>
+          </div>
+          <div class="feature">
+            <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 8.5h18M3 14h18M3 19.5h18" /><path d="M9 3v18M15 3v18" stroke-dasharray="2 2.5" /></svg></span>
+            <h3>Форма sliced-dotnet</h3>
+            <p>Слои × слайсы прямо в файловой системе: слой = сборка, API слайса — его <code>Contracts/</code>, кросс-импорт — явный <code>X/</code>.</p>
+          </div>
+          <div class="feature">
+            <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z" /><path d="M12 10v4M12 17.5v.5" /><path class="feature__icon-strike" d="M4 4l16 16" /></svg></span>
+            <h3>Подавления warnings</h3>
+            <p>Адресные <code>pragma</code>, <code>SuppressMessage</code>, <code>NoWarn</code> и <code>severity = none</code> блокируются. Выключение правила для всего репозитория лишь печатается.</p>
+          </div>
+          <div class="feature">
+            <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M3 12h6M15 12h6" /><path d="M12 3v3M12 18v3" opacity=".4" /></svg></span>
+            <h3>Коммиты и документация</h3>
+            <p>Шаблон сообщения и <code>commit-msg</code> hook на весь клон. <code>AGENTS.md</code> не длиннее 150 строк, прочий Markdown — нарушение.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ── Principles ───────────────────────────────────────────────── -->
-    <section class="section" id="principles">
+    <!-- ── How it works ─────────────────────────────────────────────── -->
+    <section class="section" id="how">
       <div class="container">
-        <div class="section__kicker">Принципы</div>
-        <h2 class="section__title">Что харнес делает и чего не делает</h2>
-        <p class="section__body">
-          Инструмент несёт общий стандарт формы, который иначе копировался бы между репозиториями. Специфичные для продукта
-          контракты и архитектурные правила остаются в самом репозитории. Каждое правило ниже обосновано в ADR — реестр
-          решений лежит в <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/REGISTRY.md" target="_blank" rel="noreferrer noopener">adrs/REGISTRY.md</a>.
-        </p>
-        <div class="grid grid-3" style="margin-top: var(--space-8)">
-          <div class="card">
-            <h3>Только наблюдает</h3>
-            <p>Не правит tracked-контент, не ставит toolchain, не меняет lockfile. Доказательство — только файл в git-индексе: untracked-файл для харнеса не существует, но отчёт называет его строкой <code>not in the index</code>, чтобы не молчать.</p>
-            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0008-the-harness-only-observes.md" target="_blank" rel="noreferrer noopener">ADR-0008</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0011-the-harness-does-not-run-the-repository-toolchain.md" target="_blank" rel="noreferrer noopener">ADR-0011</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0026-untracked-evidence-is-named-in-the-report.md" target="_blank" rel="noreferrer noopener">ADR-0026</a></span>
+        <div class="section__kicker">Как работает</div>
+        <h2 class="section__title">Репозиторий отвечает, харнес читает git, отчёт объясняет норму</h2>
+        <div class="flow">
+          <div class="flow-step">
+            <span class="flow-step__num">1</span>
+            <h3>Репозиторий отвечает</h3>
+            <p>Tracked <code>.harness.json</code> называет, где тесты, линт и verify, какая архитектура, и что делать с каждой проверкой.</p>
+<pre class="code-block flow-step__code"><code><span class="c-key">"tests.unit"</span>: { <span class="c-key">"paths"</span>: [<span class="c-str">"tests/Unit"</span>] },
+<span class="c-key">"policy"</span>: {
+  <span class="c-key">"dependencies.csharp"</span>: <span class="c-str">"required"</span>,
+  <span class="c-key">"comments.yaml"</span>: <span class="c-str">"advisory"</span>,
+  <span class="c-key">"frame.tests.e2e"</span>: <span class="c-str">"off"</span>
+}</code></pre>
           </div>
-          <div class="card">
-            <h3>Рамка self-reported</h3>
-            <p>Репозиторий отвечает на вопросы рамки сам, в tracked <code>.harness.json</code>. <code>paths</code> — навигация, не доказательство: не более пяти адресов, а для тестов адрес — проект, который их запускает, не файлы внутри него. Харнес валидирует полноту и форму ответов, но не инспектирует их и не ищет опровержения в git.</p>
-            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0014-frame-answers-are-self-reported.md" target="_blank" rel="noreferrer noopener">ADR-0014</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0049-test-suite-address-is-the-project.md" target="_blank" rel="noreferrer noopener">ADR-0049</a></span>
+          <div class="flow-step">
+            <span class="flow-step__num">2</span>
+            <h3>Харнес читает только git</h3>
+            <p>Граф строится по tracked-исходникам без компилятора и сборки. Untracked-файл для харнеса не существует.</p>
+<pre class="code-block flow-step__code"><code><span class="c-dim">$</span> git ls-files
+src/Shop/Orders/Api/…cs
+src/Shop/Billing/Domain/…cs
+<span class="c-dim">   ↓ лексический ридер, рёбра Proven / Inferred</span>
+Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→</span> Shop.Orders</code></pre>
           </div>
-          <div class="card">
-            <h3>Тихих фич нет</h3>
-            <p>Каждая shipped-проверка обязана быть в <code>policy</code>, каждый параметр — в <code>settings</code>, каждая языковая ось — в <code>applicability</code>. Отсутствующая запись — <code>Incomplete</code> с именем ключа, а не молчаливое включение с дефолтом.</p>
-            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0017-required-by-default.md" target="_blank" rel="noreferrer noopener">ADR-0017</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0035-policy-switch-is-uniform.md" target="_blank" rel="noreferrer noopener">ADR-0035</a></span>
-          </div>
-          <div class="card">
-            <h3>Policy един для всех</h3>
-            <p><code>required</code> блокирует, <code>advisory</code> оставляет находки видимыми, <code>off</code> выключает — и это работает для любой проверки, включая топологический инвариант и ratchet-бюджет. Запрещено адресное подавление файла или находки: ни <code>suppress</code>, ни <code>overrides</code>.</p>
-            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0027-required-findings-are-blocking.md" target="_blank" rel="noreferrer noopener">ADR-0027</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0035-policy-switch-is-uniform.md" target="_blank" rel="noreferrer noopener">ADR-0035</a></span>
-          </div>
-          <div class="card">
-            <h3>Топология вместо порогов</h3>
-            <p>Пороговые скоры (строки на файл, ветвления, cohesion) поддаются Goodhart-деградации и противоречат друг другу. Контракт 2.0 заменил их тремя ярусами: инварианты формы дерева, монотонные DSM-бюджеты, детерминированные policy.</p>
-            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0032-topology-over-thresholds.md" target="_blank" rel="noreferrer noopener">ADR-0032</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0033-canonical-standard-over-declarations.md" target="_blank" rel="noreferrer noopener">ADR-0033</a></span>
-          </div>
-          <div class="card">
-            <h3>Один контракт на бинарь</h3>
-            <p><code>version</code> в конфиге называет релиз и фиксирует весь контракт: какие вопросы задаются и какие проверки выполняются. Другой pin останавливает прогон с кодом <code>2</code>; единственный путь его сменить — <code>harness upgrade</code>, который печатает маршрут миграции и не угадывает ответы.</p>
-            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0023-release-version-as-the-verification-contract.md" target="_blank" rel="noreferrer noopener">ADR-0023</a></span>
+          <div class="flow-step">
+            <span class="flow-step__num">3</span>
+            <h3>Отчёт гейтит CI</h3>
+            <p>Каждая находка говорит, как должно быть. Три кода возврата, без скрытых дефолтов и адресных подавлений.</p>
+            <div class="flow-step__codes">
+              <div class="exit"><span class="exit__code is-ok">0</span><p>всё выбранное прошло</p></div>
+              <div class="exit"><span class="exit__code is-fail">1</span><p>доказано нарушение</p></div>
+              <div class="exit"><span class="exit__code is-incomplete">2</span><p>проверить достоверно не удалось</p></div>
+            </div>
           </div>
         </div>
       </div>
@@ -142,18 +178,12 @@
     <!-- ── Checks ───────────────────────────────────────────────────── -->
     <section class="section" id="checks">
       <div class="container">
-        <div class="section__kicker">24 проверки · контракт 2.11.0</div>
+        <div class="section__kicker">24 проверки · контракт 2.12.0</div>
         <h2 class="section__title">Каждая проверка названа, и каждая — в конфиге</h2>
         <p class="section__body">
-          Идентификатор — <code>&lt;семейство&gt;.&lt;язык&gt;</code>. Ось <code>applicability</code> выключает все проверки
-          языка одной записью с причиной; <code>policy</code> решает судьбу каждой проверки отдельно. Второй язык — не копия
-          проверки, а экземпляр: так <code>comments.yaml</code> и <code>comments.typescript</code> считают ту же плотность
-          комментариев со своими settings.
-        </p>
-        <p class="section__body">
-          Ниже — все проверки, которые ships бинарь 2.11.0, в порядке исполнения. Их же перечисляет <code>harness help</code>,
-          их же требует ридер <code>.harness.json</code>: если хотя бы одной нет в <code>policy</code>, прогон завершается
-          <code>Incomplete</code> и называет пропущенный ключ. Подробности каждой — <code>harness explain &lt;check-id&gt;</code>.
+          Все 24 проверки бинаря 2.12.0 в порядке исполнения. Идентификатор — <code>&lt;семейство&gt;.&lt;язык&gt;</code>:
+          ось <code>applicability</code> выключает язык одной записью, <code>policy</code> решает судьбу каждой проверки.
+          Нет записи — прогон <code>Incomplete</code> с именем ключа. Подробности — <code>harness explain &lt;check-id&gt;</code>.
         </p>
         <div class="check-groups" id="check-groups"></div>
       </div>
@@ -279,7 +309,7 @@
               </div>
               <div class="finding" id="cycles-finding" style="margin-top: var(--space-3)"></div>
             </div>
-            <figcaption>Ребро <code>Shared → …</code> отсутствует намеренно: слой без исходящих рёбер не может войти в кольцо. Разверните любое красное ребро — компонента распадётся, а отчёт покажет следующее кольцо, если оно осталось.</figcaption>
+            <figcaption>Ребро <code>Domain → …</code> отсутствует намеренно: слой без исходящих рёбер не может войти в кольцо. Разверните любое красное ребро — компонента распадётся, а отчёт покажет следующее кольцо, если оно осталось.</figcaption>
           </figure>
         </article>
 
@@ -442,7 +472,7 @@
           <div class="grid grid-2" style="align-items: start">
             <div class="panel">
               <div class="panel__head"><span class="panel__title">Слои и разрешённые рёбра</span></div>
-              <svg class="diagram" id="arch-svg" viewBox="0 0 520 372" role="img" aria-label="Диаграмма слоёв sliced-dotnet/1"></svg>
+              <svg class="diagram" id="arch-svg" viewBox="0 0 520 322" role="img" aria-label="Диаграмма слоёв sliced-dotnet/1"></svg>
               <p class="figure-note" style="margin-top: var(--space-2)">Host — composition root и единственное место, где контракты связываются с реализациями; видит все слои. Пунктир — запрещённое ребро, которое проверка называет по паре слоёв.</p>
             </div>
             <div class="panel">
@@ -452,12 +482,11 @@
                   <thead><tr><th>Слой</th><th>Назначение</th><th>Разрешённые рёбра</th></tr></thead>
                   <tbody>
                     <tr><td>Host</td><td>composition root: Program, DI-wiring, конфигурация</td><td>во все слои</td></tr>
-                    <tr><td>Api</td><td>синхронный вход: controllers, endpoints, команды CLI</td><td>Application, Domain, Shared</td></tr>
-                    <tr><td>Consumers</td><td>асинхронный вход: очереди, подписки, hosted jobs</td><td>Application, Domain, Shared</td></tr>
-                    <tr><td>Application</td><td>use-cases; слайсы в Features/</td><td>Domain, Shared</td></tr>
-                    <tr><td>Domain</td><td>сущности; слайсы в корне, Shared зарезервирован</td><td>Shared</td></tr>
-                    <tr><td>Infrastructure</td><td>адаптеры; слайсы в Features/, Persistence зарезервирован</td><td>Application (только Contracts/), Domain, Shared</td></tr>
-                    <tr><td>Shared</td><td>kernel, утилиты</td><td>—</td></tr>
+                    <tr><td>Api</td><td>синхронный вход: controllers, endpoints, команды CLI</td><td>Application, Domain</td></tr>
+                    <tr><td>Consumers</td><td>асинхронный вход: очереди, подписки, hosted jobs</td><td>Application, Domain</td></tr>
+                    <tr><td>Application</td><td>use-cases; слайсы в Features/</td><td>Domain</td></tr>
+                    <tr><td>Domain</td><td>сущности и общий словарь зоны; слайсы в корне, Shared зарезервирован под код вне слайсов</td><td>—</td></tr>
+                    <tr><td>Infrastructure</td><td>адаптеры; слайсы в Features/, Persistence зарезервирован</td><td>Application (только Contracts/), Domain</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -535,10 +564,10 @@
           <div class="panel">
             <div class="panel__head"><span class="panel__title">Пример отчёта</span></div>
 <pre class="code-block code-block--terminal"><code><span class="c-ok">PASS</span>  /srv/repo
-  harness 2.11.0 · repository pins 2.11.0
+  harness 2.12.0 · repository pins 2.12.0
    CHECK ID                     FINDINGS
 ✅ harness.config               .harness.json contains 8 answers, 24 explicit policy entries
-✅ architecture.sliced-dotnet   architecture map: zone src/Harness · layers [Host, Api, Application, Domain, Infrastructure, Shared]
+✅ architecture.sliced-dotnet   architecture map: zone src/Harness · layers [Host, Api, Application, Domain, Infrastructure]
 ✅ complexity.csharp            mean reach 8.65 files · core size 0 files · scope: 112 files inside architecture zone
 ✅ docs.policy
 ✅ commits.setup
@@ -556,7 +585,7 @@
           <div class="panel">
             <div class="panel__head"><span class="panel__title">GitLab CI</span></div>
 <pre class="code-block"><code><span class="c-key">harness</span>:
-  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.11.0</span>
+  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.12.0</span>
   <span class="c-key">script</span>:
     - harness check
     - harness commits check <span class="c-str">"$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"</span></code></pre>
