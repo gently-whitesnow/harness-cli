@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harness CLI — одна рамка качества над разными репозиториями</title>
+  <meta name="description" content="Harness CLI читает tracked .harness.json, доказывает циклы модулей, держит DSM-бюджет, ищет межфайловые повторы и проверяет форму sliced-dotnet. Все 24 проверки явно перечислены в конфиге — тихих фич нет." />
+  <link rel="canonical" href="https://harness.whitesnow.tech/" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Harness CLI — одна рамка качества над разными репозиториями" />
+  <meta property="og:description" content="Standalone CLI: self-reported рамка, доказанные циклы, DSM-бюджет, повторы C#, стандарт sliced-dotnet/1. Конструктор .harness.json прямо на странице." />
+  <meta property="og:url" content="https://harness.whitesnow.tech/" />
+  <meta property="og:locale" content="ru_RU" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#16171c" media="(prefers-color-scheme: dark)" />
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('harness-site-theme');
+        var theme = stored === 'dark' || stored === 'light'
+          ? stored
+          : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержимому</a>
+
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="brand" href="#top" aria-label="Harness CLI">
+        <svg class="brand__mark" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5V7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17M17 21h2.5a1.5 1.5 0 0 0 1.5-1.5V17" />
+          <path d="M8 12.5l2.5 2.5L16 9.5" />
+        </svg>
+        <span>harness</span>
+        <span class="brand__version">2.9.0</span>
+      </a>
+      <nav class="site-nav" aria-label="Основная навигация">
+        <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#checks">Проверки</a>
+        <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#deep">Как считает</a>
+        <a class="btn btn-ghost btn-sm" href="#builder">Конструктор</a>
+        <a class="btn btn-ghost btn-sm" href="https://github.com/gently-whitesnow/harness-cli" target="_blank" rel="noreferrer noopener">GitHub</a>
+        <button type="button" class="btn btn-ghost theme-toggle" id="theme-toggle" aria-label="Переключить тему" title="Переключить тему">
+          <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+          <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ── Hero ─────────────────────────────────────────────────────── -->
+    <section class="section hero" id="top">
+      <div class="container">
+        <span class="badge badge--mono">контракт 2.9.0 · NativeAOT · только git</span>
+        <h1 class="hero__title">Одна рамка качества над разными репозиториями.</h1>
+        <p class="section__body hero__lead">
+          Harness — standalone CLI, который читает tracked <code>.harness.json</code>, измеряет то, что можно одинаково
+          проверить в любом репозитории, и объясняет через ошибки, как должно быть. Тесты, сборку и линтеры проекта он
+          не запускает: за них отвечает CI самого проекта. Харнес держит рамку и считает то, что не воспроизводит чужой
+          пайплайн — доказанные циклы, DSM-бюджет, межфайловые повторы, форму sliced-dotnet.
+        </p>
+        <div class="install-cmd">
+          <code class="install-cmd__text" id="install-cmd">curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh | sh</code>
+          <button type="button" class="copy-btn" data-copy-target="install-cmd" aria-label="Скопировать команду установки">
+            <svg class="icon-copy" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.7" /><path d="M5 15V5a2 2 0 0 1 2-2h8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" /></svg>
+            <svg class="icon-check" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          </button>
+        </div>
+        <div class="hero__actions">
+          <a class="btn btn-primary" href="#builder">Собрать .harness.json</a>
+          <a class="btn btn-secondary" href="#deep">Как это считается</a>
+          <a class="btn btn-secondary" href="https://github.com/gently-whitesnow/harness-cli" target="_blank" rel="noreferrer noopener">Репозиторий</a>
+        </div>
+        <div class="hero__facts">
+          <div class="fact">
+            <span class="fact__label">Единственный внешний процесс</span>
+            <span class="fact__value"><code>git</code>. Toolchain репозитория харнес не запускает и не инспектирует.</span>
+          </div>
+          <div class="fact">
+            <span class="fact__label">24 проверки</span>
+            <span class="fact__value">Каждая явно перечислена в <code>policy</code>. Defaults в ридере нет — тихих фич нет.</span>
+          </div>
+          <div class="fact">
+            <span class="fact__label">Три кода возврата</span>
+            <span class="fact__value"><code>0</code> прошло · <code>1</code> доказано нарушение · <code>2</code> проверить достоверно не удалось.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Principles ───────────────────────────────────────────────── -->
+    <section class="section" id="principles">
+      <div class="container">
+        <div class="section__kicker">Принципы</div>
+        <h2 class="section__title">Что харнес делает и чего не делает</h2>
+        <p class="section__body">
+          Инструмент несёт общий стандарт формы, который иначе копировался бы между репозиториями. Специфичные для продукта
+          контракты и архитектурные правила остаются в самом репозитории. Каждое правило ниже обосновано в ADR — реестр
+          решений лежит в <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/REGISTRY.md" target="_blank" rel="noreferrer noopener">adrs/REGISTRY.md</a>.
+        </p>
+        <div class="grid grid-3" style="margin-top: var(--space-8)">
+          <div class="card">
+            <h3>Только наблюдает</h3>
+            <p>Не правит tracked-контент, не ставит toolchain, не меняет lockfile. Доказательство — только файл в git-индексе: untracked-файл для харнеса не существует, но отчёт называет его строкой <code>not in the index</code>, чтобы не молчать.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0008-the-harness-only-observes.md" target="_blank" rel="noreferrer noopener">ADR-0008</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0011-the-harness-does-not-run-the-repository-toolchain.md" target="_blank" rel="noreferrer noopener">ADR-0011</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0026-untracked-evidence-is-named-in-the-report.md" target="_blank" rel="noreferrer noopener">ADR-0026</a></span>
+          </div>
+          <div class="card">
+            <h3>Рамка self-reported</h3>
+            <p>Репозиторий отвечает на вопросы рамки сам, в tracked <code>.harness.json</code>. <code>paths</code> — навигация, не доказательство. Харнес валидирует полноту и форму ответов, но не инспектирует их и не ищет опровержения в git.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0014-frame-answers-are-self-reported.md" target="_blank" rel="noreferrer noopener">ADR-0014</a></span>
+          </div>
+          <div class="card">
+            <h3>Тихих фич нет</h3>
+            <p>Каждая shipped-проверка обязана быть в <code>policy</code>, каждый параметр — в <code>settings</code>, каждая языковая ось — в <code>applicability</code>. Отсутствующая запись — <code>Incomplete</code> с именем ключа, а не молчаливое включение с дефолтом.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0017-required-by-default.md" target="_blank" rel="noreferrer noopener">ADR-0017</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0035-policy-switch-is-uniform.md" target="_blank" rel="noreferrer noopener">ADR-0035</a></span>
+          </div>
+          <div class="card">
+            <h3>Policy един для всех</h3>
+            <p><code>required</code> блокирует, <code>advisory</code> оставляет находки видимыми, <code>off</code> выключает — и это работает для любой проверки, включая топологический инвариант и ratchet-бюджет. Запрещено адресное подавление файла или находки: ни <code>suppress</code>, ни <code>overrides</code>.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0027-required-findings-are-blocking.md" target="_blank" rel="noreferrer noopener">ADR-0027</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0035-policy-switch-is-uniform.md" target="_blank" rel="noreferrer noopener">ADR-0035</a></span>
+          </div>
+          <div class="card">
+            <h3>Топология вместо порогов</h3>
+            <p>Пороговые скоры (строки на файл, ветвления, cohesion) поддаются Goodhart-деградации и противоречат друг другу. Контракт 2.0 заменил их тремя ярусами: инварианты формы дерева, монотонные DSM-бюджеты, детерминированные policy.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0032-topology-over-thresholds.md" target="_blank" rel="noreferrer noopener">ADR-0032</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0033-canonical-standard-over-declarations.md" target="_blank" rel="noreferrer noopener">ADR-0033</a></span>
+          </div>
+          <div class="card">
+            <h3>Один контракт на бинарь</h3>
+            <p><code>version</code> в конфиге называет релиз и фиксирует весь контракт: какие вопросы задаются и какие проверки выполняются. Другой pin останавливает прогон с кодом <code>2</code>; единственный путь его сменить — <code>harness upgrade</code>, который печатает маршрут миграции и не угадывает ответы.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0023-release-version-as-the-verification-contract.md" target="_blank" rel="noreferrer noopener">ADR-0023</a></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Checks ───────────────────────────────────────────────────── -->
+    <section class="section" id="checks">
+      <div class="container">
+        <div class="section__kicker">24 проверки · контракт 2.9.0</div>
+        <h2 class="section__title">Каждая проверка названа, и каждая — в конфиге</h2>
+        <p class="section__body">
+          Идентификатор — <code>&lt;семейство&gt;.&lt;язык&gt;</code>. Ось <code>applicability</code> выключает все проверки
+          языка одной записью с причиной; <code>policy</code> решает судьбу каждой проверки отдельно. Второй язык — не копия
+          проверки, а экземпляр: так <code>comments.yaml</code> и <code>comments.typescript</code> считают ту же плотность
+          комментариев со своими settings.
+        </p>
+        <p class="section__body">
+          Ниже — все проверки, которые ships бинарь 2.9.0, в порядке исполнения. Их же перечисляет <code>harness help</code>,
+          их же требует ридер <code>.harness.json</code>: если хотя бы одной нет в <code>policy</code>, прогон завершается
+          <code>Incomplete</code> и называет пропущенный ключ. Подробности каждой — <code>harness explain &lt;check-id&gt;</code>.
+        </p>
+        <div class="check-groups" id="check-groups"></div>
+      </div>
+    </section>
+
+    <!-- ── Deep dive ────────────────────────────────────────────────── -->
+    <section class="section" id="deep">
+      <div class="container">
+        <div class="section__kicker">Глубже</div>
+        <h2 class="section__title">Связанность, циклы, DSM и повторы: как это считается и почему именно так</h2>
+        <p class="section__body">
+          Все структурные проверки питаются одним графом, построенным по tracked-исходникам лексическим ридером на BCL —
+          без Roslyn, без build output, без запуска toolchain. Это осознанная цена NativeAOT-инварианта: инструмент
+          измеряет меньше, чем компилятор, но никогда не завышает связанность на доказанных рёбрах. Диаграммы ниже
+          интерактивны — рёбра и узлы можно двигать, чтобы увидеть, как меняется вердикт.
+        </p>
+
+        <!-- A. Graph & evidence -->
+        <article class="explainer" id="deep-graph">
+          <div class="explainer__text">
+            <h3>Граф зависимостей и уровни доказательности</h3>
+            <p>
+              Типы, объявленные в репозитории, образуют замкнутый словарь. Каждое имя в исходнике резолвится в объявление в
+              том же порядке, что использует C#: свой namespace, затем объемлющие, затем импорты файла. Имя, не совпавшее ни
+              с одним объявлением, — внешний импорт, а не догадка; имя с несколькими кандидатами — unresolved и в граф не
+              попадает. Доля резолва печатается в отчёте.
+            </p>
+            <p>Каждое ребро несёт оценку <strong>EvidenceGrade</strong>:</p>
+            <ul>
+              <li><strong>Proven</strong> — имя стоит там, где язык не допускает ничего, кроме типа: <code>new</code>, base list,
+                тип параметра, поля, свойства или возврата, generic-аргумент, атрибут, <code>typeof</code>, <code>sizeof</code>,
+                <code>default</code>, <code>catch</code>, либо тип, за которым следует вводимое им имя.</li>
+              <li><strong>Inferred</strong> — имя совпало, но позиция ничего не доказывает: member access, аргумент, локальная
+                переменная, приведение.</li>
+            </ul>
+            <p>
+              <strong>Blocking-находка строится только из Proven-рёбер.</strong> Тот же Proven-граф питает циклы модулей,
+              инварианты sliced-dotnet и DSM-бюджет. Всё, что связывает компилятор — extension-методы, <code>var</code>,
+              перегрузки, DI, рефлексия, — невидимо; связанность занижена, никогда не завышена.
+            </p>
+            <p>
+              <strong>Граница модуля.</strong> Имя модуля вложено в имя объемлющего: ссылка из <code>Shop.Orders</code> в
+              <code>Shop.Orders.Contracts</code> — содержание, а не зависимость. Ребро поднимается до первого сегмента, которым
+              имена расходятся: <code>Shop.Orders.Api → Shop.Billing.Core</code> записывается как <code>Shop.Orders → Shop.Billing</code>.
+            </p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0021-coupling-evidence-grades.md" target="_blank" rel="noreferrer noopener">ADR-0021</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0009-nativeaot-as-a-build-invariant.md" target="_blank" rel="noreferrer noopener">ADR-0009</a></span>
+          </div>
+          <figure class="explainer__figure">
+            <div class="panel">
+              <div class="panel__head">
+                <span class="panel__title">Один файл, две оценки рёбер</span>
+                <span class="legend">
+                  <span class="legend__item"><span class="legend__swatch" style="background: var(--color-success-soft)"></span>Proven</span>
+                  <span class="legend__item"><span class="legend__swatch" style="background: var(--color-warning-soft)"></span>Inferred</span>
+                </span>
+              </div>
+<pre class="code-block"><code><span class="c-kw">namespace</span> Shop.Orders;
+
+<span class="c-kw">public sealed class</span> OrderService(<mark class="m-proven">IOrderStore</mark> store)
+{
+    <span class="c-kw">private readonly</span> <mark class="m-proven">Clock</mark> clock = <span class="c-kw">new</span> <mark class="m-proven">Clock</mark>();
+
+    <span class="c-kw">public</span> <mark class="m-proven">Receipt</mark> Place(<mark class="m-proven">Cart</mark> cart)
+    {
+        <span class="c-kw">var</span> total = <mark class="m-inferred">Pricing</mark>.Total(cart);
+        <span class="c-kw">if</span> (cart.Lines <span class="c-kw">is</span> [])
+        {
+            <span class="c-kw">throw new</span> <mark class="m-proven">EmptyCartException</mark>();
+        }
+
+        <span class="c-kw">return</span> store.Save(cart, total, clock.Now());
+    }
+}</code></pre>
+              <table class="token-table" style="margin-top: var(--space-3)">
+                <tbody>
+                  <tr><td>тип параметра, поля, возврата</td><td>Proven: <code>IOrderStore</code>, <code>Clock</code>, <code>Receipt</code>, <code>Cart</code></td></tr>
+                  <tr><td>после <code>new</code>, <code>typeof</code>, <code>catch</code>, <code>is</code></td><td>Proven: <code>new Clock()</code>, <code>new EmptyCartException()</code></td></tr>
+                  <tr><td>member access, аргумент, локальная</td><td>Inferred: <code>Pricing.Total</code> — имя совпало, позиция не доказывает</td></tr>
+                  <tr><td><code>store</code>, <code>cart</code>, <code>total</code></td><td>не типы репозитория — рёбер нет</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <figcaption>Proven-ребро <code>Shop.Orders → Shop.Pricing</code> не возникнет из строки с <code>Pricing.Total</code>: member access — только Inferred. Если <code>Pricing</code> нигде не стоит в типовой позиции, цикл через него не замкнётся.</figcaption>
+          </figure>
+        </article>
+
+        <!-- B. Cycles -->
+        <article class="explainer" id="deep-cycles">
+          <div class="explainer__text">
+            <h3>Циклы модулей: единственная dependency-находка</h3>
+            <p>
+              Модули, зависящие друг от друга, нельзя упорядочить, вынести или переиспользовать в одном направлении. Это
+              универсальный структурный дефект, который харнес умеет доказать по tracked-исходнику. Проверка становится
+              blocking, только если выполнены сразу пять условий: детерминизм, actionable-находка, скорость, низкий риск
+              false positive и негативная фикстура. Цикл по Proven-рёбрам проходит все пять.
+            </p>
+            <p><strong>Формула.</strong> Рёбра между типами схлопываются до рёбер между модулями (namespace), внутренние ссылки
+              отбрасываются. Над графом модулей идёт алгоритм Тарьяна — итеративный, чтобы глубокий граф не съел стек.
+              Каждая сильно связная компонента из двух и более узлов — цикл.</p>
+            <p><strong>Что печатается.</strong> Компонента из одиннадцати модулей правдива и неисполнима; кольцо из двух —
+              исполнимо. Поэтому внутри компоненты ищется <strong>кратчайшее кольцо</strong> (BFS от каждого узла) и
+              печатаются строки исходника, которые его замыкают. Ребро-представитель выбирается по самой ранней локации,
+              чтобы отчёт не менялся между прогонами.</p>
+            <p><strong>Почему нет fan-in/fan-out.</strong> Пилот показал, что верх outgoing count закономерно занимают
+              integration-тесты и composition roots, а высокий incoming count часто отмечает правильно выбранную стабильную
+              абстракцию. У таких чисел нет универсального remediation, поэтому начиная с 1.5 они удалены; у цикла оно есть.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0002-when-a-check-becomes-blocking.md" target="_blank" rel="noreferrer noopener">ADR-0002</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0021-coupling-evidence-grades.md" target="_blank" rel="noreferrer noopener">ADR-0021</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0029-dependency-counts-removed.md" target="_blank" rel="noreferrer noopener">ADR-0029</a></span>
+          </div>
+          <figure class="explainer__figure">
+            <div class="panel">
+              <div class="panel__head">
+                <span class="panel__title">Граф модулей · клик по ребру разворачивает зависимость</span>
+                <div class="panel__controls">
+                  <button type="button" class="btn btn-secondary btn-sm" id="cycles-reset">Сбросить</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="cycles-preset-adr">Пример из ADR-0021</button>
+                </div>
+              </div>
+              <svg class="diagram" id="cycles-svg" viewBox="0 0 520 300" role="img" aria-label="Интерактивный граф модулей с циклами"></svg>
+              <div class="stat-row" style="margin-top: var(--space-3)">
+                <div class="stat"><span class="stat__label">Компонент &gt; 1</span><span class="stat__value" id="cycles-count">0</span></div>
+                <div class="stat"><span class="stat__label">Кратчайшее кольцо</span><span class="stat__value" id="cycles-ring">—</span></div>
+                <div class="stat"><span class="stat__label">Вердикт при required</span><span class="stat__value" id="cycles-verdict">passed</span></div>
+              </div>
+              <div class="finding" id="cycles-finding" style="margin-top: var(--space-3)"></div>
+            </div>
+            <figcaption>Ребро <code>Shared → …</code> отсутствует намеренно: слой без исходящих рёбер не может войти в кольцо. Разверните любое красное ребро — компонента распадётся, а отчёт покажет следующее кольцо, если оно осталось.</figcaption>
+          </figure>
+        </article>
+
+        <!-- C. DSM -->
+        <article class="explainer" id="deep-dsm">
+          <div class="explainer__text">
+            <h3>DSM-сложность: mean reach и core size под бюджетом</h3>
+            <p>
+              Счётчик зависимостей описывает один файл. Design structure matrix описывает, как изменение распространяется
+              по продукту целиком. Две метрики DSM-семейства сравниваются с одним tracked-потолком в
+              <code>.harness.budget.json</code>: регресс блокирует, улучшение видно, пока репозиторий его не зафиксирует.
+            </p>
+            <p><strong>Mean reach</strong> — бюджетируемая величина. Пусть N — число измеренных файлов, R(i) — сам файл i плюс всё,
+              что транзитивно достижимо из него по Proven-рёбрам.</p>
+            <p><span class="formula">mean reach = Σ|R(i)| / N</span></p>
+            <p>Это абсолютное число файлов, до которых доходит изменение типичного файла. <strong>Propagation cost</strong>
+              (MacCormack, Rusnak, Baldwin, 2006) печатается рядом как справка для сравнения с литературой: Linux 5.16 %,
+              Mozilla 17.35 % до редизайна и 2.78 % после.</p>
+            <p><span class="formula">propagation cost = 100 · Σ|R(i)| / N²</span></p>
+            <p><strong>Почему не propagation cost.</strong> Знаменатель N² вознаграждал дробление и наказывал удаление: за
+              неделю нарезки на слайсы в пилоте достижимых пар стало на 13 % больше, а cost упал на 14 %, потому что файлов
+              стало на 15 % больше. Удаление изолированного файла всегда повышало cost. Mean reach от листьев не худеет и от
+              удаления сдвигается не больше чем на долю файла.</p>
+            <p><strong>Core size</strong> — размер крупнейшей циклической группы файлов (Baldwin, MacCormack, Rusnak, 2014). У
+              файлов ядра ~3× плотность дефектов; ациклический граф даёт ядро 0.</p>
+            <p><span class="formula">core size = max |SCC| при |SCC| &gt; 1</span></p>
+            <p><strong>Область.</strong> Измеряются только файлы внутри архитектурных зон sliced-dotnet — тесты, тулинг и
+              сэмплы вне зоны не входят. В пилоте тесты давали 21 % файлов и 56 % достижимых пар, а подсказки указывали на
+              Mongo-фикстуру, а не на архитектуру. Граница читается из дерева, поэтому ни ответ рамки, ни список исключений
+              не могут перенести файл через неё. Репозиторий без зоны измеряется целиком.</p>
+            <p><strong>Вычисление.</strong> SCC-конденсация — DAG; достижимость считается битовыми наборами в обратном
+              топологическом порядке, без рекурсии и внешних зависимостей. Бюджет — потолок: <code>harness budget update</code>
+              только ужимает его; повысить можно лишь ручной tracked-правкой на ревью.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0032-topology-over-thresholds.md" target="_blank" rel="noreferrer noopener">ADR-0032</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0042-dsm-over-the-product-in-files.md" target="_blank" rel="noreferrer noopener">ADR-0042</a> <a href="https://doi.org/10.1287/mnsc.1060.0552" target="_blank" rel="noreferrer noopener">MacCormack 2006</a></span>
+          </div>
+          <figure class="explainer__figure">
+            <div class="panel">
+              <div class="panel__head">
+                <span class="panel__title">Файловый граф · клик по файлу показывает R(i)</span>
+                <div class="panel__controls">
+                  <button type="button" class="btn btn-secondary btn-sm" id="dsm-add-leaf">+ листовой файл</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="dsm-close-cycle">Замкнуть цикл</button>
+                  <button type="button" class="btn btn-secondary btn-sm" id="dsm-reset">Сбросить</button>
+                </div>
+              </div>
+              <svg class="diagram" id="dsm-svg" viewBox="0 0 520 336" role="img" aria-label="Интерактивный файловый граф для DSM-метрик"></svg>
+              <div class="stat-row" style="margin-top: var(--space-3)">
+                <div class="stat"><span class="stat__label">Файлов N</span><span class="stat__value" id="dsm-n">0</span></div>
+                <div class="stat"><span class="stat__label">Σ|R(i)|</span><span class="stat__value" id="dsm-pairs">0</span></div>
+                <div class="stat"><span class="stat__label">Mean reach</span><span class="stat__value" id="dsm-reach">0</span><span class="stat__hint">бюджет <span id="dsm-budget-reach">0</span></span></div>
+                <div class="stat"><span class="stat__label">Propagation cost</span><span class="stat__value" id="dsm-cost">0 %</span><span class="stat__hint">справочно</span></div>
+                <div class="stat"><span class="stat__label">Core size</span><span class="stat__value" id="dsm-core">0</span><span class="stat__hint">бюджет <span id="dsm-budget-core">0</span></span></div>
+              </div>
+              <div class="finding" id="dsm-finding" style="margin-top: var(--space-3)"></div>
+            </div>
+            <figcaption>Добавьте несколько листовых файлов: propagation cost падает, а mean reach почти не меняется — именно поэтому бюджетируется второе. Замкните цикл: появится ядро, и потолок <code>coreSize</code> будет превышен.</figcaption>
+          </figure>
+        </article>
+
+        <!-- D. Duplication -->
+        <article class="explainer" id="deep-dup">
+          <div class="explainer__text">
+            <h3>Дупликация: одинаковая лексическая форма в разных файлах</h3>
+            <p>
+              Одна и та же структура, выписанная в нескольких файлах, — самый дешёвый наблюдаемый признак того, что
+              абстракция отсутствует или была скопирована вместо вызова. Проверка находит место и останавливается:
+              лексическое совпадение — повод открыть два места, а не доказательство, что они значат одно и то же.
+            </p>
+            <p><strong>Нормализация.</strong> Каждый файл сводится к коду: комментарии, содержимое строк и символов,
+              директивы препроцессора заменяются пробелами. Остаток превращается в последовательность токенов на каждую
+              физическую строку по этим правилам и никаким другим:</p>
+            <table class="token-table">
+              <tbody>
+                <tr><td>комментарий, директива</td><td>ничего</td></tr>
+                <tr><td>строковый литерал</td><td>один токен <code>"</code>, что бы ни было внутри</td></tr>
+                <tr><td>символьный литерал</td><td>один токен <code>'</code></td></tr>
+                <tr><td>число</td><td>один токен <code>#</code></td></tr>
+                <tr><td>ключевое слово C#</td><td>само себя — <code>if</code> и <code>while</code> никогда не совпадут</td></tr>
+                <tr><td>любое другое слово</td><td><code>n</code> — все идентификаторы читаются одинаково</td></tr>
+                <tr><td>прочий символ</td><td>сам себя</td></tr>
+                <tr><td>пробелы, пустая строка</td><td>не выживают: переформатирование не влияет на совпадение</td></tr>
+              </tbody>
+            </table>
+            <p style="margin-top: var(--space-3)"><strong>Единица сравнения</strong> — окно из <code>windowLines</code> подряд идущих
+              нормализованных строк, несущее не меньше <code>minimumTokens</code> токенов. Окна ниже порога не сравниваются
+              вовсе: строки из скобок и <code>return</code> одинаковы в каждом файле, и их никто не вынесет. Найденная группа
+              растёт построчно назад и вперёд, пока все вхождения согласны, и репортится <strong>один раз как целый
+              регион</strong>. Рост останавливается на строках, уже занятых другим повтором, — ни одна строка не отчитывается
+              дважды. Повтор внутри одного файла не репортится.</p>
+            <p><strong>Почему 30/90 и почему required.</strong> Ретроспектива на трёх репозиториях (1085 tracked
+              <code>.cs</code>): профиль 8/24 дал 354 группы, 24/72 — 14, 30/90 — одну, 36/108 — ни одной. На пилотах 30/90
+              нашёл 12 и 6 пар до целевого рефакторинга и ни одной после; подъём окна до 36 скрыл бы пять из 18 подтверждённых
+              случаев. Размер окна остаётся главным фильтром шума, а <code>minimumTokens</code> в диапазоне 72–150 почти не
+              влиял. С 2.9.0 <code>harness init</code> пишет <code>required</code>; существующая явная policy при upgrade не
+              переписывается.</p>
+            <p><strong>Возможный вред.</strong> Извлечение общего хелпера из двух блоков, которые лишь выглядят похоже,
+              связывает то, что не должно меняться вместе. Совпадение, не пережившее чтения, лечится настройкой детектора или
+              advisory-policy, а не принудительной абстракцией. Архитектурный инвариант, циклы и DSM-бюджет независимо не дают
+              лечить повтор общим модулем с неверным направлением зависимости.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0028-recalibrated-csharp-defaults.md" target="_blank" rel="noreferrer noopener">ADR-0028</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0007-one-finding-one-report.md" target="_blank" rel="noreferrer noopener">ADR-0007</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0045-duplication-required-by-default.md" target="_blank" rel="noreferrer noopener">ADR-0045</a></span>
+          </div>
+          <figure class="explainer__figure">
+            <div class="panel">
+              <div class="panel__head">
+                <span class="panel__title">Нормализация и окно · демо на коротком профиле</span>
+                <div class="panel__controls">
+                  <label class="range-field">окно <input type="range" id="dup-window" min="2" max="8" value="4" /> <output id="dup-window-out">4</output> стр.</label>
+                  <label class="range-field">токенов ≥ <input type="range" id="dup-tokens" min="4" max="40" step="2" value="12" /> <output id="dup-tokens-out">12</output></label>
+                </div>
+              </div>
+              <div class="dup-compare">
+                <div>
+                  <div class="dup-compare__label">OrdersRepository.cs</div>
+                  <pre class="code-block" id="dup-raw-a"></pre>
+                </div>
+                <div>
+                  <div class="dup-compare__label">InvoicesRepository.cs</div>
+                  <pre class="code-block" id="dup-raw-b"></pre>
+                </div>
+                <div>
+                  <div class="dup-compare__label">нормализовано</div>
+                  <pre class="code-block" id="dup-norm-a"></pre>
+                </div>
+                <div>
+                  <div class="dup-compare__label">нормализовано</div>
+                  <pre class="code-block" id="dup-norm-b"></pre>
+                </div>
+              </div>
+              <div class="finding" id="dup-finding" style="margin-top: var(--space-3)"></div>
+            </div>
+            <figcaption>Демо-окно 2–8 строк вместо продуктовых 30/90, иначе на экран не поместится. Разные имена, литералы и числа сходятся к одним токенам; строка <code>return null;</code> меняет форму, и рост региона на ней останавливается.</figcaption>
+          </figure>
+        </article>
+
+        <!-- E. sliced-dotnet -->
+        <article class="explainer explainer--stack" id="deep-arch">
+          <div class="explainer__text">
+            <h3>sliced-dotnet/1: карта архитектуры — это сама файловая система</h3>
+            <p>
+              Контракт 2.0 задумывал per-repo декларации слоёв и модулей, как deptrac или import-linter. ADR-0033 отказался от
+              них по примеру FSD и Steiger: словарь фиксирован методологией, линтер читает дерево и уже знает, что является
+              нарушением. Осознанная правка декларации была бы легальным способом ослабить инвариант; изменить форму теперь
+              можно, только изменив код. Секция <code>architecture</code> сводится к выбору из двух форм — стандарт или
+              <code>applicable: false</code> с причиной для standalone-библиотеки.
+            </p>
+            <p>
+              <strong>Зона</strong> — каталог с <code>Application/</code>; монорепозиторий может содержать несколько зон, рёбра между
+              ними запрещены. <strong>Слои</strong> — фиксированный словарь каталогов в корне зоны, DAG задан стандартом.
+              <strong>Слайсы</strong> — <code>Application/Features/&lt;Слайс&gt;</code> с зеркалами в <code>Api</code>, <code>Consumers</code>,
+              <code>Infrastructure/Features</code> и <code>Domain</code>. Публичный API слайса — его <code>Contracts/</code>; кросс-импорт
+              между слайсами — только явный cross-API <code>Contracts/X/&lt;Потребитель&gt;</code> (перенос нотации <code>@x</code>
+              из FSD 2.1), который вправе импортировать только названный потребитель. <strong>Слой = сборка</strong>: ровно один
+              <code>.csproj</code> на слой с C#-кодом, ProjectReference — по той же таблице.
+            </p>
+          </div>
+          <div class="grid grid-2" style="align-items: start">
+            <div class="panel">
+              <div class="panel__head"><span class="panel__title">Слои и разрешённые рёбра</span></div>
+              <svg class="diagram" id="arch-svg" viewBox="0 0 520 372" role="img" aria-label="Диаграмма слоёв sliced-dotnet/1"></svg>
+              <p class="figure-note" style="margin-top: var(--space-2)">Host — composition root и единственное место, где контракты связываются с реализациями; видит все слои. Пунктир — запрещённое ребро, которое проверка называет по паре слоёв.</p>
+            </div>
+            <div class="panel">
+              <div class="panel__head"><span class="panel__title">Таблица стандарта</span></div>
+              <div class="table-wrap">
+                <table class="table">
+                  <thead><tr><th>Слой</th><th>Назначение</th><th>Разрешённые рёбра</th></tr></thead>
+                  <tbody>
+                    <tr><td>Host</td><td>composition root: Program, DI-wiring, конфигурация</td><td>во все слои</td></tr>
+                    <tr><td>Api</td><td>синхронный вход: controllers, endpoints, команды CLI</td><td>Application, Domain, Shared</td></tr>
+                    <tr><td>Consumers</td><td>асинхронный вход: очереди, подписки, hosted jobs</td><td>Application, Domain, Shared</td></tr>
+                    <tr><td>Application</td><td>use-cases; слайсы в Features/</td><td>Domain, Shared</td></tr>
+                    <tr><td>Domain</td><td>сущности; слайсы в корне, Shared зарезервирован</td><td>Shared</td></tr>
+                    <tr><td>Infrastructure</td><td>адаптеры; слайсы в Features/, Persistence зарезервирован</td><td>Application (только Contracts/), Domain, Shared</td></tr>
+                    <tr><td>Shared</td><td>kernel, утилиты</td><td>—</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="figure-note" style="margin-top: var(--space-3)">Обязательны Host, Application и хотя бы один входной слой. Блокируют: DAG слоёв, изоляция слайсов, обход Contracts/, осиротевшее или пустое зеркало, цикл модулей, linked-компиляция чужого слоя. Advisory-observations без влияния на код возврата: плоский каталог 20+ файлов, взаимные и массовые X-контракты, essence-имена вроде <code>Services</code> или <code>Helpers</code>.</p>
+            </div>
+          </div>
+          <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0033-canonical-standard-over-declarations.md" target="_blank" rel="noreferrer noopener">ADR-0033</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0036-input-layers-read-domain.md" target="_blank" rel="noreferrer noopener">ADR-0036</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0037-segments-by-purpose.md" target="_blank" rel="noreferrer noopener">ADR-0037</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0039-cross-api-density.md" target="_blank" rel="noreferrer noopener">ADR-0039</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0041-layer-is-the-assembly.md" target="_blank" rel="noreferrer noopener">ADR-0041</a> <a href="https://feature-sliced.design" target="_blank" rel="noreferrer noopener">FSD</a></span>
+        </article>
+      </div>
+    </section>
+
+    <!-- ── Builder ──────────────────────────────────────────────────── -->
+    <section class="section" id="builder">
+      <div class="container">
+        <div class="section__kicker">Конструктор</div>
+        <h2 class="section__title">Соберите .harness.json и убедитесь, что в нём есть всё</h2>
+        <p class="section__body">
+          Сначала профиль репозитория — он выставляет оси применимости и архитектуру. Дальше общие проверки и языковые
+          оси: проверка на неприменимой оси остаётся в <code>policy</code> и получает исход <code>NotApplicable</code>, а не
+          исчезает из файла. Справа — файл целиком; счётчик внизу сверяет, что все 24 проверки, 4 оси, 8 ответов и все
+          секции <code>settings</code> на месте — ровно то, что требует ридер.
+        </p>
+        <div class="builder">
+          <div class="builder__steps" id="builder-steps"></div>
+          <aside class="builder__output" aria-label="Результат">
+            <div class="panel">
+              <div class="output-head">
+                <span class="output-head__title">.harness.json</span>
+                <div class="panel__controls">
+                  <button type="button" class="btn btn-secondary btn-sm" id="builder-copy">Скопировать</button>
+                  <button type="button" class="btn btn-ghost btn-sm" id="builder-reset">Сбросить</button>
+                </div>
+              </div>
+              <pre class="code-block output-json" style="margin-top: var(--space-3)"><code id="builder-json"></code></pre>
+            </div>
+            <div class="panel">
+              <div class="panel__head"><span class="panel__title">Что скажет ридер</span></div>
+              <div class="output-status" id="builder-status"></div>
+              <div class="tally" id="builder-tally" style="margin-top: var(--space-3)"></div>
+            </div>
+            <div class="panel">
+              <div class="panel__head"><span class="panel__title">Тот же результат из CLI</span></div>
+              <pre class="code-block"><code id="builder-cli"></code></pre>
+              <p class="figure-note" style="margin-top: var(--space-2)"><code>harness init</code> оставляет ответы рамки <code>{}</code> и <code>frame.* : off</code> (кроме <code>verify</code>), потому что не угадывает toolchain; заодно пишет <code>.harness.budget.json</code> с текущими DSM-метриками и эталонный <code>.editorconfig</code>, если его нет. Файлы в git не добавляет.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Run ──────────────────────────────────────────────────────── -->
+    <section class="section" id="run">
+      <div class="container">
+        <div class="section__kicker">Запуск</div>
+        <h2 class="section__title">Установка, команды, CI</h2>
+        <p class="section__body">
+          Скрипт определяет платформу, сверяет sha256 и кладёт бинарь в <code>~/.local/bin/harness</code> без sudo и без
+          .NET runtime. Той же командой харнес обновляется: пинить при установке нечего, потому что поведение задаёт
+          проверяемый репозиторий, а не бинарь. Внутри репозитория с <code>.harness.json</code> скрипт заодно выполняет
+          <code>harness setup</code>.
+        </p>
+        <div class="grid grid-2" style="margin-top: var(--space-8); align-items: start">
+          <div class="panel">
+            <div class="panel__head"><span class="panel__title">Команды</span></div>
+            <ul class="cmd-list">
+              <li><code>harness init --kind application</code><span>создать явную рамку, бюджет и .editorconfig</span></li>
+              <li><code>harness check [--verbose] [--all]</code><span>проверить репозиторий; <code>--only</code> / <code>--skip</code> по id или группе</span></li>
+              <li><code>harness explain &lt;check-id&gt;</code><span>смысл, формула, пределы и исправление проверки</span></li>
+              <li><code>harness budget update</code><span>создать или ужать DSM-бюджет; повысить нельзя</span></li>
+              <li><code>harness upgrade [--dry-run]</code><span>поднять pin и напечатать маршрут миграции</span></li>
+              <li><code>harness setup</code><span>активировать commit-шаблон и commit-msg hook в клоне</span></li>
+              <li><code>harness commits check a..b</code><span>проверить диапазон сообщений для CI</span></li>
+            </ul>
+          </div>
+          <div class="panel">
+            <div class="panel__head"><span class="panel__title">Пример отчёта</span></div>
+<pre class="code-block code-block--terminal"><code><span class="c-ok">PASS</span>  /srv/repo
+  harness 2.9.0 · repository pins 2.9.0
+   CHECK ID                     FINDINGS
+✅ harness.config               .harness.json contains 8 answers, 24 explicit policy entries
+✅ architecture.sliced-dotnet   architecture map: zone src/Harness · layers [Host, Api, Application, Domain, Infrastructure, Shared]
+✅ complexity.csharp            mean reach 8.65 files · core size 0 files · scope: 112 files inside architecture zone
+✅ docs.policy
+✅ commits.setup
+✅ comments.csharp
+✅ dependencies.csharp          100% of the 1184 names that match a declared type resolved
+✅ duplication.csharp
+✅ build-properties.dotnet
+<span class="c-dim">…</span>
+⚠️ frame.tests.unit             repository answers absent — "ADR-0001: единственный тестовый шов — CLI"
+✅ frame.verify                 repository answers present at verify.sh</code></pre>
+            <p class="figure-note" style="margin-top: var(--space-2)">Заголовок различает <code>PASS</code>, <code>PASS WITH GAPS</code>, <code>NOTHING VERIFIED</code>, <code>FAIL</code> и <code>INCOMPLETE</code>; причины и конкретные замечания раскрывает <code>--verbose</code>.</p>
+          </div>
+        </div>
+        <div class="grid grid-2" style="margin-top: var(--space-5); align-items: start">
+          <div class="panel">
+            <div class="panel__head"><span class="panel__title">GitLab CI</span></div>
+<pre class="code-block"><code><span class="c-key">harness</span>:
+  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.9.0</span>
+  <span class="c-key">script</span>:
+    - harness check
+    - harness commits check <span class="c-str">"$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"</span></code></pre>
+          </div>
+          <div class="panel">
+            <div class="panel__head"><span class="panel__title">GitHub Actions</span></div>
+<pre class="code-block"><code>- <span class="c-key">name</span>: Repository harness
+  <span class="c-key">run</span>: |
+    curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh | sh
+    ~/.local/bin/harness check</code></pre>
+          </div>
+        </div>
+        <div class="exit-codes" style="margin-top: var(--space-5)">
+          <div class="exit"><span class="exit__code is-ok">0</span><p>Каждая выбранная применимая blocking-проверка отработала и прошла. Advisory-находки и readiness gaps при этом возможны — заголовок скажет об этом вместо <code>PASS</code>.</p></div>
+          <div class="exit"><span class="exit__code is-fail">1</span><p>Выбранная применимая blocking-проверка доказала нарушение.</p></div>
+          <div class="exit"><span class="exit__code is-incomplete">2</span><p>Проверку не удалось выполнить достоверно: отсутствующий или невалидный <code>.harness.json</code>, чужой pin, неполный policy, бюджет не найден.</p></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <span>harness-cli · MIT · <a href="https://github.com/gently-whitesnow/harness-cli" target="_blank" rel="noreferrer noopener">github.com/gently-whitesnow/harness-cli</a></span>
+      <span><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/REGISTRY.md" target="_blank" rel="noreferrer noopener">Реестр ADR</a> · <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/AGENTS.md" target="_blank" rel="noreferrer noopener">AGENTS.md</a> · дизайн-система <a href="https://github.com/gently-whitesnow/throne/blob/master/DESIGN.md" target="_blank" rel="noreferrer noopener">Throne</a></span>
+    </div>
+  </footer>
+
+  <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="oklch(0.39 0.02 257)" /></marker>
+      <marker id="arrow-error" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="oklch(0.55 0.24 25)" /></marker>
+      <marker id="arrow-success" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="oklch(0.58 0.2 155)" /></marker>
+      <marker id="arrow-primary" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="oklch(0.5 0.2 255)" /></marker>
+      <marker id="arrow-dim" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="oklch(0.8 0.005 250)" /></marker>
+    </defs>
+  </svg>
+
+  <script src="app.js"></script>
+</body>
+</html>
