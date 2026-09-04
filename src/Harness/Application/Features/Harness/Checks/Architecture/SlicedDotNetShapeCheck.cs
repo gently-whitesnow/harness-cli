@@ -29,7 +29,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private static readonly string[] SliceDimensions = ["Application", .. MirrorLayers];
 
-    private static readonly string[] SlicelessSegmentLayers = ["Host", "Shared"];
+    private static readonly string[] SlicelessSegmentLayers = ["Host"];
 
     // Literal port of Steiger's BAD_NAMES_GENERIC pinned by ADR-0037. Keep local policy out of this set.
     private static readonly HashSet<string> SteigerBadNamesGeneric =
@@ -71,12 +71,11 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
         {
             ["Host"] = [.. Layers],
-            ["Api"] = ["Application", "Domain", "Shared"],
-            ["Consumers"] = ["Application", "Domain", "Shared"],
-            ["Application"] = ["Domain", "Shared"],
-            ["Domain"] = ["Shared"],
-            ["Infrastructure"] = ["Application", "Domain", "Shared"],
-            ["Shared"] = [],
+            ["Api"] = ["Application", "Domain"],
+            ["Consumers"] = ["Application", "Domain"],
+            ["Application"] = ["Domain"],
+            ["Domain"] = [],
+            ["Infrastructure"] = ["Application", "Domain"],
         };
 
     public string Id => "architecture.sliced-dotnet";
@@ -114,12 +113,11 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
           The layer DAG is an invariant, not a score:
             Host           -> every layer
-            Api            -> Application, Domain, Shared
-            Consumers      -> Application, Domain, Shared
-            Application    -> Domain, Shared
-            Domain         -> Shared
-            Infrastructure -> Application/Contracts, Domain, Shared
-            Shared         -> no other layer
+            Api            -> Application, Domain
+            Consumers      -> Application, Domain
+            Application    -> Domain
+            Domain         -> no other layer
+            Infrastructure -> Application/Contracts, Domain
           References inside one layer are allowed. References between architecture zones are
           never allowed. This layer-pair stage accepts Infrastructure -> Application; the public
           API invariant separately restricts its destination to Contracts/. It also accepts all
@@ -153,7 +151,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           Infrastructure/Persistence are reserved non-slice directories. Placeholder-only slices,
           groups and mirrors are empty architecture forms and fail the check.
 
-          Direct segments in slices and in the sliceless Host and Shared layers are named by purpose
+          Direct segments in slices and in the sliceless Host layer are named by purpose
           rather than by the kind of code they contain. The segments-by-purpose finding literally
           ports BAD_NAMES_GENERIC from the Steiger commit pinned by ADR-0037. The five backend
           additions — Common, Manager, Managers, Repository and Repositories — belong to the
@@ -179,15 +177,15 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           reviewable line in the tracked frame and the report states it on every run.
 
         Remediation
-          Move application files under Host, Api, Consumers, Application, Domain, Infrastructure
-          or Shared. Put use-case slices in Application/Features/<Slice>, or group them one level
+          Move application files under Host, Api, Consumers, Application, Domain or
+          Infrastructure. Put use-case slices in Application/Features/<Slice>, or group them one level
           deeper as Application/Features/<Group>/<Slice> without files in the group directory.
           Turn a forbidden dependency around or move the shared concept to an allowed lower layer.
           Give every layer that holds C# sources its own project, replace a Compile Include of
           another layer's sources with a ProjectReference to that layer's project, and remove a
           ProjectReference the layer table does not allow.
           For a cross-slice dependency, prefer merging slices, then moving the shared concept down
-          to Domain or Shared, and use an explicit X/<Consumer> cross-API only as a last resort.
+          to Domain, and use an explicit X/<Consumer> cross-API only as a last resort.
           Give every Application slice a synchronous or asynchronous input mirror, remove orphaned
           mirrors, and replace placeholder-only architecture directories with working code or remove
           the dead form. Rename an essence-based segment such as Services, Validators or Repositories
@@ -463,7 +461,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                 observations.Add(
                     $"advisory {At(zone, $"Application/Features/{producer}")}: mutual-cross-api: slices "
                     + $"'{producer}' and '{partner}' publish cross-APIs for each other; extract the shared "
-                    + "concept into Domain or Shared, or merge the slices");
+                    + "concept into Domain, or merge the slices");
             }
 
             var consumers = consumersByProducer[producer];
@@ -473,7 +471,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                     $"advisory {At(zone, $"Application/Features/{producer}")}: cross-api-fan-in: slice "
                     + $"'{producer}' publishes cross-APIs for {consumers.Count} consumers "
                     + $"[{string.Join(", ", consumers)}]; the slice behaves like a lower layer; move the "
-                    + "shared concept down to Domain or Shared");
+                    + "shared concept down to Domain");
             }
         }
     }

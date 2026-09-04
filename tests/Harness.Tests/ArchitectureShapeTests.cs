@@ -3,7 +3,7 @@ namespace Harness.Tests;
 public sealed class ArchitectureShapeTests
 {
     private static readonly string[] Layers =
-        ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure", "Shared"];
+        ["Host", "Api", "Consumers", "Application", "Domain", "Infrastructure"];
 
     private static readonly string[] SteigerBadNamesGeneric =
     [
@@ -43,12 +43,11 @@ public sealed class ArchitectureShapeTests
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             ["Host"] = Layers,
-            ["Api"] = ["Application", "Domain", "Shared"],
-            ["Consumers"] = ["Application", "Domain", "Shared"],
-            ["Application"] = ["Domain", "Shared"],
-            ["Domain"] = ["Shared"],
-            ["Infrastructure"] = ["Application", "Domain", "Shared"],
-            ["Shared"] = [],
+            ["Api"] = ["Application", "Domain"],
+            ["Consumers"] = ["Application", "Domain"],
+            ["Application"] = ["Domain"],
+            ["Domain"] = [],
+            ["Infrastructure"] = ["Application", "Domain"],
         };
 
     [Theory]
@@ -609,7 +608,6 @@ public sealed class ArchitectureShapeTests
 
     [Theory]
     [InlineData("Host/Services/Startup.cs", "Host", "Services")]
-    [InlineData("Shared/Utils/Text.cs", "Shared", "Utils")]
     public void Sliceless_layers_also_require_purpose_named_direct_segments(
         string relativePath,
         string layer,
@@ -767,7 +765,7 @@ public sealed class ArchitectureShapeTests
     [Theory]
     [InlineData("Application/Contracts/Common/Model.cs", "Application/Contracts/Common", "Common")]
     [InlineData("Api/Validation/Rule.cs", "Api/Validation", "Validation")]
-    [InlineData("Shared/Kernel/Utils/Text.cs", "Shared/Kernel/Utils", "Utils")]
+    [InlineData("Host/Kernel/Utils/Text.cs", "Host/Kernel/Utils", "Utils")]
     [InlineData(
         "Application/Features/Sales/Persistence/Validators/Input.cs",
         "Application/Features/Sales/Persistence/Validators",
@@ -973,7 +971,7 @@ public sealed class ArchitectureShapeTests
     [Fact]
     public void An_inferred_forbidden_edge_does_not_block()
     {
-        using var repository = DependencyRepository("Shared", "Host", proven: false);
+        using var repository = DependencyRepository("Api", "Host", proven: false);
 
         var run = Shape(repository);
 
@@ -1420,12 +1418,15 @@ public sealed class ArchitectureShapeTests
             .WriteFile("src/Orders/Domain/Inventory/Target.cs", EmptyType("Fixture.Targets", "DomainTarget"))
             .WriteFile("src/Orders/Infrastructure/Target.cs", EmptyType("Fixture.Targets", "InfrastructureTarget"))
             .WriteFile(
-                "src/Orders/Shared/From.cs",
+                "src/Orders/Domain/Inventory/From.cs",
                 ProvenReferences(
-                    "Fixture.Shared",
+                    "Fixture.Inventory",
                     "From",
                     "Fixture.Targets",
-                    ["HostTarget", "ApiTarget", "ConsumersTarget", "ApplicationTarget", "DomainTarget", "InfrastructureTarget"]))
+                    ["HostTarget", "ApiTarget", "ConsumersTarget", "ApplicationTarget", "InfrastructureTarget"]))
+            .WriteFile(
+                "src/Orders/Application/Features/Sales/From.cs",
+                ProvenReference("Fixture.Sales", "From", "Fixture.Targets", "HostTarget"))
             .WithInputMirrors()
             .Commit();
 
@@ -1481,7 +1482,7 @@ public sealed class ArchitectureShapeTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.Contains("fitness function", run.Output, StringComparison.Ordinal);
-        Assert.Contains("Infrastructure -> Application/Contracts, Domain, Shared", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Infrastructure -> Application/Contracts, Domain", run.Output, StringComparison.Ordinal);
         Assert.Contains("layer-pair stage accepts Infrastructure -> Application", run.Output, StringComparison.Ordinal);
         Assert.Contains("Domain is the common vocabulary", run.Output, StringComparison.Ordinal);
         Assert.Contains("Slice isolation is evaluated within one layer", run.Output, StringComparison.Ordinal);

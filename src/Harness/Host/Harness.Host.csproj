@@ -26,7 +26,6 @@
     <ProjectReference Include="../Application/Harness.Application.csproj" />
     <ProjectReference Include="../Domain/Harness.Domain.csproj" />
     <ProjectReference Include="../Infrastructure/Harness.Infrastructure.csproj" />
-    <ProjectReference Include="../Shared/Harness.Shared.csproj" />
   </ItemGroup>
 
 </Project>

@@ -48,7 +48,7 @@
     button.addEventListener('click', () => copyText($('#' + button.dataset.copyTarget).textContent, button));
   });
 
-  /* ── Check catalogue (execution order of CheckRegistry, contract 2.11.0) ── */
+  /* ── Check catalogue (execution order of CheckRegistry, contract 2.12.0) ── */
   const CHECKS = [
     { id: 'harness.config', group: 'common', axis: null, summary: 'Tracked .harness.json, который читает весь прогон: version, architecture, answers, applicability, settings, policy. Без него харнес ничего не доказал — Incomplete, код 2.', adr: ['0014-frame-answers-are-self-reported.md', '0016-versioned-frame-and-explicit-initialization.md'] },
     { id: 'architecture.sliced-dotnet', group: 'arch', axis: null, section: 'architecture', summary: 'Зоны, канонические слои и слайсы стандарта sliced-dotnet/1: DAG слоёв, изоляция слайсов, публичный API через Contracts/, зеркала, слой = сборка. Standalone-библиотека отвечает applicable: false.', adr: ['0033-canonical-standard-over-declarations.md', '0041-layer-is-the-assembly.md'] },
@@ -202,9 +202,9 @@
       prefix: 'Shop.',
       nodes: [
         { name: 'Api', x: 80, y: 50 }, { name: 'Orders', x: 260, y: 60 }, { name: 'Billing', x: 430, y: 110 },
-        { name: 'Catalog', x: 110, y: 170 }, { name: 'Notifications', x: 330, y: 220 }, { name: 'Shared', x: 120, y: 265 },
+        { name: 'Catalog', x: 110, y: 170 }, { name: 'Notifications', x: 330, y: 220 }, { name: 'Domain', x: 120, y: 265 },
       ],
-      edges: [['Api', 'Orders'], ['Api', 'Billing'], ['Orders', 'Catalog'], ['Orders', 'Billing'], ['Billing', 'Orders'], ['Billing', 'Notifications'], ['Notifications', 'Orders'], ['Catalog', 'Shared'], ['Orders', 'Shared'], ['Notifications', 'Shared']],
+      edges: [['Api', 'Orders'], ['Api', 'Billing'], ['Orders', 'Catalog'], ['Orders', 'Billing'], ['Billing', 'Orders'], ['Billing', 'Notifications'], ['Notifications', 'Orders'], ['Catalog', 'Domain'], ['Orders', 'Domain'], ['Notifications', 'Domain']],
     },
     adr: {
       prefix: 'Harness.',
@@ -303,7 +303,7 @@
       { name: 'Application/Contracts/IOrderStore.cs', x: 370, y: 170, side: 'right' },
       { name: 'Domain/Order.cs', x: 260, y: 225, side: 'right' },
       { name: 'Domain/Money.cs', x: 150, y: 270, side: 'left' },
-      { name: 'Shared/Clock.cs', x: 370, y: 270, side: 'right' },
+      { name: 'Domain/Shared/Clock.cs', x: 370, y: 270, side: 'right' },
     ],
     edges: [[0, 1], [0, 2], [0, 3], [1, 3], [3, 4], [3, 5], [3, 7], [4, 5], [5, 6], [2, 4], [2, 5]],
   };
@@ -536,15 +536,12 @@
     svgEl('text', { x: 32, y: 226, class: 'label is-error' }, svg).textContent = 'Orders → Billing напрямую запрещено; только через X/Orders';
     layer('Domain', 20, 256, 300, 56, 'is-domain');
     slice('Orders', 32, 282, 80); slice('Billing', 120, 282, 80); slice('Shared', 208, 282, 80);
-    layer('Shared', 20, 332, 480, 30);
     // allowed
     arrow(90, 98, 90, 118);
     arrow(250, 98, 250, 118);
     arrow(170, 236, 170, 256);
-    arrow(170, 312, 170, 332);
     arrow(380, 150, 320, 192, '', 'только Contracts/', 326, 112);
     arrow(380, 232, 320, 290);
-    arrow(440, 290, 440, 332);
     arrow(60, 38, 60, 58, '', 'composition root видит всё', 100, 52);
     // forbidden
     arrow(300, 256, 300, 236, 'forbidden', 'Domain → Application запрещено', 180, 250);
@@ -610,7 +607,7 @@
     const policy = {};
     for (const check of CHECKS) policy[check.id] = state.policy[check.id];
     return {
-      version: state.latest ? 'latest' : '2.11.0',
+      version: state.latest ? 'latest' : '2.12.0',
       architecture: state.kind === 'application' ? { standard: 'sliced-dotnet/1' } : { applicable: false, reason: state.archReason },
       answers, applicability, settings, policy,
     };
@@ -650,7 +647,7 @@
   function evaluate(config) {
     const lines = [];
     const add = (level, text) => lines.push({ level, text });
-    add('ok', `version "${config.version}" — контракт ${config.version === 'latest' ? 'следует за установленным бинарём' : '2.11.0, тот же, что исполняет бинарь'}.`);
+    add('ok', `version "${config.version}" — контракт ${config.version === 'latest' ? 'следует за установленным бинарём' : '2.12.0, тот же, что исполняет бинарь'}.`);
     if (config.architecture.standard) add('ok', 'architecture: sliced-dotnet/1 — architecture.sliced-dotnet проверит зоны, слои и слайсы; complexity.csharp измерит только файлы внутри зон.');
     else if (!config.architecture.reason.trim()) add('error', 'architecture.reason должен объяснить, почему стандарт не применим — иначе Incomplete.');
     else add('ok', `architecture: applicable false — "${config.architecture.reason}". architecture.sliced-dotnet → NotApplicable; DSM измеряет репозиторий целиком.`);
@@ -714,8 +711,8 @@
         state.kind === 'library' ? el('div', { class: 'field__reason' }, [el('input', { class: 'text-input', type: 'text', value: state.archReason, placeholder: 'reason: почему стандарт не применим', oninput: (e) => { state.archReason = e.target.value; renderOutput(); } })]) : null,
       ]),
       el('div', { class: 'field' }, [
-        el('div', { class: 'field__label' }, [el('code', { text: 'version' }), el('small', { text: '"2.11.0" пинит контракт; "latest" включает rolling-контракт вслед за установленным бинарём.' })]),
-        seg([{ value: 'pin', label: '2.11.0' }, { value: 'latest', label: 'latest' }], state.latest ? 'latest' : 'pin', (v) => { state.latest = v === 'latest'; update(); }),
+        el('div', { class: 'field__label' }, [el('code', { text: 'version' }), el('small', { text: '"2.12.0" пинит контракт; "latest" включает rolling-контракт вслед за установленным бинарём.' })]),
+        seg([{ value: 'pin', label: '2.12.0' }, { value: 'latest', label: 'latest' }], state.latest ? 'latest' : 'pin', (v) => { state.latest = v === 'latest'; update(); }),
       ]),
     ]);
     root.appendChild(step(2, 'Архитектура и контракт', null, archBody));

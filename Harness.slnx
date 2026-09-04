@@ -5,7 +5,6 @@
     <Project Path="src/Harness/Application/Harness.Application.csproj" />
     <Project Path="src/Harness/Domain/Harness.Domain.csproj" />
     <Project Path="src/Harness/Infrastructure/Harness.Infrastructure.csproj" />
-    <Project Path="src/Harness/Shared/Harness.Shared.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Harness.Tests/Harness.Tests.csproj" />

@@ -1,7 +1,8 @@
 # ADR-0033. Канонический стандарт вместо деклараций: sliced-dotnet
 
 Статус: принят. Дата: 2026-08-27. Уточняет ярус 1
-[ADR-0032](0032-topology-over-thresholds.md) до начала его реализации.
+[ADR-0032](0032-topology-over-thresholds.md) до начала его реализации. Слой `Shared` убран
+[ADR-0050](0050-domain-is-the-bottom-layer.md): основание таблицы — `Domain`.
 
 ## Контекст
 
