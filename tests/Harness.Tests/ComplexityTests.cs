@@ -163,6 +163,61 @@ public sealed class ComplexityTests
     }
 
     [Fact]
+    public void Without_a_zone_files_under_a_test_project_are_not_measured()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent())
+            .WriteFile("src/Lib/Lib.csproj", Fixtures.SimpleSdkProject)
+            .WriteFile("src/Lib/Core.cs", "namespace Lib;\n\npublic sealed class Core;\n")
+            .WriteFile("src/Lib/Facade.cs", Reference("Lib", "Facade", "Lib", ["Core"]))
+            .WriteFile("tests/Lib.Tests/Lib.Tests.csproj", Fixtures.PreviouslyRecognizedIntegrationProject)
+            .WriteFile("tests/Lib.Tests/CoreTests.cs", Reference("Lib.Tests", "CoreTests", "Lib", ["Core", "Facade"]))
+            .WriteFile("tests/Lib.Tests/Support/Builder.cs", Reference("Lib.Tests.Support", "Builder", "Lib", ["Core"]))
+            .Commit();
+
+        var run = Measure(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("mean reach: 1.50 files (3 reachable file pairs / 2 files"), run.Output);
+        Assert.True(run.OutputContains("scope: 2 authored files outside 1 test project [tests/Lib.Tests] (no architecture zone); 2 authored files under test projects are not measured"), run.Output);
+    }
+
+    [Theory]
+    [InlineData("<PropertyGroup><IsTestProject>true</IsTestProject></PropertyGroup>")]
+    [InlineData("<ItemGroup><PackageReference Include=\"NUnit\" /></ItemGroup>")]
+    [InlineData("<ItemGroup><PackageReference Include=\"xunit.v3\" Version=\"1.0.0\" /></ItemGroup>")]
+    [InlineData("<ItemGroup><PackageReference Include=\"MSTest\" /></ItemGroup>")]
+    public void A_test_project_is_recognised_from_its_own_xml(string marker)
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent())
+            .WriteFile("src/Lib/Lib.csproj", Fixtures.SimpleSdkProject)
+            .WriteFile("src/Lib/Core.cs", "namespace Lib;\n\npublic sealed class Core;\n")
+            .WriteFile("tests/Lib.Tests/Lib.Tests.csproj", $"<Project Sdk=\"Microsoft.NET.Sdk\">{marker}</Project>\n")
+            .WriteFile("tests/Lib.Tests/CoreTests.cs", Reference("Lib.Tests", "CoreTests", "Lib", ["Core"]))
+            .Commit();
+
+        var run = Measure(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("scope: 1 authored files outside 1 test project [tests/Lib.Tests]"), run.Output);
+    }
+
+    [Fact]
+    public void A_project_without_a_test_marker_keeps_its_files_in_the_measurement()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent())
+            .WriteFile("src/Lib/Lib.csproj", Fixtures.SimpleSdkProject)
+            .WriteFile("src/Lib/Core.cs", "namespace Lib;\n\npublic sealed class Core;\n")
+            .WriteFile("tools/Bench/Bench.csproj", Fixtures.SimpleSdkProject)
+            .WriteFile("tools/Bench/Program.cs", Reference("Bench", "Program", "Lib", ["Core"]))
+            .Commit();
+
+        var run = Measure(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("scope: 2 authored files (no architecture zone; the repository is measured whole)"), run.Output);
+    }
+
+    [Fact]
     public void A_tracked_file_with_a_generated_marker_is_named_but_not_read()
     {
         using var repository = Graph(("A", ["B"]), ("B", []))

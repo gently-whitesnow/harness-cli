@@ -3,38 +3,68 @@ using Harness.Structure;
 namespace Harness.Checks.Complexity;
 
 /// <summary>
-/// Which files the DSM measures. Inside a sliced-dotnet repository that is the product: the
-/// files under its architecture zones. Tests, tooling and samples outside the zones still
-/// exist in the graph the language read, but an edge into them lends no reachability here.
-/// A repository without a zone is measured whole, because nothing marks its product apart.
+/// Which files the DSM measures: the product, read from the tree and never from an answer.
+/// Inside a sliced-dotnet repository that is the files under its architecture zones. Without
+/// a zone, it is every authored file whose nearest tracked project is not a test project, so
+/// a monolith or a library still leaves its test hosts out. Only when nothing marks a test
+/// apart is the repository measured whole. Files outside the scope still exist in the graph
+/// the language read, but an edge into them lends no reachability here.
 /// </summary>
-internal sealed record DsmScope(SourceGraph Graph, IReadOnlyList<string> Zones, int OutsideFiles)
+internal sealed record DsmScope(
+    SourceGraph Graph,
+    IReadOnlyList<string> Zones,
+    IReadOnlyList<string> TestProjects,
+    int OutsideFiles)
 {
-    public static DsmScope Of(SourceGraph graph, bool architectureApplicable, IReadOnlyList<string> trackedPaths)
+    public static DsmScope Of(
+        SourceGraph graph,
+        bool architectureApplicable,
+        IReadOnlyList<string> trackedPaths,
+        IReadOnlyList<(string Path, bool IsTest)> projects)
     {
         var zones = architectureApplicable ? ArchitectureZones.Discover(trackedPaths) : [];
-        if (zones.Count == 0)
+        if (zones.Count > 0)
         {
-            return new DsmScope(graph, [], 0);
+            var inside = graph.Within(path => ArchitectureZones.Contains(zones, path));
+            return new DsmScope(inside, zones, [], graph.SourcePaths.Count - inside.SourcePaths.Count);
         }
 
-        var inside = graph.Within(path => ArchitectureZones.Contains(zones, path));
-        return new DsmScope(inside, zones, graph.SourcePaths.Count - inside.SourcePaths.Count);
+        var testDirectories = projects
+            .Where(project => project.IsTest)
+            .Select(project => DirectoryOf(project.Path))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        if (testDirectories.Count == 0)
+        {
+            return new DsmScope(graph, [], [], 0);
+        }
+
+        var owners = projects.Select(project => DirectoryOf(project.Path)).ToHashSet(StringComparer.Ordinal);
+        var tests = testDirectories.ToHashSet(StringComparer.Ordinal);
+        var product = graph.Within(path => NearestProject(path, owners) is not { } owner || !tests.Contains(owner));
+        return new DsmScope(product, [], testDirectories, graph.SourcePaths.Count - product.SourcePaths.Count);
     }
 
     public string Describe()
     {
         var measured = Graph.SourcePaths.Count;
-        if (Zones.Count == 0)
+        if (Zones.Count > 0)
         {
-            return $"scope: {measured} authored files (no architecture zone; the repository is measured whole)";
+            var zoneList = string.Join(", ", Zones.Select(ArchitectureZones.Display));
+            return $"scope: {measured} files inside architecture zone{(Zones.Count == 1 ? "" : "s")} [{zoneList}]; "
+                + Outside("outside the zones");
         }
 
-        var zoneList = string.Join(", ", Zones.Select(ArchitectureZones.Display));
-        var outside = OutsideFiles == 1
-            ? "1 authored file outside the zones is not measured"
-            : $"{OutsideFiles} authored files outside the zones are not measured";
-        return $"scope: {measured} files inside architecture zone{(Zones.Count == 1 ? "" : "s")} [{zoneList}]; {outside}";
+        if (TestProjects.Count > 0)
+        {
+            var projectList = string.Join(", ", TestProjects.Select(ArchitectureZones.Display));
+            return $"scope: {measured} authored files outside {TestProjects.Count} test "
+                + $"project{(TestProjects.Count == 1 ? "" : "s")} [{projectList}] (no architecture zone); "
+                + Outside("under test projects");
+        }
+
+        return $"scope: {measured} authored files (no architecture zone; the repository is measured whole)";
     }
 
     public string? DescribeMarkedGenerated()
@@ -51,5 +81,36 @@ internal sealed record DsmScope(SourceGraph Graph, IReadOnlyList<string> Zones, 
         return $"generated markers: {files}: "
             + string.Join(", ", Graph.MarkedGenerated.Take(5))
             + (count > 5 ? $", and {count - 5} more" : "");
+    }
+
+    private string Outside(string where)
+        => OutsideFiles == 1
+            ? $"1 authored file {where} is not measured"
+            : $"{OutsideFiles} authored files {where} are not measured";
+
+    /// <summary>The directory of the closest project at or above the file, or null when no project owns it.</summary>
+    private static string? NearestProject(string path, HashSet<string> projectDirectories)
+    {
+        var directory = DirectoryOf(path);
+        while (true)
+        {
+            if (projectDirectories.Contains(directory))
+            {
+                return directory;
+            }
+
+            if (directory.Length == 0)
+            {
+                return null;
+            }
+
+            directory = DirectoryOf(directory);
+        }
+    }
+
+    private static string DirectoryOf(string path)
+    {
+        var separator = path.LastIndexOf('/');
+        return separator < 0 ? string.Empty : path[..separator];
     }
 }

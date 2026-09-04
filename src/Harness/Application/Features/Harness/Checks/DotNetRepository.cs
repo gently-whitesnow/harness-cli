@@ -1,7 +1,7 @@
 using System.Xml.Linq;
 using Harness.Repository;
 
-namespace Harness.Checks.DotNet;
+namespace Harness.Checks;
 
 internal static class DotNetRepository
 {
@@ -12,14 +12,58 @@ internal static class DotNetRepository
     public static readonly IReadOnlyList<EvidenceFile> ProjectFiles =
         [new("*.csproj"), new("*.fsproj"), new("*.vbproj")];
 
+    private static readonly HashSet<string> TestPackages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Microsoft.NET.Test.Sdk",
+        "xunit",
+        "xunit.v3",
+        "xunit.core",
+        "NUnit",
+        "MSTest",
+        "MSTest.TestFramework",
+        "MSTest.TestAdapter",
+        "TUnit",
+    };
+
     public static (IReadOnlyList<DotNetFile> Projects, string? Failure) ReadProjects(CheckContext context)
+        => ReadProjects(context.Repository, ProjectFiles.SelectMany(context.Tracked));
+
+    public static (IReadOnlyList<DotNetFile> Projects, string? Failure) ReadProjects(IRepository repository)
+        => ReadProjects(
+            repository,
+            repository.TrackedEntries.Where(entry => ProjectFiles.Any(file => file.Matches(entry.Path))));
+
+    /// <summary>
+    /// Read from the project's own XML only, so a marker inherited through Directory.Build.props
+    /// is not seen; the DSM report names the projects this leaves out.
+    /// </summary>
+    public static bool IsTestProject(DotNetFile file)
+    {
+        if (Elements(file, "IsTestProject").Any(element =>
+            string.Equals(Value(element), "true", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        var sdk = file.Root.Attribute("Sdk")?.Value;
+        if (sdk is not null && sdk.StartsWith("MSTest.Sdk", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return Elements(file, "PackageReference")
+            .Select(element => element.Attribute("Include")?.Value ?? element.Attribute("Update")?.Value)
+            .Any(package => package is not null && TestPackages.Contains(package.Trim()));
+    }
+
+    private static (IReadOnlyList<DotNetFile> Projects, string? Failure) ReadProjects(
+        IRepository repository,
+        IEnumerable<TrackedEntry> entries)
     {
         var projects = new List<DotNetFile>();
-        foreach (var entry in ProjectFiles
-            .SelectMany(context.Tracked)
-            .Where(entry => !RepositoryLocations.IsGenerated(entry.Path)))
+        foreach (var entry in entries.Where(entry => !RepositoryLocations.IsGenerated(entry.Path)))
         {
-            var (file, failure) = ReadXml(context.Repository, entry);
+            var (file, failure) = ReadXml(repository, entry);
             if (failure is not null)
             {
                 return ([], failure);

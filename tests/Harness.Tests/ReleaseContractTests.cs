@@ -59,6 +59,7 @@ public sealed class ReleaseContractTests
         Assert.Contains(".harness.budget.json", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("duplication.csharp as required", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("answers.verify", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("nearest .csproj is a", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains($"\"version\": \"{Release.Current}\"", File.ReadAllText(repository.Absolute(".harness.json")), StringComparison.Ordinal);
     }
 

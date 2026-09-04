@@ -109,6 +109,14 @@ internal static class FrameUpgrade
                    applicable quality check, including `harness check`; frame.verify is
                    required by default, while the harness records the path but never runs
                    or inspects the repository toolchain
+        Release 2.10 changes:
+          changed  complexity.csharp draws the product boundary without an architecture zone
+                   from tracked project files: authored .cs files whose nearest .csproj is a
+                   test project (Microsoft.NET.Test.Sdk, xunit, NUnit, MSTest, TUnit,
+                   IsTestProject or MSTest.Sdk) leave the DSM, so a monolith or a library is
+                   no longer measured together with its test hosts; sliced-dotnet zones are
+                   unchanged, and a repository without any test project is still measured
+                   whole — run `harness budget update` to record the lower value if you wish
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }

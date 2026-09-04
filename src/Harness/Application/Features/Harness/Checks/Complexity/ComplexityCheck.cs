@@ -11,7 +11,7 @@ internal sealed class ComplexityCheck(
 {
     private static readonly EvidenceFile BudgetEvidence = new(ComplexityBudget.FileName);
 
-    public override IReadOnlyList<EvidenceFile> Evidence => [BudgetEvidence];
+    public override IReadOnlyList<EvidenceFile> Evidence => [BudgetEvidence, .. DotNetRepository.ProjectFiles];
 
     public override string Explanation => ComplexityExplanation.Text;
 
@@ -39,8 +39,18 @@ internal sealed class ComplexityCheck(
             return CheckEvaluation.NotApplicable(Analyzer.NothingToAnalyze, [budgetObservation]);
         }
 
+        var (projects, projectFailure) = DotNetRepository.ReadProjects(context);
+        if (projectFailure is not null)
+        {
+            return CheckEvaluation.Incomplete(projectFailure, [budgetObservation]);
+        }
+
         var architectureApplicable = context.Config?.Architecture is { IsApplicable: true };
-        var scope = ComplexityBudgetUpdater.Scope(context.Repository, graph, architectureApplicable);
+        var scope = DsmScope.Of(
+            graph,
+            architectureApplicable,
+            context.Repository.TrackedEntries.Where(entry => !entry.IsSymbolicLink).Select(entry => entry.Path).ToList(),
+            projects.Select(project => (project.Path, DotNetRepository.IsTestProject(project))).ToList());
         var metric = RepositoryComplexity.Measure(scope.Graph);
         var observations = new List<string>
         {
