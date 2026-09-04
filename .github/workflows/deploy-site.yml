@@ -1,0 +1,46 @@
+# Деплой статики site/ на VPS по кнопке: releases/<sha> → симлинк current.
+# Секреты: DEPLOY_SSH_KEY (приватный deploy-ключ), DEPLOY_HOST (хост сервера).
+name: Deploy site (static)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-harness-site
+  cancel-in-progress: false
+
+env:
+  SITE_NAME: harness
+  SITE_DIR: site
+  SSH_USER: web
+  KEEP_RELEASES: 5
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sanity check
+        run: |
+          test -f "${SITE_DIR}/index.html" || { echo "${SITE_DIR}/index.html не найден"; exit 1; }
+          rm -f "${SITE_DIR}/AGENTS.md" "${SITE_DIR}/CLAUDE.md"
+
+      - name: Deploy via rsync
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id && chmod 600 ~/.ssh/id
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+          BASE="/var/www/${SITE_NAME}"
+          REL="${BASE}/releases/${GITHUB_SHA}"
+          SSH="ssh -i ~/.ssh/id ${SSH_USER}@${HOST}"
+
+          $SSH "mkdir -p '${REL}'"
+          rsync -az --delete -e "ssh -i ~/.ssh/id" "${SITE_DIR}/" "${SSH_USER}@${HOST}:${REL}/"
+          $SSH "ln -sfn '${REL}' '${BASE}/current'"
+          $SSH "ls -1dt ${BASE}/releases/*/ | tail -n +$((KEEP_RELEASES + 1)) | xargs -r rm -rf"
+          echo "Deployed ${GITHUB_SHA} → ${BASE}/current"

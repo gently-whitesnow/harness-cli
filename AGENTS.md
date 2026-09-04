@@ -107,6 +107,7 @@ setup` включает шаблон и `commit-msg` hook в общем ката
   - `Infrastructure/Features/Harness/Languages/CSharp/` — C#-ридер в отдельном infra namespace.
   - `Shared/Versioning/` — версия бинаря и граница текущего контракта.
 - `tests/Harness.Tests` — приёмочные тесты, которые гоняют скомпилированный исполняемый файл.
+- `site/` — публичный лендинг без сборки; реестр проверок и версия там зеркалят бинарь и сверяются тестом, таблица «что обновлять» — `site/AGENTS.md` ([ADR-0047](adrs/0047-landing-mirrors-the-contract.md)).
 - `adrs/` — долговременные решения; правила ниже ссылаются туда за обоснованием.
   Реестр — [`adrs/REGISTRY.md`](adrs/REGISTRY.md), шаблон — `adrs/.template.md`.
 
