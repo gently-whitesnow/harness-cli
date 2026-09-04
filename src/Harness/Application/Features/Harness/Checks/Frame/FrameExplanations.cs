@@ -9,13 +9,18 @@ internal static class FrameExplanations
         "tests.unit",
         "tests that exercise units of this repository in isolation",
         "tests/Unit",
-        "Only the repository knows which of its tests are unit tests; the harness accepts that classification.");
+        "Only the repository knows which of its tests are unit tests; the harness accepts that classification. "
+            + "The address is the test project — its directory or project file — never the test files inside "
+            + "it: a reader runs a project, and a list of files is an inventory that goes stale with the next "
+            + "test. A repository with several suites names each project once.");
 
     public static string IntegrationTests => For(
         "tests.integration",
         "tests that exercise components together rather than in isolation",
         "tests/Integration",
-        "The repository defines the boundary between integration and other test types.");
+        "The repository defines the boundary between integration and other test types. The address is the "
+            + "test project — its directory or project file — never the test files inside it; a project that "
+            + "mixes integration tests with others is described with `present` and a reason.");
 
     public static string Architecture => For(
         "tests.architecture",
@@ -67,7 +72,7 @@ internal static class FrameExplanations
             "{{key}}": { "paths": ["{{address}}"] }
           }
 
-          "paths"              present, with navigation addresses; paths are not inspected
+          "paths"              present, with at most five navigation addresses; paths are not inspected
           "present" + reason   present or absent without a useful address
           "applicable" false   the question does not apply; a reason is required
 

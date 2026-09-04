@@ -38,7 +38,7 @@
           <path d="M8 12.5l2.5 2.5L16 9.5" />
         </svg>
         <span>harness</span>
-        <span class="brand__version">2.10.0</span>
+        <span class="brand__version">2.11.0</span>
       </a>
       <nav class="site-nav" aria-label="Основная навигация">
         <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#checks">Проверки</a>
@@ -57,7 +57,7 @@
     <!-- ── Hero ─────────────────────────────────────────────────────── -->
     <section class="section hero" id="top">
       <div class="container">
-        <span class="badge badge--mono">контракт 2.10.0 · NativeAOT · только git</span>
+        <span class="badge badge--mono">контракт 2.11.0 · NativeAOT · только git</span>
         <h1 class="hero__title">Одна рамка качества над разными репозиториями.</h1>
         <p class="section__body hero__lead">
           Harness — standalone CLI, который читает tracked <code>.harness.json</code>, измеряет то, что можно одинаково
@@ -112,8 +112,8 @@
           </div>
           <div class="card">
             <h3>Рамка self-reported</h3>
-            <p>Репозиторий отвечает на вопросы рамки сам, в tracked <code>.harness.json</code>. <code>paths</code> — навигация, не доказательство. Харнес валидирует полноту и форму ответов, но не инспектирует их и не ищет опровержения в git.</p>
-            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0014-frame-answers-are-self-reported.md" target="_blank" rel="noreferrer noopener">ADR-0014</a></span>
+            <p>Репозиторий отвечает на вопросы рамки сам, в tracked <code>.harness.json</code>. <code>paths</code> — навигация, не доказательство: не более пяти адресов, а для тестов адрес — проект, который их запускает, не файлы внутри него. Харнес валидирует полноту и форму ответов, но не инспектирует их и не ищет опровержения в git.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0014-frame-answers-are-self-reported.md" target="_blank" rel="noreferrer noopener">ADR-0014</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0049-test-suite-address-is-the-project.md" target="_blank" rel="noreferrer noopener">ADR-0049</a></span>
           </div>
           <div class="card">
             <h3>Тихих фич нет</h3>
@@ -142,7 +142,7 @@
     <!-- ── Checks ───────────────────────────────────────────────────── -->
     <section class="section" id="checks">
       <div class="container">
-        <div class="section__kicker">24 проверки · контракт 2.10.0</div>
+        <div class="section__kicker">24 проверки · контракт 2.11.0</div>
         <h2 class="section__title">Каждая проверка названа, и каждая — в конфиге</h2>
         <p class="section__body">
           Идентификатор — <code>&lt;семейство&gt;.&lt;язык&gt;</code>. Ось <code>applicability</code> выключает все проверки
@@ -151,7 +151,7 @@
           комментариев со своими settings.
         </p>
         <p class="section__body">
-          Ниже — все проверки, которые ships бинарь 2.10.0, в порядке исполнения. Их же перечисляет <code>harness help</code>,
+          Ниже — все проверки, которые ships бинарь 2.11.0, в порядке исполнения. Их же перечисляет <code>harness help</code>,
           их же требует ридер <code>.harness.json</code>: если хотя бы одной нет в <code>policy</code>, прогон завершается
           <code>Incomplete</code> и называет пропущенный ключ. Подробности каждой — <code>harness explain &lt;check-id&gt;</code>.
         </p>
@@ -535,7 +535,7 @@
           <div class="panel">
             <div class="panel__head"><span class="panel__title">Пример отчёта</span></div>
 <pre class="code-block code-block--terminal"><code><span class="c-ok">PASS</span>  /srv/repo
-  harness 2.10.0 · repository pins 2.10.0
+  harness 2.11.0 · repository pins 2.11.0
    CHECK ID                     FINDINGS
 ✅ harness.config               .harness.json contains 8 answers, 24 explicit policy entries
 ✅ architecture.sliced-dotnet   architecture map: zone src/Harness · layers [Host, Api, Application, Domain, Infrastructure, Shared]
@@ -556,7 +556,7 @@
           <div class="panel">
             <div class="panel__head"><span class="panel__title">GitLab CI</span></div>
 <pre class="code-block"><code><span class="c-key">harness</span>:
-  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.10.0</span>
+  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.11.0</span>
   <span class="c-key">script</span>:
     - harness check
     - harness commits check <span class="c-str">"$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"</span></code></pre>
