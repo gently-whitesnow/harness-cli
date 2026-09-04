@@ -70,6 +70,7 @@ internal static class CheckRegistry
             new LintFrameCheck(),
             new BuildFrameCheck(),
             new TypecheckFrameCheck(),
+            new VerifyFrameCheck(),
         ];
     }
 

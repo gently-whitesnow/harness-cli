@@ -13,7 +13,7 @@ public sealed class Frame
         """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.typescript": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "commits": { "language": "ru", "requireSetup": false } }""";
 
     private static readonly string[] Questions =
-        ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck"];
+        ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck", "verify"];
 
     private static readonly string[] Checks =
     [
@@ -22,7 +22,7 @@ public sealed class Frame
         "types-per-file.csharp", "dependencies.csharp",
         "duplication.csharp", "build-properties.dotnet", "central-packages.dotnet",
         "solution-format.dotnet", "editorconfig.dotnet", "warning-suppressions.dotnet", "frame.tests.unit", "frame.tests.integration",
-        "frame.tests.architecture", "frame.format", "frame.lint", "frame.build", "frame.typecheck",
+        "frame.tests.architecture", "frame.format", "frame.lint", "frame.build", "frame.typecheck", "frame.verify",
     ];
 
     private readonly Dictionary<string, string> answers = Questions.ToDictionary(
@@ -62,6 +62,8 @@ public sealed class Frame
         {
             frame.Present(question, "fixture provides it");
         }
+
+        frame.Located("verify", "verify");
 
         return frame;
     }

@@ -94,4 +94,34 @@ public sealed class FrameQuestionTests
         Assert.True(run.OutputContains("self-reported"), run.Output);
         Assert.True(run.OutputContains("not inspected"), run.Output);
     }
+
+    [Fact]
+    public void Verify_names_one_repository_owned_entry_point_without_running_it()
+    {
+        using var repository = Fixtures.Compliant(Frame.Answering().Located("verify", "verify"));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.verify");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("verify"), run.Output);
+        Assert.True(run.OutputContains("does not inspect"), run.Output);
+
+        var explanation = HarnessCli.Run(repository.Path, "explain", "frame.verify");
+        Assert.Equal(0, explanation.ExitCode);
+        Assert.True(explanation.OutputContains("every applicable quality check"), explanation.Output);
+        Assert.True(explanation.OutputContains("never executes"), explanation.Output);
+    }
+
+    [Theory]
+    [InlineData("{ \"present\": true, \"reason\": \"CI knows how\" }", "must use `paths`")]
+    [InlineData("{ \"applicable\": false, \"reason\": \"no CI\" }", "cannot be not applicable")]
+    public void Verify_requires_a_runnable_address_for_every_repository(string answer, string expected)
+    {
+        using var repository = Fixtures.Compliant(Frame.Answering().With("verify", answer));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.verify");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains(expected), run.Output);
+    }
 }

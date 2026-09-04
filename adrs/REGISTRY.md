@@ -53,6 +53,9 @@
 - [ADR-0020](0020-commit-message-contract-and-clone-setup.md) — Conventional header и
   структурированный локализованный body проверяются одним валидатором в hook и CI;
   `setup` активирует clone-local hook/template, а `commits.setup` доказывает активацию.
+- [ADR-0046](0046-unified-verification-entry-point.md) — Обязательный self-reported
+  `answers.verify.paths` называет tracked repository-owned скрипт всех применимых проверок;
+  harness не инспектирует и не запускает его, а `init` сразу ставит `frame.verify: required`.
 
 ## Анализ и отчёт
 <!-- Как измеряются и как подаются эвристические находки -->
