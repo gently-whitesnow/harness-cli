@@ -22,6 +22,8 @@ public static class NativePublication
                 "--configuration", "Release",
                 "--runtime", RuntimeInformation.RuntimeIdentifier,
                 "--output", outputDirectory,
+                "-nodeReuse:false",
+                "-p:UseSharedCompilation=false",
             ],
             Release.RepositoryRoot());
 
