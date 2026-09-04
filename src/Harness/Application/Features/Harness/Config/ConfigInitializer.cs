@@ -155,7 +155,9 @@ internal static class ConfigInitializer
         for (var index = 0; index < checks.Count; index++)
         {
             var check = checks[index];
-            var policy = check.Id.StartsWith("frame.", StringComparison.Ordinal)
+            var policy = check.Id == "frame.verify"
+                ? "required"
+                : check.Id.StartsWith("frame.", StringComparison.Ordinal)
                 ? "off"
                 : "required";
             text.Append("    \"").Append(check.Id).Append("\": \"").Append(policy).Append('"')

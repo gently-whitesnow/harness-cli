@@ -26,6 +26,9 @@
     "typecheck": {
       "applicable": false,
       "reason": "нет web-стека; типы этого репозитория проверяет компилятор C# на сборке"
+    },
+    "verify": {
+      "paths": ["verify.sh"]
     }
   },
   "applicability": {
@@ -79,6 +82,7 @@
     "frame.format": "required",
     "frame.lint": "required",
     "frame.build": "required",
-    "frame.typecheck": "required"
+    "frame.typecheck": "required",
+    "frame.verify": "required"
   }
 }

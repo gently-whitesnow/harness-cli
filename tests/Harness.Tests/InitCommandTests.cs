@@ -5,7 +5,7 @@ namespace Harness.Tests;
 public sealed class InitCommandTests
 {
     private static readonly string[] Questions =
-        ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck"];
+        ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck", "verify"];
 
     [Fact]
     public void Init_from_a_subdirectory_creates_an_untracked_unanswered_frame_at_the_git_root()
@@ -47,9 +47,11 @@ public sealed class InitCommandTests
         AssertDefaultSettings(root.GetProperty("settings"));
         Assert.Contains("harness-hooks", repository.Git("config", "--local", "--get", "core.hooksPath"));
         Assert.All(root.GetProperty("policy").EnumerateObject(), entry =>
-            Assert.Equal(entry.Name.StartsWith("frame.", StringComparison.Ordinal)
-                ? "off"
-                : "required", entry.Value.GetString()));
+            Assert.Equal(entry.Name == "frame.verify"
+                ? "required"
+                : entry.Name.StartsWith("frame.", StringComparison.Ordinal)
+                    ? "off"
+                    : "required", entry.Value.GetString()));
         Assert.True(File.Exists(repository.Absolute(".harness.budget.json")));
         Assert.StartsWith("{\n", File.ReadAllText(path), StringComparison.Ordinal);
         Assert.Contains("\n  \"policy\": {\n", File.ReadAllText(path), StringComparison.Ordinal);
@@ -188,6 +190,13 @@ public sealed class InitCommandTests
             .Commit();
 
         Assert.Equal(0, HarnessCli.RunWithInput(repository.Path, "application\n", "init").ExitCode);
+        var framePath = repository.Absolute(".harness.json");
+        File.WriteAllText(
+            framePath,
+            File.ReadAllText(framePath).Replace(
+                "\"verify\": {}",
+                "\"verify\": { \"paths\": [\"verify.sh\"] }",
+                StringComparison.Ordinal));
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
 
         var check = HarnessCli.Run(repository.Path, "check");
@@ -202,7 +211,7 @@ public sealed class InitCommandTests
     }
 
     [Fact]
-    public void Initialized_frame_explicitly_disables_unanswered_questions()
+    public void Initialized_frame_requires_verify_and_disables_other_unanswered_questions()
     {
         using var repository = RepositoryFixture.CreateGitRepository();
         Assert.Equal(0, HarnessCli.RunWithInput(repository.Path, "application\n", "init").ExitCode);
@@ -210,13 +219,14 @@ public sealed class InitCommandTests
 
         var check = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame");
 
-        Assert.Equal(0, check.ExitCode);
+        Assert.Equal(2, check.ExitCode);
         foreach (var question in Questions)
         {
             Assert.Contains($"frame.{question}", check.Output, StringComparison.Ordinal);
         }
 
-        Assert.Equal(Questions.Length, Occurrences(check.Output, "outcome: skipped"));
+        Assert.Equal(Questions.Length - 1, Occurrences(check.Output, "outcome: skipped"));
+        Assert.Contains("outcome: incomplete", check.Output, StringComparison.Ordinal);
     }
 
     [Theory]

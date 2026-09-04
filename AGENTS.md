@@ -2,8 +2,8 @@
 
 Standalone CLI, который держит одну и ту же harness-рамку над разными репозиториями и
 объясняет через ошибки, как должно быть. Он не запускает toolchain репозитория: тесты,
-сборку и линтеры гоняет CI. Харнес сообщает self-reported ответы репозитория и выполняет
-те измерения, которые в каждом репозитории расходятся.
+сборку и линтеры гоняет CI через self-reported `verify`-скрипт. Харнес сообщает ответы и
+выполняет разные для репозиториев измерения. [ADR-0046](adrs/0046-unified-verification-entry-point.md)
 
 ## Рамка
 
@@ -75,9 +75,8 @@ Standalone-библиотека отвечает `"architecture": { "applicable"
 `"latest"` включает rolling-контракт. `harness init` спрашивает только application или
 standalone-library (либо принимает `--kind application|library` без stdin), создаёт
 соответствующую `architecture`, DSM-бюджет текущих tracked-исходников и полный
-явный конфиг. `duplication.csharp` стартует `required` с `30/90`; нерешённые answer-ключи
-остаются `{}` и `off`: исследуй репозиторий, замени каждый честным ответом и включи его policy.
-Не выдумывай положительный ответ. [ADR-0045](adrs/0045-duplication-required-by-default.md)
+явный конфиг. `duplication.csharp` стартует `required` с `30/90`; нерешённые answer-ключи —
+`{}` и `off`, кроме `verify: required`: исследуй и ответь честно. [ADR-0045](adrs/0045-duplication-required-by-default.md)
 
 `settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness
 setup` включает шаблон и `commit-msg` hook в общем каталоге клона, поэтому одна подготовка
@@ -123,7 +122,7 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 ./harness setup                                    # активировать hook и шаблон в этом клоне
 ./harness commit-message template                  # показать шаблон выбранного языка
 ./harness commits check <base>..<head>             # проверить диапазон для CI
-dotnet test                                        # полный набор, включая NativeAOT-публикацию
+./verify.sh                                        # harness, format/code style, тесты и NativeAOT
 dotnet build                                       # быстрая обратная связь
 dotnet format Harness.slnx --verify-no-changes --severity warn # формат и code style без правок
 dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64

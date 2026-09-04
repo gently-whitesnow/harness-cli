@@ -222,7 +222,8 @@ internal sealed record HarnessConfig
               "format": { "paths": [".editorconfig"] },
               "lint": { "present": true, "reason": "analyzers enabled in Directory.Build.props" },
               "build": { "paths": ["Repository.sln"] },
-              "typecheck": { "applicable": false, "reason": "no web stack" }
+              "typecheck": { "applicable": false, "reason": "no web stack" },
+              "verify": { "paths": ["verify.sh"] }
             },
             "applicability": {
               "csharp": { "applicable": true },
@@ -275,7 +276,8 @@ internal sealed record HarnessConfig
               "frame.format": "required",
               "frame.lint": "required",
               "frame.build": "required",
-              "frame.typecheck": "required"
+              "frame.typecheck": "required",
+              "frame.verify": "required"
             }
           }
 

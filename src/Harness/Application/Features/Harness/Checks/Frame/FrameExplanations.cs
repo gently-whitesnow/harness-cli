@@ -47,6 +47,14 @@ internal static class FrameExplanations
         "tsconfig.json",
         "A compiler-only repository can answer `applicable: false` with a reason.");
 
+    public static string Verify => For(
+        "verify",
+        "one repository-owned entry point that runs every applicable quality check",
+        "verify.sh",
+        "This question applies to every repository, and only `paths` is a complete positive answer. The tracked "
+            + "script composes the repository's toolchain and `harness check`; the harness records its address "
+            + "but never executes it.");
+
     private static string For(string key, string subject, string address, string specific)
         => $$"""
         Rationale

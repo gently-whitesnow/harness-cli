@@ -105,6 +105,10 @@ internal static class FrameUpgrade
           changed  harness init writes duplication.csharp as required with the existing
                    calibrated 30-line / 90-token profile; existing explicit advisory or off
                    policy remains valid and upgrade changes only the version pin
+          added    answers.verify names the tracked repository-owned script that runs every
+                   applicable quality check, including `harness check`; frame.verify is
+                   required by default, while the harness records the path but never runs
+                   or inspects the repository toolchain
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }

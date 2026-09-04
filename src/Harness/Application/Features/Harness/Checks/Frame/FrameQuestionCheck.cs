@@ -11,6 +11,10 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
 
     protected abstract string Subject { get; }
 
+    protected virtual bool RequiresLocation => false;
+
+    protected virtual bool AppliesToEveryRepository => false;
+
     internal string AnswerKey => Key;
 
     public string Id => $"{HarnessConfig.FrameGroup}.{Key}";
@@ -43,11 +47,17 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
         return answer?.Kind switch
         {
             FrameAnswerKind.Located => Located(answer),
+            FrameAnswerKind.Present when RequiresLocation => CheckEvaluation.Incomplete(
+                $"`answers.{Key}` must use `paths` so readers can run {Subject}; a positive answer without "
+                    + "an address is not complete."),
             FrameAnswerKind.Present => CheckEvaluation.Passed(
                 $"repository answers present — \"{answer.Reason}\". The answer is self-reported and not "
                     + "fact-checked by the harness."),
             FrameAnswerKind.Absent => CheckEvaluation.ReadinessGap(
                 $"repository answers absent — \"{answer.Reason}\"."),
+            FrameAnswerKind.NotApplicable when AppliesToEveryRepository => CheckEvaluation.Incomplete(
+                $"`answers.{Key}` cannot be not applicable: every repository can own {Subject}. "
+                    + "Use `present: false` with a reason until it does."),
             FrameAnswerKind.NotApplicable => CheckEvaluation.NotApplicable(
                 $"repository answers not applicable — \"{answer.Reason}\"."),
             _ => CheckEvaluation.Incomplete(
