@@ -49,7 +49,7 @@ public sealed class InitCommandTests
         Assert.All(root.GetProperty("policy").EnumerateObject(), entry =>
             Assert.Equal(entry.Name.StartsWith("frame.", StringComparison.Ordinal)
                 ? "off"
-                : entry.Name == "duplication.csharp" ? "advisory" : "required", entry.Value.GetString()));
+                : "required", entry.Value.GetString()));
         Assert.True(File.Exists(repository.Absolute(".harness.budget.json")));
         Assert.StartsWith("{\n", File.ReadAllText(path), StringComparison.Ordinal);
         Assert.Contains("\n  \"policy\": {\n", File.ReadAllText(path), StringComparison.Ordinal);

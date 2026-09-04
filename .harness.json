@@ -1,5 +1,5 @@
 {
-  "version": "2.8.0",
+  "version": "2.9.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -67,7 +67,7 @@
     "comments.typescript": "required",
     "types-per-file.csharp": "required",
     "dependencies.csharp": "required",
-    "duplication.csharp": "advisory",
+    "duplication.csharp": "required",
     "build-properties.dotnet": "required",
     "central-packages.dotnet": "required",
     "solution-format.dotnet": "required",

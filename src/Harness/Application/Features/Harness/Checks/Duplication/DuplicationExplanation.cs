@@ -8,10 +8,10 @@ internal static class DuplicationExplanation
         Rationale
           The same structure written out in several files is the cheapest observable sign
           that an abstraction is missing, or that one was copied instead of called. The
-          gate finds where that happened and stops there. Findings originate as advisory
-          evidence because a lexical match is a reason to read two places, not proof that
-          they mean the same thing. An explicit required repository policy nevertheless
-          blocks every unresolved match; advisory is an explicit migration state.
+          gate finds where that happened and stops there. A lexical match is a reason to
+          read two places, not proof that they mean the same thing. The initialized profile
+          nevertheless makes the calibrated large-match window required; advisory remains
+          an explicit migration state while a repository pays known findings down.
 
         Discovery
           Every Git-tracked `.cs` file is analyzed. Generated, vendored and build-output
@@ -95,9 +95,9 @@ internal static class DuplicationExplanation
           belong to different layers or bounded contexts, when they are tests whose
           explicitness is the point, or when the shared abstraction would need a parameter
           for every difference. Engineering judgement decides here; the harness supplies
-          the evidence and will not edit the code. Tune `settings.duplication.csharp.windowLines`
-          and `minimumTokens` when the repository's ordinary explicit patterns make the
-          initialized settings noisy; use advisory policy temporarily while known matches are paid down,
-          or `off` only when the whole measurement is unwanted.
+          the evidence and will not edit the code. Keep the initialized `30/90` profile
+          unless repository evidence justifies a different detector; use advisory policy
+          temporarily while known matches are paid down, or `off` only when the whole
+          measurement is unwanted.
         """;
 }
