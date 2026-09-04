@@ -117,6 +117,12 @@ internal static class FrameUpgrade
                    no longer measured together with its test hosts; sliced-dotnet zones are
                    unchanged, and a repository without any test project is still measured
                    whole — run `harness budget update` to record the lower value if you wish
+        Release 2.11 changes:
+          changed  answers.tests.unit and answers.tests.integration address a test project —
+                   its directory or project file — never the test files inside it: a paths
+                   entry ending in .cs, .ts, .tsx, .js or another source suffix the harness
+                   reads makes the question Incomplete and the report names the directories
+                   to list instead; every paths answer holds at most 5 addresses
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }

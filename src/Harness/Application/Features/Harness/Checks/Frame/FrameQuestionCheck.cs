@@ -7,11 +7,20 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
 {
     private const int ShownLocations = 3;
 
+    /// <summary>
+    /// Navigation names entry points, not contents. A longer list is an inventory the reader
+    /// has to fold back into the projects or directories that own it.
+    /// </summary>
+    private const int MaximumLocations = 5;
+
     protected abstract string Key { get; }
 
     protected abstract string Subject { get; }
 
     protected virtual bool RequiresLocation => false;
+
+    /// <summary>A test suite is addressed by the project that runs it, never by its files.</summary>
+    protected virtual bool AddressesTestProjects => false;
 
     protected virtual bool AppliesToEveryRepository => false;
 
@@ -73,14 +82,37 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
           "{{Key}}": { "present": true, "reason": "where or how it is provided" }
           "{{Key}}": { "present": false, "reason": "why it is currently absent" }
           "{{Key}}": { "applicable": false, "reason": "why this question does not apply" }
+        `paths` names at most {{MaximumLocations}} entry points — a project or a directory, never the files inside it.
         Run `harness explain frame.{{Key}}` for the question's intent. Do not invent a positive answer. If the
         repository owner's intent is unclear, ask them before choosing an answer.
         """;
 
-    private static CheckEvaluation Located(FrameAnswer answer)
-        => CheckEvaluation.Passed(
+    private CheckEvaluation Located(FrameAnswer answer)
+    {
+        if (AddressesTestProjects)
+        {
+            var files = answer.Paths.Where(TestSuiteAddress.IsSourceFile).ToList();
+            if (files.Count > 0)
+            {
+                return CheckEvaluation.Incomplete(
+                    $"`answers.{Key}.paths` names test files instead of the projects that own them "
+                        + $"({Locations(files)}). A reader runs a test project, not a file: name each project "
+                        + $"once, for example {TestSuiteAddress.Owners(files)}.");
+            }
+        }
+
+        if (answer.Paths.Count > MaximumLocations)
+        {
+            return CheckEvaluation.Incomplete(
+                $"`answers.{Key}.paths` lists {answer.Paths.Count} addresses; navigation names at most "
+                    + $"{MaximumLocations} entry points. Name the projects or directories that own {Subject}, "
+                    + "not their contents.");
+        }
+
+        return CheckEvaluation.Passed(
             $"repository answers present at {Locations(answer.Paths)}. These paths are navigation for readers; "
                 + "the harness does not inspect or fact-check them.");
+    }
 
     private static string Locations(IReadOnlyList<string> paths)
     {

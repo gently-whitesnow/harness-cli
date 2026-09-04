@@ -11,7 +11,7 @@ Standalone CLI, который держит одну и ту же harness-рам
 self-reported: адрес служит навигацией, а не доказательством. Формы ответа:
 
 ```jsonc
-"tests.unit":  { "paths": ["tests/Unit"] }                        // есть; вот где искать
+"tests.unit":  { "paths": ["tests/Unit"] }                        // есть; адрес — проект, не файлы
 "lint":        { "present": true,  "reason": "аналайзеры в csproj" } // есть без одного адреса
 "tests.e2e":   { "present": false, "reason": "разложим в HARNESS-142" } // отсутствует осознанно
 "typecheck":   { "applicable": false, "reason": "нет web-стека" }    // вопрос не про нас
@@ -24,7 +24,7 @@ self-reported: адрес служит навигацией, а не доказ�
 полны — ридер не подставляет скрытые defaults, поэтому состояние всех проверок видно в
 tracked-файле. Харнес валидирует полноту ответов, но не инспектирует их и не ищет
 опровержения. [ADR-0017](adrs/0017-required-by-default.md), [ADR-0027](adrs/0027-required-findings-are-blocking.md),
-[ADR-0035](adrs/0035-policy-switch-is-uniform.md)
+[ADR-0035](adrs/0035-policy-switch-is-uniform.md), [ADR-0049](adrs/0049-test-suite-address-is-the-project.md)
 
 C#-проверки разделяют applicability `csharp`. Если весь этот анализ не относится к
 репозиторию, одна запись `"applicability": { "csharp": { "applicable": false, "reason":
@@ -56,7 +56,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 блокируются; выключение правила для всего репозитория печатается observation. Читается только
 tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"2.10.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.11.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 

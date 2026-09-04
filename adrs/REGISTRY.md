@@ -56,6 +56,10 @@
 - [ADR-0046](0046-unified-verification-entry-point.md) — Обязательный self-reported
   `answers.verify.paths` называет tracked repository-owned скрипт всех применимых проверок;
   harness не инспектирует и не запускает его, а `init` сразу ставит `frame.verify: required`.
+- [ADR-0049](0049-test-suite-address-is-the-project.md) — `answers.tests.unit` и
+  `answers.tests.integration` адресуют тестовый проект, а не его файлы: путь с исходным
+  суффиксом даёт `Incomplete` с подсказкой каталогов, любой `paths` держит не более пяти
+  адресов; пилот с перечнем из 17 тестовых файлов показал, что форму надо объяснять ошибкой.
 
 ## Анализ и отчёт
 <!-- Как измеряются и как подаются эвристические находки -->

@@ -16,6 +16,60 @@ public sealed class FrameQuestionTests
         Assert.True(run.OutputContains("does not inspect"), run.Output);
     }
 
+    [Theory]
+    [InlineData("tests.unit")]
+    [InlineData("tests.integration")]
+    public void A_test_suite_is_addressed_by_its_project_and_not_by_its_files(string question)
+    {
+        using var repository = Fixtures.Compliant(Frame.Answering().Located(
+            question,
+            "tests/App.Tests/OrderTests.cs",
+            "tests/App.Tests/InvoiceTests.cs",
+            "apps/web/src/App.test.tsx"));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", $"frame.{question}");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains("names test files instead of the projects"), run.Output);
+        Assert.True(run.OutputContains("[\"tests/App.Tests\", \"apps/web/src\"]"), run.Output);
+    }
+
+    [Theory]
+    [InlineData("tests.unit", "tests/App.Tests", "tests/App.Tests/App.Tests.csproj", "apps/web")]
+    [InlineData("tests.architecture", "tests/App.Architecture.Tests/LayerDependencyTests.cs", "apps/web/steiger.config.js")]
+    public void A_project_address_or_a_single_architecture_rule_file_is_accepted(string question, params string[] paths)
+    {
+        using var repository = Fixtures.Compliant(Frame.Answering().Located(question, paths));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", $"frame.{question}");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("repository answers present"), run.Output);
+    }
+
+    [Fact]
+    public void An_inventory_of_addresses_is_not_navigation()
+    {
+        using var repository = Fixtures.Compliant(Frame.Answering().Located(
+            "format", ".editorconfig", ".prettierrc", "stylecop.json", ".csharpierrc", "biome.json", "eslint.config.js"));
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.format");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.True(run.OutputContains("lists 6 addresses"), run.Output);
+        Assert.True(run.OutputContains("at most 5 entry points"), run.Output);
+    }
+
+    [Fact]
+    public void Explain_says_that_a_test_address_is_the_project()
+    {
+        var run = HarnessCli.Run(Directory.GetCurrentDirectory(), "explain", "frame.tests.unit");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("The address is the test project"), run.Output);
+        Assert.True(run.OutputContains("never the test files inside it"), run.Output);
+    }
+
     [Fact]
     public void A_positive_answer_without_an_address_is_complete()
     {
