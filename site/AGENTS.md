@@ -12,14 +12,14 @@
 | Изменилось в коде | Обновить на сайте |
 | --- | --- |
 | `Host/CheckRegistry.cs` — новая или удалённая проверка | `CHECKS` в `app.js` (id, группа, ось, summary, ADR) и, если нужно, `GROUPS` |
-| `Config/ConfigInitializer.cs` — дефолт policy в `init` | `defaultState` в `app.js`, бейдж `default …` берётся из группы |
-| `Config/HarnessSettings.cs` — дефолты settings | `defaultState.settings` в `app.js` и раздел «Settings» конструктора |
-| `Config/HarnessSettingsReader.cs` — новая секция settings | `buildConfig`, шаг 6 конструктора и счётчик `settings n/n` |
-| `Domain/Harness/Languages/Language.cs` — новая языковая ось | `AXES`, профили `PROFILES`, группа «Другие языки» |
+| `Config/ConfigInitializer.cs` — дефолт policy в `init` | Раздел «Строгость»: базовый режим и исключения при первом init |
+| `Config/HarnessSettings.cs` — дефолты settings | Краткие пороги в `CHECKS` и объяснение mean reach в `index.html` |
+| `Config/HarnessSettingsReader.cs` — новая секция settings | Описание соответствующей проверки; конфиг на сайте не генерируется |
+| `Domain/Harness/Languages/Language.cs` — новая языковая ось | Группы языков в `GROUPS` и обзор стека в `index.html` |
 | `Version.props` — новый релиз | Все упоминания версии в `index.html` и `app.js`; маршрут в `FrameUpgrade.cs` |
-| `*Explanation.cs` — формула, пределы, remediation | Соответствующая карточка проверки и раздел «Глубже» |
-| `SlicedDotNetShapeCheck.cs`, ADR-0033–0041, 0050, 0051 — словарь слоёв, инварианты, конвенции | Раздел «Архитектура»: дерево-пример, таблица слоёв, правила импортов, свёрнутые блоки инвариантов и сравнения с FSD; `renderArch` в `app.js` |
-| Новый ADR про проверку | Ссылка в карточке (`adr` в `CHECKS`) и в тексте раздела «Глубже» |
+| `*Explanation.cs` — формула, пределы, remediation | Соответствующая карточка проверки и три объяснения в `index.html` |
+| `SlicedDotNetShapeCheck.cs`, ADR-0033–0041, 0050, 0051 — словарь слоёв, инварианты, конвенции | Объяснение слайсов: таблица слоёв × задач, два примера импортов, свёрнутая таблица зависимостей и ссылка на FSD |
+| Новый ADR про проверку | Ссылка в карточке (`adr` в `CHECKS`) и в соответствующем объяснении |
 
 Тест `tests/Harness.Tests/SiteContractTests.cs` сверяет идентификаторы `CHECKS` с выводом
 `harness help` и версию на сайте с `Version.props`: расхождение падает в `dotnet test`.
@@ -35,3 +35,9 @@ throne-dark). Шрифты Mona Sans и Monaspace Neon лежат в `fonts/`; �
 
 Русский, спокойный и плотный: формулы, пределы и цена решений, а не обещания. Тексты
 проверок пересказывают `harness explain <check-id>` и ADR, не выдумывая новых правил.
+
+Лендинг сначала объясняет идею: пригодность репозитория для агентов после множества итераций.
+Затем — строгий режим, общий и языковой наборы, три коротких объяснения (слайсы, циклы,
+mean reach). Полный каталог раскрывается по группам; обоснования ведут в ADR. Конструктора
+нет. Установка вторична: главное действие — понять и перенести подход. Тон — личная
+инженерная позиция автора; обещания не должны расходиться с поведением init и проверок.
