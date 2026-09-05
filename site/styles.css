@@ -1694,3 +1694,232 @@ pre code {
 .site-nav .btn {
   white-space: nowrap;
 }
+
+/* ── Architecture section ───────────────────────────────────────────── */
+.arch-fit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin-top: var(--space-8);
+}
+.arch-fit__card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--rounded-md);
+  background: var(--color-canvas);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.arch-fit__card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.arch-fit__card p {
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  flex: 1;
+}
+.arch-fit__card .code-block {
+  margin: 0;
+  font-size: 0.75rem;
+}
+.arch-fit__card .code-block code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.arch-concepts {
+  display: grid;
+  grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  gap: var(--space-8);
+  align-items: start;
+  margin-top: var(--space-10);
+}
+.arch-tree {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  margin: 0;
+}
+.arch-concepts__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.arch-concept {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: var(--space-3);
+}
+.arch-concept__num {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--color-info-soft);
+  color: var(--color-primary);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.arch-concept h3 {
+  font-size: 1.0625rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.arch-concept p {
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+.arch-rules {
+  margin-top: var(--space-8);
+}
+.arch-rules__list {
+  padding-left: 1.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.arch-rules__list strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+.arch-benefits {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin-top: var(--space-8);
+}
+.arch-benefit h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+.arch-benefit p {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+/* ── Folds (details) ────────────────────────────────────────────────── */
+.fold {
+  border: 1px solid var(--color-border);
+  border-radius: var(--rounded-md);
+  background: var(--color-surface);
+  margin-top: var(--space-4);
+}
+.fold__summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5);
+  font-weight: 600;
+  font-size: 1rem;
+  position: relative;
+  padding-right: calc(var(--space-5) + 24px);
+}
+.fold__summary::-webkit-details-marker {
+  display: none;
+}
+.fold__summary::after {
+  content: '';
+  position: absolute;
+  right: var(--space-5);
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 1.8px solid var(--color-text-subtle);
+  border-bottom: 1.8px solid var(--color-text-subtle);
+  transform: translateY(-70%) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+details[open] > .fold__summary::after {
+  transform: translateY(-30%) rotate(225deg);
+}
+.fold__summary:hover {
+  color: var(--color-primary);
+}
+.fold__hint {
+  font-weight: 400;
+  font-size: 0.875rem;
+  color: var(--color-text-subtle);
+}
+.fold__body {
+  padding: 0 var(--space-5) var(--space-5);
+}
+.fold__h {
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-subtle);
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+.fold__list {
+  padding-left: 1.1rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  margin-bottom: var(--space-4);
+}
+.fold__list li + li {
+  margin-top: 4px;
+}
+.fold__p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  margin-top: var(--space-3);
+}
+
+/* Explainers folded under a summary */
+.explainer--fold {
+  display: block;
+  padding: 0;
+}
+.explainer--fold > .fold__summary {
+  padding: var(--space-5) 0;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+  padding-right: 32px;
+}
+.explainer--fold > .fold__summary::after {
+  right: 8px;
+}
+.explainer--fold > .explainer__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: var(--space-10);
+  align-items: start;
+  padding: 0 0 var(--space-10);
+}
+@media (max-width: 880px) {
+  .arch-fit,
+  .arch-concepts,
+  .explainer--fold > .explainer__inner {
+    grid-template-columns: 1fr;
+  }
+  .arch-concepts,
+  .explainer--fold > .explainer__inner {
+    gap: var(--space-6);
+  }
+  .arch-benefits {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .arch-benefits {
+    grid-template-columns: 1fr;
+  }
+}

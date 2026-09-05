@@ -535,7 +535,7 @@
     slice('Contracts/X/Orders', 176, 184, 132, 'is-x');
     svgEl('text', { x: 32, y: 226, class: 'label is-error' }, svg).textContent = 'Orders → Billing напрямую запрещено; только через X/Orders';
     layer('Domain', 20, 256, 300, 56, 'is-domain');
-    slice('Orders', 32, 282, 80); slice('Billing', 120, 282, 80); slice('Shared', 208, 282, 80);
+    slice('Orders', 32, 282, 80); slice('Billing', 120, 282, 80); slice('Shared/', 208, 282, 80);
     // allowed
     arrow(90, 98, 90, 118);
     arrow(250, 98, 250, 118);
@@ -544,7 +544,7 @@
     arrow(380, 232, 320, 290);
     arrow(60, 38, 60, 58, '', 'composition root видит всё', 100, 52);
     // forbidden
-    arrow(300, 256, 300, 236, 'forbidden', 'Domain → Application запрещено', 180, 250);
+    arrow(300, 256, 300, 236, 'forbidden', 'Domain → Application запрещено', 140, 250);
     arrow(164, 163, 176, 163, 'forbidden');
   }
 

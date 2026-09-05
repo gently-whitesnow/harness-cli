@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Harness CLI — одна рамка качества над разными репозиториями</title>
-  <meta name="description" content="Harness CLI читает tracked .harness.json, доказывает циклы модулей, держит DSM-бюджет, ищет межфайловые повторы и проверяет форму sliced-dotnet. Все 24 проверки явно перечислены в конфиге — тихих фич нет." />
+  <meta name="description" content="Harness CLI читает tracked .harness.json, доказывает циклы модулей, держит DSM-бюджет, ищет межфайловые повторы и проверяет sliced-dotnet — стандарт слоёв и слайсов для .NET в духе Feature-Sliced Design. Все 24 проверки явно перечислены в конфиге — тихих фич нет." />
   <link rel="canonical" href="https://harness.whitesnow.tech/" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <meta property="og:type" content="website" />
@@ -43,6 +43,7 @@
       <nav class="site-nav" aria-label="Основная навигация">
         <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#catches">Что ловит</a>
         <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#how">Как работает</a>
+        <a class="btn btn-ghost btn-sm" href="#architecture">Архитектура</a>
         <a class="btn btn-ghost btn-sm" href="#builder">Конструктор</a>
         <a class="btn btn-ghost btn-sm" href="https://github.com/gently-whitesnow/harness-cli" target="_blank" rel="noreferrer noopener">GitHub</a>
         <button type="button" class="btn btn-ghost theme-toggle" id="theme-toggle" aria-label="Переключить тему" title="Переключить тему">
@@ -61,7 +62,7 @@
           <h1 class="hero__title">Одна рамка качества над разными репозиториями.</h1>
           <p class="section__body hero__lead">
             CLI для CI, который ловит то, что не видят тесты и линтеры: циклы модулей, рост связанности, повторы кода
-            и отход от формы sliced-dotnet. Единственная зависимость — <code>git</code>.
+            и отход от <a href="#architecture">sliced-dotnet</a> — стандарта слоёв и слайсов для .NET в духе Feature-Sliced Design. Единственная зависимость — <code>git</code>.
           </p>
           <div class="install-cmd">
             <code class="install-cmd__text" id="install-cmd">curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh | sh</code>
@@ -72,7 +73,7 @@
           </div>
           <div class="hero__actions">
             <a class="btn btn-primary" href="#builder">Собрать .harness.json</a>
-            <a class="btn btn-secondary" href="#how">Как работает</a>
+            <a class="btn btn-secondary" href="#architecture">Стандарт sliced-dotnet</a>
             <a class="btn btn-secondary" href="https://github.com/gently-whitesnow/harness-cli" target="_blank" rel="noreferrer noopener">Репозиторий</a>
           </div>
         </div>
@@ -118,7 +119,7 @@
           <div class="feature">
             <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 8.5h18M3 14h18M3 19.5h18" /><path d="M9 3v18M15 3v18" stroke-dasharray="2 2.5" /></svg></span>
             <h3>Форма sliced-dotnet</h3>
-            <p>Слои × слайсы прямо в файловой системе: слой = сборка, API слайса — его <code>Contracts/</code>, кросс-импорт — явный <code>X/</code>.</p>
+            <p>FSD для .NET: слои × слайсы прямо в файловой системе, слой = сборка, API слайса — <code>Contracts/</code>, кросс-импорт — явный <code>X/</code>. <a href="#architecture">Стандарт</a>.</p>
           </div>
           <div class="feature">
             <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z" /><path d="M12 10v4M12 17.5v.5" /><path class="feature__icon-strike" d="M4 4l16 16" /></svg></span>
@@ -175,6 +176,187 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
       </div>
     </section>
 
+    <!-- ── Architecture: sliced-dotnet/1 ────────────────────────────── -->
+    <section class="section" id="architecture">
+      <div class="container">
+        <div class="section__kicker">Стандарт sliced-dotnet/1 · FSD для .NET</div>
+        <h2 class="section__title">Слои Clean Architecture × сквозные слайсы. Словарь зафиксирован, карта — само дерево</h2>
+        <p class="section__body">
+          sliced-dotnet переносит на .NET то, что делает Feature-Sliced Design для фронтенда: словарь слоёв и правила
+          импортов задаёт методология, а не репозиторий. Поэтому в <code>.harness.json</code> нет деклараций слоёв и
+          модулей — только имя стандарта. Проверка читает tracked-дерево и C#-граф и уже знает, что является
+          нарушением. Ослабить инвариант правкой конфига нельзя: форму меняет только код.
+        </p>
+
+        <div class="arch-fit">
+          <div class="arch-fit__card">
+            <h3>Подходит: приложение</h3>
+            <p>Сервис, CLI, воркер, BFF — всё, у чего есть вход и use-cases. Один стандарт на все .NET-приложения.</p>
+<pre class="code-block"><code><span class="c-key">"architecture"</span>: { <span class="c-key">"standard"</span>: <span class="c-str">"sliced-dotnet/1"</span> }</code></pre>
+          </div>
+          <div class="arch-fit__card">
+            <h3>Не подходит: standalone-библиотека</h3>
+            <p>У библиотеки одна capability — она сама: ось слайсов вырождается, публичную поверхность держит компилятор. Стандарт дал бы только церемонию.</p>
+<pre class="code-block"><code><span class="c-key">"architecture"</span>: { <span class="c-key">"applicable"</span>: <span class="c-kw">false</span>, <span class="c-key">"reason"</span>: <span class="c-str">"standalone library"</span> }</code></pre>
+          </div>
+        </div>
+
+        <div class="arch-concepts">
+          <div class="arch-concepts__tree">
+            <div class="panel">
+              <div class="panel__head"><span class="panel__title">Базовый пример: одна зона</span></div>
+<pre class="code-block arch-tree"><code>src/Shop/                       <span class="c-dim">зона: каталог с Application/</span>
+├─ Host/          <span class="c-dim">Shop.Host.csproj</span>
+│  └─ Program.cs                <span class="c-dim">composition root</span>
+├─ Api/           <span class="c-dim">Shop.Api.csproj</span>
+│  └─ Features/Orders/Endpoints/ <span class="c-dim">синхронный вход</span>
+├─ Consumers/     <span class="c-dim">Shop.Consumers.csproj</span>
+│  └─ Features/Billing/Queues/  <span class="c-dim">асинхронный вход</span>
+├─ Application/   <span class="c-dim">Shop.Application.csproj</span>
+│  └─ Features/                 <span class="c-dim">источник имён слайсов</span>
+│     ├─ Orders/
+│     │  ├─ Contracts/          <span class="c-ok">публичный API слайса</span>
+│     │  ├─ Placement/          <span class="c-dim">сегмент по назначению</span>
+│     │  └─ Pricing/
+│     └─ Billing/
+│        ├─ Contracts/
+│        │  └─ X/Orders/        <span class="c-warn">cross-API только для Orders</span>
+│        └─ Invoicing/
+├─ Domain/        <span class="c-dim">Shop.Domain.csproj</span>
+│  ├─ Orders/  Billing/         <span class="c-dim">словарь зоны для всех слоёв</span>
+│  └─ Shared/                   <span class="c-dim">понятия вне слайсов</span>
+└─ Infrastructure/ <span class="c-dim">Shop.Infrastructure.csproj</span>
+   ├─ Features/Orders/Postgres/ <span class="c-dim">адаптеры слайса</span>
+   └─ Persistence/              <span class="c-dim">DbContext видит весь Domain</span></code></pre>
+            </div>
+          </div>
+          <div class="arch-concepts__list">
+            <div class="arch-concept">
+              <span class="arch-concept__num">1</span>
+              <div>
+                <h3>Слой</h3>
+                <p>Шесть каталогов в корне зоны: <code>Host</code>, <code>Api</code>, <code>Consumers</code>, <code>Application</code>,
+                  <code>Domain</code>, <code>Infrastructure</code>. Каждый — собственная сборка, направление рёбер держит компилятор.
+                  Обязательны Host, Application и хотя бы один вход. Чужое имя в корне зоны — нарушение, похожее — опечатка.</p>
+              </div>
+            </div>
+            <div class="arch-concept">
+              <span class="arch-concept__num">2</span>
+              <div>
+                <h3>Слайс</h3>
+                <p>Бизнес-capability, проходящая сквозь слои: <code>Application/Features/Orders</code> и его зеркала в
+                  <code>Api</code>, <code>Consumers</code>, <code>Infrastructure/Features</code> и <code>Domain</code>. Слайсы одного
+                  слоя друг друга не видят. Группа — один уровень <code>Features/&lt;Группа&gt;/&lt;Слайс&gt;</code> без файлов.</p>
+              </div>
+            </div>
+            <div class="arch-concept">
+              <span class="arch-concept__num">3</span>
+              <div>
+                <h3>Сегмент</h3>
+                <p>Каталог внутри слайса, названный по назначению: <code>Placement</code>, <code>Pricing</code>, а не
+                  <code>Services</code> или <code>Helpers</code>. Два сегмента зарезервированы стандартом: <code>Contracts/</code> —
+                  публичный API слайса, <code>Contracts/X/&lt;Потребитель&gt;</code> — cross-API для одного названного слайса.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-2 arch-rules" style="align-items: start">
+          <div class="panel">
+            <div class="panel__head"><span class="panel__title">Разрешённые рёбра между слоями</span></div>
+            <svg class="diagram" id="arch-svg" viewBox="0 0 520 322" role="img" aria-label="Диаграмма слоёв sliced-dotnet/1"></svg>
+            <div class="table-wrap" style="margin-top: var(--space-3)">
+              <table class="table">
+                <thead><tr><th>Слой</th><th>Назначение</th><th>Читает</th></tr></thead>
+                <tbody>
+                  <tr><td>Host</td><td>Program, DI-wiring, конфигурация</td><td>все слои</td></tr>
+                  <tr><td>Api</td><td>controllers, endpoints, команды CLI</td><td>Application, Domain</td></tr>
+                  <tr><td>Consumers</td><td>очереди, подписки, hosted jobs</td><td>Application, Domain</td></tr>
+                  <tr><td>Application</td><td>use-cases, слайсы в <code>Features/</code></td><td>Domain</td></tr>
+                  <tr><td>Infrastructure</td><td>адаптеры, <code>Persistence/</code> зарезервирован</td><td>Application (только Contracts/), Domain</td></tr>
+                  <tr><td>Domain</td><td>сущности и словарь зоны, слайсы в корне</td><td>—</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel__head"><span class="panel__title">Четыре правила импортов</span></div>
+            <ol class="arch-rules__list">
+              <li><strong>Только вниз по таблице.</strong> Ребро классифицируется парой слоёв автора и адресата; пары нет в таблице — нарушение. Между зонами монорепозитория рёбер нет вовсе.</li>
+              <li><strong>Слайс закрыт своим <code>Contracts/</code>.</strong> Всё, что входит в Application-слайс снаружи, указывает в контракт; обход внутрь запрещён. Исключение одно — Host связывает контракты с реализациями.</li>
+              <li><strong>Между слайсами — только через <code>X/</code>.</strong> Слайс A публикует API для B в <code>Contracts/X/B/</code> (в Domain — <code>Domain/A/X/B/</code>), импортировать его вправе только B. Это <code>@x</code> из FSD 2.1: граф кросс-зависимостей виден в дереве. Порядок решений тот же — слить слайсы, спустить общее в Domain, cross-API последним.</li>
+              <li><strong>Domain читают все.</strong> Верхние слои компонуют любые Domain-слайсы, не только своё зеркало: агрегирующий read model собирает несколько доменных моделей без копий в контрактах.</li>
+            </ol>
+            <p class="figure-note">Рёбра берутся из лексического C#-графа по tracked-исходникам; блокируют только Proven-рёбра. Слой = сборка: ровно один <code>.csproj</code> на слой с кодом, <code>Compile Include</code> чужого слоя — linked-компиляция и нарушение, ProjectReference — по той же таблице.</p>
+          </div>
+        </div>
+
+        <div class="arch-benefits">
+          <div class="arch-benefit"><h3>Zero-config</h3><p>Карта архитектуры одинакова во всех сервисах. Агент или новый человек ориентируется в любом репозитории стандарта без чтения деклараций.</p></div>
+          <div class="arch-benefit"><h3>Изменить форму можно только кодом</h3><p>Нет декларации — нет «осознанной правки» через ревью, которая ослабляет инвариант. Перенос каталога виден в diff как перенос каталога.</p></div>
+          <div class="arch-benefit"><h3>Границы держит компилятор</h3><p>Слой — сборка: недопустимая ссылка не компилируется, <code>internal</code> действует на границе слоя, ProjectReference-граф читается как таблица.</p></div>
+          <div class="arch-benefit"><h3>Постепенное внедрение</h3><p>Пока раскладка не совпала со стандартом, проверка идёт <code>advisory</code>: находки видны, гейт зелёный. Одна строка policy переводит её в <code>required</code>.</p></div>
+        </div>
+
+        <details class="fold">
+          <summary class="fold__summary"><span>Что именно блокирует, а что только печатает</span><span class="fold__hint">инварианты и конвенции проверки <code>architecture.sliced-dotnet</code></span></summary>
+          <div class="fold__body">
+            <div class="grid grid-2" style="align-items: start">
+              <div>
+                <h4 class="fold__h">Blocking при <code>required</code>, без адресных исключений</h4>
+                <ul class="fold__list">
+                  <li>Ребро вне таблицы слоёв; ребро между зонами.</li>
+                  <li>Ребро между слайсами одного слоя, включая их обычные <code>Contracts/</code>; импорт <code>X/B/</code> кем-то кроме B.</li>
+                  <li>Обход <code>Contracts/</code> Application-слайса извне (кроме Host).</li>
+                  <li>Слайс без зеркала ни в <code>Api</code>, ни в <code>Consumers</code>; зеркало без слайса в Application; пустой слайс, группа или слой.</li>
+                  <li>Каталог в корне зоны вне словаря слоёв; опечатка в имени слоя.</li>
+                  <li>Сегмент слайса или Host по виду кода: <code>Services</code>, <code>Helpers</code>, <code>Utils</code>, <code>Common</code>, <code>Managers</code>, <code>Repositories</code> и словарь Steiger целиком; essence-имя листа в группе слайсов.</li>
+                  <li>Слой с кодом без своего <code>.csproj</code> или с двумя; <code>Compile Include</code> за пределы слоя; ProjectReference вне таблицы; проект вне канонического слоя.</li>
+                  <li>Цикл модулей по Proven-рёбрам.</li>
+                </ul>
+              </div>
+              <div>
+                <h4 class="fold__h">Advisory-observations при любой policy, код возврата не меняют</h4>
+                <ul class="fold__list">
+                  <li><code>flat-directory-grouping</code> — каталог с 20+ authored <code>.cs</code> прямо в нём.</li>
+                  <li><code>mutual-cross-api</code> — два слайса публикуют X-контракты друг для друга: слить или спустить общее в Domain.</li>
+                  <li><code>cross-api-fan-in</code> — X-контракты слайса читают 4+ потребителя: слайс ведёт себя как нижний слой.</li>
+                  <li><code>directories-by-purpose</code> — essence-имя каталога на любой глубине вне сегментных позиций.</li>
+                  <li><code>insignificant-slice</code> — слайс без ссылок из собственных входных зеркал; разнобой числа в именах; 20+ слайсов без групп.</li>
+                </ul>
+                <h4 class="fold__h">Что читается</h4>
+                <p class="fold__p">Только tracked git: пути, авторские C#-исходники и <code>*.csproj</code> как XML без MSBuild evaluation. Item-пути с <code>$(...)</code> не судятся. Отчёт печатает обнаруженные зоны, слои и слайсы на каждом прогоне.</p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary class="fold__summary"><span>Чем отличается от Feature-Sliced Design</span><span class="fold__hint">что перенесено, что заменено, что не переносится</span></summary>
+          <div class="fold__body">
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>FSD 2.1</th><th>sliced-dotnet/1</th><th>Почему</th></tr></thead>
+                <tbody>
+                  <tr><td>7 слоёв: app, pages, widgets, features, entities, shared</td><td>6 слоёв Clean Architecture: Host, Api, Consumers, Application, Domain, Infrastructure</td><td>слои FSD UI-центричны; у бэкенда ось — вход, use-cases, домен, адаптеры</td></tr>
+                  <tr><td>слайс внутри одного слоя</td><td>слайс проходит сквозь слои: <code>Features/&lt;Слайс&gt;</code> и зеркала</td><td>vertical slice по Богарду поверх горизонтальных слоёв</td></tr>
+                  <tr><td>entities — общий словарь, компонуемый сверху</td><td><code>Domain</code>, слайсы в корне слоя, читают все верхние слои</td><td>ADR-0036, ADR-0050: Domain — основание, слоя Shared нет</td></tr>
+                  <tr><td>public API — <code>index.ts</code></td><td><code>Contracts/</code> слайса</td><td>в C# нет barrel-файла; публичность — каталог</td></tr>
+                  <tr><td>cross-import <code>@x</code></td><td><code>Contracts/X/&lt;Потребитель&gt;</code>, в Domain — <code>&lt;Слайс&gt;/X/&lt;Потребитель&gt;</code></td><td>та же нотация, тот же last resort</td></tr>
+                  <tr><td>сегменты ui, api, model, lib</td><td>сегменты по назначению, словарь запрещённых имён Steiger + Common, Managers, Repositories</td><td>ADR-0037</td></tr>
+                  <tr><td>Steiger, 22 правила</td><td>перенесено ~15; не переносятся <code>import-locality</code> и <code>no-processes</code></td><td>в C# нет относительных импортов</td></tr>
+                  <tr><td>—</td><td>слой = сборка</td><td>у .NET есть физическая граница, которую держит компилятор — ADR-0041</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="fold__p">Стандарт версионируется в имени: пересмотр словаря — новый ADR и <code>sliced-dotnet/2</code>, тихой эволюции нет.</p>
+          </div>
+        </details>
+
+        <span class="check__meta" style="margin-top: var(--space-4)"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0033-canonical-standard-over-declarations.md" target="_blank" rel="noreferrer noopener">ADR-0033</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0036-input-layers-read-domain.md" target="_blank" rel="noreferrer noopener">ADR-0036</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0037-segments-by-purpose.md" target="_blank" rel="noreferrer noopener">ADR-0037</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0038-flat-directory-grouping.md" target="_blank" rel="noreferrer noopener">ADR-0038</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0039-cross-api-density.md" target="_blank" rel="noreferrer noopener">ADR-0039</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0040-zone-wide-vocabulary.md" target="_blank" rel="noreferrer noopener">ADR-0040</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0041-layer-is-the-assembly.md" target="_blank" rel="noreferrer noopener">ADR-0041</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0050-domain-is-the-bottom-layer.md" target="_blank" rel="noreferrer noopener">ADR-0050</a> <a href="https://feature-sliced.design" target="_blank" rel="noreferrer noopener">FSD</a></span>
+      </div>
+    </section>
+
     <!-- ── Checks ───────────────────────────────────────────────────── -->
     <section class="section" id="checks">
       <div class="container">
@@ -197,14 +379,15 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
         <p class="section__body">
           Все структурные проверки питаются одним графом, построенным по tracked-исходникам лексическим ридером на BCL —
           без Roslyn, без build output, без запуска toolchain. Это осознанная цена NativeAOT-инварианта: инструмент
-          измеряет меньше, чем компилятор, но никогда не завышает связанность на доказанных рёбрах. Диаграммы ниже
-          интерактивны — рёбра и узлы можно двигать, чтобы увидеть, как меняется вердикт.
+          измеряет меньше, чем компилятор, но никогда не завышает связанность на доказанных рёбрах. Каждый блок ниже
+          раскрывается; диаграммы интерактивны — рёбра и узлы можно двигать, чтобы увидеть, как меняется вердикт.
         </p>
 
         <!-- A. Graph & evidence -->
-        <article class="explainer" id="deep-graph">
+        <details class="explainer explainer--fold" id="deep-graph">
+          <summary class="fold__summary"><span>Граф зависимостей и уровни доказательности</span></summary>
+          <div class="explainer__inner">
           <div class="explainer__text">
-            <h3>Граф зависимостей и уровни доказательности</h3>
             <p>
               Типы, объявленные в репозитории, образуют замкнутый словарь. Каждое имя в исходнике резолвится в объявление в
               том же порядке, что использует C#: свой namespace, затем объемлющие, затем импорты файла. Имя, не совпавшее ни
@@ -268,12 +451,14 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
             </div>
             <figcaption>Proven-ребро <code>Shop.Orders → Shop.Pricing</code> не возникнет из строки с <code>Pricing.Total</code>: member access — только Inferred. Если <code>Pricing</code> нигде не стоит в типовой позиции, цикл через него не замкнётся.</figcaption>
           </figure>
-        </article>
+          </div>
+        </details>
 
         <!-- B. Cycles -->
-        <article class="explainer" id="deep-cycles">
+        <details class="explainer explainer--fold" id="deep-cycles">
+          <summary class="fold__summary"><span>Циклы модулей: единственная dependency-находка</span></summary>
+          <div class="explainer__inner">
           <div class="explainer__text">
-            <h3>Циклы модулей: единственная dependency-находка</h3>
             <p>
               Модули, зависящие друг от друга, нельзя упорядочить, вынести или переиспользовать в одном направлении. Это
               универсальный структурный дефект, который харнес умеет доказать по tracked-исходнику. Проверка становится
@@ -311,12 +496,14 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
             </div>
             <figcaption>Ребро <code>Domain → …</code> отсутствует намеренно: слой без исходящих рёбер не может войти в кольцо. Разверните любое красное ребро — компонента распадётся, а отчёт покажет следующее кольцо, если оно осталось.</figcaption>
           </figure>
-        </article>
+          </div>
+        </details>
 
         <!-- C. DSM -->
-        <article class="explainer" id="deep-dsm">
+        <details class="explainer explainer--fold" id="deep-dsm">
+          <summary class="fold__summary"><span>DSM-сложность: mean reach и core size под бюджетом</span></summary>
+          <div class="explainer__inner">
           <div class="explainer__text">
-            <h3>DSM-сложность: mean reach и core size под бюджетом</h3>
             <p>
               Счётчик зависимостей описывает один файл. Design structure matrix описывает, как изменение распространяется
               по продукту целиком. Две метрики DSM-семейства сравниваются с одним tracked-потолком в
@@ -371,12 +558,14 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
             </div>
             <figcaption>Добавьте несколько листовых файлов: propagation cost падает, а mean reach почти не меняется — именно поэтому бюджетируется второе. Замкните цикл: появится ядро, и потолок <code>coreSize</code> будет превышен.</figcaption>
           </figure>
-        </article>
+          </div>
+        </details>
 
         <!-- D. Duplication -->
-        <article class="explainer" id="deep-dup">
+        <details class="explainer explainer--fold" id="deep-dup">
+          <summary class="fold__summary"><span>Дупликация: одинаковая лексическая форма в разных файлах</span></summary>
+          <div class="explainer__inner">
           <div class="explainer__text">
-            <h3>Дупликация: одинаковая лексическая форма в разных файлах</h3>
             <p>
               Одна и та же структура, выписанная в нескольких файлах, — самый дешёвый наблюдаемый признак того, что
               абстракция отсутствует или была скопирована вместо вызова. Проверка находит место и останавливается:
@@ -446,55 +635,10 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
             </div>
             <figcaption>Демо-окно 2–8 строк вместо продуктовых 30/90, иначе на экран не поместится. Разные имена, литералы и числа сходятся к одним токенам; строка <code>return null;</code> меняет форму, и рост региона на ней останавливается.</figcaption>
           </figure>
-        </article>
+          </div>
+        </details>
 
         <!-- E. sliced-dotnet -->
-        <article class="explainer explainer--stack" id="deep-arch">
-          <div class="explainer__text">
-            <h3>sliced-dotnet/1: карта архитектуры — это сама файловая система</h3>
-            <p>
-              Контракт 2.0 задумывал per-repo декларации слоёв и модулей, как deptrac или import-linter. ADR-0033 отказался от
-              них по примеру FSD и Steiger: словарь фиксирован методологией, линтер читает дерево и уже знает, что является
-              нарушением. Осознанная правка декларации была бы легальным способом ослабить инвариант; изменить форму теперь
-              можно, только изменив код. Секция <code>architecture</code> сводится к выбору из двух форм — стандарт или
-              <code>applicable: false</code> с причиной для standalone-библиотеки.
-            </p>
-            <p>
-              <strong>Зона</strong> — каталог с <code>Application/</code>; монорепозиторий может содержать несколько зон, рёбра между
-              ними запрещены. <strong>Слои</strong> — фиксированный словарь каталогов в корне зоны, DAG задан стандартом.
-              <strong>Слайсы</strong> — <code>Application/Features/&lt;Слайс&gt;</code> с зеркалами в <code>Api</code>, <code>Consumers</code>,
-              <code>Infrastructure/Features</code> и <code>Domain</code>. Публичный API слайса — его <code>Contracts/</code>; кросс-импорт
-              между слайсами — только явный cross-API <code>Contracts/X/&lt;Потребитель&gt;</code> (перенос нотации <code>@x</code>
-              из FSD 2.1), который вправе импортировать только названный потребитель. <strong>Слой = сборка</strong>: ровно один
-              <code>.csproj</code> на слой с C#-кодом, ProjectReference — по той же таблице.
-            </p>
-          </div>
-          <div class="grid grid-2" style="align-items: start">
-            <div class="panel">
-              <div class="panel__head"><span class="panel__title">Слои и разрешённые рёбра</span></div>
-              <svg class="diagram" id="arch-svg" viewBox="0 0 520 322" role="img" aria-label="Диаграмма слоёв sliced-dotnet/1"></svg>
-              <p class="figure-note" style="margin-top: var(--space-2)">Host — composition root и единственное место, где контракты связываются с реализациями; видит все слои. Пунктир — запрещённое ребро, которое проверка называет по паре слоёв.</p>
-            </div>
-            <div class="panel">
-              <div class="panel__head"><span class="panel__title">Таблица стандарта</span></div>
-              <div class="table-wrap">
-                <table class="table">
-                  <thead><tr><th>Слой</th><th>Назначение</th><th>Разрешённые рёбра</th></tr></thead>
-                  <tbody>
-                    <tr><td>Host</td><td>composition root: Program, DI-wiring, конфигурация</td><td>во все слои</td></tr>
-                    <tr><td>Api</td><td>синхронный вход: controllers, endpoints, команды CLI</td><td>Application, Domain</td></tr>
-                    <tr><td>Consumers</td><td>асинхронный вход: очереди, подписки, hosted jobs</td><td>Application, Domain</td></tr>
-                    <tr><td>Application</td><td>use-cases; слайсы в Features/</td><td>Domain</td></tr>
-                    <tr><td>Domain</td><td>сущности и общий словарь зоны; слайсы в корне, Shared зарезервирован под код вне слайсов</td><td>—</td></tr>
-                    <tr><td>Infrastructure</td><td>адаптеры; слайсы в Features/, Persistence зарезервирован</td><td>Application (только Contracts/), Domain</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p class="figure-note" style="margin-top: var(--space-3)">Обязательны Host, Application и хотя бы один входной слой. Блокируют: DAG слоёв, изоляция слайсов, обход Contracts/, осиротевшее или пустое зеркало, цикл модулей, linked-компиляция чужого слоя. Advisory-observations без влияния на код возврата: плоский каталог 20+ файлов, взаимные и массовые X-контракты, essence-имена вроде <code>Services</code> или <code>Helpers</code>.</p>
-            </div>
-          </div>
-          <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0033-canonical-standard-over-declarations.md" target="_blank" rel="noreferrer noopener">ADR-0033</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0036-input-layers-read-domain.md" target="_blank" rel="noreferrer noopener">ADR-0036</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0037-segments-by-purpose.md" target="_blank" rel="noreferrer noopener">ADR-0037</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0039-cross-api-density.md" target="_blank" rel="noreferrer noopener">ADR-0039</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0041-layer-is-the-assembly.md" target="_blank" rel="noreferrer noopener">ADR-0041</a> <a href="https://feature-sliced.design" target="_blank" rel="noreferrer noopener">FSD</a></span>
-        </article>
       </div>
     </section>
 
