@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 переживает удаление worktree и не зависит от того, какой бинарь выполнял setup. Не найдя ни одного,
 hook отказывает в коммите и печатает оба просмотренных места. User-каталоги и tracked-файлы не меняются.
 
-`HARNESS_VERSION=2.14.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+`HARNESS_VERSION=2.15.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
@@ -90,7 +90,7 @@ GitLab:
 
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:2.14.0
+  image: ghcr.io/gently-whitesnow/harness:2.15.0
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"

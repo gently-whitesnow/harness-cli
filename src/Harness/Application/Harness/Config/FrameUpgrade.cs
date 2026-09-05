@@ -62,7 +62,7 @@ internal static class FrameUpgrade
           added    architecture: { "standard": "sliced-dotnet/1" } or { "applicable": false, "reason": "..." }
           added    explicit applicability, settings and policy entries for every shipped check
           added    tracked .harness.budget.json with complexity.csharp propagationCost and coreSize
-                   (retired again in 2.14, see below)
+                   (retired again in 2.15, see below)
         Release 2.4 additions:
           added    architecture.sliced-dotnet advisory observations flat-directory-grouping,
                    mutual-cross-api, cross-api-fan-in and directories-by-purpose; they never
@@ -156,6 +156,7 @@ internal static class FrameUpgrade
                    in its place, the dead path an older hook exec's, the places searched for a
                    binary — and blocks when the resolved harness is not the pinned release; run
                    `harness setup` after installing the pinned release, no config change is needed
+        Release 2.15 changes:
           removed  .harness.budget.json and `harness budget update`: complexity.csharp no longer
                    compares the DSM with a tracked ratchet; a tracked budget file makes the
                    frame Incomplete until you `git rm .harness.budget.json` and commit

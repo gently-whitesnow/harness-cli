@@ -57,7 +57,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 блокируются; выключение правила для всего репозитория печатается observation. Читается только
 tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"2.14.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.15.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
