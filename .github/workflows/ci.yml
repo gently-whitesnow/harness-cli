@@ -27,7 +27,13 @@ jobs:
       - name: Publish
         run: dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r linux-x64 -o out
 
-      # The harness verifies its own repository with the binary this run produced.
+      # The managed hook resolves the harness the same way in every clone: the clone-local
+      # binary first, then PATH. Installing the run's own build there keeps the check honest.
+      - name: Install the harness into the clone
+        run: |
+          mkdir -p .git/harness/bin
+          cp out/harness .git/harness/bin/harness
+
       - name: Prepare the clone
         run: ./out/harness setup
 

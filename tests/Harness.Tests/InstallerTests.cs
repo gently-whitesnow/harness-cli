@@ -31,8 +31,10 @@ public sealed class InstallerTests
         Assert.Equal(headBefore, Git(clone, "rev-parse", "HEAD").StandardOutput);
         Assert.Equal("", Git(clone, "status", "--porcelain=v1").StandardOutput);
 
-        var hook = Path.Combine(clone, ".git", "harness-hooks", "commit-msg");
-        Assert.Contains($"exec '{binary}' commit-message check", File.ReadAllText(hook), StringComparison.Ordinal);
+        // The installer puts the binary where the hook looks for it, and the hook holds no path.
+        var hook = File.ReadAllText(Path.Combine(clone, ".git", "harness-hooks", "commit-msg"));
+        Assert.DoesNotContain(binary, hook, StringComparison.Ordinal);
+        Assert.Contains("harness/bin/harness", hook, StringComparison.Ordinal);
 
         File.WriteAllText(Path.Combine(clone, "host-change.txt"), "installed process has exited\n");
         Assert.Equal(0, Git(clone, "add", "host-change.txt").ExitCode);

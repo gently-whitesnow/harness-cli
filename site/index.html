@@ -38,7 +38,7 @@
           <path d="M8 12.5l2.5 2.5L16 9.5" />
         </svg>
         <span>harness</span>
-        <span class="brand__version">2.13.0</span>
+        <span class="brand__version">2.14.0</span>
       </a>
       <nav class="site-nav" aria-label="Основная навигация">
         <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#catches">Что ловит</a>
@@ -79,7 +79,7 @@
         </div>
         <figure class="hero__demo">
 <pre class="code-block code-block--terminal"><code><span class="c-dim">$</span> harness check
-<span class="c-err">FAIL</span>  ./shop · harness 2.13.0
+<span class="c-err">FAIL</span>  ./shop · harness 2.14.0
    CHECK ID                FINDINGS
 ✅ harness.config          8 answers · 24 policy entries
 ❌ dependencies.csharp     cycle Orders → Billing → Orders
@@ -368,10 +368,10 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
     <!-- ── Checks ───────────────────────────────────────────────────── -->
     <section class="section" id="checks">
       <div class="container">
-        <div class="section__kicker">24 проверки · контракт 2.13.0</div>
+        <div class="section__kicker">24 проверки · контракт 2.14.0</div>
         <h2 class="section__title">Каждая проверка названа, и каждая — в конфиге</h2>
         <p class="section__body">
-          Все 24 проверки бинаря 2.13.0 в порядке исполнения. Идентификатор — <code>&lt;семейство&gt;.&lt;язык&gt;</code>:
+          Все 24 проверки бинаря 2.14.0 в порядке исполнения. Идентификатор — <code>&lt;семейство&gt;.&lt;язык&gt;</code>:
           ось <code>applicability</code> выключает язык одной записью, <code>policy</code> решает судьбу каждой проверки.
           Нет записи — прогон <code>Incomplete</code> с именем ключа. Подробности — <code>harness explain &lt;check-id&gt;</code>.
         </p>
@@ -716,7 +716,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
           <div class="panel">
             <div class="panel__head"><span class="panel__title">Пример отчёта</span></div>
 <pre class="code-block code-block--terminal"><code><span class="c-ok">PASS</span>  /srv/repo
-  harness 2.13.0 · repository pins 2.13.0
+  harness 2.14.0 · repository pins 2.14.0
    CHECK ID                     FINDINGS
 ✅ harness.config               .harness.json contains 8 answers, 24 explicit policy entries
 ✅ architecture.sliced-dotnet   architecture map: zone src/Harness · layers [Host, Api, Application, Domain, Infrastructure]
@@ -737,7 +737,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
           <div class="panel">
             <div class="panel__head"><span class="panel__title">GitLab CI</span></div>
 <pre class="code-block"><code><span class="c-key">harness</span>:
-  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.13.0</span>
+  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.14.0</span>
   <span class="c-key">script</span>:
     - harness check
     - harness commits check <span class="c-str">"$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"</span></code></pre>

@@ -6,6 +6,9 @@ public static class HarnessCli
 {
     private static readonly string ExecutablePath = ResolveExecutablePath();
 
+    /// <summary>The binary under test, so a fixture can install it the way install.sh does.</summary>
+    public static string Executable => ExecutablePath;
+
     public static CliRun Run(string workingDirectory, params string[] arguments)
         => Run(workingDirectory, environment: null, arguments);
 
