@@ -38,7 +38,7 @@
           <path d="M8 12.5l2.5 2.5L16 9.5" />
         </svg>
         <span>harness</span>
-        <span class="brand__version">2.12.0</span>
+        <span class="brand__version">2.13.0</span>
       </a>
       <nav class="site-nav" aria-label="Основная навигация">
         <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#catches">Что ловит</a>
@@ -79,7 +79,7 @@
         </div>
         <figure class="hero__demo">
 <pre class="code-block code-block--terminal"><code><span class="c-dim">$</span> harness check
-<span class="c-err">FAIL</span>  ./shop · harness 2.12.0
+<span class="c-err">FAIL</span>  ./shop · harness 2.13.0
    CHECK ID                FINDINGS
 ✅ harness.config          8 answers · 24 policy entries
 ❌ dependencies.csharp     cycle Orders → Billing → Orders
@@ -209,24 +209,23 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
 ├─ Host/          <span class="c-dim">Shop.Host.csproj</span>
 │  └─ Program.cs                <span class="c-dim">composition root</span>
 ├─ Api/           <span class="c-dim">Shop.Api.csproj</span>
-│  └─ Features/Orders/Endpoints/ <span class="c-dim">синхронный вход</span>
+│  └─ Orders/Endpoints/         <span class="c-dim">синхронный вход</span>
 ├─ Consumers/     <span class="c-dim">Shop.Consumers.csproj</span>
-│  └─ Features/Billing/Queues/  <span class="c-dim">асинхронный вход</span>
-├─ Application/   <span class="c-dim">Shop.Application.csproj</span>
-│  └─ Features/                 <span class="c-dim">источник имён слайсов</span>
-│     ├─ Orders/
-│     │  ├─ Contracts/          <span class="c-ok">публичный API слайса</span>
-│     │  ├─ Placement/          <span class="c-dim">сегмент по назначению</span>
-│     │  └─ Pricing/
-│     └─ Billing/
-│        ├─ Contracts/
-│        │  └─ X/Orders/        <span class="c-warn">cross-API только для Orders</span>
-│        └─ Invoicing/
+│  └─ Billing/Queues/           <span class="c-dim">асинхронный вход</span>
+├─ Application/   <span class="c-dim">Shop.Application.csproj · источник имён слайсов</span>
+│  ├─ Orders/
+│  │  ├─ Contracts/             <span class="c-ok">публичный API слайса</span>
+│  │  ├─ Placement/             <span class="c-dim">сегмент по назначению</span>
+│  │  └─ Pricing/
+│  └─ Billing/
+│     ├─ Contracts/
+│     │  └─ X/Orders/           <span class="c-warn">cross-API только для Orders</span>
+│     └─ Invoicing/
 ├─ Domain/        <span class="c-dim">Shop.Domain.csproj</span>
 │  ├─ Orders/  Billing/         <span class="c-dim">словарь зоны для всех слоёв</span>
 │  └─ Shared/                   <span class="c-dim">понятия вне слайсов</span>
 └─ Infrastructure/ <span class="c-dim">Shop.Infrastructure.csproj</span>
-   ├─ Features/Orders/Postgres/ <span class="c-dim">адаптеры слайса</span>
+   ├─ Orders/Postgres/          <span class="c-dim">адаптеры слайса</span>
    └─ Persistence/              <span class="c-dim">DbContext видит весь Domain</span></code></pre>
             </div>
           </div>
@@ -244,9 +243,11 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
               <span class="arch-concept__num">2</span>
               <div>
                 <h3>Слайс</h3>
-                <p>Бизнес-capability, проходящая сквозь слои: <code>Application/Features/Orders</code> и его зеркала в
-                  <code>Api</code>, <code>Consumers</code>, <code>Infrastructure/Features</code> и <code>Domain</code>. Слайсы одного
-                  слоя друг друга не видят. Группа — один уровень <code>Features/&lt;Группа&gt;/&lt;Слайс&gt;</code> без файлов.</p>
+                <p>Бизнес-capability, проходящая сквозь слои: <code>Application/Orders</code> и его зеркала в
+                  <code>Api</code>, <code>Consumers</code>, <code>Infrastructure</code> и <code>Domain</code>. Слайсы одного
+                  слоя друг друга не видят. Группа — один уровень <code>&lt;Слой&gt;/&lt;Группа&gt;/&lt;Слайс&gt;</code> без файлов.
+                  В корне слайсового слоя лежат только слайсы: промежуточного каталога нет, сквозной обвязке место в
+                  <code>Host</code> или в слайсе.</p>
               </div>
             </div>
             <div class="arch-concept">
@@ -255,7 +256,9 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
                 <h3>Сегмент</h3>
                 <p>Каталог внутри слайса, названный по назначению: <code>Placement</code>, <code>Pricing</code>, а не
                   <code>Services</code> или <code>Helpers</code>. Два сегмента зарезервированы стандартом: <code>Contracts/</code> —
-                  публичный API слайса, <code>Contracts/X/&lt;Потребитель&gt;</code> — cross-API для одного названного слайса.</p>
+                  публичный API слайса, <code>Contracts/X/&lt;Потребитель&gt;</code> — cross-API для одного названного слайса.
+                  <code>Contracts/</code> живёт внутри слайса: тот же каталог в корне слоя — публичный API слоя, которого
+                  в стандарте нет, и он блокируется как <code>no-layer-public-api</code>.</p>
               </div>
             </div>
           </div>
@@ -272,7 +275,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
                   <tr><td>Host</td><td>Program, DI-wiring, конфигурация</td><td>все слои</td></tr>
                   <tr><td>Api</td><td>controllers, endpoints, команды CLI</td><td>Application, Domain</td></tr>
                   <tr><td>Consumers</td><td>очереди, подписки, hosted jobs</td><td>Application, Domain</td></tr>
-                  <tr><td>Application</td><td>use-cases, слайсы в <code>Features/</code></td><td>Domain</td></tr>
+                  <tr><td>Application</td><td>use-cases, слайсы в корне слоя</td><td>Domain</td></tr>
                   <tr><td>Infrastructure</td><td>адаптеры, <code>Persistence/</code> зарезервирован</td><td>Application (только Contracts/), Domain</td></tr>
                   <tr><td>Domain</td><td>сущности и словарь зоны, слайсы в корне</td><td>—</td></tr>
                 </tbody>
@@ -308,6 +311,8 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
                   <li>Ребро вне таблицы слоёв; ребро между зонами.</li>
                   <li>Ребро между слайсами одного слоя, включая их обычные <code>Contracts/</code>; импорт <code>X/B/</code> кем-то кроме B.</li>
                   <li>Обход <code>Contracts/</code> Application-слайса извне (кроме Host).</li>
+                  <li><code>Contracts/</code> в корне слайсового слоя — <code>no-layer-public-api</code>: публичный API публикует слайс, не слой.</li>
+                  <li>Каталог в корне слайсового слоя, который не слайс и не зарезервирован (<code>Domain/Shared</code>, <code>Infrastructure/Persistence</code>): essence-имя — <code>no-segments-on-sliced-layers</code>, любое другое — <code>orphan-slice-mirror</code>. Файл прямо в корне слоя — <code>outside-slice</code>.</li>
                   <li>Слайс без зеркала ни в <code>Api</code>, ни в <code>Consumers</code>; зеркало без слайса в Application; пустой слайс, группа или слой.</li>
                   <li>Каталог в корне зоны вне словаря слоёв; опечатка в имени слоя.</li>
                   <li>Сегмент слайса или Host по виду кода: <code>Services</code>, <code>Helpers</code>, <code>Utils</code>, <code>Common</code>, <code>Managers</code>, <code>Repositories</code> и словарь Steiger целиком; essence-имя листа в группе слайсов.</li>
@@ -322,6 +327,8 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
                   <li><code>mutual-cross-api</code> — два слайса публикуют X-контракты друг для друга: слить или спустить общее в Domain.</li>
                   <li><code>cross-api-fan-in</code> — X-контракты слайса читают 4+ потребителя: слайс ведёт себя как нижний слой.</li>
                   <li><code>directories-by-purpose</code> — essence-имя каталога на любой глубине вне сегментных позиций.</li>
+                  <li><code>repetitive-naming</code> — все слайсы слоя лежат в единственной группе: имя группы повторяется на каждом слайсе и не сообщает ничего.</li>
+                  <li><code>ambiguous-slice-names</code> — сегмент назван как свой слайс (<code>Orders/Orders</code>): имя не говорит о назначении.</li>
                   <li><code>insignificant-slice</code> — слайс без ссылок из собственных входных зеркал; разнобой числа в именах; 20+ слайсов без групп.</li>
                 </ul>
                 <h4 class="fold__h">Что читается</h4>
@@ -339,7 +346,8 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
                 <thead><tr><th>FSD 2.1</th><th>sliced-dotnet/1</th><th>Почему</th></tr></thead>
                 <tbody>
                   <tr><td>7 слоёв: app, pages, widgets, features, entities, shared</td><td>6 слоёв Clean Architecture: Host, Api, Consumers, Application, Domain, Infrastructure</td><td>слои FSD UI-центричны; у бэкенда ось — вход, use-cases, домен, адаптеры</td></tr>
-                  <tr><td>слайс внутри одного слоя</td><td>слайс проходит сквозь слои: <code>Features/&lt;Слайс&gt;</code> и зеркала</td><td>vertical slice по Богарду поверх горизонтальных слоёв</td></tr>
+                  <tr><td>слайс внутри одного слоя</td><td>слайс проходит сквозь слои: <code>&lt;Слой&gt;/&lt;Слайс&gt;</code> и зеркала</td><td>vertical slice по Богарду поверх горизонтальных слоёв</td></tr>
+                  <tr><td>слайсы лежат в корне слоя, промежуточного каталога нет</td><td>так же: <code>&lt;Слой&gt;/&lt;Слайс&gt;</code>, в корне слоя — только слайсы</td><td>ADR-0051: одна форма для всех слоёв, корень слоя перестаёт быть местом для кода без владельца</td></tr>
                   <tr><td>entities — общий словарь, компонуемый сверху</td><td><code>Domain</code>, слайсы в корне слоя, читают все верхние слои</td><td>ADR-0036, ADR-0050: Domain — основание, слоя Shared нет</td></tr>
                   <tr><td>public API — <code>index.ts</code></td><td><code>Contracts/</code> слайса</td><td>в C# нет barrel-файла; публичность — каталог</td></tr>
                   <tr><td>cross-import <code>@x</code></td><td><code>Contracts/X/&lt;Потребитель&gt;</code>, в Domain — <code>&lt;Слайс&gt;/X/&lt;Потребитель&gt;</code></td><td>та же нотация, тот же last resort</td></tr>
@@ -349,21 +357,21 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
                 </tbody>
               </table>
             </div>
-            <p class="fold__p">Стандарт версионируется в имени: пересмотр словаря — новый ADR и <code>sliced-dotnet/2</code>, тихой эволюции нет.</p>
+            <p class="fold__p">Версии в имени стандарта нет: форму называет контракт — pin <code>version</code> в рамке. Бинарь исполняет только свой контракт, любой другой pin даёт <code>Incomplete</code>, а меняет pin только <code>harness upgrade</code>, печатающий весь маршрут миграции. Поэтому тихой эволюции словаря нет и без второго имени — ADR-0051.</p>
           </div>
         </details>
 
-        <span class="check__meta" style="margin-top: var(--space-4)"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0033-canonical-standard-over-declarations.md" target="_blank" rel="noreferrer noopener">ADR-0033</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0036-input-layers-read-domain.md" target="_blank" rel="noreferrer noopener">ADR-0036</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0037-segments-by-purpose.md" target="_blank" rel="noreferrer noopener">ADR-0037</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0038-flat-directory-grouping.md" target="_blank" rel="noreferrer noopener">ADR-0038</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0039-cross-api-density.md" target="_blank" rel="noreferrer noopener">ADR-0039</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0040-zone-wide-vocabulary.md" target="_blank" rel="noreferrer noopener">ADR-0040</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0041-layer-is-the-assembly.md" target="_blank" rel="noreferrer noopener">ADR-0041</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0050-domain-is-the-bottom-layer.md" target="_blank" rel="noreferrer noopener">ADR-0050</a> <a href="https://feature-sliced.design" target="_blank" rel="noreferrer noopener">FSD</a></span>
+        <span class="check__meta" style="margin-top: var(--space-4)"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0033-canonical-standard-over-declarations.md" target="_blank" rel="noreferrer noopener">ADR-0033</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0036-input-layers-read-domain.md" target="_blank" rel="noreferrer noopener">ADR-0036</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0037-segments-by-purpose.md" target="_blank" rel="noreferrer noopener">ADR-0037</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0038-flat-directory-grouping.md" target="_blank" rel="noreferrer noopener">ADR-0038</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0039-cross-api-density.md" target="_blank" rel="noreferrer noopener">ADR-0039</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0040-zone-wide-vocabulary.md" target="_blank" rel="noreferrer noopener">ADR-0040</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0041-layer-is-the-assembly.md" target="_blank" rel="noreferrer noopener">ADR-0041</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0050-domain-is-the-bottom-layer.md" target="_blank" rel="noreferrer noopener">ADR-0050</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0051-slices-in-the-layer-root.md" target="_blank" rel="noreferrer noopener">ADR-0051</a> <a href="https://feature-sliced.design" target="_blank" rel="noreferrer noopener">FSD</a></span>
       </div>
     </section>
 
     <!-- ── Checks ───────────────────────────────────────────────────── -->
     <section class="section" id="checks">
       <div class="container">
-        <div class="section__kicker">24 проверки · контракт 2.12.0</div>
+        <div class="section__kicker">24 проверки · контракт 2.13.0</div>
         <h2 class="section__title">Каждая проверка названа, и каждая — в конфиге</h2>
         <p class="section__body">
-          Все 24 проверки бинаря 2.12.0 в порядке исполнения. Идентификатор — <code>&lt;семейство&gt;.&lt;язык&gt;</code>:
+          Все 24 проверки бинаря 2.13.0 в порядке исполнения. Идентификатор — <code>&lt;семейство&gt;.&lt;язык&gt;</code>:
           ось <code>applicability</code> выключает язык одной записью, <code>policy</code> решает судьбу каждой проверки.
           Нет записи — прогон <code>Incomplete</code> с именем ключа. Подробности — <code>harness explain &lt;check-id&gt;</code>.
         </p>
@@ -708,7 +716,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
           <div class="panel">
             <div class="panel__head"><span class="panel__title">Пример отчёта</span></div>
 <pre class="code-block code-block--terminal"><code><span class="c-ok">PASS</span>  /srv/repo
-  harness 2.12.0 · repository pins 2.12.0
+  harness 2.13.0 · repository pins 2.13.0
    CHECK ID                     FINDINGS
 ✅ harness.config               .harness.json contains 8 answers, 24 explicit policy entries
 ✅ architecture.sliced-dotnet   architecture map: zone src/Harness · layers [Host, Api, Application, Domain, Infrastructure]
@@ -729,7 +737,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
           <div class="panel">
             <div class="panel__head"><span class="panel__title">GitLab CI</span></div>
 <pre class="code-block"><code><span class="c-key">harness</span>:
-  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.12.0</span>
+  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.13.0</span>
   <span class="c-key">script</span>:
     - harness check
     - harness commits check <span class="c-str">"$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"</span></code></pre>

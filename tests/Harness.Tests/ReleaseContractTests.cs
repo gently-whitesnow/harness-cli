@@ -64,6 +64,24 @@ public sealed class ReleaseContractTests
     }
 
     [Fact]
+    public void Upgrade_raises_only_the_pin_and_leaves_the_architecture_standard_untouched()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent()
+            .Version("2.12.0")
+            .Architecture("""{ "standard": "sliced-dotnet/1" }"""));
+
+        var run = HarnessCli.Run(repository.Path, "upgrade");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("Release 2.13 changes", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("no-layer-public-api", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("Only the pin was changed", run.StandardOutput, StringComparison.Ordinal);
+        var frame = File.ReadAllText(repository.Absolute(".harness.json"));
+        Assert.Contains($"\"version\": \"{Release.Current}\"", frame, StringComparison.Ordinal);
+        Assert.Contains("\"standard\": \"sliced-dotnet/1\"", frame, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Upgrade_dry_run_describes_the_migration_without_changing_the_pin()
     {
         using var repository = Fixtures.Compliant(Frame.AllPresent().Version("1.5.0"));

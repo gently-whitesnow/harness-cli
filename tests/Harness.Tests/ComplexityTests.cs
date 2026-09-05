@@ -130,14 +130,14 @@ public sealed class ComplexityTests
                 .Architecture("""{ "standard": "sliced-dotnet/1" }"""))
             .WriteFile("src/App/Host/Program.cs", "namespace App.Host; sealed class Program;\n")
             .WriteFile(
-                "src/App/Api/Features/Example/Endpoint.cs",
-                Reference("App.Api.Features.Example", "Endpoint", "App.Application.Features.Example", ["UseCase"]))
+                "src/App/Api/Example/Endpoint.cs",
+                Reference("App.Api.Example", "Endpoint", "App.Application.Example", ["UseCase"]))
             .WriteFile(
-                "src/App/Application/Features/Example/UseCase.cs",
-                "namespace App.Application.Features.Example;\n\npublic sealed class UseCase;\n")
+                "src/App/Application/Example/UseCase.cs",
+                "namespace App.Application.Example;\n\npublic sealed class UseCase;\n")
             .WriteFile(
                 "tests/App.Tests/EndpointTests.cs",
-                Reference("App.Tests", "EndpointTests", "App.Api.Features.Example", ["Endpoint", "App.Application.Features.Example.UseCase"]))
+                Reference("App.Tests", "EndpointTests", "App.Api.Example", ["Endpoint", "App.Application.Example.UseCase"]))
             .Commit();
 
         var run = Measure(repository);

@@ -31,6 +31,14 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private static readonly string[] SlicelessSegmentLayers = ["Host"];
 
+    // ADR-0051: the only two directories in the root of a sliced layer that are neither
+    // slices nor mirrors.
+    private static readonly string[] ReservedDirectories = ["Domain/Shared", "Infrastructure/Persistence"];
+
+    // The public API of a slice; at the root of a sliced layer it is the no-layer-public-api
+    // finding rather than a slice, group or mirror.
+    private const string PublicApiDirectory = "Contracts";
+
     // Literal port of Steiger's BAD_NAMES_GENERIC pinned by ADR-0037. Keep local policy out of this set.
     private static readonly HashSet<string> SteigerBadNamesGeneric =
         new(StringComparer.OrdinalIgnoreCase)
@@ -93,14 +101,15 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           Every application uses the same layer vocabulary, so a review does not depend on a
           repository-specific declaration. This is tier 1 of the contract 2.0 model: immutable
           topology invariants. Tier 2 is the monotonic DSM budget; tier 3 is explicit repository
-          policy. ADR-0032 defines the tiers and ADR-0033 defines sliced-dotnet/1.
+          policy. ADR-0032 defines the tiers, ADR-0033 defines sliced-dotnet and ADR-0051 puts
+          the slices of sliced-dotnet/1 directly in the layer root.
 
         What it reads
           Every tracked path in Git, the non-generated C# sources used by the dependency
           graph, and every tracked *.csproj as XML — the way the .NET policy checks of
           ADR-0019 read it, without MSBuild evaluation. A directory containing Application/ starts one zone. The check discovers
-          canonical layer directories and Application/Features slices, including one optional
-          grouping level. Dependency edges are lexical evidence: only Proven edges can fail this
+          canonical layer directories and the slices directly below Application/, including one
+          optional grouping level. Dependency edges are lexical evidence: only Proven edges can fail this
           fitness function; Inferred edges are ignored by blocking invariants. The advisory
           insignificant-slice convention accepts both Proven and Inferred resolved edges from the
           slice's own input mirrors to avoid claiming that a referenced slice is unused.
@@ -142,14 +151,22 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           a mirror may consume the ordinary public Contracts/ of a differently named Application
           slice.
 
-          A file directly inside Features/<Name>/ makes <Name> a slice. Without such a file, that
-          directory is a group and its child directories are the slices.
+          Slices sit directly in the root of a sliced layer — Application, Api, Consumers,
+          Infrastructure and Domain — the way Feature-Sliced Design puts slices in a layer: a file
+          directly inside <Layer>/<Name>/ makes <Name> a slice. Without such a file, that
+          directory is a group and its child directories are the slices. Host stays sliceless.
 
-          Application/Features is the source of slice names. Every slice has a non-empty mirror in
-          Api/Features or Consumers/Features. Api, Consumers, Infrastructure/Features and Domain
-          mirrors cannot introduce a slice that Application does not contain. Domain/Shared and
-          Infrastructure/Persistence are reserved non-slice directories. Placeholder-only slices,
-          groups and mirrors are empty architecture forms and fail the check.
+          Application is the source of slice names. Every slice has a non-empty mirror in
+          Api/<Slice> or Consumers/<Slice>. Api, Consumers, Infrastructure and Domain mirrors
+          cannot introduce a slice that Application does not contain: a directory in the root of
+          a sliced layer is a slice mirror, and cross-cutting code belongs in Host or in a slice
+          (orphan-slice-mirror). Only Domain/Shared and Infrastructure/Persistence are reserved
+          non-slice directories. Placeholder-only slices, groups and mirrors are empty
+          architecture forms and fail the check.
+
+          A Contracts/ directory directly below a sliced layer is no-layer-public-api: a slice
+          publishes its own Contracts/, the layer has none. That directory is neither a slice, a
+          group nor a mirror, and it produces no second finding.
 
           Direct segments in slices and in the sliceless Host layer are named by purpose
           rather than by the kind of code they contain. The segments-by-purpose finding literally
@@ -157,18 +174,22 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           additions — Common, Manager, Managers, Repository and Repositories — belong to the
           sliced-dotnet/1 policy. Steiger's frontend framework vocabularies are intentionally not
           part of this .NET standard.
-          An essence-based leaf below a slice group is rejected as an ambiguous segment on a sliced
-          dimension, following Steiger's no-segments-on-sliced-layers rule. The check still advises
-          on slices without a resolved incoming reference from their own input mirror, mixed
-          singular/plural names and more than 20 ungrouped slices.
-          Three further structure conventions are printed as advisory observations under every
+          An essence-based leaf below a slice group, and an essence-named directory in the root of
+          a mirror layer, are rejected as segments on a sliced dimension, following Steiger's
+          no-segments-on-sliced-layers rule. The check still advises on slices without a resolved
+          incoming reference from their own input mirror, mixed singular/plural names and more
+          than 20 ungrouped slices.
+          Five further structure conventions are printed as advisory observations under every
           policy, including required: a directory anywhere in the zone that directly holds 20 or
           more authored .cs files (flat-directory-grouping, adapting Steiger's shared-lib-grouping
-          threshold), a pair of slices publishing cross-APIs for each other (mutual-cross-api) and
+          threshold), a pair of slices publishing cross-APIs for each other (mutual-cross-api),
           a slice whose cross-APIs are consumed by 4 or more distinct slices (cross-api-fan-in) —
-          the density of the X graph is the only layering signal on the single slice layer — and an
+          the density of the X graph is the only layering signal on the single slice layer — an
           essence-named directory at any depth outside the positions the segment rules already
-          classify (directories-by-purpose). These observations never change the exit code.
+          classify (directories-by-purpose), a single group holding every slice of the zone
+          (repetitive-naming: the group name repeats on every slice and carries no information)
+          and a direct segment that repeats the name of its own slice (ambiguous-slice-names).
+          These observations never change the exit code.
 
         Policy
           A violation is blocking when the tracked policy for this check is required, and no
@@ -178,8 +199,11 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
         Remediation
           Move application files under Host, Api, Consumers, Application, Domain or
-          Infrastructure. Put use-case slices in Application/Features/<Slice>, or group them one level
-          deeper as Application/Features/<Group>/<Slice> without files in the group directory.
+          Infrastructure. Put use-case slices in Application/<Slice>, or group them one level
+          deeper as Application/<Group>/<Slice> without files in the group directory. Move
+          a legacy <Layer>/Features/<Slice> to <Layer>/<Slice>, move cross-cutting
+          web plumbing from the root of a sliced layer into Host or into a slice, and move a
+          layer-level Contracts/ into the slice that owns it.
           Turn a forbidden dependency around or move the shared concept to an allowed lower layer.
           Give every layer that holds C# sources its own project, replace a Compile Include of
           another layer's sources with a ProjectReference to that layer's project, and remove a
@@ -205,6 +229,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           adrs/0039-cross-api-density.md
           adrs/0040-zone-wide-vocabulary.md
           adrs/0041-layer-is-the-assembly.md
+          adrs/0051-slices-in-the-layer-root.md
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)
@@ -311,9 +336,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                 if (!referencedByOwnInput)
                 {
                     observations.Add(
-                        $"advisory {At(zone, $"Application/Features/{slice}")}: insignificant-slice: slice '{slice}', "
+                        $"advisory {At(zone, $"Application/{slice}")}: insignificant-slice: slice '{slice}', "
                         + $"dimension 'Application', has no resolved incoming reference from its own "
-                        + $"Api/Features/{slice}/ or Consumers/Features/{slice}/ mirror");
+                        + $"Api/{slice}/ or Consumers/{slice}/ mirror");
                 }
 
             }
@@ -323,7 +348,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             if (ungrouped.Count > 20)
             {
                 observations.Add(
-                    $"advisory {At(zone, "Application/Features")}: excessive-slicing: dimension 'Application' has "
+                    $"advisory {At(zone, "Application")}: excessive-slicing: dimension 'Application' has "
                     + $"{ungrouped.Count} ungrouped slices; group slices by business area when the flat list exceeds 20");
             }
         }
@@ -348,16 +373,14 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             if (IsEssenceBasedSegmentName(leaf))
             {
                 findings.Add(Advice(
-                    At(zone, $"Application/Features/{slice}"),
+                    At(zone, $"Application/{slice}"),
                     $"no-segments-on-sliced-layers: application slice '{slice}' ends in essence-based "
                     + $"name '{leaf}'; choose a business slice name or move that segment inside a named slice"));
             }
 
             foreach (var dimension in SliceDimensions)
             {
-                var slicePrefix = dimension == "Domain"
-                    ? $"Domain/{slice}/"
-                    : $"{dimension}/Features/{slice}/";
+                var slicePrefix = $"{dimension}/{slice}/";
                 foreach (var segment in entries
                     .Where(path => path.StartsWith(slicePrefix, StringComparison.Ordinal))
                     .Select(path => ImmediateDirectory(path[slicePrefix.Length..]))
@@ -394,9 +417,10 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
     }
 
     /// <summary>
-    /// Non-blocking structure conventions from ADR-0038, ADR-0039 and ADR-0040. Following the
-    /// insignificant-slice precedent, they are printed as advisory observations rather than
-    /// findings, so no policy — including required — can turn them into a blocking verdict.
+    /// Non-blocking structure conventions from ADR-0038, ADR-0039, ADR-0040 and ADR-0051.
+    /// Following the insignificant-slice precedent, they are printed as advisory observations
+    /// rather than findings, so no policy — including required — can turn them into a
+    /// blocking verdict.
     /// </summary>
     private static void InspectStructureAdvisories(
         string zone,
@@ -412,6 +436,63 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         AddFlatDirectoryAdvice(zone, entries, observations);
         AddCrossApiDensityAdvice(zone, map, entries, observations);
         AddZoneVocabularyAdvice(zone, map, entries, observations);
+        AddRepetitiveNamingAdvice(zone, map, observations);
+        AddAmbiguousSliceNameAdvice(zone, map, entries, observations);
+    }
+
+    /// <summary>
+    /// Port of Steiger's repetitive-naming: one group that holds every slice of the zone
+    /// repeats its name on every slice and tells no slice apart from another.
+    /// </summary>
+    private static void AddRepetitiveNamingAdvice(string zone, SliceMap map, List<string> observations)
+    {
+        if (map.Groups.Count != 1 || map.Slices.Count == 0)
+        {
+            return;
+        }
+
+        var group = map.Groups[0];
+        if (map.Slices.All(slice => slice.StartsWith(group + "/", StringComparison.Ordinal)))
+        {
+            observations.Add(
+                $"advisory {At(zone, $"Application/{group}")}: repetitive-naming: every slice of dimension "
+                + $"'Application' sits in the single group '{group}'; the group name repeats on every slice "
+                + "and carries no information — flatten the group or split slices into two or more groups");
+        }
+    }
+
+    /// <summary>
+    /// Port of Steiger's ambiguous-slice-names: a direct segment that repeats the name of its
+    /// own slice says nothing about the purpose of its contents.
+    /// </summary>
+    private static void AddAmbiguousSliceNameAdvice(
+        string zone,
+        SliceMap map,
+        IReadOnlyList<string> entries,
+        List<string> observations)
+    {
+        foreach (var slice in map.Slices)
+        {
+            var leaf = slice.Split('/')[^1];
+            foreach (var dimension in SliceDimensions)
+            {
+                var slicePrefix = $"{dimension}/{slice}/";
+                foreach (var segment in entries
+                    .Where(path => path.StartsWith(slicePrefix, StringComparison.Ordinal))
+                    .Select(path => ImmediateDirectory(path[slicePrefix.Length..]))
+                    .Where(segment => segment is not null
+                        && segment.Equals(leaf, StringComparison.OrdinalIgnoreCase))
+                    .Select(segment => segment!)
+                    .Distinct(StringComparer.Ordinal)
+                    .Order(StringComparer.Ordinal))
+                {
+                    observations.Add(
+                        $"advisory {At(zone, $"{slicePrefix}{segment}")}: ambiguous-slice-names: segment "
+                        + $"'{segment}' of slice '{slice}', dimension '{dimension}', repeats the slice name; "
+                        + "name the segment after its purpose");
+                }
+            }
+        }
     }
 
     private static void AddFlatDirectoryAdvice(
@@ -459,7 +540,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                     && back.Contains(producer)))
             {
                 observations.Add(
-                    $"advisory {At(zone, $"Application/Features/{producer}")}: mutual-cross-api: slices "
+                    $"advisory {At(zone, $"Application/{producer}")}: mutual-cross-api: slices "
                     + $"'{producer}' and '{partner}' publish cross-APIs for each other; extract the shared "
                     + "concept into Domain, or merge the slices");
             }
@@ -468,7 +549,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             if (consumers.Count >= CrossApiFanInLimit)
             {
                 observations.Add(
-                    $"advisory {At(zone, $"Application/Features/{producer}")}: cross-api-fan-in: slice "
+                    $"advisory {At(zone, $"Application/{producer}")}: cross-api-fan-in: slice "
                     + $"'{producer}' publishes cross-APIs for {consumers.Count} consumers "
                     + $"[{string.Join(", ", consumers)}]; the slice behaves like a lower layer; move the "
                     + "shared concept down to Domain");
@@ -484,9 +565,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         var consumers = new SortedSet<string>(StringComparer.Ordinal);
         foreach (var dimension in SliceDimensions)
         {
-            var prefix = dimension == "Domain"
-                ? $"Domain/{producer}/X/"
-                : $"{dimension}/Features/{producer}/Contracts/X/";
+            var prefix = $"{dimension}/{producer}/{CrossApiPath(dimension, string.Empty)}";
             foreach (var consumerPath in entries
                 .Where(path => path.StartsWith(prefix, StringComparison.Ordinal) && !IsPlaceholder(path))
                 .Select(path => path[prefix.Length..])
@@ -537,8 +616,9 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
     }
 
     /// <summary>
-    /// True when ADR-0037 already classifies this directory: a slice, group or mirror position
-    /// owned by the slice-naming rules, a direct segment of a slice, or a direct segment of a
+    /// True when ADR-0037 or ADR-0051 already classifies this directory: a slice, group or
+    /// mirror position owned by the slice-naming rules, a directory in the root of a mirror
+    /// layer, a layer-level Contracts/, a direct segment of a slice, or a direct segment of a
     /// sliceless layer. Those keep their existing findings; the whole-zone vocabulary scan of
     /// ADR-0040 reports only positions outside them.
     /// </summary>
@@ -552,13 +632,18 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
         foreach (var dimension in SliceDimensions)
         {
-            var prefix = dimension == "Domain" ? "Domain/" : $"{dimension}/Features/";
+            var prefix = $"{dimension}/";
             if (!directory.StartsWith(prefix, StringComparison.Ordinal))
             {
                 continue;
             }
 
             var inside = directory[prefix.Length..];
+            if (IsLayerPublicApi(inside))
+            {
+                return true;
+            }
+
             var slice = map.Slices
                 .OrderByDescending(candidate => candidate.Length)
                 .FirstOrDefault(candidate => inside.Equals(candidate, StringComparison.Ordinal)
@@ -571,8 +656,10 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             }
 
             // A group position in a mirror dimension echoes the Application group, which is
-            // the one place the group name is reported.
-            return map.Groups.Contains(inside, StringComparer.Ordinal) && dimension != "Application";
+            // the one place the group name is reported; any other directory in the root of a
+            // mirror layer is judged by no-segments-on-sliced-layers or orphan-slice-mirror.
+            return dimension != "Application"
+                && (!inside.Contains('/') || map.Groups.Contains(inside, StringComparer.Ordinal));
         }
 
         return false;
@@ -780,8 +867,8 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
             var preference = plural.Count >= singular.Count ? "plural" : "singular";
             var location = group.Key.Length == 0
-                ? At(zone, "Application/Features")
-                : At(zone, $"Application/Features/{group.Key}");
+                ? At(zone, "Application")
+                : At(zone, $"Application/{group.Key}");
             observations.Add(
                 $"advisory {location}: inconsistent-slice-pluralization: dimension 'Application', slices "
                 + $"[{string.Join(", ", names)}] mix singular and plural names; prefer {preference} names in this group");
@@ -931,12 +1018,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private static SliceAddress? SliceOf(LayerAddress address, IReadOnlyList<string> knownSlices)
     {
-        var prefix = address.Layer switch
-        {
-            "Api" or "Consumers" or "Application" or "Infrastructure" => $"{address.Layer}/Features/",
-            "Domain" => "Domain/",
-            _ => null,
-        };
+        var prefix = SliceRootPrefix(address.Layer);
         if (prefix is null || !address.RelativePath!.StartsWith(prefix, StringComparison.Ordinal))
         {
             return null;
@@ -952,7 +1034,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             .OrderByDescending(candidate => candidate.Length)
             .FirstOrDefault(candidate => inside.StartsWith(candidate + "/", StringComparison.Ordinal));
         slice ??= inside.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-        if (slice is null || (address.Layer == "Domain" && slice == "Shared"))
+        if (slice is null || IsReserved(address.Layer!, slice) || IsLayerPublicApi(slice))
         {
             return null;
         }
@@ -962,16 +1044,25 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private static bool IsDirectlyInsideSliceRoot(LayerAddress address)
     {
-        var prefix = address.Layer switch
-        {
-            "Api" or "Consumers" or "Application" or "Infrastructure" => $"{address.Layer}/Features/",
-            "Domain" => "Domain/",
-            _ => null,
-        };
+        var prefix = SliceRootPrefix(address.Layer);
         return prefix is not null
             && address.RelativePath!.StartsWith(prefix, StringComparison.Ordinal)
             && !address.RelativePath[prefix.Length..].Contains('/');
     }
+
+    private static string? SliceRootPrefix(string? layer)
+        => layer is not null && SliceDimensions.Contains(layer, StringComparer.Ordinal)
+            ? $"{layer}/"
+            : null;
+
+    /// <summary>ADR-0051: Domain/Shared and Infrastructure/Persistence are neither slices nor mirrors.</summary>
+    private static bool IsReserved(string layer, string directory)
+        => ReservedDirectories.Contains($"{layer}/{directory}", StringComparer.Ordinal);
+
+    /// <summary>A Contracts/ directory directly below a sliced layer, judged by no-layer-public-api.</summary>
+    private static bool IsLayerPublicApi(string directory)
+        => directory.Equals(PublicApiDirectory, StringComparison.Ordinal)
+            || directory.StartsWith(PublicApiDirectory + "/", StringComparison.Ordinal);
 
     private static string? CrossConsumer(
         LayerAddress target,
@@ -1092,6 +1183,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         }
 
         var sliceMap = DiscoverSlices(entries);
+        InspectLayerPublicApi(zone, entries, findings);
         InspectMirrors(zone, entries, sliceMap, findings);
         maps.Add($"architecture map: zone {Display(zone)} · layers [{string.Join(", ", presentLayers)}] "
             + $"· slices [{string.Join(", ", sliceMap.Slices)}]"
@@ -1101,15 +1193,38 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         return sliceMap;
     }
 
+    /// <summary>
+    /// ADR-0051: port of Steiger's no-layer-public-api. A slice publishes its own Contracts/;
+    /// a Contracts/ directory directly below a sliced layer is neither a slice, a group nor a
+    /// mirror, so the other slice rules skip it and this is its only finding.
+    /// </summary>
+    private static void InspectLayerPublicApi(
+        string zone,
+        IReadOnlyList<string> entries,
+        List<Finding> findings)
+    {
+        foreach (var layer in SliceDimensions)
+        {
+            var prefix = $"{layer}/{PublicApiDirectory}/";
+            if (entries.Any(path => path.StartsWith(prefix, StringComparison.Ordinal)))
+            {
+                findings.Add(Block(
+                    At(zone, prefix.TrimEnd('/')),
+                    $"no-layer-public-api: layer '{layer}' publishes {PublicApiDirectory}/ at its root; a slice "
+                    + $"publishes its own {PublicApiDirectory}/ — move them into {layer}/<Slice>/{PublicApiDirectory}/"));
+            }
+        }
+    }
+
     private static SliceMap DiscoverSlices(IReadOnlyList<string> entries)
     {
-        const string prefix = "Application/Features/";
+        const string prefix = "Application/";
         var featurePaths = entries
             .Where(path => path.StartsWith(prefix, StringComparison.Ordinal))
             .Select(path => new SliceEntry(
                 path[prefix.Length..].Split('/'),
                 IsPlaceholder(path)))
-            .Where(entry => entry.Parts.Length >= 2)
+            .Where(entry => entry.Parts.Length >= 2 && !IsLayerPublicApi(entry.Parts[0]))
             .ToList();
         var slices = new HashSet<string>(StringComparer.Ordinal);
         var nestedPaths = new HashSet<string>(StringComparer.Ordinal);
@@ -1165,10 +1280,10 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         foreach (var group in map.EmptyGroups)
         {
             findings.Add(Block(
-                At(zone, $"Application/Features/{group}"),
+                At(zone, $"Application/{group}"),
                 $"empty-slice-or-group: name '{group}', dimension 'Application', expected a non-placeholder file "
-                + $"for slice 'Application/Features/{group}/' or at least one slice under "
-                + $"'Application/Features/{group}/<Slice>/'"));
+                + $"for slice 'Application/{group}/' or at least one slice under "
+                + $"'Application/{group}/<Slice>/'"));
         }
 
         var rootsByLayer = MirrorLayers.ToDictionary(
@@ -1178,7 +1293,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
         foreach (var slice in map.Slices)
         {
-            var applicationPath = $"Application/Features/{slice}/";
+            var applicationPath = $"Application/{slice}/";
             if (!HasContent(entries, applicationPath))
             {
                 findings.Add(Block(
@@ -1192,8 +1307,8 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             {
                 findings.Add(Block(
                     At(zone, applicationPath.TrimEnd('/')),
-                    $"slice-mirror-missing: slice '{slice}', dimension 'input', expected 'Api/Features/{slice}/' "
-                    + $"or 'Consumers/Features/{slice}/'"));
+                    $"slice-mirror-missing: slice '{slice}', dimension 'input', expected 'Api/{slice}/' "
+                    + $"or 'Consumers/{slice}/'"));
             }
         }
 
@@ -1218,10 +1333,16 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
                 if (!map.Slices.Contains(slice, StringComparer.Ordinal))
                 {
-                    findings.Add(Block(
-                        At(zone, mirrorPath.TrimEnd('/')),
-                        $"orphan-slice-mirror: slice '{slice}', dimension '{layer}', expected "
-                        + $"'Application/Features/{slice}/'"));
+                    findings.Add(IsEssenceBasedSegmentName(slice)
+                        ? Block(
+                            At(zone, mirrorPath.TrimEnd('/')),
+                            $"no-segments-on-sliced-layers: layer '{layer}' holds segment '{slice}' at its root; "
+                            + "a sliced layer holds only slices — move it into Host or into a slice")
+                        : Block(
+                            At(zone, mirrorPath.TrimEnd('/')),
+                            $"orphan-slice-mirror: slice '{slice}', dimension '{layer}', expected "
+                            + $"'Application/{slice}/'; a directory in the root of a sliced layer is a slice "
+                            + "mirror — move cross-cutting code into Host or into a slice"));
                     continue;
                 }
 
@@ -1238,13 +1359,13 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private static List<string> DiscoverMirrorRoots(string layer, IReadOnlyList<string> entries, SliceMap map)
     {
-        var prefix = layer == "Domain" ? "Domain/" : $"{layer}/Features/";
+        var prefix = $"{layer}/";
         return entries
             .Where(path => path.StartsWith(prefix, StringComparison.Ordinal))
             .Select(path => path[prefix.Length..])
             .Where(path => path.Contains('/'))
             .Select(path => MirrorSlice(path, map))
-            .Where(slice => slice is not null && !(layer == "Domain" && slice == "Shared"))
+            .Where(slice => slice is not null && !IsReserved(layer, slice) && !IsLayerPublicApi(slice))
             .Cast<string>()
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
@@ -1272,8 +1393,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             : parts[0];
     }
 
-    private static string MirrorPath(string layer, string slice)
-        => layer == "Domain" ? $"Domain/{slice}/" : $"{layer}/Features/{slice}/";
+    private static string MirrorPath(string layer, string slice) => $"{layer}/{slice}/";
 
     private static bool HasContent(IReadOnlyList<string> entries, string prefix)
         => entries.Any(path => path.StartsWith(prefix, StringComparison.Ordinal) && !IsPlaceholder(path));

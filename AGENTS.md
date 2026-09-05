@@ -56,21 +56,23 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 блокируются; выключение правила для всего репозитория печатается observation. Читается только
 tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"2.12.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.13.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
 `architecture` называет единственный стандарт топологии `sliced-dotnet/1`: фиксированные
-Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`,
-`Infrastructure`; `Domain` — основание без исходящих рёбер) × сквозные слайсы `Features/<Слайс>`; публичный API слайса —
-его `Contracts/`, кросс-импорт — только явный cross-API `X/<Потребитель>` (аналог `@x`
-FSD 2.1), верхние слои читают любой `Domain`-слайс, прямой сегмент именуется по назначению;
-слой = сборка: ровно один `.csproj` на слой с C#-кодом, без linked-компиляции чужих слоёв,
-ProjectReference — по той же таблице слоёв. Плоский каталог 20+ файлов, плотность
-X-контрактов и essence-имена вне сегментных позиций — неблокирующие advisory-observations.
-Standalone-библиотека отвечает `"architecture": { "applicable": false, "reason": "..." }`.
-[ADR-0033](adrs/0033-canonical-standard-over-declarations.md),
-[ADR-0037](adrs/0037-segments-by-purpose.md)–[ADR-0041](adrs/0041-layer-is-the-assembly.md), [ADR-0050](adrs/0050-domain-is-the-bottom-layer.md)
+Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`, `Infrastructure`;
+`Domain` — основание без исходящих рёбер) × сквозные слайсы `<Слой>/<Слайс>` в корне слоя без
+`Features/`. Зарезервированы только `Domain/Shared` и `Infrastructure/Persistence`; корень
+слайсового слоя содержит только слайсы (сквозная обвязка — в `Host` или в слайс), `Contracts/`
+в корне слоя блокируется (`no-layer-public-api`). Публичный API слайса — его `Contracts/`,
+кросс-импорт — только явный cross-API `X/<Потребитель>` (аналог `@x` FSD 2.1), верхние слои
+читают любой `Domain`-слайс, прямой сегмент именуется по назначению; слой = сборка: один
+`.csproj` на слой с C#-кодом, без linked-компиляции чужих слоёв, ProjectReference — по той же
+таблице. Advisory без влияния на код возврата: плоский каталог 20+ файлов, плотность X-контрактов,
+essence-имена вне сегментных позиций, единственная группа со всеми слайсами, сегмент с именем
+слайса. Standalone-библиотека отвечает `"architecture": { "applicable": false, "reason": "..." }`.
+[ADR-0033](adrs/0033-canonical-standard-over-declarations.md), [ADR-0037](adrs/0037-segments-by-purpose.md)–[ADR-0041](adrs/0041-layer-is-the-assembly.md), [ADR-0050](adrs/0050-domain-is-the-bottom-layer.md), [ADR-0051](adrs/0051-slices-in-the-layer-root.md)
 
 `"latest"` включает rolling-контракт. `harness init` спрашивает только application или
 standalone-library (либо принимает `--kind application|library` без stdin), создаёт
@@ -96,15 +98,14 @@ setup` включает шаблон и `commit-msg` hook в общем ката
 
 - `src/Harness` — сам CLI: NativeAOT, слой = отдельный проект `Harness.<Слой>.csproj`, публикуется `Host`.
   - `Host/` — composition root, статический реестр и запуск процесса.
-  - `Api/Features/Harness/Cli/` — входное зеркало с разбором командной строки.
-  - `Application/Features/Harness/` — единый прикладной слайс: проверки, конфигурация,
-    движок, commit-команды, отчёт и публичные `Contracts/` для входа и адаптеров; это одна
-    CLI-capability, а не набор независимых бизнес-слайсов ([ADR-0034](adrs/0034-language-axis-in-sliced-dotnet.md)).
+  - `Api/Harness/Cli/` — входное зеркало с разбором командной строки.
+  - `Application/Harness/` — единый прикладной слайс: проверки, конфигурация, движок,
+    commit-команды, отчёт и публичные `Contracts/`; одна CLI-capability, а не набор бизнес-слайсов ([ADR-0034](adrs/0034-language-axis-in-sliced-dotnet.md)).
   - `Domain/Harness/Structure/` — язык-нейтральная модель графа, модулей, циклов и DSM.
   - `Domain/Harness/Languages/` — языковой порт ADR-0022/0034; реализаций здесь нет.
   - `Domain/Harness/Evidence/` — модель tracked evidence и порт репозитория.
-  - `Infrastructure/Features/Harness/Git/` — Git-процесс и clone-local интеграция.
-  - `Infrastructure/Features/Harness/Languages/CSharp/` — C#-ридер в отдельном infra namespace.
+  - `Infrastructure/Harness/Git/` — Git-процесс и clone-local интеграция.
+  - `Infrastructure/Harness/Languages/CSharp/` — C#-ридер в отдельном infra namespace.
   - `Domain/Harness/Versioning/` — версия бинаря и граница текущего контракта.
 - `tests/Harness.Tests` — приёмочные тесты, которые гоняют скомпилированный исполняемый файл.
 - `site/` — публичный лендинг без сборки; реестр проверок и версия там зеркалят бинарь и сверяются тестом, таблица «что обновлять» — `site/AGENTS.md` ([ADR-0047](adrs/0047-landing-mirrors-the-contract.md)).
@@ -146,5 +147,4 @@ dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
 глубине по тем же правилам, что в корне, где `AGENTS.md` и `CLAUDE.md` обязательны.
 `SKILL.md` разрешён везде и не измеряется. Долговременные решения живут в корневом `adrs/`.
 Прочий tracked Markdown — нарушение; проверку можно смягчить через `policy`.
-[ADR-0010](adrs/0010-documentation-policy.md),
-[ADR-0025](adrs/0025-nested-agent-documents.md)
+[ADR-0010](adrs/0010-documentation-policy.md), [ADR-0025](adrs/0025-nested-agent-documents.md)

@@ -3,7 +3,8 @@
 ## Status
 
 Accepted. Уточняет [ADR-0022](0022-language-axis.md) после принятия
-[ADR-0033](0033-canonical-standard-over-declarations.md).
+[ADR-0033](0033-canonical-standard-over-declarations.md). Пути раскладки уточнены
+[ADR-0051](0051-slices-in-the-layer-root.md): слайсы лежат в корне слоя, без `Features/`.
 
 ## Context
 

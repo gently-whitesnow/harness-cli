@@ -33,10 +33,13 @@ internal static class ArchitectureConfigReader
             }
 
             var name = standard.ValueKind == JsonValueKind.String ? standard.GetString() : null;
-            return string.Equals(name, SlicedDotNet, StringComparison.Ordinal)
-                ? (new ArchitectureConfig(SlicedDotNet, null), null)
-                : (null, ConfigJson.Failure(
-                    $"'architecture.standard' must be '{SlicedDotNet}'; '{name ?? standard.ToString()}' is not supported"));
+            if (string.Equals(name, SlicedDotNet, StringComparison.Ordinal))
+            {
+                return (new ArchitectureConfig(SlicedDotNet, null), null);
+            }
+
+            return (null, ConfigJson.Failure(
+                $"'architecture.standard' must be '{SlicedDotNet}'; '{name ?? standard.ToString()}' is not supported"));
         }
 
         if (members.Count == 0)
@@ -48,7 +51,7 @@ internal static class ArchitectureConfigReader
             || applicable.ValueKind != JsonValueKind.False)
         {
             return (null, ConfigJson.Failure(
-                "'architecture.applicable' must be false; select 'sliced-dotnet/1' when architecture applies"));
+                $"'architecture.applicable' must be false; select '{SlicedDotNet}' when architecture applies"));
         }
 
         var reason = ConfigJson.String(declared, "reason");

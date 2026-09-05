@@ -48,10 +48,10 @@
     button.addEventListener('click', () => copyText($('#' + button.dataset.copyTarget).textContent, button));
   });
 
-  /* ── Check catalogue (execution order of CheckRegistry, contract 2.12.0) ── */
+  /* ── Check catalogue (execution order of CheckRegistry, contract 2.13.0) ── */
   const CHECKS = [
     { id: 'harness.config', group: 'common', axis: null, summary: 'Tracked .harness.json, который читает весь прогон: version, architecture, answers, applicability, settings, policy. Без него харнес ничего не доказал — Incomplete, код 2.', adr: ['0014-frame-answers-are-self-reported.md', '0016-versioned-frame-and-explicit-initialization.md'] },
-    { id: 'architecture.sliced-dotnet', group: 'arch', axis: null, section: 'architecture', summary: 'Зоны, канонические слои и слайсы стандарта sliced-dotnet/1: DAG слоёв, изоляция слайсов, публичный API через Contracts/, зеркала, слой = сборка. Standalone-библиотека отвечает applicable: false.', adr: ['0033-canonical-standard-over-declarations.md', '0041-layer-is-the-assembly.md'] },
+    { id: 'architecture.sliced-dotnet', group: 'arch', axis: null, section: 'architecture', summary: 'Зоны, канонические слои и слайсы стандарта sliced-dotnet/1 прямо в корне слоя: DAG слоёв, изоляция слайсов, публичный API через Contracts/ слайса, зеркала, слой = сборка. Standalone-библиотека отвечает applicable: false.', adr: ['0033-canonical-standard-over-declarations.md', '0041-layer-is-the-assembly.md', '0051-slices-in-the-layer-root.md'] },
     { id: 'complexity.csharp', group: 'arch', axis: 'csharp', budget: true, summary: 'DSM по продукту: внутри архитектурных зон, а без зоны — вне tracked тестовых проектов. Mean reach и core size против tracked .harness.budget.json; превышение потолка блокирует, harness budget update только ужимает.', adr: ['0032-topology-over-thresholds.md', '0042-dsm-over-the-product-in-files.md', '0048-dsm-product-boundary-without-a-zone.md'] },
     { id: 'docs.policy', group: 'common', axis: null, summary: 'Один корневой AGENTS.md ≤ 150 строк, CLAUDE.md — прямой относительный симлинк на него, README.md ≤ 150 строк, adrs/**.md и SKILL.md разрешены, прочий tracked Markdown — нарушение.', adr: ['0010-documentation-policy.md', '0025-nested-agent-documents.md'] },
     { id: 'commits.setup', group: 'common', axis: null, settings: 'commits', summary: 'Clone-local commit-шаблон и commit-msg hook активированы (harness setup). Применима только при settings.commits.requireSetup: true; conventional header + структурированное тело на выбранном языке.', adr: ['0020-commit-message-contract-and-clone-setup.md'] },
@@ -530,8 +530,8 @@
     layer('Consumers', 180, 58, 140, 40, 'is-input');
     layer('Infrastructure', 380, 58, 120, 232);
     layer('Application', 20, 118, 300, 118);
-    slice('Features/Orders', 32, 150, 132);
-    slice('Features/Billing', 176, 150, 132);
+    slice('Orders', 32, 150, 132);
+    slice('Billing', 176, 150, 132);
     slice('Contracts/X/Orders', 176, 184, 132, 'is-x');
     svgEl('text', { x: 32, y: 226, class: 'label is-error' }, svg).textContent = 'Orders → Billing напрямую запрещено; только через X/Orders';
     layer('Domain', 20, 256, 300, 56, 'is-domain');
@@ -607,7 +607,7 @@
     const policy = {};
     for (const check of CHECKS) policy[check.id] = state.policy[check.id];
     return {
-      version: state.latest ? 'latest' : '2.12.0',
+      version: state.latest ? 'latest' : '2.13.0',
       architecture: state.kind === 'application' ? { standard: 'sliced-dotnet/1' } : { applicable: false, reason: state.archReason },
       answers, applicability, settings, policy,
     };
@@ -647,7 +647,7 @@
   function evaluate(config) {
     const lines = [];
     const add = (level, text) => lines.push({ level, text });
-    add('ok', `version "${config.version}" — контракт ${config.version === 'latest' ? 'следует за установленным бинарём' : '2.12.0, тот же, что исполняет бинарь'}.`);
+    add('ok', `version "${config.version}" — контракт ${config.version === 'latest' ? 'следует за установленным бинарём' : '2.13.0, тот же, что исполняет бинарь'}.`);
     if (config.architecture.standard) add('ok', 'architecture: sliced-dotnet/1 — architecture.sliced-dotnet проверит зоны, слои и слайсы; complexity.csharp измерит только файлы внутри зон.');
     else if (!config.architecture.reason.trim()) add('error', 'architecture.reason должен объяснить, почему стандарт не применим — иначе Incomplete.');
     else add('ok', `architecture: applicable false — "${config.architecture.reason}". architecture.sliced-dotnet → NotApplicable; DSM измеряет репозиторий целиком.`);
@@ -711,8 +711,8 @@
         state.kind === 'library' ? el('div', { class: 'field__reason' }, [el('input', { class: 'text-input', type: 'text', value: state.archReason, placeholder: 'reason: почему стандарт не применим', oninput: (e) => { state.archReason = e.target.value; renderOutput(); } })]) : null,
       ]),
       el('div', { class: 'field' }, [
-        el('div', { class: 'field__label' }, [el('code', { text: 'version' }), el('small', { text: '"2.12.0" пинит контракт; "latest" включает rolling-контракт вслед за установленным бинарём.' })]),
-        seg([{ value: 'pin', label: '2.12.0' }, { value: 'latest', label: 'latest' }], state.latest ? 'latest' : 'pin', (v) => { state.latest = v === 'latest'; update(); }),
+        el('div', { class: 'field__label' }, [el('code', { text: 'version' }), el('small', { text: '"2.13.0" пинит контракт; "latest" включает rolling-контракт вслед за установленным бинарём.' })]),
+        seg([{ value: 'pin', label: '2.13.0' }, { value: 'latest', label: 'latest' }], state.latest ? 'latest' : 'pin', (v) => { state.latest = v === 'latest'; update(); }),
       ]),
     ]);
     root.appendChild(step(2, 'Архитектура и контракт', null, archBody));
