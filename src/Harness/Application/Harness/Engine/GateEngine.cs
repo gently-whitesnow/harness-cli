@@ -27,7 +27,7 @@ internal static class GateEngine
             return invalidSelection;
         }
 
-        var (config, configFailure) = HarnessConfig.Load(repository, CheckCatalog.Describe(checks));
+        var (config, configFailure) = HarnessConfigReader.Load(repository, CheckCatalog.Describe(checks));
         var invalidConfig = InvalidConfigReport(repository, config, configFailure, checks);
         if (invalidConfig is not null)
         {
@@ -61,10 +61,7 @@ internal static class GateEngine
             var evaluation = disabled is null
                 ? Evaluate(check, new CheckContext(repository, config, configFailure, check.Id, check.Evidence))
                 : CheckEvaluation.NotApplicable(
-                    $"{HarnessConfig.FileName} answers `{disabled.Key}` not applicable — \"{disabled.Reason}\".",
-                    check.Id.StartsWith("complexity.", StringComparison.Ordinal)
-                        ? [$"DSM budget: not applicable — {disabled.Reason}"]
-                        : null);
+                    $"{HarnessConfig.FileName} answers `{disabled.Key}` not applicable — \"{disabled.Reason}\".");
             stopwatch.Stop();
 
             var gate = Judge(check, evaluation, stopwatch.Elapsed, config, policy);

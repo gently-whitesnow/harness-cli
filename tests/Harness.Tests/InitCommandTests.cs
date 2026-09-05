@@ -28,7 +28,7 @@ public sealed class InitCommandTests
         var path = repository.Absolute(".harness.json");
         Assert.True(File.Exists(path));
         Assert.False(File.Exists(repository.Absolute("src/Feature/.harness.json")));
-        Assert.Equal("?? .editorconfig\n?? .harness.budget.json\n?? .harness.json\n", repository.Git("status", "--porcelain=v1"));
+        Assert.Equal("?? .editorconfig\n?? .harness.json\n", repository.Git("status", "--porcelain=v1"));
         Assert.Contains(".editorconfig' with the shared code-style baseline.", run.StandardOutput, StringComparison.Ordinal);
         Assert.StartsWith("root = true\n", File.ReadAllText(repository.Absolute(".editorconfig")), StringComparison.Ordinal);
 
@@ -52,16 +52,12 @@ public sealed class InitCommandTests
                 : entry.Name.StartsWith("frame.", StringComparison.Ordinal)
                     ? "off"
                     : "required", entry.Value.GetString()));
-        Assert.True(File.Exists(repository.Absolute(".harness.budget.json")));
         Assert.StartsWith("{\n", File.ReadAllText(path), StringComparison.Ordinal);
         Assert.Contains("\n  \"policy\": {\n", File.ReadAllText(path), StringComparison.Ordinal);
         Assert.False(root.TryGetProperty("suppress", out _));
 
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
         Assert.Equal(0, HarnessCli.Run(repository.Path, "check", "--only", "complexity.csharp").ExitCode);
-        var budgetUpdate = HarnessCli.Run(repository.Path, "budget", "update");
-        Assert.Equal(0, budgetUpdate.ExitCode);
-        Assert.Contains("UNCHANGED", budgetUpdate.StandardOutput, StringComparison.Ordinal);
     }
 
     private static void AssertDefaultSettings(JsonElement settings)
@@ -203,11 +199,7 @@ public sealed class InitCommandTests
 
         Assert.Equal(0, check.ExitCode);
         Assert.Contains("architecture map: zone src/App", check.Output, StringComparison.Ordinal);
-        Assert.Contains("DSM budget:", check.Output, StringComparison.Ordinal);
-        Assert.Contains(
-            "\"meanReach\": 1,\n",
-            File.ReadAllText(repository.Absolute(".harness.budget.json")),
-            StringComparison.Ordinal);
+        Assert.Contains("limits: mean reach 8.00 files", check.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -264,22 +256,6 @@ public sealed class InitCommandTests
 
         Assert.Equal(2, run.ExitCode);
         Assert.Contains("Refusing to overwrite", run.StandardError, StringComparison.Ordinal);
-        Assert.False(File.Exists(repository.Absolute(".harness.json")));
-    }
-
-    [Fact]
-    public void Init_does_not_replace_a_tracked_budget_deleted_from_the_working_tree()
-    {
-        using var repository = RepositoryFixture.CreateGitRepository()
-            .WriteFile(".harness.budget.json", "tracked\n")
-            .Commit()
-            .Remove(".harness.budget.json");
-
-        var run = HarnessCli.RunWithInput(repository.Path, "application\n", "init");
-
-        Assert.Equal(2, run.ExitCode);
-        Assert.Contains("Refusing to overwrite", run.StandardError, StringComparison.Ordinal);
-        Assert.False(File.Exists(repository.Absolute(".harness.budget.json")));
         Assert.False(File.Exists(repository.Absolute(".harness.json")));
     }
 

@@ -3,7 +3,7 @@ using Harness.Config;
 namespace Harness.Checks.Frame;
 
 /// <summary>One self-reported question that every repository answers in its harness frame.</summary>
-internal abstract class FrameQuestionCheck : IRepositoryCheck
+internal sealed class FrameQuestionCheck(FrameQuestion question) : IRepositoryCheck
 {
     private const int ShownLocations = 3;
 
@@ -13,16 +13,9 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
     /// </summary>
     private const int MaximumLocations = 5;
 
-    protected abstract string Key { get; }
+    private string Key => question.Key;
 
-    protected abstract string Subject { get; }
-
-    protected virtual bool RequiresLocation => false;
-
-    /// <summary>A test suite is addressed by the project that runs it, never by its files.</summary>
-    protected virtual bool AddressesTestProjects => false;
-
-    protected virtual bool AppliesToEveryRepository => false;
+    private string Subject => question.Subject;
 
     internal string AnswerKey => Key;
 
@@ -33,9 +26,9 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
     /// <summary>A frame question is answered in the frame; it looks up no file of its own.</summary>
     public IReadOnlyList<EvidenceFile> Evidence => [];
 
-    public abstract string Summary { get; }
+    public string Summary => question.Summary;
 
-    public abstract string Explanation { get; }
+    public string Explanation => question.Explanation;
 
     public CheckEvaluation Evaluate(CheckContext context)
     {
@@ -56,7 +49,7 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
         return answer?.Kind switch
         {
             FrameAnswerKind.Located => Located(answer),
-            FrameAnswerKind.Present when RequiresLocation => CheckEvaluation.Incomplete(
+            FrameAnswerKind.Present when question.RequiresLocation => CheckEvaluation.Incomplete(
                 $"`answers.{Key}` must use `paths` so readers can run {Subject}; a positive answer without "
                     + "an address is not complete."),
             FrameAnswerKind.Present => CheckEvaluation.Passed(
@@ -64,7 +57,7 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
                     + "fact-checked by the harness."),
             FrameAnswerKind.Absent => CheckEvaluation.ReadinessGap(
                 $"repository answers absent — \"{answer.Reason}\"."),
-            FrameAnswerKind.NotApplicable when AppliesToEveryRepository => CheckEvaluation.Incomplete(
+            FrameAnswerKind.NotApplicable when question.AppliesToEveryRepository => CheckEvaluation.Incomplete(
                 $"`answers.{Key}` cannot be not applicable: every repository can own {Subject}. "
                     + "Use `present: false` with a reason until it does."),
             FrameAnswerKind.NotApplicable => CheckEvaluation.NotApplicable(
@@ -89,7 +82,7 @@ internal abstract class FrameQuestionCheck : IRepositoryCheck
 
     private CheckEvaluation Located(FrameAnswer answer)
     {
-        if (AddressesTestProjects)
+        if (question.AddressesTestProjects)
         {
             var files = answer.Paths.Where(TestSuiteAddress.IsSourceFile).ToList();
             if (files.Count > 0)

@@ -37,22 +37,15 @@ internal sealed record RepositoryComplexity(
             .ToList() ?? [];
     }
 
-    public static IReadOnlyList<PropagationEdge> HighestPropagationEdges(SourceGraph graph)
+    /// <summary>Every measured file with |R(i)|, the files a change to it reaches, largest first.</summary>
+    public static IReadOnlyList<FileReach> FileReaches(SourceGraph graph)
     {
         var fileGraph = Build(graph);
         var analysis = Analyze(fileGraph.Adjacency);
-        return graph.Proven
-            .Where(edge => edge.From.Path != edge.To.Path)
-            .GroupBy(edge => (edge.From.Path, edge.To.Path))
-            .Select(group => group.First())
-            .Select(edge => new PropagationEdge(
-                edge,
-                PropagationSpan(
-                    analysis,
-                    analysis.ComponentOf[fileGraph.Indexes[edge.From.Path]],
-                    analysis.ComponentOf[fileGraph.Indexes[edge.To.Path]])))
-            .OrderByDescending(edge => edge.ReachablePairs)
-            .ThenBy(edge => edge.Edge.Location, StringComparer.Ordinal)
+        return fileGraph.Paths
+            .Select((path, index) => new FileReach(path, analysis.ComponentReach[analysis.ComponentOf[index]]))
+            .OrderByDescending(file => file.Files)
+            .ThenBy(file => file.Path, StringComparer.Ordinal)
             .ToList();
     }
 
@@ -129,6 +122,7 @@ internal sealed record RepositoryComplexity(
         }
 
         long pairs = 0;
+        var componentReach = new int[components.Count];
         for (var from = 0; from < components.Count; from++)
         {
             var reachableFiles = 0;
@@ -140,6 +134,7 @@ internal sealed record RepositoryComplexity(
                 }
             }
 
+            componentReach[from] = reachableFiles;
             pairs += (long)components[from].Count * reachableFiles;
         }
 
@@ -147,34 +142,8 @@ internal sealed record RepositoryComplexity(
             .Select(component => component.Count)
             .DefaultIfEmpty(0)
             .Max();
-        return new Analysis(components, componentOf, reachable, pairs, core);
+        return new Analysis(components, componentOf, componentReach, pairs, core);
     }
-
-    private static long PropagationSpan(Analysis analysis, int from, int to)
-    {
-        var ancestors = 0;
-        for (var component = 0; component < analysis.Components.Count; component++)
-        {
-            if (Reaches(analysis, component, from))
-            {
-                ancestors += analysis.Components[component].Count;
-            }
-        }
-
-        var descendants = 0;
-        for (var component = 0; component < analysis.Components.Count; component++)
-        {
-            if (Reaches(analysis, to, component))
-            {
-                descendants += analysis.Components[component].Count;
-            }
-        }
-
-        return (long)ancestors * descendants;
-    }
-
-    private static bool Reaches(Analysis analysis, int from, int to)
-        => (analysis.Reachable[from][to / 64] & (1UL << (to % 64))) != 0;
 
     private static List<int> TopologicalOrder(
         List<HashSet<int>> adjacency,
@@ -199,7 +168,7 @@ internal sealed record RepositoryComplexity(
         return order;
     }
 
-    internal sealed record PropagationEdge(ReferenceEdge Edge, long ReachablePairs);
+    internal sealed record FileReach(string Path, int Files);
 
     private sealed record FileGraph(
         IReadOnlyList<string> Paths,
@@ -209,7 +178,7 @@ internal sealed record RepositoryComplexity(
     private sealed record Analysis(
         IReadOnlyList<List<int>> Components,
         IReadOnlyList<int> ComponentOf,
-        IReadOnlyList<ulong[]> Reachable,
+        IReadOnlyList<int> ComponentReach,
         long ReachablePairs,
         int CoreFiles);
 }

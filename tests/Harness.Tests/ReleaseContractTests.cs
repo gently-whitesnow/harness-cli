@@ -56,7 +56,8 @@ public sealed class ReleaseContractTests
         Assert.Contains("removed  maintainability.csharp, cohesion.csharp", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("sliced-dotnet/1", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("explicit applicability, settings and policy", run.StandardOutput, StringComparison.Ordinal);
-        Assert.Contains(".harness.budget.json", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("Release 2.14 changes", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("git rm .harness.budget.json", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("duplication.csharp as required", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("answers.verify", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("nearest .csproj is a", run.StandardOutput, StringComparison.Ordinal);

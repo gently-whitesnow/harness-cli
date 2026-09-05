@@ -4,14 +4,10 @@ using Harness.Structure;
 
 namespace Harness.Checks.Complexity;
 
-internal sealed class ComplexityCheck(
-    ILanguageAnalyzer analyzer,
-    IReadOnlyList<ILanguageAnalyzer> budgetAnalyzers)
+internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
     : LanguageAnalyzerCheck(analyzer, "complexity", "repository DSM complexity")
 {
-    private static readonly EvidenceFile BudgetEvidence = new(ComplexityBudget.FileName);
-
-    public override IReadOnlyList<EvidenceFile> Evidence => [BudgetEvidence, .. DotNetRepository.ProjectFiles];
+    public override IReadOnlyList<EvidenceFile> Evidence => DotNetRepository.ProjectFiles;
 
     public override string Explanation => ComplexityExplanation.Text;
 
@@ -23,38 +19,26 @@ internal sealed class ComplexityCheck(
             return CheckEvaluation.Incomplete(failure!);
         }
 
-        var budgetCheckIds = budgetAnalyzers
-            .Where(candidate => context.Config?.NotApplicable(candidate.Language.Key) is null)
-            .Select(candidate => candidate.Language.Qualify("complexity"))
-            .ToList();
-        var (budget, budgetFailure) = ComplexityBudget.Load(context, BudgetEvidence, budgetCheckIds);
-        if (budget is null || !budget.Entries.TryGetValue(Id, out var limit))
-        {
-            return CheckEvaluation.Incomplete(budgetFailure!);
-        }
-
-        var budgetObservation = $"DSM budget: mean reach {Files(limit.MeanReach)} · core size {limit.CoreSize} files";
         if (graph.SourcePaths.Count == 0)
         {
-            return CheckEvaluation.NotApplicable(Analyzer.NothingToAnalyze, [budgetObservation]);
+            return CheckEvaluation.NotApplicable(Analyzer.NothingToAnalyze);
         }
 
         var (projects, projectFailure) = DotNetRepository.ReadProjects(context);
         if (projectFailure is not null)
         {
-            return CheckEvaluation.Incomplete(projectFailure, [budgetObservation]);
+            return CheckEvaluation.Incomplete(projectFailure);
         }
 
-        var architectureApplicable = context.Config?.Architecture is { IsApplicable: true };
         var scope = DsmScope.Of(
             graph,
-            architectureApplicable,
+            context.Config?.Architecture is { IsApplicable: true },
             context.Repository.TrackedEntries.Where(entry => !entry.IsSymbolicLink).Select(entry => entry.Path).ToList(),
             projects.Select(project => (project.Path, DotNetRepository.IsTestProject(project))).ToList());
         var metric = RepositoryComplexity.Measure(scope.Graph);
         var observations = new List<string>
         {
-            budgetObservation,
+            $"limits: mean reach {Files(ComplexityLimit.MeanReach)} · core size {ComplexityLimit.CoreSize} files",
             $"mean reach: {Files(metric.MeanReach)} "
                 + $"({metric.ReachablePairs} reachable file pairs / {metric.AuthoredFiles} files; "
                 + $"propagation cost {Percent(metric.PropagationCostPercentage)})",
@@ -67,88 +51,43 @@ internal sealed class ComplexityCheck(
             observations.Add(marked);
         }
 
-        var current = ComplexityBudget.Entry.From(metric);
-        if (current.MeanReach > limit.MeanReach || current.CoreSize > limit.CoreSize)
-        {
-            var findings = RegressionFindings(scope.Graph, limit, current);
-            var regression = new Finding(
-                FindingSeverity.Blocking,
-                ComplexityBudget.FileName,
-                RegressionMessage(limit, current));
-            return CheckEvaluation.From(
-                [regression, .. findings],
-                detailedFindings: [regression, .. findings],
-                observations: observations);
-        }
-
-        var progress = ProgressMessage(limit, current);
-        return CheckEvaluation.From(
-            [],
-            observations: progress is null ? observations : [.. observations, progress]);
-    }
-
-    private static List<Finding> RegressionFindings(
-        SourceGraph graph,
-        ComplexityBudget.Entry budget,
-        ComplexityBudget.Entry current)
-    {
         var findings = new List<Finding>();
-        if (current.MeanReach > budget.MeanReach)
+        if (metric.MeanReach > ComplexityLimit.MeanReach)
         {
-            findings.AddRange(RepositoryComplexity.HighestPropagationEdges(graph)
-                .Take(5)
-                .Select(edge => new Finding(
-                    FindingSeverity.Blocking,
-                    edge.Edge.Location,
-                    $"Proven file edge {edge.Edge.From.Path} -> {edge.Edge.To.Path} "
-                        + $"has a propagation span of {edge.ReachablePairs} reachable file pairs.")));
+            findings.Add(new Finding(
+                FindingSeverity.Blocking,
+                scope.Location,
+                $"mean reach {Files(metric.MeanReach)} exceeds the {Files(ComplexityLimit.MeanReach)} the "
+                    + "standard allows; cut edges from the hubs named below or change the tracked policy knowingly."));
+            findings.AddRange(Hubs(scope));
         }
 
-        if (current.CoreSize > budget.CoreSize)
+        if (metric.CoreFiles > ComplexityLimit.CoreSize)
         {
-            findings.AddRange(RepositoryComplexity.LargestCore(graph).Select(path => new Finding(
+            findings.AddRange(RepositoryComplexity.LargestCore(scope.Graph).Select(path => new Finding(
                 FindingSeverity.Blocking,
                 path,
-                $"This file belongs to the largest SCC ({current.CoreSize} files).")));
+                $"This file belongs to the largest SCC ({metric.CoreFiles} files); the standard allows "
+                    + $"{ComplexityLimit.CoreSize} — break the cycle.")));
         }
 
-        return findings.Count == 0
-            ? [new Finding(FindingSeverity.Blocking, ComplexityBudget.FileName, RegressionMessage(budget, current))]
-            : findings;
+        return CheckEvaluation.From(findings, observations: observations);
     }
 
-    private static string RegressionMessage(ComplexityBudget.Entry budget, ComplexityBudget.Entry current)
+    /// <summary>
+    /// The files whose own reach is largest, outside the composition root: Host is expected to
+    /// see the whole product, so naming it would tell the reader nothing they can act on.
+    /// </summary>
+    private static IEnumerable<Finding> Hubs(DsmScope scope)
     {
-        var deltas = new List<string>();
-        if (current.MeanReach > budget.MeanReach)
-        {
-            deltas.Add($"mean reach +{Files(current.MeanReach - budget.MeanReach)}");
-        }
-
-        if (current.CoreSize > budget.CoreSize)
-        {
-            deltas.Add($"core size +{current.CoreSize - budget.CoreSize} files");
-        }
-
-        return $"DSM budget regressed ({string.Join(", ", deltas)}); reduce the graph or review the tracked budget manually.";
-    }
-
-    private static string? ProgressMessage(ComplexityBudget.Entry budget, ComplexityBudget.Entry current)
-    {
-        var progress = new List<string>();
-        if (budget.MeanReach - current.MeanReach >= ComplexityBudget.NoticeableReachDelta)
-        {
-            progress.Add($"mean reach -{Files(budget.MeanReach - current.MeanReach)}");
-        }
-
-        if (current.CoreSize < budget.CoreSize)
-        {
-            progress.Add($"core size -{budget.CoreSize - current.CoreSize} files");
-        }
-
-        return progress.Count == 0
-            ? null
-            : $"DSM complexity improved ({string.Join(", ", progress)}); run `harness budget update` to record the progress.";
+        var total = scope.Graph.SourcePaths.Count;
+        return RepositoryComplexity.FileReaches(scope.Graph)
+            .Where(file => !scope.IsCompositionRoot(file.Path))
+            .Take(ComplexityLimit.NamedHubs)
+            .Select(file => new Finding(
+                FindingSeverity.Blocking,
+                file.Path,
+                $"A change here reaches {file.Files} of {total} files."));
     }
 
     private static string Files(double value)

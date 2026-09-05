@@ -1,9 +1,7 @@
 using Harness.Checks;
-using Harness.Checks.Complexity;
 using Harness.Cli;
 using Harness.Commits;
 using Harness.Config;
-using Harness.Contracts;
 using Harness.Engine;
 using Harness.Git;
 using Harness.Host;
@@ -54,34 +52,19 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        var (initialBudget, budgetFailure) =
-            ComplexityBudgetUpdater.InitialContent(
-                initRepository,
-                CheckRegistry.LanguageAnalyzers,
-                repositoryKind.Value == RepositoryKind.Application);
-        if (initialBudget is null)
-        {
-            Console.Error.WriteLine(budgetFailure);
-            return ExitCodes.Incomplete;
-        }
-
         var result = ConfigInitializer.Create(
             initRepository,
             invocation.Latest,
             invocation.CommitLanguage,
             repositoryKind.Value,
-            CheckCatalog.Describe(checks),
-            initialBudget);
+            CheckCatalog.Describe(checks));
         if (result.Failure is not null)
         {
             Console.Error.WriteLine(result.Failure);
             return ExitCodes.Incomplete;
         }
 
-        Console.WriteLine(
-            $"Created '{result.Path}' and "
-            + $"'{Path.Combine(Path.GetDirectoryName(result.Path)!, ".harness.budget.json")}' "
-            + "with the current tracked DSM metrics.");
+        Console.WriteLine($"Created '{result.Path}'.");
         Console.WriteLine(result.EditorConfigPath is not null
             ? $"Created '{result.EditorConfigPath}' with the shared code-style baseline."
             : "Kept the existing '.editorconfig'; `harness explain editorconfig.dotnet` prints the baseline it must carry.");
@@ -122,33 +105,6 @@ switch (invocation.Kind)
 
         Console.Write(report);
         return ExitCodes.Success;
-    }
-
-    case CommandKind.BudgetUpdate:
-    {
-        var (repository, config, failure) = LoadRepository(invocation.RepositoryPath, checks);
-        if (repository is null || config is null)
-        {
-            Console.Error.WriteLine(failure);
-            return ExitCodes.Incomplete;
-        }
-
-        var analyzers = CheckRegistry.LanguageAnalyzers
-            .Where(analyzer => config.NotApplicable(analyzer.Language.Key) is null)
-            .ToList();
-        if (analyzers.Count == 0)
-        {
-            Console.Error.WriteLine("Cannot update the DSM budget: no registered language is applicable.");
-            return ExitCodes.Incomplete;
-        }
-
-        var result = ComplexityBudgetUpdater.Update(
-            repository,
-            analyzers,
-            config.Architecture is { IsApplicable: true });
-        var writer = result.ExitCode == ExitCodes.Success ? Console.Out : Console.Error;
-        writer.WriteLine(result.Message);
-        return result.ExitCode;
     }
 
     case CommandKind.Setup:
@@ -309,7 +265,7 @@ static (IRepository? Repository, HarnessConfig? Config, string? Failure) LoadRep
         return (null, null, openFailure);
     }
 
-    var (config, configFailure) = HarnessConfig.Load(repository, CheckCatalog.Describe(checks));
+    var (config, configFailure) = HarnessConfigReader.Load(repository, CheckCatalog.Describe(checks));
     return config is null
         ? (repository, null, configFailure)
         : (repository, config, null);

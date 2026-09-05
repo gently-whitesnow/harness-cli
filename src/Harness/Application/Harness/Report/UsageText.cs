@@ -10,7 +10,6 @@ internal static class UsageText
 
         Usage
           harness check [path] [--only <ids>] [--skip <ids>] [--verbose] [--all]
-          harness budget update [path]
           harness init [path] [--kind <application|library>] [--latest] [--language <en|ru>]
           harness upgrade [path] [--dry-run]
           harness setup [path]

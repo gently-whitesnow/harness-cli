@@ -73,7 +73,7 @@ public sealed class MarkdownInventoryTests
 
         Assert.Equal(1, run.ExitCode);
         var lines = run.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.True(lines.Length <= HarnessCli.ConciseLineBudget(repository.Path), run.Output);
+        Assert.True(lines.Length <= HarnessCli.ConciseLineLimit(repository.Path), run.Output);
         Assert.True(run.OutputContains("40"), run.Output);
     }
 

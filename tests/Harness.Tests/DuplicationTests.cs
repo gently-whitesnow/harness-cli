@@ -7,17 +7,17 @@ public sealed class DuplicationTests
 {
     private const string Check = "duplication.csharp";
 
-    private const int ShownFindingBudget = 6;
+    private const int ShownFindingLimit = 6;
 
     private static int ReportedFindings(CliRun run)
         => run.Output.Split('\n').Count(line => line.Contains("advisory", StringComparison.Ordinal));
 
     private static void AssertBoundedOutput(CliRun run, string repositoryPath)
     {
-        Assert.True(ReportedFindings(run) <= ShownFindingBudget, run.Output);
+        Assert.True(ReportedFindings(run) <= ShownFindingLimit, run.Output);
 
         var lines = run.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.True(lines.Length <= HarnessCli.ConciseLineBudget(repositoryPath), run.Output);
+        Assert.True(lines.Length <= HarnessCli.ConciseLineLimit(repositoryPath), run.Output);
     }
 
     [Fact]

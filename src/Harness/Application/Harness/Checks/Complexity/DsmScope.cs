@@ -46,6 +46,12 @@ internal sealed record DsmScope(
         return new DsmScope(product, [], testDirectories, graph.SourcePaths.Count - product.SourcePaths.Count);
     }
 
+    public string Location
+        => Zones.Count == 0 ? "." : string.Join(", ", Zones.Select(ArchitectureZones.Display));
+
+    public bool IsCompositionRoot(string path)
+        => Zones.Any(zone => ArchitectureZones.Relative(path, zone).StartsWith("Host/", StringComparison.Ordinal));
+
     public string Describe()
     {
         var measured = Graph.SourcePaths.Count;

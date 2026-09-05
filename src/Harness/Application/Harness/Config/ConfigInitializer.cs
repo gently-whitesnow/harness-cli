@@ -14,21 +14,13 @@ internal static class ConfigInitializer
         bool latest,
         CommitLanguage commitLanguage,
         RepositoryKind repositoryKind,
-        IReadOnlyList<CheckDescriptor> checks,
-        string initialBudget)
+        IReadOnlyList<CheckDescriptor> checks)
     {
         var path = System.IO.Path.Combine(repository.RootPath, HarnessConfig.FileName);
-        var budgetPath = System.IO.Path.Combine(repository.RootPath, ".harness.budget.json");
         var tracked = repository.TrackedEntries.Any(entry => entry.Path == HarnessConfig.FileName);
         if (tracked || RootEntryExists(repository.RootPath, HarnessConfig.FileName))
         {
             return (null, null, $"Refusing to overwrite existing '{path}'. Remove it explicitly before initializing.");
-        }
-
-        var budgetTracked = repository.TrackedEntries.Any(entry => entry.Path == ".harness.budget.json");
-        if (budgetTracked || RootEntryExists(repository.RootPath, ".harness.budget.json"))
-        {
-            return (null, null, $"Refusing to overwrite existing '{budgetPath}'. Remove it explicitly before initializing.");
         }
 
         // An existing .editorconfig is the repository's own answer and is kept; the reference
@@ -41,8 +33,6 @@ internal static class ConfigInitializer
         var created = new List<string>();
         try
         {
-            WriteNew(budgetPath, initialBudget);
-            created.Add(budgetPath);
             WriteNew(path, content);
             created.Add(path);
             if (writeEditorConfig)

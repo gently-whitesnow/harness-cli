@@ -116,6 +116,7 @@ public sealed class ComplexityTests
         Assert.True(run.OutputContains("Mean reach formula"), run.Output);
         Assert.True(run.OutputContains("Scope"), run.Output);
         Assert.True(run.OutputContains("Core size formula"), run.Output);
+        Assert.True(run.OutputContains("Why the limit is a constant"), run.Output);
         Assert.True(run.OutputContains("Proven"), run.Output);
         Assert.True(run.OutputContains("10.1287/mnsc.1060.0552"), run.Output);
         Assert.True(run.OutputContains("S0048733314001012"), run.Output);
