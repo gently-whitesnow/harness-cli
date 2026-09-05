@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Harness.Contracts;
 using Harness.Languages;
@@ -14,21 +15,13 @@ internal static class ConfigInitializer
         bool latest,
         CommitLanguage commitLanguage,
         RepositoryKind repositoryKind,
-        IReadOnlyList<CheckDescriptor> checks,
-        string initialBudget)
+        IReadOnlyList<CheckDescriptor> checks)
     {
         var path = System.IO.Path.Combine(repository.RootPath, HarnessConfig.FileName);
-        var budgetPath = System.IO.Path.Combine(repository.RootPath, ".harness.budget.json");
         var tracked = repository.TrackedEntries.Any(entry => entry.Path == HarnessConfig.FileName);
         if (tracked || RootEntryExists(repository.RootPath, HarnessConfig.FileName))
         {
             return (null, null, $"Refusing to overwrite existing '{path}'. Remove it explicitly before initializing.");
-        }
-
-        var budgetTracked = repository.TrackedEntries.Any(entry => entry.Path == ".harness.budget.json");
-        if (budgetTracked || RootEntryExists(repository.RootPath, ".harness.budget.json"))
-        {
-            return (null, null, $"Refusing to overwrite existing '{budgetPath}'. Remove it explicitly before initializing.");
         }
 
         // An existing .editorconfig is the repository's own answer and is kept; the reference
@@ -41,8 +34,6 @@ internal static class ConfigInitializer
         var created = new List<string>();
         try
         {
-            WriteNew(budgetPath, initialBudget);
-            created.Add(budgetPath);
             WriteNew(path, content);
             created.Add(path);
             if (writeEditorConfig)
@@ -143,6 +134,10 @@ internal static class ConfigInitializer
                 "duplication.csharp": {
                   "windowLines": {{defaults.Duplication.WindowLines}},
                   "minimumTokens": {{defaults.Duplication.MinimumTokens}}
+                },
+                "complexity.csharp": {
+                  "meanReach": {{defaults.Complexity.MeanReach.ToString("0.0", CultureInfo.InvariantCulture)}},
+                  "coreSize": {{defaults.Complexity.CoreSize}}
                 },
                 "commits": {
                   "language": "{{new CommitSettings(commitLanguage, defaults.Commits.RequireSetup).Code}}",

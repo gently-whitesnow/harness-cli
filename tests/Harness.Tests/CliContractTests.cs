@@ -198,7 +198,7 @@ public sealed class CliContractTests
         var run = HarnessCli.Run(repository.Path, "check");
 
         var lines = run.Output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        Assert.True(lines.Length <= HarnessCli.ConciseLineBudget(repository.Path), run.Output);
+        Assert.True(lines.Length <= HarnessCli.ConciseLineLimit(repository.Path), run.Output);
     }
 
     [Fact]

@@ -46,7 +46,7 @@ internal static class CheckRegistry
             new HarnessConfigCheck(),
 
             new SlicedDotNetShapeCheck(csharpAnalyzer),
-            .. LanguageAnalyzers.Select(analyzer => new ComplexityCheck(analyzer, LanguageAnalyzers)),
+            .. LanguageAnalyzers.Select(analyzer => new ComplexityCheck(analyzer)),
 
             new DocumentationPolicyCheck(),
             new CommitSetupCheck(CommitIntegration),
@@ -63,14 +63,7 @@ internal static class CheckRegistry
             new EditorConfigCheck(),
             new WarningSuppressionsCheck(),
 
-            new UnitTestFrameCheck(),
-            new IntegrationTestFrameCheck(),
-            new ArchitectureFrameCheck(),
-            new FormatFrameCheck(),
-            new LintFrameCheck(),
-            new BuildFrameCheck(),
-            new TypecheckFrameCheck(),
-            new VerifyFrameCheck(),
+            .. FrameQuestions.All.Select(question => new FrameQuestionCheck(question)),
         ];
     }
 

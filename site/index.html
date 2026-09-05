@@ -4,12 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Harness CLI — одна рамка качества над разными репозиториями</title>
-  <meta name="description" content="Harness CLI читает tracked .harness.json, доказывает циклы модулей, держит DSM-бюджет, ищет межфайловые повторы и проверяет sliced-dotnet — стандарт слоёв и слайсов для .NET в духе Feature-Sliced Design. Все 24 проверки явно перечислены в конфиге — тихих фич нет." />
+  <meta name="description" content="Harness CLI читает tracked .harness.json, доказывает циклы модулей, держит DSM в пределах стандарта, ищет межфайловые повторы и проверяет sliced-dotnet — стандарт слоёв и слайсов для .NET в духе Feature-Sliced Design. Все 24 проверки явно перечислены в конфиге — тихих фич нет." />
   <link rel="canonical" href="https://harness.whitesnow.tech/" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="Harness CLI — одна рамка качества над разными репозиториями" />
-  <meta property="og:description" content="Standalone CLI: self-reported рамка, доказанные циклы, DSM-бюджет, повторы C#, стандарт sliced-dotnet/1. Конструктор .harness.json прямо на странице." />
+  <meta property="og:description" content="Standalone CLI: self-reported рамка, доказанные циклы, DSM-пределы, повторы C#, стандарт sliced-dotnet/1. Конструктор .harness.json прямо на странице." />
   <meta property="og:url" content="https://harness.whitesnow.tech/" />
   <meta property="og:locale" content="ru_RU" />
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
@@ -38,7 +38,7 @@
           <path d="M8 12.5l2.5 2.5L16 9.5" />
         </svg>
         <span>harness</span>
-        <span class="brand__version">2.14.0</span>
+        <span class="brand__version">2.15.0</span>
       </a>
       <nav class="site-nav" aria-label="Основная навигация">
         <a class="btn btn-ghost btn-sm site-nav__hide-sm" href="#catches">Что ловит</a>
@@ -79,12 +79,12 @@
         </div>
         <figure class="hero__demo">
 <pre class="code-block code-block--terminal"><code><span class="c-dim">$</span> harness check
-<span class="c-err">FAIL</span>  ./shop · harness 2.14.0
+<span class="c-err">FAIL</span>  ./shop · harness 2.15.0
    CHECK ID                FINDINGS
 ✅ harness.config          8 answers · 24 policy entries
 ❌ dependencies.csharp     cycle Orders → Billing → Orders
 <span class="c-dim">                           ↳ expose Contracts/ or X/Orders API</span>
-❌ complexity.csharp       reach 11.2 &gt; budget 9.4 · core 6 &gt; 0
+❌ complexity.csharp       reach 11.2 &gt; 8.0 · core 6 &gt; 0
 ⚠️ duplication.csharp      2 repeated blocks <span class="c-dim">(advisory)</span>
 ✅ architecture.sliced-dotnet
 ✅ warning-suppressions.dotnet
@@ -108,8 +108,8 @@
           </div>
           <div class="feature">
             <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none" /><circle cx="4.5" cy="6" r="1.8" /><circle cx="19.5" cy="6" r="1.8" /><circle cx="4.5" cy="18" r="1.8" /><circle cx="19.5" cy="18" r="1.8" /><circle cx="12" cy="3.5" r="1.4" opacity=".5" /><path d="M10.2 10.8L6 7.4M13.8 10.8L18 7.4M10.2 13.2L6 16.6M13.8 13.2L18 16.6" /><path d="M12 9.6V5" opacity=".5" /></svg></span>
-            <h3>Бюджет связанности</h3>
-            <p>DSM по продукту: сколько файлов затронет изменение и как велико ядро. Бюджет в git можно только ужать.</p>
+            <h3>Потолок связанности</h3>
+            <p>DSM по продукту: сколько файлов затронет изменение и как велико ядро. Потолок объявлен в settings рядом с остальными, дефолт 8.0 файла и ядро 0.</p>
           </div>
           <div class="feature">
             <span class="feature__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="12" height="14" rx="2" /><path d="M6 7h6M6 10h6M6 13h4" /><path d="M9 21h10a2 2 0 0 0 2-2V9" /><path d="M12 17h6M12 14h6" opacity=".5" /></svg></span>
@@ -368,10 +368,10 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
     <!-- ── Checks ───────────────────────────────────────────────────── -->
     <section class="section" id="checks">
       <div class="container">
-        <div class="section__kicker">24 проверки · контракт 2.14.0</div>
+        <div class="section__kicker">24 проверки · контракт 2.15.0</div>
         <h2 class="section__title">Каждая проверка названа, и каждая — в конфиге</h2>
         <p class="section__body">
-          Все 24 проверки бинаря 2.14.0 в порядке исполнения. Идентификатор — <code>&lt;семейство&gt;.&lt;язык&gt;</code>:
+          Все 24 проверки бинаря 2.15.0 в порядке исполнения. Идентификатор — <code>&lt;семейство&gt;.&lt;язык&gt;</code>:
           ось <code>applicability</code> выключает язык одной записью, <code>policy</code> решает судьбу каждой проверки.
           Нет записи — прогон <code>Incomplete</code> с именем ключа. Подробности — <code>harness explain &lt;check-id&gt;</code>.
         </p>
@@ -412,7 +412,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
             </ul>
             <p>
               <strong>Blocking-находка строится только из Proven-рёбер.</strong> Тот же Proven-граф питает циклы модулей,
-              инварианты sliced-dotnet и DSM-бюджет. Всё, что связывает компилятор — extension-методы, <code>var</code>,
+              инварианты sliced-dotnet и DSM-пределы. Всё, что связывает компилятор — extension-методы, <code>var</code>,
               перегрузки, DI, рефлексия, — невидимо; связанность занижена, никогда не завышена.
             </p>
             <p>
@@ -509,15 +509,17 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
 
         <!-- C. DSM -->
         <details class="explainer explainer--fold" id="deep-dsm">
-          <summary class="fold__summary"><span>DSM-сложность: mean reach и core size под бюджетом</span></summary>
+          <summary class="fold__summary"><span>DSM-сложность: mean reach и core size под объявленным потолком</span></summary>
           <div class="explainer__inner">
           <div class="explainer__text">
             <p>
               Счётчик зависимостей описывает один файл. Design structure matrix описывает, как изменение распространяется
-              по продукту целиком. Две метрики DSM-семейства сравниваются с одним tracked-потолком в
-              <code>.harness.budget.json</code>: регресс блокирует, улучшение видно, пока репозиторий его не зафиксирует.
+              по продукту целиком. Две метрики DSM-семейства сравниваются с потолком, который рамка объявляет в
+              <code>settings.complexity.csharp</code>: <code>meanReach</code> и <code>coreSize</code>. Дефолт контракта, который
+              пишет <code>harness init</code>, — 8.0 файла и 0, значения sliced-dotnet/1. Отдельного файла и команды, двигающей
+              число, нет: потолок правится тем же reviewable-диффом, что и остальные settings.
             </p>
-            <p><strong>Mean reach</strong> — бюджетируемая величина. Пусть N — число измеренных файлов, R(i) — сам файл i плюс всё,
+            <p><strong>Mean reach</strong> — ограничиваемая величина. Пусть N — число измеренных файлов, R(i) — сам файл i плюс всё,
               что транзитивно достижимо из него по Proven-рёбрам.</p>
             <p><span class="formula">mean reach = Σ|R(i)| / N</span></p>
             <p>Это абсолютное число файлов, до которых доходит изменение типичного файла. <strong>Propagation cost</strong>
@@ -539,10 +541,16 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
               <code>IsTestProject</code> в собственном <code>.csproj</code>. Читается только XML проекта, без MSBuild
               evaluation; строка <code>scope:</code> в отчёте называет вынесенные проекты. Целиком измеряется лишь
               репозиторий без единого тестового проекта.</p>
+            <p><strong>Почему предел — константа.</strong> Под sliced-dotnet файл видит свой слайс и слои под ним, а весь
+              продукт видит только composition root в <code>Host</code>. Поэтому mean reach ≈ средняя достижимость внутри
+              слайса + число файлов, видящих всё, и ни одно слагаемое не растёт с числом слайсов: многослайсовый пилот на
+              500 файлах даёт 7.0 файла. Tracked ratchet-бюджет агенты поднимали под каждую фичу ровно до текущего замера —
+              отдельный файл с одним числом правился как рутина. Теперь потолок стоит среди settings рамки, и его правка —
+              пересмотр контракта на ревью, а не budget bump. При превышении отчёт называет файлы вне
+              <code>Host</code> с наибольшей |R(i)|: резать надо их исходящие рёбра.</p>
             <p><strong>Вычисление.</strong> SCC-конденсация — DAG; достижимость считается битовыми наборами в обратном
-              топологическом порядке, без рекурсии и внешних зависимостей. Бюджет — потолок: <code>harness budget update</code>
-              только ужимает его; повысить можно лишь ручной tracked-правкой на ревью.</p>
-            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0032-topology-over-thresholds.md" target="_blank" rel="noreferrer noopener">ADR-0032</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0042-dsm-over-the-product-in-files.md" target="_blank" rel="noreferrer noopener">ADR-0042</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0048-dsm-product-boundary-without-a-zone.md" target="_blank" rel="noreferrer noopener">ADR-0048</a> <a href="https://doi.org/10.1287/mnsc.1060.0552" target="_blank" rel="noreferrer noopener">MacCormack 2006</a></span>
+              топологическом порядке, без рекурсии и внешних зависимостей.</p>
+            <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0032-topology-over-thresholds.md" target="_blank" rel="noreferrer noopener">ADR-0032</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0042-dsm-over-the-product-in-files.md" target="_blank" rel="noreferrer noopener">ADR-0042</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0048-dsm-product-boundary-without-a-zone.md" target="_blank" rel="noreferrer noopener">ADR-0048</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0052-dsm-ceiling-is-a-declared-setting.md" target="_blank" rel="noreferrer noopener">ADR-0052</a> <a href="https://doi.org/10.1287/mnsc.1060.0552" target="_blank" rel="noreferrer noopener">MacCormack 2006</a></span>
           </div>
           <figure class="explainer__figure">
             <div class="panel">
@@ -558,13 +566,13 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
               <div class="stat-row" style="margin-top: var(--space-3)">
                 <div class="stat"><span class="stat__label">Файлов N</span><span class="stat__value" id="dsm-n">0</span></div>
                 <div class="stat"><span class="stat__label">Σ|R(i)|</span><span class="stat__value" id="dsm-pairs">0</span></div>
-                <div class="stat"><span class="stat__label">Mean reach</span><span class="stat__value" id="dsm-reach">0</span><span class="stat__hint">бюджет <span id="dsm-budget-reach">0</span></span></div>
+                <div class="stat"><span class="stat__label">Mean reach</span><span class="stat__value" id="dsm-reach">0</span><span class="stat__hint">предел <span id="dsm-limit-reach">0</span></span></div>
                 <div class="stat"><span class="stat__label">Propagation cost</span><span class="stat__value" id="dsm-cost">0 %</span><span class="stat__hint">справочно</span></div>
-                <div class="stat"><span class="stat__label">Core size</span><span class="stat__value" id="dsm-core">0</span><span class="stat__hint">бюджет <span id="dsm-budget-core">0</span></span></div>
+                <div class="stat"><span class="stat__label">Core size</span><span class="stat__value" id="dsm-core">0</span><span class="stat__hint">предел <span id="dsm-limit-core">0</span></span></div>
               </div>
               <div class="finding" id="dsm-finding" style="margin-top: var(--space-3)"></div>
             </div>
-            <figcaption>Добавьте несколько листовых файлов: propagation cost падает, а mean reach почти не меняется — именно поэтому бюджетируется второе. Замкните цикл: появится ядро, и потолок <code>coreSize</code> будет превышен.</figcaption>
+            <figcaption>Добавьте несколько листовых файлов: propagation cost падает, а mean reach почти не меняется — именно поэтому ограничивается второе. Замкните цикл: появится ядро, и дефолтный потолок core size = 0 будет превышен.</figcaption>
           </figure>
           </div>
         </details>
@@ -608,7 +616,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
               переписывается.</p>
             <p><strong>Возможный вред.</strong> Извлечение общего хелпера из двух блоков, которые лишь выглядят похоже,
               связывает то, что не должно меняться вместе. Совпадение, не пережившее чтения, лечится настройкой детектора или
-              advisory-policy, а не принудительной абстракцией. Архитектурный инвариант, циклы и DSM-бюджет независимо не дают
+              advisory-policy, а не принудительной абстракцией. Архитектурный инвариант, циклы и DSM-пределы независимо не дают
               лечить повтор общим модулем с неверным направлением зависимости.</p>
             <span class="check__meta"><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0028-recalibrated-csharp-defaults.md" target="_blank" rel="noreferrer noopener">ADR-0028</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0007-one-finding-one-report.md" target="_blank" rel="noreferrer noopener">ADR-0007</a> <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0045-duplication-required-by-default.md" target="_blank" rel="noreferrer noopener">ADR-0045</a></span>
           </div>
@@ -682,7 +690,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
             <div class="panel">
               <div class="panel__head"><span class="panel__title">Тот же результат из CLI</span></div>
               <pre class="code-block"><code id="builder-cli"></code></pre>
-              <p class="figure-note" style="margin-top: var(--space-2)"><code>harness init</code> оставляет ответы рамки <code>{}</code> и <code>frame.* : off</code> (кроме <code>verify</code>), потому что не угадывает toolchain; заодно пишет <code>.harness.budget.json</code> с текущими DSM-метриками и эталонный <code>.editorconfig</code>, если его нет. Файлы в git не добавляет.</p>
+              <p class="figure-note" style="margin-top: var(--space-2)"><code>harness init</code> оставляет ответы рамки <code>{}</code> и <code>frame.* : off</code> (кроме <code>verify</code>), потому что не угадывает toolchain; заодно пишет эталонный <code>.editorconfig</code>, если его нет. Файлы в git не добавляет.</p>
             </div>
           </aside>
         </div>
@@ -704,10 +712,9 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
           <div class="panel">
             <div class="panel__head"><span class="panel__title">Команды</span></div>
             <ul class="cmd-list">
-              <li><code>harness init --kind application</code><span>создать явную рамку, бюджет и .editorconfig</span></li>
+              <li><code>harness init --kind application</code><span>создать явную рамку и .editorconfig</span></li>
               <li><code>harness check [--verbose] [--all]</code><span>проверить репозиторий; <code>--only</code> / <code>--skip</code> по id или группе</span></li>
               <li><code>harness explain &lt;check-id&gt;</code><span>смысл, формула, пределы и исправление проверки</span></li>
-              <li><code>harness budget update</code><span>создать или ужать DSM-бюджет; повысить нельзя</span></li>
               <li><code>harness upgrade [--dry-run]</code><span>поднять pin и напечатать маршрут миграции</span></li>
               <li><code>harness setup</code><span>активировать commit-шаблон и commit-msg hook в клоне</span></li>
               <li><code>harness commits check a..b</code><span>проверить диапазон сообщений для CI</span></li>
@@ -716,7 +723,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
           <div class="panel">
             <div class="panel__head"><span class="panel__title">Пример отчёта</span></div>
 <pre class="code-block code-block--terminal"><code><span class="c-ok">PASS</span>  /srv/repo
-  harness 2.14.0 · repository pins 2.14.0
+  harness 2.15.0 · repository pins 2.15.0
    CHECK ID                     FINDINGS
 ✅ harness.config               .harness.json contains 8 answers, 24 explicit policy entries
 ✅ architecture.sliced-dotnet   architecture map: zone src/Harness · layers [Host, Api, Application, Domain, Infrastructure]
@@ -737,7 +744,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
           <div class="panel">
             <div class="panel__head"><span class="panel__title">GitLab CI</span></div>
 <pre class="code-block"><code><span class="c-key">harness</span>:
-  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.14.0</span>
+  <span class="c-key">image</span>: <span class="c-str">ghcr.io/gently-whitesnow/harness:2.15.0</span>
   <span class="c-key">script</span>:
     - harness check
     - harness commits check <span class="c-str">"$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"</span></code></pre>
@@ -753,7 +760,7 @@ Shop.Orders <span class="c-err">→</span> Shop.Billing <span class="c-err">→<
         <div class="exit-codes" style="margin-top: var(--space-5)">
           <div class="exit"><span class="exit__code is-ok">0</span><p>Каждая выбранная применимая blocking-проверка отработала и прошла. Advisory-находки и readiness gaps при этом возможны — заголовок скажет об этом вместо <code>PASS</code>.</p></div>
           <div class="exit"><span class="exit__code is-fail">1</span><p>Выбранная применимая blocking-проверка доказала нарушение.</p></div>
-          <div class="exit"><span class="exit__code is-incomplete">2</span><p>Проверку не удалось выполнить достоверно: отсутствующий или невалидный <code>.harness.json</code>, чужой pin, неполный policy, бюджет не найден.</p></div>
+          <div class="exit"><span class="exit__code is-incomplete">2</span><p>Проверку не удалось выполнить достоверно: отсутствующий или невалидный <code>.harness.json</code>, чужой pin, неполный policy, устаревший tracked <code>.harness.budget.json</code>.</p></div>
         </div>
       </div>
     </section>

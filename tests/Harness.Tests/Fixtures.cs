@@ -6,10 +6,7 @@ public static class Fixtures
 
     public static RepositoryFixture Framed()
         => RepositoryFixture.CreateGitRepository()
-            .WriteFile(".harness.json", Frame.AllPresent().ToString())
-            .WriteFile(
-                ".harness.budget.json",
-                """{ "complexity.csharp": { "meanReach": 0, "coreSize": 0 } }""");
+            .WriteFile(".harness.json", Frame.AllPresent().ToString());
 
     public static RepositoryFixture Compliant(Frame frame)
         => RepositoryFixture.CreateGitRepository()
@@ -17,17 +14,6 @@ public static class Fixtures
             .WriteFile("README.md", "# Overview\n")
             .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
             .WriteFile(".harness.json", frame.ToString())
-            .WriteFile(
-                ".harness.budget.json",
-                """
-                {
-                  "complexity.csharp": {
-                    "meanReach": 1000000000,
-                    "coreSize": 2147483647
-                  }
-                }
-
-                """)
             .Commit();
 
     public static RepositoryFixture WithoutAFrame()

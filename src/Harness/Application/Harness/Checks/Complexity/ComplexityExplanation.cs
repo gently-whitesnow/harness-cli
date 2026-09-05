@@ -1,19 +1,22 @@
+using System.Globalization;
+using Harness.Config;
+
 namespace Harness.Checks.Complexity;
 
 internal static class ComplexityExplanation
 {
-    public const string Text =
-        """
+    public static readonly string Text =
+        $"""
         Rationale
           A dependency count describes one file. A design structure matrix (DSM) describes
-          how a change can propagate through the product as a whole. These measurements
-          are compared with one repository-wide, tracked ceiling in `.harness.budget.json`.
-          A regression is blocking; an improvement is visible until the repository records
-          it. This is tier 2 of contract 2.0: tier 1 fixes topology, tier 2 keeps global DSM
-          metrics under a budget, and tier 3 applies explicit deterministic policy. ADR-0032
-          defines the model, ADR-0033 fixes the sliced-dotnet/1 vocabulary used by tier 1,
-          and ADR-0042 narrows the DSM to the product and replaces propagation cost with
-          mean reach.
+          how a change can propagate through the product as a whole. Two DSM measurements
+          are compared with the ceiling the frame declares in `settings.complexity.csharp`:
+          `meanReach` (files, at least 1) and `coreSize` (files). The contract defaults are
+          {Limit(ComplexitySettings.Default.MeanReach)} files and {ComplexitySettings.Default.CoreSize},
+          the values of sliced-dotnet/1; `harness init` writes them, and there is no separate
+          file and no command that moves them. ADR-0032 defines the model, ADR-0042 replaces
+          propagation cost with mean reach, ADR-0048 draws the product boundary without a zone,
+          and ADR-0052 makes the ceiling a declared setting with contract defaults.
 
         Scope
           When `architecture` names sliced-dotnet/1, the DSM measures the files inside the
@@ -46,9 +49,22 @@ internal static class ComplexityExplanation
           prints propagation cost = 100 * sum(|R(i)|) / N^2 from MacCormack, Rusnak and
           Baldwin, for comparison with the literature (Linux 5.16%, Mozilla 17.35%, Mozilla
           after redesign 2.78%): https://doi.org/10.1287/mnsc.1060.0552
-          Mean reach is the budgeted value because it is an absolute quantity: adding leaf
+          Mean reach is the limited value because it is an absolute quantity: adding leaf
           files does not shrink it through the N^2 denominator, and removing an isolated
           file moves it by at most a fraction of one file.
+
+        Why the limit is a constant
+          Under sliced-dotnet/1 a file sees its own slice and the layers below it, so its
+          reach is bounded by the depth of one vertical slice, and only the composition root
+          in Host sees the whole product. Mean reach is therefore approximately the average
+          reach inside a slice plus the number of files that see everything. Neither term
+          grows with the number of slices: adding a slice adds files of the same reach, and
+          Host stays a handful of files. A product that follows the standard keeps mean reach
+          near {Limit(ComplexitySettings.Default.MeanReach)} files whether it has five slices or
+          fifty, so the default describes the standard, not the repository. A separate tracked
+          ratchet was tried first and was raised by agents to the current measurement under
+          every feature; the ceiling now sits among the other settings of the frame, where a
+          change to it is a reviewed change of the contract rather than a routine budget bump.
 
         Core size formula
           Collapse the directed file graph into strongly connected components. Core size is
@@ -56,6 +72,9 @@ internal static class ComplexityExplanation
           acyclic components do not form a core, so a DAG reports zero. This follows the
           core-periphery method of Baldwin, MacCormack and Rusnak:
           https://www.sciencedirect.com/science/article/pii/S0048733314001012
+          Files inside a core take about three times the lines per bug fix and cost up to
+          half of a developer's productivity (Sturtevant, MIT 2013), and the fix is always the
+          same — break one edge of the cycle — so the limit is zero.
 
         Computation
           The SCC condensation is a DAG. Reachability is computed as bit sets in reverse
@@ -74,26 +93,27 @@ internal static class ComplexityExplanation
           stays in the measurement; the `scope:` line makes the decision visible.
 
         Policy
-          A regression is blocking when the tracked policy for this check is required, and no
-          file is exempt from the measurement. A repository may run the whole check `advisory`
-          or `off`. A missing budget stays incomplete under `advisory`, because an unread
-          measurement is not a softened finding; a repository that keeps no budget answers `off`.
+          Exceeding either limit is blocking when the tracked policy for this check is
+          required, and no file is exempt from the measurement. A repository may run the
+          whole check `advisory` or `off`, or declare a different ceiling in settings; both
+          are visible in the tracked frame and reviewed like any other change to it.
 
         Remediation
-          Run `harness budget update` once to create `.harness.budget.json`. Commit both files.
-          The budget is a ceiling: a repository may keep it where it is and treat the
-          improvement notice as information, or run `harness budget update` to ratchet it
-          down to the current value. A rising mean reach means more files lie downstream
-          of typical changes. A growing core means more files must change as a mutually
-          dependent group; break an edge or extract a lower-level concept. The update
-          command only lowers budgets; raising one requires an explicit tracked edit and
-          review. A budget written by contract 2.5 records propagationCost and is migrated
-          by the same command.
+          The report names the five files outside Host whose own
+          reach |R(i)| is largest: a change there travels furthest, so cutting their
+          outgoing edges — moving a shared concept below them, depending on a slice's
+          Contracts/ instead of its internals, or splitting a hub that serves two slices —
+          lowers mean reach the most. A cycle is broken by removing one of its edges or
+          extracting the lower-level concept both sides need. Moving files out of the zone,
+          marking them generated, raising the ceiling or widening the policy does not reduce
+          the graph.
 
         Decisions
           adrs/0032-topology-over-thresholds.md
-          adrs/0033-canonical-standard-over-declarations.md
           adrs/0042-dsm-over-the-product-in-files.md
           adrs/0048-dsm-product-boundary-without-a-zone.md
+          adrs/0052-dsm-ceiling-is-a-declared-setting.md
         """;
+
+    private static string Limit(double value) => value.ToString("F1", CultureInfo.InvariantCulture);
 }

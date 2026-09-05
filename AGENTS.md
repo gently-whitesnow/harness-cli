@@ -19,7 +19,7 @@ self-reported: адрес служит навигацией, а не доказ�
 
 Каждая shipped-проверка явно перечислена в `policy`: `required` делает находку blocking,
 `advisory` оставляет её видимой, `off` пропускает проверку. Переключатель един для всех
-проверок, включая топологический инвариант и ratchet-бюджет: запрещено адресное подавление
+проверок, включая топологический инвариант и DSM-пределы: запрещено адресное подавление
 файла или находки, а не выключение проверки целиком. `settings`, applicability и policy
 полны — ридер не подставляет скрытые defaults, поэтому состояние всех проверок видно в
 tracked-файле. Харнес валидирует полноту ответов, но не инспектирует их и не ищет
@@ -38,8 +38,9 @@ counts без универсального remediation. Вложенный мо�
 [ADR-0021](adrs/0021-coupling-evidence-grades.md), [ADR-0029](adrs/0029-dependency-counts-removed.md)
 
 DSM `complexity.csharp` — mean reach (файлов на изменение) и core size по продукту: внутри зон
-sliced-dotnet, а без зоны — вне tracked тестовых проектов; граница из дерева, не из ответа. Превышение
-`.harness.budget.json` блокирует, `budget update` только ужимает. [ADR-0042](adrs/0042-dsm-over-the-product-in-files.md), [ADR-0048](adrs/0048-dsm-product-boundary-without-a-zone.md)
+sliced-dotnet, а без зоны — вне tracked тестовых проектов; граница из дерева, не из ответа. Потолок —
+`settings."complexity.csharp"` (`meanReach`, `coreSize`), дефолт контракта 8.0 / 0 из sliced-dotnet/1;
+превышение блокирует, отдельного файла и команды нет, находка называет файлы с наибольшей |R(i)| вне `Host`. [ADR-0042](adrs/0042-dsm-over-the-product-in-files.md), [ADR-0048](adrs/0048-dsm-product-boundary-without-a-zone.md), [ADR-0052](adrs/0052-dsm-ceiling-is-a-declared-setting.md)
 
 Проверка называется `<семейство>.<язык>`, `Group` — семейство, `Applicability` — язык.
 Язык-нейтральное ядро живёт в `Structure/`, чтение исходника — за `ILanguageAnalyzer` в
@@ -56,7 +57,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 блокируются; выключение правила для всего репозитория печатается observation. Читается только
 tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"2.14.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.15.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -76,8 +77,7 @@ essence-имена вне сегментных позиций, единстве�
 
 `"latest"` включает rolling-контракт. `harness init` спрашивает только application или
 standalone-library (либо принимает `--kind application|library` без stdin), создаёт
-соответствующую `architecture`, DSM-бюджет текущих tracked-исходников и полный
-явный конфиг. `duplication.csharp` стартует `required` с `30/90`; нерешённые answer-ключи —
+соответствующую `architecture` и полный явный конфиг. `duplication.csharp` стартует `required` с `30/90`; нерешённые answer-ключи —
 `{}` и `off`, кроме `verify: required`: исследуй и ответь честно. [ADR-0045](adrs/0045-duplication-required-by-default.md)
 
 `settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness setup` включает шаблон

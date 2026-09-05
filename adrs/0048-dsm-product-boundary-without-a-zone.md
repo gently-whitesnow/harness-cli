@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted. Уточняет пункт 1 [ADR-0042](0042-dsm-over-the-product-in-files.md); формулы,
-бюджет и область внутри зон sliced-dotnet не меняются.
+Accepted. Уточняет пункт 1 [ADR-0042](0042-dsm-over-the-product-in-files.md); формулы и
+область внутри зон sliced-dotnet не меняются. Бюджет, упомянутый в пунктах 4 и 5, заменён
+константами [ADR-0052](0052-dsm-ceiling-is-a-declared-setting.md).
 
 ## Context
 

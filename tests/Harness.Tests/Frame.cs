@@ -10,7 +10,7 @@ namespace Harness.Tests;
 public sealed class Frame
 {
     private const string DefaultSettings =
-        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.typescript": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "commits": { "language": "ru", "requireSetup": false } }""";
+        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.typescript": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "complexity.csharp": { "meanReach": 8.0, "coreSize": 0 }, "commits": { "language": "ru", "requireSetup": false } }""";
 
     private static readonly string[] Questions =
         ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck", "verify"];

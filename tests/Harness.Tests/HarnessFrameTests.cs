@@ -138,6 +138,8 @@ public sealed class HarnessFrameTests
     [InlineData("{ \"dependencies.csharp\": { \"incomingReferences\": 20 } }", "not part of the current contract")]
     [InlineData("{ \"duplication.csharp\": { \"windowLines\": 0 } }", "positive integer")]
     [InlineData("{ \"duplication.csharp\": { \"minimumTokens\": -1 } }", "non-negative integer")]
+    [InlineData("{ \"complexity.csharp\": { \"meanReach\": 0.5, \"coreSize\": 0 } }", "not below 1")]
+    [InlineData("{ \"complexity.csharp\": { \"meanReach\": 8, \"coreSize\": -1 } }", "non-negative integer")]
     [InlineData("{ \"commits\": { \"language\": \"de\" } }", "must be 'en' or 'ru'")]
     [InlineData("{ \"commits\": { \"requireSetup\": \"yes\" } }", "must be true or false")]
     public void Invalid_settings_end_the_run_as_incomplete(string settings, string explanation)

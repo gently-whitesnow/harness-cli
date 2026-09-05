@@ -41,7 +41,7 @@ public static class HarnessCli
             .ToList();
     }
 
-    public static int ConciseLineBudget(string workingDirectory)
+    public static int ConciseLineLimit(string workingDirectory)
         => 4 + (2 * ShippedCheckIds(workingDirectory).Count);
 
     private static string ResolveExecutablePath()
