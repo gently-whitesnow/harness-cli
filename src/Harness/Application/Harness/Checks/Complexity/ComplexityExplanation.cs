@@ -1,4 +1,5 @@
 using System.Globalization;
+using Harness.Config;
 
 namespace Harness.Checks.Complexity;
 
@@ -9,12 +10,13 @@ internal static class ComplexityExplanation
         Rationale
           A dependency count describes one file. A design structure matrix (DSM) describes
           how a change can propagate through the product as a whole. Two DSM measurements
-          are compared with limits that belong to the standard and live in this binary:
-          mean reach at most {Limit(ComplexityLimit.MeanReach)} files, core size exactly
-          {ComplexityLimit.CoreSize}. There is no tracked number to raise and no setting to
-          tune; the only choice a repository makes is the policy for this check.
-          ADR-0032 defines the model, ADR-0042 replaces propagation cost with mean reach,
-          ADR-0048 draws the product boundary without a zone, and ADR-0052 fixes the limits.
+          are compared with the ceiling the frame declares in `settings.complexity.csharp`:
+          `meanReach` (files, at least 1) and `coreSize` (files). The contract defaults are
+          {Limit(ComplexitySettings.Default.MeanReach)} files and {ComplexitySettings.Default.CoreSize},
+          the values of sliced-dotnet/1; `harness init` writes them, and there is no separate
+          file and no command that moves them. ADR-0032 defines the model, ADR-0042 replaces
+          propagation cost with mean reach, ADR-0048 draws the product boundary without a zone,
+          and ADR-0052 makes the ceiling a declared setting with contract defaults.
 
         Scope
           When `architecture` names sliced-dotnet/1, the DSM measures the files inside the
@@ -58,10 +60,11 @@ internal static class ComplexityExplanation
           reach inside a slice plus the number of files that see everything. Neither term
           grows with the number of slices: adding a slice adds files of the same reach, and
           Host stays a handful of files. A product that follows the standard keeps mean reach
-          near {Limit(ComplexityLimit.MeanReach)} files whether it has five slices or fifty,
-          so the limit describes the standard, not the repository. A tracked ratchet was
-          tried first and was raised by agents to the current measurement under every
-          feature; a number the gated change may edit is not a gate.
+          near {Limit(ComplexitySettings.Default.MeanReach)} files whether it has five slices or
+          fifty, so the default describes the standard, not the repository. A separate tracked
+          ratchet was tried first and was raised by agents to the current measurement under
+          every feature; the ceiling now sits among the other settings of the frame, where a
+          change to it is a reviewed change of the contract rather than a routine budget bump.
 
         Core size formula
           Collapse the directed file graph into strongly connected components. Core size is
@@ -92,23 +95,24 @@ internal static class ComplexityExplanation
         Policy
           Exceeding either limit is blocking when the tracked policy for this check is
           required, and no file is exempt from the measurement. A repository may run the
-          whole check `advisory` or `off`; that switch is the only flexibility, and it is
-          visible in the tracked frame.
+          whole check `advisory` or `off`, or declare a different ceiling in settings; both
+          are visible in the tracked frame and reviewed like any other change to it.
 
         Remediation
-          The report names the {ComplexityLimit.NamedHubs} files outside Host whose own
+          The report names the five files outside Host whose own
           reach |R(i)| is largest: a change there travels furthest, so cutting their
           outgoing edges — moving a shared concept below them, depending on a slice's
           Contracts/ instead of its internals, or splitting a hub that serves two slices —
           lowers mean reach the most. A cycle is broken by removing one of its edges or
           extracting the lower-level concept both sides need. Moving files out of the zone,
-          marking them generated or widening the policy does not reduce the graph.
+          marking them generated, raising the ceiling or widening the policy does not reduce
+          the graph.
 
         Decisions
           adrs/0032-topology-over-thresholds.md
           adrs/0042-dsm-over-the-product-in-files.md
           adrs/0048-dsm-product-boundary-without-a-zone.md
-          adrs/0052-dsm-limits-are-constants-of-the-standard.md
+          adrs/0052-dsm-ceiling-is-a-declared-setting.md
         """;
 
     private static string Limit(double value) => value.ToString("F1", CultureInfo.InvariantCulture);

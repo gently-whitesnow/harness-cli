@@ -38,9 +38,9 @@ counts без универсального remediation. Вложенный мо�
 [ADR-0021](adrs/0021-coupling-evidence-grades.md), [ADR-0029](adrs/0029-dependency-counts-removed.md)
 
 DSM `complexity.csharp` — mean reach (файлов на изменение) и core size по продукту: внутри зон
-sliced-dotnet, а без зоны — вне tracked тестовых проектов; граница из дерева, не из ответа. Пределы —
-константы стандарта в бинаре: mean reach ≤ 8.0, core size = 0; превышение блокирует, настроек и
-tracked-числа нет, находка называет файлы с наибольшей |R(i)| вне `Host`. [ADR-0042](adrs/0042-dsm-over-the-product-in-files.md), [ADR-0048](adrs/0048-dsm-product-boundary-without-a-zone.md), [ADR-0052](adrs/0052-dsm-limits-are-constants-of-the-standard.md)
+sliced-dotnet, а без зоны — вне tracked тестовых проектов; граница из дерева, не из ответа. Потолок —
+`settings."complexity.csharp"` (`meanReach`, `coreSize`), дефолт контракта 8.0 / 0 из sliced-dotnet/1;
+превышение блокирует, отдельного файла и команды нет, находка называет файлы с наибольшей |R(i)| вне `Host`. [ADR-0042](adrs/0042-dsm-over-the-product-in-files.md), [ADR-0048](adrs/0048-dsm-product-boundary-without-a-zone.md), [ADR-0052](adrs/0052-dsm-ceiling-is-a-declared-setting.md)
 
 Проверка называется `<семейство>.<язык>`, `Group` — семейство, `Applicability` — язык.
 Язык-нейтральное ядро живёт в `Structure/`, чтение исходника — за `ILanguageAnalyzer` в

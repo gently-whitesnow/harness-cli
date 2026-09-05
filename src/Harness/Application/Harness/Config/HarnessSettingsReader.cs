@@ -14,6 +14,7 @@ internal static class HarnessSettingsReader
         [.. Language.All.Select(language => language.Qualify("comments"))];
     private static readonly string Dependencies = Language.CSharp.Qualify("dependencies");
     private static readonly string Duplication = Language.CSharp.Qualify("duplication");
+    private static readonly string Complexity = Language.CSharp.Qualify("complexity");
     private const string Commits = "commits";
 
     public static (HarnessSettings? Settings, string? Failure) Read(JsonElement root)
@@ -42,7 +43,7 @@ internal static class HarnessSettingsReader
             }
         }
 
-        string[] known = [.. Comments, Duplication, Commits];
+        string[] known = [.. Comments, Duplication, Complexity, Commits];
         foreach (var property in declared.EnumerateObject())
         {
             if (!known.Contains(property.Name, StringComparer.Ordinal))
@@ -93,13 +94,53 @@ internal static class HarnessSettingsReader
             return (null, $"'settings.{Duplication}.windowLines' must be a positive integer");
         }
 
+        var (complexity, complexityFailure) = ReadComplexity(declared);
+        if (complexity is null)
+        {
+            return (null, complexityFailure);
+        }
+
         var (commits, commitFailure) = ReadCommits(declared);
         return commits is null
             ? (null, commitFailure)
             : (new HarnessSettings(
                 comments,
                 new DuplicationSettings(duplication[0], duplication[1]),
+                complexity,
                 commits), null);
+    }
+
+    private static (ComplexitySettings? Settings, string? Failure) ReadComplexity(JsonElement settings)
+    {
+        if (!settings.TryGetProperty(Complexity, out var declared))
+        {
+            return (null, $"'settings.{Complexity}' must be present");
+        }
+
+        var failure = ValidateObject(declared, Complexity, ["meanReach", "coreSize"], null);
+        if (failure is not null)
+        {
+            return (null, failure);
+        }
+
+        var at = $"settings.{Complexity}.meanReach";
+        if (!declared.TryGetProperty("meanReach", out var reach))
+        {
+            return (null, $"'{at}' must be present");
+        }
+
+        if (reach.ValueKind != JsonValueKind.Number
+            || !reach.TryGetDouble(out var meanReach)
+            || !double.IsFinite(meanReach)
+            || meanReach < 1)
+        {
+            return (null, $"'{at}' must be a number of files not below 1; a file always reaches itself");
+        }
+
+        var (coreSize, coreFailure) = ReadInt(declared, Complexity, "coreSize", null);
+        return coreFailure is not null
+            ? (null, coreFailure)
+            : (new ComplexitySettings(meanReach, coreSize), null);
     }
 
     private static (CommitSettings? Settings, string? Failure) ReadCommits(JsonElement settings)

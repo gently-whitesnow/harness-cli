@@ -1,8 +1,8 @@
 namespace Harness.Tests;
 
 /// <summary>
-/// The DSM limits are constants of the standard (ADR-0052): 8.0 files of mean reach and an
-/// acyclic file graph, compared inside the binary with no tracked number to raise.
+/// The DSM ceiling is a declared setting with contract defaults (ADR-0052): 8.0 files of mean
+/// reach and an acyclic file graph, written by init and compared like every other setting.
 /// </summary>
 public sealed class ComplexityLimitTests
 {
@@ -32,6 +32,19 @@ public sealed class ComplexityLimitTests
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("mean reach: 8.00 files (120 reachable file pairs / 15 files"), run.Output);
         Assert.True(run.OutputContains("outcome: passed"), run.Output);
+    }
+
+    [Fact]
+    public void A_declared_ceiling_replaces_the_contract_defaults()
+    {
+        using var repository = Graph(
+            Frame.AllPresent().Settings("""{ "complexity.csharp": { "meanReach": 9, "coreSize": 2 } }"""),
+            [.. Chain(16), ("X", ["Y"]), ("Y", ["X"])]);
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("limits: mean reach 9.00 files · core size 2 files"), run.Output);
     }
 
     [Fact]
@@ -117,8 +130,11 @@ public sealed class ComplexityLimitTests
         => Graph("required", files);
 
     private static RepositoryFixture Graph(string policy, params (string Name, string[] Dependencies)[] files)
+        => Graph(Frame.AllPresent().Policy(Check, policy), files);
+
+    private static RepositoryFixture Graph(Frame frame, (string Name, string[] Dependencies)[] files)
     {
-        var repository = Fixtures.Compliant(Frame.AllPresent().Policy(Check, policy));
+        var repository = Fixtures.Compliant(frame);
         foreach (var (name, dependencies) in files)
         {
             repository.WriteFile($"src/Graph/{name}.cs", Source("Graph", name, dependencies));

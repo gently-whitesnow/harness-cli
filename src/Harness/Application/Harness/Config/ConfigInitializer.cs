@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using Harness.Contracts;
 using Harness.Languages;
@@ -133,6 +134,10 @@ internal static class ConfigInitializer
                 "duplication.csharp": {
                   "windowLines": {{defaults.Duplication.WindowLines}},
                   "minimumTokens": {{defaults.Duplication.MinimumTokens}}
+                },
+                "complexity.csharp": {
+                  "meanReach": {{defaults.Complexity.MeanReach.ToString("0.0", CultureInfo.InvariantCulture)}},
+                  "coreSize": {{defaults.Complexity.CoreSize}}
                 },
                 "commits": {
                   "language": "{{new CommitSettings(commitLanguage, defaults.Commits.RequireSetup).Code}}",

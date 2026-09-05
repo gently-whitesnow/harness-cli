@@ -92,6 +92,10 @@ internal sealed record HarnessConfig
                 "windowLines": 30,
                 "minimumTokens": 90
               },
+              "complexity.csharp": {
+                "meanReach": 8.0,
+                "coreSize": 0
+              },
               "commits": {
                 "language": "ru",
                 "requireSetup": true

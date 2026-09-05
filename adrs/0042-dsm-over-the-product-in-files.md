@@ -6,7 +6,7 @@ Accepted. Уточняет ярус 2 из [ADR-0032](0032-topology-over-thresho
 ядра и источники не меняются. Границу без зоны уточняет
 [ADR-0048](0048-dsm-product-boundary-without-a-zone.md). Пункты 3 и 5 (бюджет-потолок,
 `harness budget update`, миграция бюджета) заменены
-[ADR-0052](0052-dsm-limits-are-constants-of-the-standard.md); область измерения и mean
+[ADR-0052](0052-dsm-ceiling-is-a-declared-setting.md); область измерения и mean
 reach как измеряемая величина действуют.
 
 ## Context

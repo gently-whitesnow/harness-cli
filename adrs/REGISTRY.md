@@ -163,10 +163,10 @@
   продукта для DSM читается из tracked `.csproj`: файлы, чей ближайший проект тестовый,
   не измеряются; путь к бизнес-логике в конфиге и флаг включения тестов отклонены как
   декларации, меняющие единицу измерения.
-- [ADR-0052](0052-dsm-limits-are-constants-of-the-standard.md) — Пределы DSM — константы
-  контракта: mean reach ≤ 8.0 файла и core size = 0 зашиты в бинарь, `.harness.budget.json` и
-  `harness budget update` удалены; единственная гибкость — `policy`, а находка называет файлы
-  вне `Host` с наибольшей достижимостью.
+- [ADR-0052](0052-dsm-ceiling-is-a-declared-setting.md) — Потолок DSM объявляется в
+  `settings."complexity.csharp"` (`meanReach`, `coreSize`) с дефолтом контракта 8.0 / 0 из
+  sliced-dotnet/1; `.harness.budget.json` и `harness budget update` удалены, находка называет
+  файлы вне `Host` с наибольшей достижимостью.
 - [ADR-0001](0001-compiled-cli-as-only-test-seam.md) — Приёмочные тесты гоняют
   скомпилированный исполняемый файл и читают stdout и код возврата; internal-типы не
   становятся public ради тестируемости.

@@ -1,4 +1,5 @@
 using System.Globalization;
+using Harness.Config;
 using Harness.Languages;
 using Harness.Structure;
 
@@ -7,6 +8,8 @@ namespace Harness.Checks.Complexity;
 internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
     : LanguageAnalyzerCheck(analyzer, "complexity", "repository DSM complexity")
 {
+    private const int NamedHubs = 5;
+
     public override IReadOnlyList<EvidenceFile> Evidence => DotNetRepository.ProjectFiles;
 
     public override string Explanation => ComplexityExplanation.Text;
@@ -36,9 +39,10 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
             context.Repository.TrackedEntries.Where(entry => !entry.IsSymbolicLink).Select(entry => entry.Path).ToList(),
             projects.Select(project => (project.Path, DotNetRepository.IsTestProject(project))).ToList());
         var metric = RepositoryComplexity.Measure(scope.Graph);
+        var limit = context.Config?.Settings.Complexity ?? ComplexitySettings.Default;
         var observations = new List<string>
         {
-            $"limits: mean reach {Files(ComplexityLimit.MeanReach)} · core size {ComplexityLimit.CoreSize} files",
+            $"limits: mean reach {Files(limit.MeanReach)} · core size {limit.CoreSize} files",
             $"mean reach: {Files(metric.MeanReach)} "
                 + $"({metric.ReachablePairs} reachable file pairs / {metric.AuthoredFiles} files; "
                 + $"propagation cost {Percent(metric.PropagationCostPercentage)})",
@@ -52,23 +56,23 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
         }
 
         var findings = new List<Finding>();
-        if (metric.MeanReach > ComplexityLimit.MeanReach)
+        if (metric.MeanReach > limit.MeanReach)
         {
             findings.Add(new Finding(
                 FindingSeverity.Blocking,
                 scope.Location,
-                $"mean reach {Files(metric.MeanReach)} exceeds the {Files(ComplexityLimit.MeanReach)} the "
+                $"mean reach {Files(metric.MeanReach)} exceeds the {Files(limit.MeanReach)} the "
                     + "standard allows; cut edges from the hubs named below or change the tracked policy knowingly."));
             findings.AddRange(Hubs(scope));
         }
 
-        if (metric.CoreFiles > ComplexityLimit.CoreSize)
+        if (metric.CoreFiles > limit.CoreSize)
         {
             findings.AddRange(RepositoryComplexity.LargestCore(scope.Graph).Select(path => new Finding(
                 FindingSeverity.Blocking,
                 path,
                 $"This file belongs to the largest SCC ({metric.CoreFiles} files); the standard allows "
-                    + $"{ComplexityLimit.CoreSize} — break the cycle.")));
+                    + $"{limit.CoreSize} — break the cycle.")));
         }
 
         return CheckEvaluation.From(findings, observations: observations);
@@ -83,7 +87,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
         var total = scope.Graph.SourcePaths.Count;
         return RepositoryComplexity.FileReaches(scope.Graph)
             .Where(file => !scope.IsCompositionRoot(file.Path))
-            .Take(ComplexityLimit.NamedHubs)
+            .Take(NamedHubs)
             .Select(file => new Finding(
                 FindingSeverity.Blocking,
                 file.Path,

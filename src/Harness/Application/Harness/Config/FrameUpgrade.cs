@@ -160,11 +160,13 @@ internal static class FrameUpgrade
           removed  .harness.budget.json and `harness budget update`: complexity.csharp no longer
                    compares the DSM with a tracked ratchet; a tracked budget file makes the
                    frame Incomplete until you `git rm .harness.budget.json` and commit
-          changed  complexity.csharp compares mean reach with 8.0 files and core size with 0,
-                   constants of sliced-dotnet/1 built into the binary; exceeding either is
-                   blocking under required, and the report names the files outside Host whose
-                   own reach is largest — cut edges there, or set the check to advisory or
-                   off in policy knowingly; there is no setting and no number to edit
+          added    settings.complexity.csharp with meanReach (files, at least 1) and coreSize
+                   (files) — the ceiling the check compares the DSM with; the contract defaults
+                   are 8.0 and 0, the values of sliced-dotnet/1 that `harness init` writes, and
+                   like every settings section it is required and reviewed with the frame
+          changed  exceeding either value is blocking under required, and the report names the
+                   files outside Host whose own reach is largest — cut edges there, or set the
+                   check to advisory or off in policy knowingly; there is no update command
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }

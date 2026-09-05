@@ -64,13 +64,15 @@ public sealed class InitCommandTests
     {
         Assert.Equal(
             [
-                "comments.csharp", "comments.yaml", "comments.typescript", "duplication.csharp", "commits",
+                "comments.csharp", "comments.yaml", "comments.typescript", "duplication.csharp", "complexity.csharp", "commits",
             ],
             settings.EnumerateObject().Select(section => section.Name));
         AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));
         AssertSection(settings, "comments.yaml", ("minimumCommentLines", 10), ("percentageLimit", 8));
         AssertSection(settings, "comments.typescript", ("minimumCommentLines", 10), ("percentageLimit", 8));
         AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));
+        Assert.Equal(8.0, settings.GetProperty("complexity.csharp").GetProperty("meanReach").GetDouble());
+        Assert.Equal(0, settings.GetProperty("complexity.csharp").GetProperty("coreSize").GetInt32());
         Assert.Equal("ru", settings
             .GetProperty("commits").GetProperty("language").GetString());
         Assert.True(settings

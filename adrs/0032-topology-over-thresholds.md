@@ -1,7 +1,7 @@
 # ADR-0032. Топология вместо порогов: контракт 2.0
 
 Статус: принят. Дата: 2026-08-26. Ярус 2 (монотонный ratchet-бюджет в
-`.harness.budget.json`) заменён [ADR-0052](0052-dsm-limits-are-constants-of-the-standard.md):
+`.harness.budget.json`) заменён [ADR-0052](0052-dsm-ceiling-is-a-declared-setting.md):
 пределы DSM — константы контракта.
 
 ## Контекст
