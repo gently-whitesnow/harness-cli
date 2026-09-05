@@ -19,7 +19,9 @@ public sealed class RepositoryFixture : TemporaryDirectory
         fixture.Git("config", "user.email", "harness@example.com");
         fixture.Git("config", "user.name", "Harness Fixture");
         fixture.Git("config", "core.symlinks", "true");
-        return fixture;
+
+        // Every fixture is an installed clone, so the hook resolves the binary under test.
+        return fixture.InstallCloneLocalHarness();
     }
 
     public RepositoryFixture WriteFile(string relativePath, string content)
@@ -96,6 +98,43 @@ public sealed class RepositoryFixture : TemporaryDirectory
 
         return this;
     }
+
+    /// <summary>Puts a harness where `install.sh --scope clone` puts it, and the hook looks first.</summary>
+    public RepositoryFixture InstallCloneLocalHarness(string? content = null)
+    {
+        var directory = System.IO.Path.Combine(CommonGitDirectory(), "harness", "bin");
+        Directory.CreateDirectory(directory);
+        var binary = System.IO.Path.Combine(directory, "harness");
+        File.Delete(binary);
+        if (content is null)
+        {
+            File.CreateSymbolicLink(binary, HarnessCli.Executable);
+        }
+        else
+        {
+            File.WriteAllText(binary, content);
+        }
+
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(
+                binary,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                | UnixFileMode.GroupRead | UnixFileMode.GroupExecute
+                | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        }
+
+        return this;
+    }
+
+    public string CommonGitDirectory()
+    {
+        var reported = Git("rev-parse", "--git-common-dir").Trim();
+        return System.IO.Path.GetFullPath(System.IO.Path.Combine(Path, reported));
+    }
+
+    public string ManagedHookPath()
+        => System.IO.Path.Combine(CommonGitDirectory(), "harness-hooks", "commit-msg");
 
     /// <summary>Stages everything and commits, so tracked state is unambiguous.</summary>
     public RepositoryFixture Commit()

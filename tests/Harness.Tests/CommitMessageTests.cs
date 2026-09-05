@@ -152,6 +152,127 @@ public sealed class CommitMessageTests
         Assert.Equal(0, setup.ExitCode);
     }
 
+    /// <summary>Deleting the worktree of the binary that ran setup must not disable the gate.</summary>
+    [Fact]
+    public void Managed_hook_names_no_binary_path()
+    {
+        using var repository = Repository(RequireSetup: true, language: "en");
+        Assert.Equal(0, HarnessCli.Run(repository.Path, "setup").ExitCode);
+
+        var hook = File.ReadAllText(repository.ManagedHookPath());
+
+        Assert.DoesNotContain(HarnessCli.Executable, hook, StringComparison.Ordinal);
+        Assert.DoesNotContain(repository.Path, hook, StringComparison.Ordinal);
+        Assert.Contains("command -v harness", hook, StringComparison.Ordinal);
+    }
+
+    /// <summary>An earlier release's hook carries the marker, so setup rewrites it in place.</summary>
+    [Fact]
+    public void Setup_replaces_a_hook_that_an_older_release_pinned_to_a_dead_binary()
+    {
+        using var repository = Repository(RequireSetup: true, language: "en");
+        Assert.Equal(0, HarnessCli.Run(repository.Path, "setup").ExitCode);
+        var dead = repository.Absolute("removed-worktree/harness");
+        File.WriteAllText(
+            repository.ManagedHookPath(),
+            "#!/bin/sh\n# Managed by Harness CLI.\nexec '" + dead + "' commit-message check --allow-fixup \"$1\"\n");
+
+        var stale = HarnessCli.RunVerbose(repository.Path, "check", "--only", "commits.setup");
+        var repair = HarnessCli.Run(repository.Path, "setup");
+        var after = HarnessCli.RunVerbose(repository.Path, "check", "--only", "commits.setup");
+
+        Assert.Equal(1, stale.ExitCode);
+        Assert.Contains("written by an older harness", stale.Output, StringComparison.Ordinal);
+        Assert.Contains(dead, stale.Output, StringComparison.Ordinal);
+        Assert.Contains("no longer exists", stale.Output, StringComparison.Ordinal);
+        Assert.Equal(0, repair.ExitCode);
+        Assert.Equal(0, after.ExitCode);
+    }
+
+    /// <summary>Fail-closed: with no harness to run, the check names both places it looked.</summary>
+    [Fact]
+    public void Check_names_the_binary_the_hook_cannot_find()
+    {
+        using var repository = Repository(RequireSetup: true, language: "en");
+        Assert.Equal(0, HarnessCli.Run(repository.Path, "setup").ExitCode);
+        File.Delete(Path.Combine(repository.CommonGitDirectory(), "harness", "bin", "harness"));
+
+        var run = HarnessCli.Run(repository.Path, WithoutHarnessOnPath, "check", "--only", "commits.setup", "--verbose");
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("cannot resolve a harness", run.Output, StringComparison.Ordinal);
+        Assert.Contains("harness/bin/harness", run.Output, StringComparison.Ordinal);
+        Assert.Contains("is not on PATH", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Hook_refuses_the_commit_when_no_harness_is_installed()
+    {
+        using var repository = Repository(RequireSetup: true, language: "en");
+        Assert.Equal(0, HarnessCli.Run(repository.Path, "setup").ExitCode);
+        File.Delete(Path.Combine(repository.CommonGitDirectory(), "harness", "bin", "harness"));
+        repository.WriteFile("change.txt", "change\n");
+        repository.Git("add", "change.txt");
+        var head = repository.Git("rev-parse", "HEAD");
+
+        var commit = ProcessLauncher.Run(
+            "git",
+            ["commit", "--message", "feat(core): add a change"],
+            repository.Path,
+            WithoutHarnessOnPath);
+
+        Assert.Equal(1, commit.ExitCode);
+        Assert.Contains("found no harness binary", commit.StandardError, StringComparison.Ordinal);
+        Assert.Contains("--scope clone", commit.StandardError, StringComparison.Ordinal);
+        Assert.Equal(head, repository.Git("rev-parse", "HEAD"));
+    }
+
+    /// <summary>A harness older than the pin validates under another contract, so it is named.</summary>
+    [Fact]
+    public void Check_names_a_harness_older_than_the_pin()
+    {
+        using var repository = Repository(RequireSetup: true, language: "en");
+        Assert.Equal(0, HarnessCli.Run(repository.Path, "setup").ExitCode);
+        repository.InstallCloneLocalHarness("#!/bin/sh\necho \"harness 2.6.0\"\n");
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "commits.setup");
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("runs harness 2.6.0", run.Output, StringComparison.Ordinal);
+        Assert.Contains(Release.Current, run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Setup_refuses_to_overwrite_an_unmanaged_hook()
+    {
+        using var repository = Repository(RequireSetup: true, language: "en");
+        var hook = repository.ManagedHookPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(hook)!);
+        File.WriteAllText(hook, "#!/bin/sh\necho mine\n");
+
+        var run = HarnessCli.Run(repository.Path, "setup");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("refusing to overwrite unmanaged", run.StandardError, StringComparison.Ordinal);
+        Assert.Equal("#!/bin/sh\necho mine\n", File.ReadAllText(hook));
+    }
+
+    /// <summary>Setup run inside a linked worktree prepares the clone, and a dev binary leaves no trace.</summary>
+    [Fact]
+    public void Setup_from_a_linked_worktree_prepares_the_whole_clone()
+    {
+        using var repository = Repository(RequireSetup: true, language: "en");
+        var worktree = repository.Absolute("linked");
+        repository.Git("worktree", "add", "--quiet", "-b", "linked", worktree);
+
+        var setup = HarnessCli.Run(worktree, "setup");
+        var check = HarnessCli.RunVerbose(repository.Path, "check", "--only", "commits.setup");
+
+        Assert.Equal(0, setup.ExitCode);
+        Assert.Equal(0, check.ExitCode);
+        Assert.DoesNotContain(worktree, File.ReadAllText(repository.ManagedHookPath()), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Setup_refuses_to_replace_an_unrelated_hooks_path()
     {
@@ -191,6 +312,10 @@ public sealed class CommitMessageTests
         Assert.Equal(1, run.ExitCode);
         Assert.Contains("must be resolved", run.StandardError, StringComparison.Ordinal);
     }
+
+    /// <summary>Git still has to be found, so PATH keeps the system directories and loses any harness.</summary>
+    private static readonly Dictionary<string, string> WithoutHarnessOnPath =
+        new() { ["PATH"] = "/usr/bin:/bin" };
 
     private static RepositoryFixture Repository(bool RequireSetup, string language)
         => Fixtures.Compliant(Frame.AllPresent().Settings(

@@ -144,6 +144,18 @@ internal static class FrameUpgrade
                    change the exit code
           kept     the standard is still named sliced-dotnet/1: the shape is named by the
                    contract pin, not by a version inside the standard name
+        Release 2.14 changes:
+          changed  the managed commit-msg hook holds no binary path: it resolves the harness when
+                   it runs — the clone-local <git-common-dir>/harness/bin/harness that
+                   `install.sh --scope clone` writes, then `harness` on PATH — and refuses the
+                   commit, naming both places, when it finds neither; the hook is now the same
+                   text in every clone, so commits.setup no longer depends on which binary wrote
+                   it or which one runs the check, and `harness setup` rewrites a hook an older
+                   release pinned to a fixed path
+          added    commits.setup names what differs — the missing managed file, an unmanaged file
+                   in its place, the dead path an older hook exec's, the places searched for a
+                   binary — and blocks when the resolved harness is not the pinned release; run
+                   `harness setup` after installing the pinned release, no config change is needed
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }

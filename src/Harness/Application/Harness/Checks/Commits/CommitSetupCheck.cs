@@ -21,16 +21,24 @@ internal sealed class CommitSetupCheck(ICommitIntegration integration) : IReposi
           so the repository can require setup and make an unprepared clone visible in `check`.
 
         What it reads
-          The clone-local core.hooksPath and commit.template settings, plus the managed files
-          under Git's metadata directory. It does not inspect global or system Git settings.
+          The clone-local core.hooksPath and commit.template settings, the managed files under
+          Git's metadata directory, and the harness the hook resolves at commit time: the
+          clone-local <git-common-dir>/harness/bin/harness first, then `harness` on PATH. It
+          does not inspect global or system Git settings.
 
         What it proves
-          The selected language template and commit-msg hook installed by this harness version
-          are active. The hook validates the message before Git creates the commit.
+          The selected language template and the managed commit-msg hook are active, and the
+          harness they will run exists and is the release the frame pins. The hook validates
+          the message before Git creates the commit, and refuses the commit when it resolves
+          no harness at all, so a half-installed clone cannot pass silently.
 
         Remediation
-          Run `harness setup` from anywhere inside the repository. The command is idempotent and
-          refuses to replace an unrelated hooks path or commit template.
+          Run `harness setup` from anywhere inside the repository; it is idempotent, updates a
+          hook an older release wrote, and refuses to replace an unrelated hooks path, commit
+          template or unmanaged file. When the finding names a missing or mismatched binary,
+          install the pinned release for the clone with install.sh --scope clone, or keep it on
+          PATH. The hook itself holds no binary path, so no clone or worktree can be poisoned by
+          the binary that ran setup.
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)
@@ -52,7 +60,8 @@ internal sealed class CommitSetupCheck(ICommitIntegration integration) : IReposi
         var (status, failure) = integration.Inspect(
             context.Repository,
             settings,
-            CommitTemplate.Render(settings));
+            CommitTemplate.Render(settings),
+            context.Config.TracksLatest ? null : context.Config.Version);
         if (status is null)
         {
             return CheckEvaluation.Incomplete(failure!);
