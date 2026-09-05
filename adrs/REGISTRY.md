@@ -53,6 +53,11 @@
 - [ADR-0020](0020-commit-message-contract-and-clone-setup.md) — Conventional header и
   структурированный локализованный body проверяются одним валидатором в hook и CI;
   `setup` активирует clone-local hook/template, а `commits.setup` доказывает активацию.
+- [ADR-0052](0052-hook-resolves-the-harness-at-commit-time.md) — Managed `commit-msg` не
+  запекает путь бинаря: он разрешает харнес в момент коммита (clone-local, затем `PATH`) и
+  fail-closed отказывает, не найдя ни одного; `Inspect` сверяет неизменный текст, владение
+  файлом даёт managed-маркер, а `commits.setup` называет мёртвый путь, ненайденный бинарь и
+  релиз, отличный от pin.
 - [ADR-0046](0046-unified-verification-entry-point.md) — Обязательный self-reported
   `answers.verify.paths` называет tracked repository-owned скрипт всех применимых проверок;
   harness не инспектирует и не запускает его, а `init` сразу ставит `frame.verify: required`.

@@ -23,12 +23,12 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
   | sh -s -- --scope clone
 ```
 
-`--scope clone` атомарно устанавливает его в
-`$(git rev-parse --git-common-dir)/harness/bin/harness`, под lock-файлом защищает две
-параллельные установки и обязательно выполняет `harness setup`. Hook получает стабильный
-абсолютный путь к этому бинарю, поэтому продолжает работать после завершения контейнера и
-остаётся общим для всех linked worktree клона. User-каталоги и tracked-файлы этот режим не
-меняет.
+`--scope clone` атомарно устанавливает его в `$(git rev-parse --git-common-dir)/harness/bin/harness`,
+под lock-файлом защищает две параллельные установки и обязательно выполняет `harness setup`.
+Именно там `commit-msg` hook ищет харнес первым делом, а вторым — `harness` в `PATH`: путь
+бинаря в hook не запекается, поэтому файл одинаков для всего клона и его linked worktree,
+переживает удаление worktree и не зависит от того, какой бинарь выполнял setup. Не найдя ни одного,
+hook отказывает в коммите и печатает оба просмотренных места. User-каталоги и tracked-файлы не меняются.
 
 `HARNESS_VERSION=2.14.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.

@@ -1,17 +1,28 @@
 using System.Text;
 using Harness.Repository;
+using Harness.Versioning;
 
 namespace Harness.Git;
 
-/// <summary>Installs and inspects the opt-in, clone-local commit message integration.</summary>
+/// <summary>
+/// Installs and inspects the clone-local commit integration. The managed hook is the same text
+/// everywhere and resolves the harness when it runs, so no binary path decides it (ADR-0052).
+/// </summary>
 internal sealed class CommitHookSetup : ICommitIntegration
 {
     private const string Marker = "# Managed by Harness CLI.";
 
+    private const string Shebang = "#!/bin/sh\n";
+
+    private const string InstallForClone =
+        "curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh"
+        + " | sh -s -- --scope clone";
+
     public (CommitHookStatus? Status, string? Failure) Inspect(
         IRepository repository,
         CommitSettings settings,
-        string template)
+        string template,
+        HarnessVersion? pin)
     {
         var (paths, pathFailure) = ResolvePaths(repository.RootPath);
         if (paths is null)
@@ -19,53 +30,28 @@ internal sealed class CommitHookSetup : ICommitIntegration
             return (null, pathFailure);
         }
 
-        var (hooksPath, hooksFailure) = ReadConfig(repository.RootPath, "core.hooksPath");
-        if (hooksFailure is not null)
+        var (settingsStatus, settingsFailure) = InspectSettings(repository.RootPath, paths);
+        if (settingsStatus is not null || settingsFailure is not null)
         {
-            return (null, hooksFailure);
+            return (settingsStatus, settingsFailure);
         }
 
-        if (!SamePath(hooksPath, paths.HooksDirectory))
+        var hookProblem = InspectManagedFile(paths.HookPath, HookContent(), "commit-msg hook")
+            ?? InspectManagedFile(paths.TemplatePath, TemplateContent(template), $"{settings.Code} commit template")
+            ?? NotExecutable(paths.HookPath);
+        if (hookProblem is not null)
         {
-            return (new CommitHookStatus(false, "core.hooksPath is not configured for this clone"), null);
+            return (new CommitHookStatus(false, hookProblem), null);
         }
 
-        var (templatePath, templateFailure) = ReadConfig(repository.RootPath, "commit.template");
-        if (templateFailure is not null)
-        {
-            return (null, templateFailure);
-        }
-
-        if (!SamePath(templatePath, paths.TemplatePath))
-        {
-            return (new CommitHookStatus(false, "commit.template is not configured for this clone"), null);
-        }
-
-        var expectedHook = HookContent(ExecutablePath());
-        var expectedTemplate = TemplateContent(template);
-        if (!FileMatches(paths.HookPath, expectedHook))
-        {
-            return (new CommitHookStatus(false, "the managed commit-msg hook is missing or stale"), null);
-        }
-
-        if (!FileMatches(paths.TemplatePath, expectedTemplate))
-        {
-            return (new CommitHookStatus(false, $"the managed {settings.Code} commit template is missing or stale"), null);
-        }
-
-        if (!OperatingSystem.IsWindows()
-            && (File.GetUnixFileMode(paths.HookPath) & UnixFileMode.UserExecute) == 0)
-        {
-            return (new CommitHookStatus(false, "the managed commit-msg hook is not executable"), null);
-        }
-
-        return (new CommitHookStatus(true, "commit template and commit-msg hook are active for this clone"), null);
+        return (InspectBinary(paths, pin), null);
     }
 
     public (CommitHookStatus? Status, string? Failure) Install(
         IRepository repository,
         CommitSettings settings,
-        string template)
+        string template,
+        HarnessVersion? pin)
     {
         var (paths, pathFailure) = ResolvePaths(repository.RootPath);
         if (paths is null)
@@ -83,7 +69,7 @@ internal sealed class CommitHookSetup : ICommitIntegration
         try
         {
             Directory.CreateDirectory(paths.HooksDirectory);
-            WriteManaged(paths.HookPath, HookContent(ExecutablePath()));
+            WriteManaged(paths.HookPath, HookContent());
             WriteManaged(paths.TemplatePath, TemplateContent(template));
             if (!OperatingSystem.IsWindows())
             {
@@ -102,9 +88,117 @@ internal sealed class CommitHookSetup : ICommitIntegration
         var configFailure = WriteConfig(repository.RootPath, "core.hooksPath", paths.HooksDirectory)
             ?? WriteConfig(repository.RootPath, "commit.template", paths.TemplatePath);
         return configFailure is null
-            ? Inspect(repository, settings, template)
+            ? Inspect(repository, settings, template, pin)
             : (null, configFailure);
     }
+
+    private static (CommitHookStatus? Status, string? Failure) InspectSettings(string rootPath, HookPaths paths)
+    {
+        var (hooksPath, hooksFailure) = ReadConfig(rootPath, "core.hooksPath");
+        if (hooksFailure is not null)
+        {
+            return (null, hooksFailure);
+        }
+
+        if (!SamePath(hooksPath, paths.HooksDirectory))
+        {
+            return (new CommitHookStatus(
+                false,
+                $"core.hooksPath is not configured for this clone: expected '{paths.HooksDirectory}', "
+                + Found(hooksPath)), null);
+        }
+
+        var (templatePath, templateFailure) = ReadConfig(rootPath, "commit.template");
+        if (templateFailure is not null)
+        {
+            return (null, templateFailure);
+        }
+
+        return SamePath(templatePath, paths.TemplatePath)
+            ? (null, null)
+            : (new CommitHookStatus(
+                false,
+                $"commit.template is not configured for this clone: expected '{paths.TemplatePath}', "
+                + Found(templatePath)), null);
+    }
+
+    /// <summary>
+    /// Names what is wrong with a managed file instead of calling every difference stale: missing,
+    /// unmanaged, an older release's baked path, or content this release no longer writes.
+    /// </summary>
+    private static string? InspectManagedFile(string path, string expected, string what)
+    {
+        if (!File.Exists(path))
+        {
+            return $"the managed {what} is missing at '{path}'";
+        }
+
+        var actual = File.ReadAllText(path);
+        if (string.Equals(actual, expected, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        if (!IsManaged(actual))
+        {
+            return $"'{path}' is not managed by the harness, so the {what} was not installed; "
+                + "move that file aside first";
+        }
+
+        var baked = BakedExecutable(actual);
+        if (baked is null)
+        {
+            return $"the managed {what} at '{path}' was written by a different harness release";
+        }
+
+        var gone = File.Exists(baked) ? string.Empty : ", which no longer exists";
+        return $"the {what} at '{path}' was written by an older harness and runs the fixed binary "
+            + $"'{baked}'{gone}";
+    }
+
+    private static string? NotExecutable(string hookPath)
+        => !OperatingSystem.IsWindows()
+            && (File.GetUnixFileMode(hookPath) & UnixFileMode.UserExecute) == 0
+                ? $"the managed commit-msg hook at '{hookPath}' is not executable"
+                : null;
+
+    /// <summary>
+    /// The hook is only a gate when it finds a harness at commit time, and it fails closed when it
+    /// does not; a release other than the pinned one is named here, not inside the commit.
+    /// </summary>
+    private static CommitHookStatus InspectBinary(HookPaths paths, HarnessVersion? pin)
+    {
+        var binary = HookBinary.Resolve(paths.GitDirectory);
+        if (binary.Path is null)
+        {
+            return new CommitHookStatus(
+                false,
+                $"the commit-msg hook cannot resolve a harness: '{binary.CloneLocalPath}' is missing and "
+                + $"'harness' is not on PATH; install it into this clone with `{InstallForClone}`");
+        }
+
+        var (release, releaseFailure) = binary.Release();
+        if (release is null)
+        {
+            return new CommitHookStatus(false, $"the harness the commit-msg hook runs is unusable: {releaseFailure}");
+        }
+
+        if (pin is not null && release != pin)
+        {
+            return new CommitHookStatus(
+                false,
+                $"the commit-msg hook runs harness {release} from '{binary.Path}', while .harness.json pins "
+                + $"{pin}; install the pinned release, or `{InstallForClone}` for this clone alone");
+        }
+
+        return new CommitHookStatus(
+            true,
+            "commit template and commit-msg hook are active for this clone; the hook runs harness "
+            + $"{release} from '{binary.Path}'");
+    }
+
+    private static string Found(string? value)
+        => value is null ? "found no local setting" : $"found '{value}'";
 
     private static string? ExistingConfigConflict(string rootPath, string key, string expected)
     {
@@ -135,6 +229,7 @@ internal sealed class CommitHookSetup : ICommitIntegration
         var gitDirectory = Path.GetFullPath(Path.Combine(rootPath, result.StandardOutput.Trim()));
         var hooksDirectory = Path.Combine(gitDirectory, "harness-hooks");
         return (new HookPaths(
+            gitDirectory,
             hooksDirectory,
             Path.Combine(hooksDirectory, "commit-msg"),
             Path.Combine(hooksDirectory, "commit-template.txt")), null);
@@ -169,38 +264,70 @@ internal sealed class CommitHookSetup : ICommitIntegration
 
     private static void WriteManaged(string path, string content)
     {
-        if (File.Exists(path))
+        if (File.Exists(path) && !IsManaged(File.ReadAllText(path)))
         {
-            var existing = File.ReadAllText(path);
-            if (!existing.StartsWith(Marker, StringComparison.Ordinal)
-                && !existing.StartsWith("#!/bin/sh\n" + Marker, StringComparison.Ordinal))
-            {
-                throw new IOException($"refusing to overwrite unmanaged '{path}'");
-            }
+            throw new IOException($"refusing to overwrite unmanaged '{path}'");
         }
 
         File.WriteAllText(path, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
-    private static string ExecutablePath()
+    /// <summary>
+    /// The marker, not the content, decides ownership: an older release's hook is still this
+    /// harness's file, while an unrelated file is never touched.
+    /// </summary>
+    private static bool IsManaged(string content)
+        => content.StartsWith(Marker, StringComparison.Ordinal)
+            || content.StartsWith(Shebang + Marker, StringComparison.Ordinal);
+
+    /// <summary>Reads the absolute path a pre-2.14 hook baked into its `exec` line, if this is one.</summary>
+    private static string? BakedExecutable(string content)
     {
-        if (string.IsNullOrWhiteSpace(Environment.ProcessPath))
+        const string prefix = "exec '";
+        var start = content.IndexOf(prefix, StringComparison.Ordinal);
+        if (start < 0)
         {
-            throw new InvalidOperationException("The harness executable path is unavailable.");
+            return null;
         }
 
-        return Path.GetFullPath(Environment.ProcessPath);
+        start += prefix.Length;
+        var end = content.IndexOf("' commit-message", start, StringComparison.Ordinal);
+        return end < 0 ? null : content[start..end].Replace("'\"'\"'", "'", StringComparison.Ordinal);
     }
 
-    private static string HookContent(string executablePath)
+    /// <summary>The hook every clone gets, byte for byte, whatever binary writes it.</summary>
+    private static string HookContent()
     {
-        return $"#!/bin/sh\n{Marker}\nexec {ShellQuote(executablePath)} commit-message check --allow-fixup \"$1\"\n";
+        return Shebang + Marker + "\n"
+            + """
+            # The harness is resolved here, when the hook runs, so this file depends on no binary path.
+            set -eu
+
+            common_dir=$(git rev-parse --git-common-dir) || exit 1
+            case "$common_dir" in
+              /*) ;;
+              *) common_dir=$(CDPATH= cd -- "$common_dir" && pwd -P) || exit 1 ;;
+            esac
+
+            binary="$common_dir/harness/bin/harness"
+            if [ ! -x "$binary" ]; then
+              binary=$(command -v harness 2>/dev/null || true)
+            fi
+
+            if [ -z "$binary" ] || [ ! -x "$binary" ]; then
+              echo "harness: the commit-msg hook found no harness binary, so the commit is refused." >&2
+              echo "  looked for $common_dir/harness/bin/harness and 'harness' on PATH" >&2
+              echo "  install it into this clone:" >&2
+              echo "    curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh | sh -s -- --scope clone" >&2
+              exit 1
+            fi
+
+            exec "$binary" commit-message check --allow-fixup "$1"
+
+            """;
     }
 
     private static string TemplateContent(string template) => $"{Marker}\n{template}";
-
-    private static string ShellQuote(string value)
-        => "'" + value.Replace("'", "'\"'\"'", StringComparison.Ordinal) + "'";
 
     private static bool SamePath(string? left, string right)
         => left is not null && string.Equals(
@@ -208,9 +335,9 @@ internal sealed class CommitHookSetup : ICommitIntegration
             Path.GetFullPath(right),
             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
-    private static bool FileMatches(string path, string expected)
-        => File.Exists(path) && string.Equals(File.ReadAllText(path), expected, StringComparison.Ordinal);
-
-    private sealed record HookPaths(string HooksDirectory, string HookPath, string TemplatePath);
-
+    private sealed record HookPaths(
+        string GitDirectory,
+        string HooksDirectory,
+        string HookPath,
+        string TemplatePath);
 }

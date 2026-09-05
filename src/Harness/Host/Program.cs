@@ -72,7 +72,8 @@ switch (invocation.Kind)
         var (setup, setupFailure) = CheckRegistry.CommitIntegration.Install(
             initRepository,
             commitSettings,
-            CommitTemplate.Render(commitSettings));
+            CommitTemplate.Render(commitSettings),
+            invocation.Latest ? null : HarnessVersion.Current);
         if (setup is null)
         {
             Console.Error.WriteLine(setupFailure);
@@ -80,7 +81,9 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        Console.WriteLine("Configured the commit template and commit-msg hook for this clone.");
+        Console.WriteLine(setup.Ready
+            ? "Configured the commit template and commit-msg hook for this clone."
+            : $"Configured the commit template and commit-msg hook, but {setup.Description}.");
         Console.WriteLine(
             "Review every answer; ask the repository owner when intent is unclear rather than guessing.");
         Console.WriteLine("Track the file, then run `harness check --verbose`.");
@@ -119,10 +122,19 @@ switch (invocation.Kind)
         var (status, setupFailure) = CheckRegistry.CommitIntegration.Install(
             repository,
             config.Settings.Commits,
-            CommitTemplate.Render(config.Settings.Commits));
+            CommitTemplate.Render(config.Settings.Commits),
+            config.TracksLatest ? null : config.Version);
         if (status is null)
         {
             Console.Error.WriteLine(setupFailure);
+            return ExitCodes.Incomplete;
+        }
+
+        // Setup writes the managed files, but the gate only holds when the hook can also find a
+        // harness to run, so an unfinished clone says so instead of reporting a ready state.
+        if (!status.Ready)
+        {
+            Console.Error.WriteLine($"The commit-msg hook and template are installed, but {status.Description}.");
             return ExitCodes.Incomplete;
         }
 

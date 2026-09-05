@@ -80,12 +80,12 @@ standalone-library (либо принимает `--kind application|library` б�
 соответствующую `architecture` и полный явный конфиг. `duplication.csharp` стартует `required` с `30/90`; нерешённые answer-ключи —
 `{}` и `off`, кроме `verify: required`: исследуй и ответь честно. [ADR-0045](adrs/0045-duplication-required-by-default.md)
 
-`settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness
-setup` включает шаблон и `commit-msg` hook в общем каталоге клона, поэтому одна подготовка
-покрывает и все его worktree; `commits.setup` делает пропущенную подготовку
-видимой в обычном check. Для CI передавай явный диапазон в `harness commits check
-<base>..<head>`: hook допускает временный autosquash, публикуемый диапазон — нет.
-[ADR-0020](adrs/0020-commit-message-contract-and-clone-setup.md)
+`settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness setup` включает шаблон
+и `commit-msg` hook в общем каталоге клона, поэтому одна подготовка покрывает и все его worktree. Hook не хранит
+путь бинаря: он разрешает харнес в момент коммита — clone-local `<git-common-dir>/harness/bin/harness`, затем
+`harness` в `PATH` — и fail-closed отказывает, не найдя ни одного; `commits.setup` называет мёртвый путь, чужой
+файл, просмотренные места и релиз, отличный от pin. Для CI передавай явный диапазон в `harness commits check
+<base>..<head>`: hook допускает временный autosquash, публикуемый диапазон — нет. [ADR-0020](adrs/0020-commit-message-contract-and-clone-setup.md), [ADR-0052](adrs/0052-hook-resolves-the-harness-at-commit-time.md)
 
 Доказательство — только tracked-файл: созданный, но не добавленный в индекс файл харнес не
 видит, и вердикт от этого не меняется. Проверка обязана назвать в `Evidence` файлы, которые
