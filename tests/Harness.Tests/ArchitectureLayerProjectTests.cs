@@ -24,8 +24,8 @@ public sealed class ArchitectureLayerProjectTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", Type("Orders.HostPart", "Program"))
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", Type("Orders.ApiPart", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", Type("Orders.ApplicationPart", "Create"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", Type("Orders.ApiPart", "Endpoint"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", Type("Orders.ApplicationPart", "Create"))
             .Commit();
 
         var run = Shape(repository);
@@ -167,9 +167,9 @@ public sealed class ArchitectureLayerProjectTests
         using var repository = SixProjectZone()
             .WriteFile("src/Billing/Host/Program.cs", Type("Billing.HostPart", "Program"))
             .WriteFile("src/Billing/Host/Billing.Host.csproj", Project("../Application/Billing.Application.csproj"))
-            .WriteFile("src/Billing/Api/Features/Invoices/Endpoint.cs", Type("Billing.ApiPart", "Endpoint"))
+            .WriteFile("src/Billing/Api/Invoices/Endpoint.cs", Type("Billing.ApiPart", "Endpoint"))
             .WriteFile("src/Billing/Api/Billing.Api.csproj", Project("../Application/Billing.Application.csproj"))
-            .WriteFile("src/Billing/Application/Features/Invoices/Create.cs", Type("Billing.ApplicationPart", "Create"))
+            .WriteFile("src/Billing/Application/Invoices/Create.cs", Type("Billing.ApplicationPart", "Create"))
             .WriteFile(
                 "src/Billing/Application/Billing.Application.csproj",
                 Project("../../Orders/Domain/Orders.Domain.csproj"))
@@ -215,21 +215,21 @@ public sealed class ArchitectureLayerProjectTests
                     "../Application/Orders.Application.csproj",
                     "../Domain/Orders.Domain.csproj",
                     "../Infrastructure/Orders.Infrastructure.csproj"))
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", Type("Orders.ApiPart", "Endpoint"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", Type("Orders.ApiPart", "Endpoint"))
             .WriteFile(
                 "src/Orders/Api/Orders.Api.csproj",
                 Project("../Application/Orders.Application.csproj", "../Domain/Orders.Domain.csproj"))
-            .WriteFile("src/Orders/Consumers/Features/Sales/Subscription.cs", Type("Orders.ConsumersPart", "Subscription"))
+            .WriteFile("src/Orders/Consumers/Sales/Subscription.cs", Type("Orders.ConsumersPart", "Subscription"))
             .WriteFile(
                 "src/Orders/Consumers/Orders.Consumers.csproj",
                 Project("../Application/Orders.Application.csproj", "../Domain/Orders.Domain.csproj"))
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", Type("Orders.ApplicationPart", "Create"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", Type("Orders.ApplicationPart", "Create"))
             .WriteFile(
                 "src/Orders/Application/Orders.Application.csproj",
                 Project("../Domain/Orders.Domain.csproj"))
             .WriteFile("src/Orders/Domain/Sales/Sale.cs", Type("Orders.DomainPart", "Sale"))
             .WriteFile("src/Orders/Domain/Orders.Domain.csproj", Project())
-            .WriteFile("src/Orders/Infrastructure/Features/Sales/SaleRecord.cs", Type("Orders.InfrastructurePart", "SaleRecord"))
+            .WriteFile("src/Orders/Infrastructure/Sales/SaleRecord.cs", Type("Orders.InfrastructurePart", "SaleRecord"))
             .WriteFile(
                 "src/Orders/Infrastructure/Orders.Infrastructure.csproj",
                 Project("../Application/Orders.Application.csproj", "../Domain/Orders.Domain.csproj"));

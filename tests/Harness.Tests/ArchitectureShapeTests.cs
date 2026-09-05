@@ -52,7 +52,8 @@ public sealed class ArchitectureShapeTests
 
     [Theory]
     [InlineData("{}", "'architecture' must select a standard or declare applicability false")]
-    [InlineData("{ \"standard\": \"sliced-dotnet/2\" }", "'architecture.standard' must be 'sliced-dotnet/1'")]
+    [InlineData("{ \"standard\": \"sliced-dotnet/3\" }", "'architecture.standard' must be 'sliced-dotnet/1'")]
+    [InlineData("{ \"standard\": \"sliced-dotnet/2\" }", "'architecture.standard' must be 'sliced-dotnet/1'; 'sliced-dotnet/2' is not supported")]
     [InlineData("{ \"standard\": \"sliced-dotnet/1\", \"layers\": [] }", "'architecture.layers' is not a key")]
     [InlineData("{ \"applicable\": false }", "'architecture.reason' must say why")]
     [InlineData("{ \"applicable\": false, \"reason\": \"library\", \"extra\": true }", "'architecture.extra' is not a key")]
@@ -70,7 +71,7 @@ public sealed class ArchitectureShapeTests
     public void Advisory_policy_keeps_shape_violations_visible_without_failing()
     {
         using var repository = ArchitectureRepository("advisory")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .Commit();
 
         var run = Shape(repository);
@@ -84,7 +85,7 @@ public sealed class ArchitectureShapeTests
     public void Off_policy_does_not_run_the_shape_check()
     {
         using var repository = ArchitectureRepository("off")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .Commit();
 
         var run = Shape(repository);
@@ -98,7 +99,7 @@ public sealed class ArchitectureShapeTests
     public void Missing_required_and_input_layers_are_blocking()
     {
         using var repository = ArchitectureRepository()
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .Commit();
 
         var run = Shape(repository);
@@ -113,8 +114,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/.gitkeep", "")
-            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .WithInputMirrors()
             .Commit();
 
@@ -131,8 +132,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile($"src/Orders/Host/{marker}", "")
-            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .WithInputMirrors()
             .Commit();
 
@@ -147,8 +148,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .WriteFile("src/Orders/Infrastrcture/Adapter.cs", "sealed class Adapter;")
             .WithInputMirrors()
             .Commit();
@@ -165,11 +166,11 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .WriteFile("src/Billing/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Billing/Consumers/Worker.cs", "sealed class Worker;")
-            .WriteFile("src/Billing/Application/Features/Finance/Invoices/Create.cs", "sealed class Create;")
+            .WriteFile("src/Billing/Consumers/Finance/Invoices/Worker.cs", "sealed class Worker;")
+            .WriteFile("src/Billing/Application/Finance/Invoices/Create.cs", "sealed class Create;")
             .WithInputMirrors()
             .Commit();
 
@@ -191,9 +192,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Inventory/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
-            .WriteFile("src/Orders/Application/Features/Inventory/List.cs", "sealed class List;")
+            .WriteFile("src/Orders/Api/Inventory/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/Inventory/List.cs", "sealed class List;")
             .Commit();
 
         var run = Shape(repository);
@@ -202,21 +203,21 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("slice-mirror-missing", run.Output, StringComparison.Ordinal);
         Assert.Contains("slice 'Sales'", run.Output, StringComparison.Ordinal);
         Assert.Contains("dimension 'input'", run.Output, StringComparison.Ordinal);
-        Assert.Contains("Api/Features/Sales/", run.Output, StringComparison.Ordinal);
-        Assert.Contains("Consumers/Features/Sales/", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Api/Sales/", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Consumers/Sales/", run.Output, StringComparison.Ordinal);
     }
 
     [Theory]
-    [InlineData("Api/Features/Ghost/Endpoint.cs", "Api")]
-    [InlineData("Consumers/Features/Ghost/Handler.cs", "Consumers")]
-    [InlineData("Infrastructure/Features/Ghost/Adapter.cs", "Infrastructure")]
+    [InlineData("Api/Ghost/Endpoint.cs", "Api")]
+    [InlineData("Consumers/Ghost/Handler.cs", "Consumers")]
+    [InlineData("Infrastructure/Ghost/Adapter.cs", "Infrastructure")]
     [InlineData("Domain/Ghost/Entity.cs", "Domain")]
     public void Orphan_mirror_in_every_dimension_is_blocking(string mirrorPath, string dimension)
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .WriteFile($"src/Orders/{mirrorPath}", "sealed class Ghost;")
             .WithInputMirrors()
             .Commit();
@@ -227,7 +228,7 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("orphan-slice-mirror", run.Output, StringComparison.Ordinal);
         Assert.Contains("slice 'Ghost'", run.Output, StringComparison.Ordinal);
         Assert.Contains($"dimension '{dimension}'", run.Output, StringComparison.Ordinal);
-        Assert.Contains("Application/Features/Ghost/", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Application/Ghost/", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -235,9 +236,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
-            .WriteFile("src/Orders/Application/Features/EmptyGroup/.gitkeep", "")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/EmptyGroup/.gitkeep", "")
             .WithInputMirrors()
             .Commit();
 
@@ -247,7 +248,7 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("empty-slice-or-group", run.Output, StringComparison.Ordinal);
         Assert.Contains("name 'EmptyGroup'", run.Output, StringComparison.Ordinal);
         Assert.Contains("dimension 'Application'", run.Output, StringComparison.Ordinal);
-        Assert.Contains("Application/Features/EmptyGroup/", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Application/EmptyGroup/", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -255,10 +256,10 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
-            .WriteFile("src/Orders/Application/Features/Finance/Invoices/.keep", "")
-            .WriteFile("src/Orders/Consumers/Features/Finance/Invoices/Handler.cs", "sealed class Handler;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/Finance/Invoices/.keep", "")
+            .WriteFile("src/Orders/Consumers/Finance/Invoices/Handler.cs", "sealed class Handler;")
             .WithInputMirrors()
             .Commit();
 
@@ -268,23 +269,23 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("empty-slice", run.Output, StringComparison.Ordinal);
         Assert.Contains("slice 'Finance/Invoices'", run.Output, StringComparison.Ordinal);
         Assert.Contains("dimension 'Application'", run.Output, StringComparison.Ordinal);
-        Assert.Contains("Application/Features/Finance/Invoices/", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Application/Finance/Invoices/", run.Output, StringComparison.Ordinal);
     }
 
     [Theory]
-    [InlineData("Api/Features/Sales/.gitkeep", "Api")]
-    [InlineData("Consumers/Features/Sales/.keep", "Consumers")]
-    [InlineData("Infrastructure/Features/Sales/.gitignore", "Infrastructure")]
+    [InlineData("Api/Sales/.gitkeep", "Api")]
+    [InlineData("Consumers/Sales/.keep", "Consumers")]
+    [InlineData("Infrastructure/Sales/.gitignore", "Infrastructure")]
     [InlineData("Domain/Sales/.gitkeep", "Domain")]
     public void Placeholder_only_mirror_is_blocking(string mirrorPath, string dimension)
     {
         var inputMirror = dimension == "Api"
-            ? "Consumers/Features/Sales/Handler.cs"
-            : "Api/Features/Sales/Endpoint.cs";
+            ? "Consumers/Sales/Handler.cs"
+            : "Api/Sales/Endpoint.cs";
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
             .WriteFile($"src/Orders/{inputMirror}", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .WriteFile($"src/Orders/{mirrorPath}", "")
             .WithInputMirrors()
             .Commit();
@@ -302,8 +303,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .WriteFile("src/Orders/Domain/Ghost/.gitkeep", "")
             .Commit();
 
@@ -319,9 +320,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Finance/Base.cs", "sealed class Base;")
-            .WriteFile("src/Orders/Consumers/Features/Finance/Invoices/Handler.cs", "sealed class Handler;")
-            .WriteFile("src/Orders/Application/Features/Finance/Invoices/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Finance/Base.cs", "sealed class Base;")
+            .WriteFile("src/Orders/Consumers/Finance/Invoices/Handler.cs", "sealed class Handler;")
+            .WriteFile("src/Orders/Application/Finance/Invoices/Create.cs", "sealed class Create;")
             .Commit();
 
         var run = Shape(repository);
@@ -329,7 +330,7 @@ public sealed class ArchitectureShapeTests
         Assert.Equal(1, run.ExitCode);
         Assert.Contains("file-in-slice-group: group 'Finance'", run.Output, StringComparison.Ordinal);
         Assert.Contains("dimension 'Api'", run.Output, StringComparison.Ordinal);
-        Assert.Contains("Api/Features/Finance/Invoices/", run.Output, StringComparison.Ordinal);
+        Assert.Contains("Api/Finance/Invoices/", run.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("orphan-slice-mirror: slice 'Finance'", run.Output, StringComparison.Ordinal);
     }
 
@@ -338,9 +339,10 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
-            .WriteFile("src/Orders/Infrastructure/Features/Sales/Adapter.cs", "sealed class Adapter;")
+            .WriteFile("src/Orders/Api/Inventory/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Inventory/List.cs", "sealed class List;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Infrastructure/Sales/Adapter.cs", "sealed class Adapter;")
             .WriteFile("src/Orders/Domain/Sales/Entity.cs", "sealed class Entity;")
             .Commit();
 
@@ -356,8 +358,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .WriteFile("src/Orders/Domain/Shared/Money.cs", "sealed class Money;")
             .WriteFile("src/Orders/Infrastructure/Persistence/Database.cs", "sealed class Database;")
             .WithInputMirrors()
@@ -374,10 +376,10 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sale/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Api/Features/Invoices/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sale/Marker.cs", "sealed class Marker;")
-            .WriteFile("src/Orders/Application/Features/Invoices/List.cs", "sealed class List;")
+            .WriteFile("src/Orders/Api/Sale/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Api/Invoices/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sale/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Invoices/List.cs", "sealed class List;")
             .WithInputMirrors()
             .Commit();
 
@@ -389,9 +391,9 @@ public sealed class ArchitectureShapeTests
     }
 
     [Theory]
-    [InlineData("Api/Features/Sales/Validators/Input.cs", "Api", "Validators")]
-    [InlineData("Consumers/Features/Sales/Types/Message.cs", "Consumers", "Types")]
-    [InlineData("Application/Features/Sales/Services/Create.cs", "Application", "Services")]
+    [InlineData("Api/Sales/Validators/Input.cs", "Api", "Validators")]
+    [InlineData("Consumers/Sales/Types/Message.cs", "Consumers", "Types")]
+    [InlineData("Application/Sales/Services/Create.cs", "Application", "Services")]
     [InlineData("Domain/Sales/Constants/Status.cs", "Domain", "Constants")]
     public void Steiger_generic_essence_based_direct_segments_are_blocking_when_architecture_is_required(
         string relativePath,
@@ -400,11 +402,11 @@ public sealed class ArchitectureShapeTests
         => AssertEssenceBasedDirectSegmentIsBlocking(relativePath, dimension, segment);
 
     [Theory]
-    [InlineData("Infrastructure/Features/Sales/Common/Adapter.cs", "Infrastructure", "Common")]
-    [InlineData("Infrastructure/Features/Sales/Manager/Adapter.cs", "Infrastructure", "Manager")]
-    [InlineData("Infrastructure/Features/Sales/Managers/Adapter.cs", "Infrastructure", "Managers")]
-    [InlineData("Infrastructure/Features/Sales/Repository/Adapter.cs", "Infrastructure", "Repository")]
-    [InlineData("Infrastructure/Features/Sales/Repositories/Adapter.cs", "Infrastructure", "Repositories")]
+    [InlineData("Infrastructure/Sales/Common/Adapter.cs", "Infrastructure", "Common")]
+    [InlineData("Infrastructure/Sales/Manager/Adapter.cs", "Infrastructure", "Manager")]
+    [InlineData("Infrastructure/Sales/Managers/Adapter.cs", "Infrastructure", "Managers")]
+    [InlineData("Infrastructure/Sales/Repository/Adapter.cs", "Infrastructure", "Repository")]
+    [InlineData("Infrastructure/Sales/Repositories/Adapter.cs", "Infrastructure", "Repositories")]
     public void Sliced_dotnet_backend_essence_based_direct_segments_are_blocking_when_architecture_is_required(
         string relativePath,
         string dimension,
@@ -418,8 +420,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
             .WriteFile($"src/Orders/{relativePath}", "sealed class Content;")
             .WithInputMirrors()
             .Commit();
@@ -437,11 +439,11 @@ public sealed class ArchitectureShapeTests
     {
         var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;");
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;");
         foreach (var segment in SteigerBadNamesGeneric)
         {
-            repository.WriteFile($"src/Orders/Application/Features/Sales/{segment}/Content.cs", "sealed class Content;");
+            repository.WriteFile($"src/Orders/Application/Sales/{segment}/Content.cs", "sealed class Content;");
         }
         using var committed = repository.WithInputMirrors().Commit();
 
@@ -459,11 +461,11 @@ public sealed class ArchitectureShapeTests
     {
         var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;");
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;");
         foreach (var segment in SteigerFrontendSpecificBadNames)
         {
-            repository.WriteFile($"src/Orders/Application/Features/Sales/{segment}/Content.cs", "sealed class Content;");
+            repository.WriteFile($"src/Orders/Application/Sales/{segment}/Content.cs", "sealed class Content;");
         }
         using var committed = repository.WithInputMirrors().Commit();
 
@@ -480,9 +482,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
-            .WriteFile($"src/Orders/Application/Features/Sales/{segment}/Content.cs", "sealed class Content;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile($"src/Orders/Application/Sales/{segment}/Content.cs", "sealed class Content;")
             .WithInputMirrors()
             .Commit();
 
@@ -497,11 +499,11 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
-            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", "sealed class Create;")
-            .WriteFile("src/Orders/Application/Features/Sales/Repositories/Store.cs", "sealed class Store;")
-            .WriteFile("src/Orders/Application/Features/Sales/Hooks/Observe.cs", "sealed class Observe;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Sales/Services/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/Sales/Repositories/Store.cs", "sealed class Store;")
+            .WriteFile("src/Orders/Application/Sales/Hooks/Observe.cs", "sealed class Observe;")
             .WithInputMirrors()
             .Commit();
 
@@ -519,9 +521,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository("advisory")
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
-            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Sales/Services/Create.cs", "sealed class Create;")
             .WithInputMirrors()
             .Commit();
 
@@ -538,12 +540,12 @@ public sealed class ArchitectureShapeTests
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
             .WriteFile(
-                "src/Orders/Api/Features/Sales/Endpoint.cs",
+                "src/Orders/Api/Sales/Endpoint.cs",
                 ProvenReference("Fixture.Api", "Endpoint", "Fixture.Infrastructure", "Adapter"))
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", EmptyType("Fixture.Application", "Marker"))
-            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", EmptyType("Fixture.Application", "Marker"))
+            .WriteFile("src/Orders/Application/Sales/Services/Create.cs", EmptyType("Fixture.Application", "Create"))
             .WriteFile(
-                "src/Orders/Infrastructure/Features/Sales/Persistence/Adapter.cs",
+                "src/Orders/Infrastructure/Sales/Persistence/Adapter.cs",
                 EmptyType("Fixture.Infrastructure", "Adapter"))
             .WithInputMirrors()
             .Commit();
@@ -560,9 +562,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
-            .WriteFile("src/Orders/Application/Features/Sales/Persistence/Validators/Input.cs", "sealed class Input;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Sales/Persistence/Validators/Input.cs", "sealed class Input;")
             .WithInputMirrors()
             .Commit();
 
@@ -577,8 +579,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Services/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Services/Create.cs", "sealed class Create;")
             .WithInputMirrors()
             .Commit();
 
@@ -594,8 +596,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Ordering/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Ordering/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Ordering/Create.cs", "sealed class Create;")
             .WithInputMirrors()
             .Commit();
 
@@ -615,8 +617,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
             .WriteFile($"src/Orders/{relativePath}", "sealed class Content;")
             .WithInputMirrors()
             .Commit();
@@ -636,12 +638,12 @@ public sealed class ArchitectureShapeTests
     {
         var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;");
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;");
         for (var index = 1; index <= files; index++)
         {
             repository.WriteFile(
-                $"src/Orders/Application/Features/Sales/Pricing/Rule{index}.cs",
+                $"src/Orders/Application/Sales/Pricing/Rule{index}.cs",
                 $"sealed class Rule{index};");
         }
         using var committed = repository.WithInputMirrors().Commit();
@@ -652,7 +654,7 @@ public sealed class ArchitectureShapeTests
         if (advised)
         {
             Assert.Contains(
-                $"advisory src/Orders/Application/Features/Sales/Pricing: flat-directory-grouping: "
+                $"advisory src/Orders/Application/Sales/Pricing: flat-directory-grouping: "
                 + $"directory directly holds {files} source files",
                 run.Output,
                 StringComparison.Ordinal);
@@ -668,15 +670,15 @@ public sealed class ArchitectureShapeTests
     {
         var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
-            .WriteFile("src/Orders/Application/Features/Sales/Pricing/.gitkeep", "")
-            .WriteFile("src/Orders/Application/Features/Sales/Pricing/Extra.g.cs", "sealed class Extra;")
-            .WriteFile("src/Orders/Application/Features/Sales/Pricing/Extra2.generated.cs", "sealed class Extra2;");
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Sales/Pricing/.gitkeep", "")
+            .WriteFile("src/Orders/Application/Sales/Pricing/Extra.g.cs", "sealed class Extra;")
+            .WriteFile("src/Orders/Application/Sales/Pricing/Extra2.generated.cs", "sealed class Extra2;");
         for (var index = 1; index <= 19; index++)
         {
             repository.WriteFile(
-                $"src/Orders/Application/Features/Sales/Pricing/Rule{index}.cs",
+                $"src/Orders/Application/Sales/Pricing/Rule{index}.cs",
                 $"sealed class Rule{index};");
         }
         using var committed = repository.WithInputMirrors().Commit();
@@ -692,9 +694,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
-            .WriteFile("src/Orders/Application/Features/Sales/Contracts/X/Billing/ForBilling.cs", "sealed class ForBilling;")
-            .WriteFile("src/Orders/Application/Features/Billing/Marker.cs", "sealed class BillingMarker;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Sales/Contracts/X/Billing/ForBilling.cs", "sealed class ForBilling;")
+            .WriteFile("src/Orders/Application/Billing/Marker.cs", "sealed class BillingMarker;")
             .WriteFile("src/Orders/Domain/Billing/X/Sales/ForSales.cs", "sealed class ForSales;")
             .WithInputMirrors()
             .Commit();
@@ -703,7 +705,7 @@ public sealed class ArchitectureShapeTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.Contains(
-            "advisory src/Orders/Application/Features/Billing: mutual-cross-api: slices 'Billing' and 'Sales' "
+            "advisory src/Orders/Application/Billing: mutual-cross-api: slices 'Billing' and 'Sales' "
             + "publish cross-APIs for each other",
             run.Output,
             StringComparison.Ordinal);
@@ -714,9 +716,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
-            .WriteFile("src/Orders/Application/Features/Sales/Contracts/X/Billing/ForBilling.cs", "sealed class ForBilling;")
-            .WriteFile("src/Orders/Application/Features/Billing/Marker.cs", "sealed class BillingMarker;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Sales/Contracts/X/Billing/ForBilling.cs", "sealed class ForBilling;")
+            .WriteFile("src/Orders/Application/Billing/Marker.cs", "sealed class BillingMarker;")
             .WithInputMirrors()
             .Commit();
 
@@ -734,13 +736,13 @@ public sealed class ArchitectureShapeTests
         string[] names = ["Billing", "Sales", "Shipping", "Support"];
         var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Application/Features/Catalog/Marker.cs", "sealed class Marker;");
+            .WriteFile("src/Orders/Application/Catalog/Marker.cs", "sealed class Marker;");
         foreach (var consumer in names.Take(consumers))
         {
             repository
-                .WriteFile($"src/Orders/Application/Features/{consumer}/Marker.cs", $"sealed class {consumer}Marker;")
+                .WriteFile($"src/Orders/Application/{consumer}/Marker.cs", $"sealed class {consumer}Marker;")
                 .WriteFile(
-                    $"src/Orders/Application/Features/Catalog/Contracts/X/{consumer}/For{consumer}.cs",
+                    $"src/Orders/Application/Catalog/Contracts/X/{consumer}/For{consumer}.cs",
                     $"sealed class For{consumer};");
         }
         using var committed = repository.WithInputMirrors().Commit();
@@ -751,7 +753,7 @@ public sealed class ArchitectureShapeTests
         if (advised)
         {
             Assert.Contains(
-                "advisory src/Orders/Application/Features/Catalog: cross-api-fan-in: slice 'Catalog' "
+                "advisory src/Orders/Application/Catalog: cross-api-fan-in: slice 'Catalog' "
                 + "publishes cross-APIs for 4 consumers [Billing, Sales, Shipping, Support]",
                 run.Output,
                 StringComparison.Ordinal);
@@ -763,12 +765,12 @@ public sealed class ArchitectureShapeTests
     }
 
     [Theory]
-    [InlineData("Application/Contracts/Common/Model.cs", "Application/Contracts/Common", "Common")]
-    [InlineData("Api/Validation/Rule.cs", "Api/Validation", "Validation")]
+    [InlineData("Application/Sales/Contracts/Common/Model.cs", "Application/Sales/Contracts/Common", "Common")]
+    [InlineData("Api/Sales/Http/Validation/Rule.cs", "Api/Sales/Http/Validation", "Validation")]
     [InlineData("Host/Kernel/Utils/Text.cs", "Host/Kernel/Utils", "Utils")]
     [InlineData(
-        "Application/Features/Sales/Persistence/Validators/Input.cs",
-        "Application/Features/Sales/Persistence/Validators",
+        "Application/Sales/Persistence/Validators/Input.cs",
+        "Application/Sales/Persistence/Validators",
         "Validators")]
     public void Essence_named_directories_outside_segment_positions_are_advisory_observations(
         string relativePath,
@@ -777,8 +779,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
             .WriteFile($"src/Orders/{relativePath}", "sealed class Content;")
             .WithInputMirrors()
             .Commit();
@@ -795,14 +797,14 @@ public sealed class ArchitectureShapeTests
     }
 
     [Theory]
-    [InlineData("Application/Features/Sales/Services/Create.cs")]
+    [InlineData("Application/Sales/Services/Create.cs")]
     [InlineData("Host/Services/Startup.cs")]
     public void Segment_positions_keep_their_verdict_and_are_not_double_reported(string relativePath)
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
             .WriteFile($"src/Orders/{relativePath}", "sealed class Content;")
             .WithInputMirrors()
             .Commit();
@@ -819,9 +821,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Broken.cs", "sealed class Broken;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
-            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Sales/Services/Create.cs", "sealed class Create;")
             .WithInputMirrors()
             .Commit()
             .PointIndexAtMissingObject("src/Orders/Host/Broken.cs")
@@ -839,9 +841,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository("advisory")
             .WriteFile("src/Orders/Host/Broken.cs", "sealed class Broken;")
-            .WriteFile("src/Orders/Api/Features/Sales/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Marker.cs", "sealed class Marker;")
-            .WriteFile("src/Orders/Application/Features/Sales/Services/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Sales/Services/Create.cs", "sealed class Create;")
             .WithInputMirrors()
             .Commit()
             .PointIndexAtMissingObject("src/Orders/Host/Broken.cs")
@@ -860,10 +862,10 @@ public sealed class ArchitectureShapeTests
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
             .WriteFile(
-                "src/Orders/Api/Features/Sales/Endpoint.cs",
+                "src/Orders/Api/Sales/Endpoint.cs",
                 ProvenReference("Fixture.Api", "Endpoint", "Fixture.Sales", "SalesContract"))
             .WriteFile(
-                "src/Orders/Application/Features/Sales/Contracts/SalesContract.cs",
+                "src/Orders/Application/Sales/Contracts/SalesContract.cs",
                 EmptyType("Fixture.Sales", "SalesContract"))
             .WithInputMirrors()
             .Commit();
@@ -880,10 +882,10 @@ public sealed class ArchitectureShapeTests
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
             .WriteFile(
-                "src/Orders/Api/Features/Sales/Endpoint.cs",
+                "src/Orders/Api/Sales/Endpoint.cs",
                 InferredReference("Fixture.Api", "Endpoint", "Fixture.Sales", "SalesContract"))
             .WriteFile(
-                "src/Orders/Application/Features/Sales/Contracts/SalesContract.cs",
+                "src/Orders/Application/Sales/Contracts/SalesContract.cs",
                 EmptyType("Fixture.Sales", "SalesContract"))
             .WithInputMirrors()
             .Commit();
@@ -899,10 +901,10 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Group/Sub/Deep/Handler.cs", "sealed class Handler;")
-            .WriteFile("src/Orders/Application/Features/Grp2/FileInGroup.cs", "sealed class FileInGroup;")
-            .WriteFile("src/Orders/Application/Features/Grp2/Slice/Handler.cs", "sealed class Handler;")
+            .WriteFile("src/Orders/Api/Grp2/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Group/Sub/Deep/Handler.cs", "sealed class Handler;")
+            .WriteFile("src/Orders/Application/Grp2/FileInGroup.cs", "sealed class FileInGroup;")
+            .WriteFile("src/Orders/Application/Grp2/Slice/Handler.cs", "sealed class Handler;")
             .WithInputMirrors()
             .Commit();
 
@@ -917,8 +919,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
-            .WriteFile("src/Orders/Api/Endpoint.cs", "sealed class Endpoint;")
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
             .WriteFile("src/Orders/Tests/Fixture.cs", "sealed class Fixture;")
             .WithInputMirrors()
             .Commit();
@@ -964,8 +966,8 @@ public sealed class ArchitectureShapeTests
 
         Assert.Equal(1, run.ExitCode);
         Assert.Contains($"layer dependency {from} -> {to} is forbidden", run.Output, StringComparison.Ordinal);
-        Assert.Contains($"src/Orders/{from}/From.cs", run.Output, StringComparison.Ordinal);
-        Assert.Contains($"src/Orders/{to}/To.cs", run.Output, StringComparison.Ordinal);
+        Assert.Contains(LayerFile(from, "From.cs"), run.Output, StringComparison.Ordinal);
+        Assert.Contains(LayerFile(to, "To.cs"), run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -984,9 +986,9 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
-            .WriteFile("src/Orders/Application/Features/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "Baseline"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Application/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "Baseline"))
             .WriteFile("src/Orders/Infrastructure/Persistence/Db.cs", ProvenReference("Fixture.Infrastructure", "Db", "Fixture.Domain", "Entity"))
             .WriteFile("src/Orders/Domain/Inventory/Entity.cs", EmptyType("Fixture.Domain", "Entity"))
             .WithInputMirrors()
@@ -1006,10 +1008,10 @@ public sealed class ArchitectureShapeTests
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
             .WriteFile(
-                $"src/Orders/{inputLayer}/Features/Sales/Endpoint.cs",
+                $"src/Orders/{inputLayer}/Sales/Endpoint.cs",
                 ProvenReference("Fixture.Input", "Endpoint", "Fixture.Domain", "InventoryItem"))
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Sales", "Create"))
-            .WriteFile("src/Orders/Application/Features/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "Baseline"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", EmptyType("Fixture.Sales", "Create"))
+            .WriteFile("src/Orders/Application/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "Baseline"))
             .WriteFile("src/Orders/Domain/Inventory/InventoryItem.cs", EmptyType("Fixture.Domain", "InventoryItem"))
             .WithInputMirrors()
             .Commit();
@@ -1025,11 +1027,11 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Orders.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", ProvenReference("Orders.Api", "Endpoint", "Billing.Application", "UseCase"))
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Orders.Application", "Create"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", ProvenReference("Orders.Api", "Endpoint", "Billing.Application", "UseCase"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", EmptyType("Orders.Application", "Create"))
             .WriteFile("src/Billing/Host/Program.cs", EmptyType("Billing.Host", "Program"))
-            .WriteFile("src/Billing/Api/Endpoint.cs", EmptyType("Billing.Api", "Endpoint"))
-            .WriteFile("src/Billing/Application/Features/Invoices/UseCase.cs", EmptyType("Billing.Application", "UseCase"))
+            .WriteFile("src/Billing/Api/Invoices/Endpoint.cs", EmptyType("Billing.Api", "Endpoint"))
+            .WriteFile("src/Billing/Application/Invoices/UseCase.cs", EmptyType("Billing.Application", "UseCase"))
             .WithInputMirrors()
             .Commit();
 
@@ -1037,8 +1039,8 @@ public sealed class ArchitectureShapeTests
 
         Assert.Equal(1, run.ExitCode);
         Assert.Contains("cross-zone dependency is forbidden", run.Output, StringComparison.Ordinal);
-        Assert.Contains("src/Orders/Api/Endpoint.cs", run.Output, StringComparison.Ordinal);
-        Assert.Contains("src/Billing/Application/Features/Invoices/UseCase.cs", run.Output, StringComparison.Ordinal);
+        Assert.Contains("src/Orders/Api/Sales/Endpoint.cs", run.Output, StringComparison.Ordinal);
+        Assert.Contains("src/Billing/Application/Invoices/UseCase.cs", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1047,8 +1049,8 @@ public sealed class ArchitectureShapeTests
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Loose.cs", EmptyType("Fixture", "Loose"))
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
             .WithInputMirrors()
             .Commit();
 
@@ -1065,8 +1067,8 @@ public sealed class ArchitectureShapeTests
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Generated.g.cs", EmptyType("Fixture", "Generated"))
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
             .WithInputMirrors()
             .Commit();
 
@@ -1081,8 +1083,8 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
             .WriteFile("src/Orders/Helpers/One.cs", EmptyType("Fixture.Helpers", "One"))
             .WriteFile("src/Orders/Helpers/Two.cs", EmptyType("Fixture.Helpers", "Two"))
             .WithInputMirrors()
@@ -1101,14 +1103,14 @@ public sealed class ArchitectureShapeTests
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
             .WriteFile(
-                "src/Orders/Api/Endpoint.cs",
+                "src/Orders/Api/Sales/Endpoint.cs",
                 ProvenReferences("Fixture.Api", "Endpoint", "Fixture.Infrastructure", ["One", "Two", "Three", "Four", "Five"]))
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
-            .WriteFile("src/Orders/Infrastructure/One.cs", EmptyType("Fixture.Infrastructure", "One"))
-            .WriteFile("src/Orders/Infrastructure/Two.cs", EmptyType("Fixture.Infrastructure", "Two"))
-            .WriteFile("src/Orders/Infrastructure/Three.cs", EmptyType("Fixture.Infrastructure", "Three"))
-            .WriteFile("src/Orders/Infrastructure/Four.cs", EmptyType("Fixture.Infrastructure", "Four"))
-            .WriteFile("src/Orders/Infrastructure/Five.cs", EmptyType("Fixture.Infrastructure", "Five"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Infrastructure/Sales/One.cs", EmptyType("Fixture.Infrastructure", "One"))
+            .WriteFile("src/Orders/Infrastructure/Sales/Two.cs", EmptyType("Fixture.Infrastructure", "Two"))
+            .WriteFile("src/Orders/Infrastructure/Sales/Three.cs", EmptyType("Fixture.Infrastructure", "Three"))
+            .WriteFile("src/Orders/Infrastructure/Sales/Four.cs", EmptyType("Fixture.Infrastructure", "Four"))
+            .WriteFile("src/Orders/Infrastructure/Sales/Five.cs", EmptyType("Fixture.Infrastructure", "Five"))
             .WithInputMirrors()
             .Commit();
 
@@ -1126,12 +1128,12 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
             .WriteFile(
-                "src/Orders/Application/Features/Sales/Create.cs",
+                "src/Orders/Application/Sales/Create.cs",
                 ProvenReference("Fixture.Sales", "Create", "Fixture.Inventory", "InventoryContract"))
             .WriteFile(
-                "src/Orders/Application/Features/Inventory/Contracts/InventoryContract.cs",
+                "src/Orders/Application/Inventory/Contracts/InventoryContract.cs",
                 EmptyType("Fixture.Inventory", "InventoryContract"))
             .WithInputMirrors()
             .Commit();
@@ -1145,13 +1147,15 @@ public sealed class ArchitectureShapeTests
 
     [Theory]
     [InlineData("Domain/Money.cs")]
-    [InlineData("Application/Features/Money.cs")]
+    [InlineData("Application/Money.cs")]
+    [InlineData("Api/Money.cs")]
+    [InlineData("Infrastructure/Money.cs")]
     public void Csharp_file_directly_in_a_slice_root_is_blocking(string relativePath)
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Sales", "Create"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", EmptyType("Fixture.Sales", "Create"))
             .WriteFile($"src/Orders/{relativePath}", EmptyType("Fixture.Loose", "Money"))
             .WithInputMirrors()
             .Commit();
@@ -1169,13 +1173,13 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Sales/Baseline.cs", EmptyType("Fixture.Sales", "SalesBaseline"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Sales/Baseline.cs", EmptyType("Fixture.Sales", "SalesBaseline"))
             .WriteFile(
-                "src/Orders/Application/Features/Billing/Create.cs",
+                "src/Orders/Application/Billing/Create.cs",
                 ProvenReference("Fixture.Billing", "Create", "Fixture.Inventory", "ForSales"))
             .WriteFile(
-                "src/Orders/Application/Features/Inventory/Contracts/X/Sales/ForSales.cs",
+                "src/Orders/Application/Inventory/Contracts/X/Sales/ForSales.cs",
                 EmptyType("Fixture.Inventory", "ForSales"))
             .WithInputMirrors()
             .Commit();
@@ -1195,9 +1199,9 @@ public sealed class ArchitectureShapeTests
             .WriteFile(
                 "src/Orders/Api/Endpoint.cs",
                 ProvenReference("Fixture.Api", "Endpoint", "Fixture.Inventory", "ForSales"))
-            .WriteFile("src/Orders/Application/Features/Sales/Baseline.cs", EmptyType("Fixture.Sales", "Baseline"))
+            .WriteFile("src/Orders/Application/Sales/Baseline.cs", EmptyType("Fixture.Sales", "Baseline"))
             .WriteFile(
-                "src/Orders/Application/Features/Inventory/Contracts/X/Sales/ForSales.cs",
+                "src/Orders/Application/Inventory/Contracts/X/Sales/ForSales.cs",
                 EmptyType("Fixture.Inventory", "ForSales"))
             .WithInputMirrors()
             .Commit();
@@ -1215,10 +1219,10 @@ public sealed class ArchitectureShapeTests
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
             .WriteFile(
-                "src/Orders/Api/Features/Sales/Endpoint.cs",
+                "src/Orders/Api/Sales/Endpoint.cs",
                 ProvenReference("Fixture.Api", "Endpoint", "Fixture.Sales", "Handler"))
             .WriteFile(
-                "src/Orders/Application/Features/Sales/Handler.cs",
+                "src/Orders/Application/Sales/Handler.cs",
                 EmptyType("Fixture.Sales", "Handler"))
             .WithInputMirrors()
             .Commit();
@@ -1236,11 +1240,11 @@ public sealed class ArchitectureShapeTests
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
             .WriteFile(
-                "src/Orders/Api/Features/Sales/Endpoint.cs",
+                "src/Orders/Api/Sales/Endpoint.cs",
                 ProvenReference("Fixture.Api", "Endpoint", "Fixture.Inventory", "InventoryContract"))
-            .WriteFile("src/Orders/Application/Features/Sales/Baseline.cs", EmptyType("Fixture.Sales", "Baseline"))
+            .WriteFile("src/Orders/Application/Sales/Baseline.cs", EmptyType("Fixture.Sales", "Baseline"))
             .WriteFile(
-                "src/Orders/Application/Features/Inventory/Contracts/InventoryContract.cs",
+                "src/Orders/Application/Inventory/Contracts/InventoryContract.cs",
                 EmptyType("Fixture.Inventory", "InventoryContract"))
             .WithInputMirrors()
             .Commit();
@@ -1257,10 +1261,10 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "Baseline"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "Baseline"))
             .WriteFile(
-                "src/Orders/Application/Features/Sales/Create.cs",
+                "src/Orders/Application/Sales/Create.cs",
                 ProvenReference("Fixture.Sales", "Create", "Fixture.Domain", "InventoryItem"))
             .WriteFile(
                 "src/Orders/Domain/Inventory/InventoryItem.cs",
@@ -1279,12 +1283,12 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
             .WriteFile(
-                "src/Orders/Application/Features/Sales/Create.cs",
+                "src/Orders/Application/Sales/Create.cs",
                 ProvenReference("Fixture.Sales", "Create", "Fixture.Inventory", "ForSales"))
             .WriteFile(
-                "src/Orders/Application/Features/Inventory/Contracts/X/Sales/ForSales.cs",
+                "src/Orders/Application/Inventory/Contracts/X/Sales/ForSales.cs",
                 EmptyType("Fixture.Inventory", "ForSales"))
             .WithInputMirrors()
             .Commit();
@@ -1301,10 +1305,10 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "Baseline"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "Baseline"))
             .WriteFile(
-                "src/Orders/Application/Features/Sales/Create.cs",
+                "src/Orders/Application/Sales/Create.cs",
                 ProvenReference("Fixture.Sales", "Create", "Fixture.Domain", "ForSales"))
             .WriteFile(
                 "src/Orders/Domain/Inventory/X/Sales/ForSales.cs",
@@ -1323,12 +1327,12 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
             .WriteFile(
-                "src/Orders/Application/Features/Sales/Create.cs",
+                "src/Orders/Application/Sales/Create.cs",
                 ProvenReferences("Fixture.Sales", "Create", "Fixture.Inventory", ["One", "Two"]))
-            .WriteFile("src/Orders/Application/Features/Inventory/One.cs", EmptyType("Fixture.Inventory", "One"))
-            .WriteFile("src/Orders/Application/Features/Inventory/Two.cs", EmptyType("Fixture.Inventory", "Two"))
+            .WriteFile("src/Orders/Application/Inventory/One.cs", EmptyType("Fixture.Inventory", "One"))
+            .WriteFile("src/Orders/Application/Inventory/Two.cs", EmptyType("Fixture.Inventory", "Two"))
             .WithInputMirrors()
             .Commit();
 
@@ -1346,13 +1350,13 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Trade/Marker.cs", EmptyType("Fixture.Trade", "Marker"))
+            .WriteFile("src/Orders/Api/Trade/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Trade/Marker.cs", EmptyType("Fixture.Trade", "Marker"))
             .WriteFile(
-                "src/Orders/Application/Features/Trade/Sales/Create.cs",
+                "src/Orders/Application/Trade/Sales/Create.cs",
                 ProvenReference("Fixture.Sales", "Create", "Fixture.Inventory", "Item"))
             .WriteFile(
-                "src/Orders/Application/Features/Trade/Inventory/Item.cs",
+                "src/Orders/Application/Trade/Inventory/Item.cs",
                 EmptyType("Fixture.Inventory", "Item"))
             .WithInputMirrors()
             .Commit();
@@ -1371,9 +1375,9 @@ public sealed class ArchitectureShapeTests
             .WriteFile(
                 "src/Orders/Host/Program.cs",
                 ProvenReference("Fixture.Host", "Program", "Fixture.Sales", "Handler"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
             .WriteFile(
-                "src/Orders/Application/Features/Sales/Handler.cs",
+                "src/Orders/Application/Sales/Handler.cs",
                 EmptyType("Fixture.Sales", "Handler"))
             .WithInputMirrors()
             .Commit();
@@ -1385,7 +1389,7 @@ public sealed class ArchitectureShapeTests
     }
 
     [Theory]
-    [InlineData("Application/Features/Inventory/Contracts/X/Sales/ForSales.cs")]
+    [InlineData("Application/Inventory/Contracts/X/Sales/ForSales.cs")]
     [InlineData("Domain/Inventory/X/Sales/ForSales.cs")]
     public void Host_may_import_a_consumer_specific_cross_api(string targetPath)
     {
@@ -1393,9 +1397,9 @@ public sealed class ArchitectureShapeTests
             .WriteFile(
                 "src/Orders/Host/Program.cs",
                 ProvenReference("Fixture.Host", "Program", "Fixture.Inventory", "ForSales"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Sales/Baseline.cs", EmptyType("Fixture.Sales", "SalesBaseline"))
-            .WriteFile("src/Orders/Application/Features/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "InventoryBaseline"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Sales/Baseline.cs", EmptyType("Fixture.Sales", "SalesBaseline"))
+            .WriteFile("src/Orders/Application/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "InventoryBaseline"))
             .WriteFile($"src/Orders/{targetPath}", EmptyType("Fixture.Inventory", "ForSales"))
             .WithInputMirrors()
             .Commit();
@@ -1411,12 +1415,12 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Target.cs", EmptyType("Fixture.Targets", "HostTarget"))
-            .WriteFile("src/Orders/Api/Target.cs", EmptyType("Fixture.Targets", "ApiTarget"))
-            .WriteFile("src/Orders/Consumers/Target.cs", EmptyType("Fixture.Targets", "ConsumersTarget"))
-            .WriteFile("src/Orders/Application/Features/Sales/Target.cs", EmptyType("Fixture.Targets", "ApplicationTarget"))
-            .WriteFile("src/Orders/Application/Features/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "InventoryBaseline"))
+            .WriteFile("src/Orders/Api/Sales/Target.cs", EmptyType("Fixture.Targets", "ApiTarget"))
+            .WriteFile("src/Orders/Consumers/Sales/Target.cs", EmptyType("Fixture.Targets", "ConsumersTarget"))
+            .WriteFile("src/Orders/Application/Sales/Target.cs", EmptyType("Fixture.Targets", "ApplicationTarget"))
+            .WriteFile("src/Orders/Application/Inventory/Baseline.cs", EmptyType("Fixture.Inventory", "InventoryBaseline"))
             .WriteFile("src/Orders/Domain/Inventory/Target.cs", EmptyType("Fixture.Targets", "DomainTarget"))
-            .WriteFile("src/Orders/Infrastructure/Target.cs", EmptyType("Fixture.Targets", "InfrastructureTarget"))
+            .WriteFile("src/Orders/Infrastructure/Sales/Target.cs", EmptyType("Fixture.Targets", "InfrastructureTarget"))
             .WriteFile(
                 "src/Orders/Domain/Inventory/From.cs",
                 ProvenReferences(
@@ -1425,7 +1429,7 @@ public sealed class ArchitectureShapeTests
                     "Fixture.Targets",
                     ["HostTarget", "ApiTarget", "ConsumersTarget", "ApplicationTarget", "InfrastructureTarget"]))
             .WriteFile(
-                "src/Orders/Application/Features/Sales/From.cs",
+                "src/Orders/Application/Sales/From.cs",
                 ProvenReference("Fixture.Sales", "From", "Fixture.Targets", "HostTarget"))
             .WithInputMirrors()
             .Commit();
@@ -1441,7 +1445,7 @@ public sealed class ArchitectureShapeTests
     public void Shape_findings_survive_an_unreadable_csharp_graph()
     {
         using var repository = ArchitectureRepository()
-            .WriteFile("src/Orders/Application/Features/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
+            .WriteFile("src/Orders/Application/Sales/Create.cs", EmptyType("Fixture.Application", "Create"))
             .WriteFile("src/Orders/Helpers/Broken.cs", EmptyType("Fixture.Helpers", "Broken"))
             .Commit()
             .PointIndexAtMissingObject("src/Orders/Helpers/Broken.cs")
@@ -1460,12 +1464,12 @@ public sealed class ArchitectureShapeTests
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
-            .WriteFile("src/Orders/Api/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
-            .WriteFile("src/Orders/Application/Features/Sales/Broken.cs", EmptyType("Fixture.Application", "Broken"))
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))
+            .WriteFile("src/Orders/Application/Sales/Broken.cs", EmptyType("Fixture.Application", "Broken"))
             .WithInputMirrors()
             .Commit()
-            .PointIndexAtMissingObject("src/Orders/Application/Features/Sales/Broken.cs")
-            .Remove("src/Orders/Application/Features/Sales/Broken.cs");
+            .PointIndexAtMissingObject("src/Orders/Application/Sales/Broken.cs")
+            .Remove("src/Orders/Application/Sales/Broken.cs");
 
         var run = Shape(repository);
 
@@ -1491,10 +1495,157 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("insignificant-slice convention accepts both Proven and Inferred", run.Output, StringComparison.Ordinal);
         Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
         Assert.Contains("no-segments-on-sliced-layers", run.Output, StringComparison.Ordinal);
+        Assert.Contains("no-layer-public-api", run.Output, StringComparison.Ordinal);
+        Assert.Contains("repetitive-naming", run.Output, StringComparison.Ordinal);
+        Assert.Contains("ambiguous-slice-names", run.Output, StringComparison.Ordinal);
         Assert.Contains("do not prove semantic slice cohesion", run.Output, StringComparison.Ordinal);
         Assert.Contains("adrs/0036-input-layers-read-domain.md", run.Output, StringComparison.Ordinal);
         Assert.Contains("adrs/0037-segments-by-purpose.md", run.Output, StringComparison.Ordinal);
+        Assert.Contains("adrs/0051-slices-in-the-layer-root.md", run.Output, StringComparison.Ordinal);
         Assert.Contains("member access", run.Output, StringComparison.Ordinal);
+        Assert.Contains("sliced-dotnet/1 standard", run.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Application")]
+    [InlineData("Api")]
+    [InlineData("Domain")]
+    [InlineData("Infrastructure")]
+    [InlineData("Consumers")]
+    public void Contracts_directly_below_a_sliced_layer_is_blocking(string layer)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
+            .WriteFile($"src/Orders/{layer}/Contracts/Shared.cs", "sealed class Shared;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains(
+            $"no-layer-public-api: layer '{layer}' publishes Contracts/ at its root; a slice publishes its own "
+            + $"Contracts/ — move them into {layer}/<Slice>/Contracts/",
+            run.Output,
+            StringComparison.Ordinal);
+        Assert.Contains("slices [Sales]", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("orphan-slice-mirror", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("slice-mirror-missing", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("slice 'Contracts'", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Cross_cutting_directory_in_the_root_of_a_mirror_layer_is_an_orphan_mirror()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Api/Auth/Handler.cs", "sealed class Handler;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains(
+            "orphan-slice-mirror: slice 'Auth', dimension 'Api', expected 'Application/Auth/'; a directory in "
+            + "the root of a sliced layer is a slice mirror — move cross-cutting code into Host or into a slice",
+            run.Output,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Api/Services/Routing.cs", "Api", "Services")]
+    [InlineData("Consumers/Handlers/Base.cs", "Consumers", "Handlers")]
+    [InlineData("Infrastructure/Common/Clock.cs", "Infrastructure", "Common")]
+    [InlineData("Domain/Types/Money.cs", "Domain", "Types")]
+    public void Essence_named_directory_in_the_root_of_a_mirror_layer_is_blocking(
+        string relativePath,
+        string layer,
+        string segment)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Sales/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Sales/Create.cs", "sealed class Create;")
+            .WriteFile($"src/Orders/{relativePath}", "sealed class Content;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains(
+            $"no-segments-on-sliced-layers: layer '{layer}' holds segment '{segment}' at its root; a sliced "
+            + "layer holds only slices — move it into Host or into a slice",
+            run.Output,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("orphan-slice-mirror", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("directories-by-purpose", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_single_group_holding_every_slice_is_repetitive_naming()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Application/Orders/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/Orders/Shipping/Dispatch.cs", "sealed class Dispatch;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains(
+            "advisory src/Orders/Application/Orders: repetitive-naming: every slice of dimension 'Application' "
+            + "sits in the single group 'Orders'; the group name repeats on every slice and carries no "
+            + "information — flatten the group or split slices into two or more groups",
+            run.Output,
+            StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("Application/Billing/Invoices/Create.cs")]
+    [InlineData("Application/Support/Answer.cs")]
+    public void Two_groups_or_an_ungrouped_slice_are_not_repetitive_naming(string relativePath)
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Application/Orders/Sales/Create.cs", "sealed class Create;")
+            .WriteFile("src/Orders/Application/Orders/Shipping/Dispatch.cs", "sealed class Dispatch;")
+            .WriteFile($"src/Orders/{relativePath}", "sealed class Content;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("repetitive-naming", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_segment_repeating_its_slice_name_is_ambiguous()
+    {
+        using var repository = ArchitectureRepository()
+            .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
+            .WriteFile("src/Orders/Api/Graph/Endpoint.cs", "sealed class Endpoint;")
+            .WriteFile("src/Orders/Application/Graph/Marker.cs", "sealed class Marker;")
+            .WriteFile("src/Orders/Application/Graph/Graph/Query.cs", "sealed class Query;")
+            .WithInputMirrors()
+            .Commit();
+
+        var run = Shape(repository);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains(
+            "advisory src/Orders/Application/Graph/Graph: ambiguous-slice-names: segment 'Graph' of slice "
+            + "'Graph', dimension 'Application', repeats the slice name; name the segment after its purpose",
+            run.Output,
+            StringComparison.Ordinal);
     }
 
     private static RepositoryFixture ArchitectureRepository(string policy = "required")
@@ -1510,13 +1661,17 @@ public sealed class ArchitectureShapeTests
 
         return ArchitectureRepository()
             .WriteFile("src/Orders/Host/Baseline.cs", EmptyType("Fixture.Baseline", "HostBaseline"))
-            .WriteFile("src/Orders/Api/Baseline.cs", EmptyType("Fixture.Baseline", "ApiBaseline"))
-            .WriteFile("src/Orders/Application/Features/Sales/Baseline.cs", EmptyType("Fixture.Baseline", "ApplicationBaseline"))
-            .WriteFile($"src/Orders/{from}/From.cs", reference)
-            .WriteFile($"src/Orders/{to}/To.cs", EmptyType("Fixture.To", "To"))
+            .WriteFile("src/Orders/Api/Sales/Baseline.cs", EmptyType("Fixture.Baseline", "ApiBaseline"))
+            .WriteFile("src/Orders/Application/Sales/Baseline.cs", EmptyType("Fixture.Baseline", "ApplicationBaseline"))
+            .WriteFile(LayerFile(from, "From.cs"), reference)
+            .WriteFile(LayerFile(to, "To.cs"), EmptyType("Fixture.To", "To"))
             .WithInputMirrors()
             .Commit();
     }
+
+    // Host is sliceless; every other layer holds its files inside the Sales slice.
+    private static string LayerFile(string layer, string name)
+        => layer == "Host" ? $"src/Orders/Host/{name}" : $"src/Orders/{layer}/Sales/{name}";
 
     private static string ProvenReference(string module, string name, string imported, string used)
         => $$"""

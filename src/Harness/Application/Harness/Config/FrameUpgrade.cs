@@ -129,6 +129,21 @@ internal static class FrameUpgrade
                    home of concepts that belong to no slice; a Shared directory directly below a
                    zone is now outside every canonical layer, so move its code into Domain (a
                    slice or Domain/Shared) and fold the Shared project into the Domain project
+        Release 2.13 changes:
+          changed  sliced-dotnet/1 puts slices directly in the layer root: Application/<Slice>,
+                   Api/<Slice>, Consumers/<Slice>, Infrastructure/<Slice> and Domain/<Slice>, with
+                   one optional group level as before; the Features/ directory is gone — move
+                   <Layer>/Features/<Slice> to <Layer>/<Slice>; only Domain/Shared and
+                   Infrastructure/Persistence stay reserved, every other directory in the root of
+                   a sliced layer must be a slice (no-segments-on-sliced-layers,
+                   orphan-slice-mirror) — move cross-cutting web plumbing into Host or a slice
+          added    no-layer-public-api blocks a Contracts/ directory directly below a sliced
+                   layer: a slice publishes its own Contracts/, the layer has none
+          added    advisory observations repetitive-naming (every slice sits in one group) and
+                   ambiguous-slice-names (a direct segment repeats its slice name); they never
+                   change the exit code
+          kept     the standard is still named sliced-dotnet/1: the shape is named by the
+                   contract pin, not by a version inside the standard name
         Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
     }

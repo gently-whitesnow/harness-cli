@@ -182,11 +182,11 @@ public sealed class InitCommandTests
             .WriteFile("src/App/Application/App.Application.csproj", LayerProject())
             .WriteFile("src/App/Host/Program.cs", "namespace App.Host; sealed class Program;\n")
             .WriteFile(
-                "src/App/Api/Features/Example/Endpoint.cs",
-                "namespace App.Api.Features.Example; sealed class Endpoint(App.Application.Features.Example.UseCase useCase);\n")
+                "src/App/Api/Example/Endpoint.cs",
+                "namespace App.Api.Example; sealed class Endpoint(App.Application.Example.UseCase useCase);\n")
             .WriteFile(
-                "src/App/Application/Features/Example/UseCase.cs",
-                "namespace App.Application.Features.Example; sealed class UseCase;\n")
+                "src/App/Application/Example/UseCase.cs",
+                "namespace App.Application.Example; sealed class UseCase;\n")
             .Commit();
 
         Assert.Equal(0, HarnessCli.RunWithInput(repository.Path, "application\n", "init").ExitCode);
