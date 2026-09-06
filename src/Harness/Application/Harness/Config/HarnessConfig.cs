@@ -93,8 +93,8 @@ internal sealed record HarnessConfig
                 "minimumTokens": 90
               },
               "complexity.csharp": {
-                "meanReach": 8.0,
-                "coreSize": 0
+                "averageReachableFiles": 8.0,
+                "largestCyclicGroupSize": 0
               },
               "commits": {
                 "language": "ru",

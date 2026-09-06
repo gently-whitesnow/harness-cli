@@ -9,28 +9,28 @@ public sealed class ComplexityLimitTests
     private const string Check = "complexity.csharp";
 
     [Fact]
-    public void Mean_reach_above_eight_files_is_blocking_and_names_the_hubs()
+    public void Average_reachable_files_above_eight_files_is_blocking_and_names_the_hubs()
     {
         using var repository = Graph(Chain(16));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("limits: mean reach 8.00 files · core size 0 files"), run.Output);
-        Assert.True(run.OutputContains("mean reach 8.50 files exceeds the 8.00 files the standard allows"), run.Output);
-        Assert.True(run.OutputContains("src/Graph/F01.cs: A change here reaches 16 of 16 files."), run.Output);
+        Assert.True(run.OutputContains("limits: average reachable files 8.00 files · largest cyclic group size 0 files"), run.Output);
+        Assert.True(run.OutputContains("average reachable files 8.50 files exceeds the 8.00 files the standard allows"), run.Output);
+        Assert.True(run.OutputContains("src/Graph/F01.cs: Dependencies from here reach 16 of 16 files."), run.Output);
         Assert.False(run.OutputContains("budget"), run.Output);
     }
 
     [Fact]
-    public void Mean_reach_of_exactly_eight_files_passes()
+    public void Average_reachable_files_of_exactly_eight_files_passes()
     {
         using var repository = Graph(Chain(15));
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("mean reach: 8.00 files (120 reachable file pairs / 15 files"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 8.00 files (120 reachable file pairs / 15 files"), run.Output);
         Assert.True(run.OutputContains("outcome: passed"), run.Output);
     }
 
@@ -38,13 +38,13 @@ public sealed class ComplexityLimitTests
     public void A_declared_ceiling_replaces_the_contract_defaults()
     {
         using var repository = Graph(
-            Frame.AllPresent().Settings("""{ "complexity.csharp": { "meanReach": 9, "coreSize": 2 } }"""),
+            Frame.AllPresent().Settings("""{ "complexity.csharp": { "averageReachableFiles": 9, "largestCyclicGroupSize": 2 } }"""),
             [.. Chain(16), ("X", ["Y"]), ("Y", ["X"])]);
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("limits: mean reach 9.00 files · core size 2 files"), run.Output);
+        Assert.True(run.OutputContains("limits: average reachable files 9.00 files · largest cyclic group size 2 files"), run.Output);
     }
 
     [Fact]
@@ -79,8 +79,8 @@ public sealed class ComplexityLimitTests
         var run = HarnessCli.RunVerbose(committed.Path, "check", "--only", Check, "--all");
 
         Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("src/App/Application/Example/F01.cs: A change here reaches 16 of 17 files."), run.Output);
-        Assert.False(run.OutputContains("src/App/Host/Program.cs: A change here reaches"), run.Output);
+        Assert.True(run.OutputContains("src/App/Application/Example/F01.cs: Dependencies from here reach 16 of 17 files."), run.Output);
+        Assert.False(run.OutputContains("src/App/Host/Program.cs: Dependencies from here reach"), run.Output);
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public sealed class ComplexityLimitTests
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("mean reach 8.50 files exceeds the 8.00 files"), run.Output);
+        Assert.True(run.OutputContains("average reachable files 8.50 files exceeds the 8.00 files"), run.Output);
         Assert.True(run.OutputContains("advisory"), run.Output);
     }
 
@@ -110,7 +110,7 @@ public sealed class ComplexityLimitTests
     public void A_tracked_budget_file_from_an_earlier_contract_is_incomplete_until_removed()
     {
         using var repository = Graph(("A", ["B"]), ("B", []))
-            .WriteFile(".harness.budget.json", """{ "complexity.csharp": { "meanReach": 1.5, "coreSize": 0 } }""")
+            .WriteFile(".harness.budget.json", """{ "complexity.csharp": { "averageReachableFiles": 1.5, "largestCyclicGroupSize": 0 } }""")
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
@@ -120,7 +120,7 @@ public sealed class ComplexityLimitTests
         Assert.True(run.OutputContains("git rm .harness.budget.json"), run.Output);
     }
 
-    /// <summary>F01 → F02 → … → Fn: mean reach is (n + 1) / 2, so 15 files sit exactly on the limit.</summary>
+    /// <summary>F01 → F02 → … → Fn: average reachable files is (n + 1) / 2, so 15 files sit exactly on the limit.</summary>
     private static (string Name, string[] Dependencies)[] Chain(int length)
         => Enumerable.Range(1, length)
             .Select(index => ($"F{index:00}", index == length ? Array.Empty<string>() : [$"F{index + 1:00}"]))

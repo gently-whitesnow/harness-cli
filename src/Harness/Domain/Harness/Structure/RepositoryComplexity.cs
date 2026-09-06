@@ -4,26 +4,26 @@ namespace Harness.Structure;
 internal sealed record RepositoryComplexity(
     int AuthoredFiles,
     long ReachablePairs,
-    int CoreFiles)
+    int LargestCyclicGroupSize)
 {
-    /// <summary>Files a change reaches on average: the file itself plus everything downstream.</summary>
-    public double MeanReach
+    /// <summary>Average number of reachable files: the file itself plus every transitive dependency.</summary>
+    public double AverageReachableFiles
         => AuthoredFiles == 0 ? 0 : (double)ReachablePairs / AuthoredFiles;
 
     public double PropagationCostPercentage
         => AuthoredFiles == 0 ? 0 : 100.0 * ReachablePairs / ((long)AuthoredFiles * AuthoredFiles);
 
-    public double CorePercentage
-        => AuthoredFiles == 0 ? 0 : 100.0 * CoreFiles / AuthoredFiles;
+    public double LargestCyclicGroupPercentage
+        => AuthoredFiles == 0 ? 0 : 100.0 * LargestCyclicGroupSize / AuthoredFiles;
 
     public static RepositoryComplexity Measure(SourceGraph graph)
     {
         var fileGraph = Build(graph);
         var analysis = Analyze(fileGraph.Adjacency);
-        return new RepositoryComplexity(fileGraph.Paths.Count, analysis.ReachablePairs, analysis.CoreFiles);
+        return new RepositoryComplexity(fileGraph.Paths.Count, analysis.ReachablePairs, analysis.LargestCyclicGroupSize);
     }
 
-    public static IReadOnlyList<string> LargestCore(SourceGraph graph)
+    public static IReadOnlyList<string> LargestCyclicGroup(SourceGraph graph)
     {
         var fileGraph = Build(graph);
         var analysis = Analyze(fileGraph.Adjacency);
@@ -37,7 +37,7 @@ internal sealed record RepositoryComplexity(
             .ToList() ?? [];
     }
 
-    /// <summary>Every measured file with |R(i)|, the files a change to it reaches, largest first.</summary>
+    /// <summary>Every measured file with |R(i)|, its reachable dependencies including itself, largest first.</summary>
     public static IReadOnlyList<FileReach> FileReaches(SourceGraph graph)
     {
         var fileGraph = Build(graph);
@@ -138,11 +138,11 @@ internal sealed record RepositoryComplexity(
             pairs += (long)components[from].Count * reachableFiles;
         }
 
-        var core = components.Where(component => component.Count > 1)
+        var largestCyclicGroupSize = components.Where(component => component.Count > 1)
             .Select(component => component.Count)
             .DefaultIfEmpty(0)
             .Max();
-        return new Analysis(components, componentOf, componentReach, pairs, core);
+        return new Analysis(components, componentOf, componentReach, pairs, largestCyclicGroupSize);
     }
 
     private static List<int> TopologicalOrder(
@@ -180,5 +180,5 @@ internal sealed record RepositoryComplexity(
         IReadOnlyList<int> ComponentOf,
         IReadOnlyList<int> ComponentReach,
         long ReachablePairs,
-        int CoreFiles);
+        int LargestCyclicGroupSize);
 }

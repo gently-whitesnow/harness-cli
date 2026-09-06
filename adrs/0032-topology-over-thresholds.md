@@ -64,7 +64,7 @@ import-linter (контракты над графом импортов), Tach (`
 - **Propagation cost** (MacCormack, Rusnak, Baldwin, Management Science 2006) —
   средняя доля системы, транзитивно достижимая из случайного файла. Ориентиры из
   литературы: Linux 5.16%, Mozilla до редизайна 17.35%, после — 2.78%.
-- **Core size** (Baldwin, MacCormack, Rusnak, Research Policy 2014) — размер
+- **Размер циклической группы** (Baldwin, MacCormack, Rusnak, Research Policy 2014) — размер
   крупнейшей циклической группы файлов. У файлов ядра ~3× плотность дефектов и до
   50% ниже продуктивность (Sturtevant, MIT 2013). «Ровное дерево» формально —
   ациклический DSM: ядро размера ~0, низкий propagation cost.
