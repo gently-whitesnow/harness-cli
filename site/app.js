@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 2.15.0 · no dependencies. */
+/* Harness CLI landing · contract 2.16.0 · no dependencies. */
 (function () {
   'use strict';
 
@@ -13,7 +13,7 @@
   const CHECKS = [
     { id: 'harness.config', group: 'common', axis: null, summary: 'Полный .harness.json в Git: версия, ответы и правила явно заданы для этого репозитория.', adr: ['0014-frame-answers-are-self-reported.md', '0016-versioned-frame-and-explicit-initialization.md'] },
     { id: 'architecture.sliced-dotnet', group: 'arch', axis: null, summary: 'Слои и слайсы sliced-dotnet/1: понятное место для кода и проверяемые границы импортов. Для standalone-библиотеки неприменима.', adr: ['0033-canonical-standard-over-declarations.md', '0041-layer-is-the-assembly.md', '0051-slices-in-the-layer-root.md'] },
-    { id: 'complexity.csharp', group: 'csharp', axis: 'csharp', summary: 'Ограничивает связанность файлов: mean reach ≤ 8, крупнейшая группа взаимозависимых файлов (core size) — 0 по умолчанию.', adr: ['0032-topology-over-thresholds.md', '0042-dsm-over-the-product-in-files.md', '0048-dsm-product-boundary-without-a-zone.md', '0052-dsm-ceiling-is-a-declared-setting.md'] },
+    { id: 'complexity.csharp', group: 'csharp', axis: 'csharp', summary: 'Ограничивает связанность файлов: средняя достижимость файлов ≤ 8, размер циклической группы — 0 по умолчанию.', adr: ['0032-topology-over-thresholds.md', '0042-dsm-over-the-product-in-files.md', '0048-dsm-product-boundary-without-a-zone.md', '0052-dsm-ceiling-is-a-declared-setting.md'] },
     { id: 'docs.policy', group: 'common', axis: null, summary: 'Короткие AGENTS.md и README.md — до 150 строк. CLAUDE.md ссылается на соседний AGENTS.md; решения живут в adrs/, навыки — в SKILL.md. Прочий Markdown запрещён.', adr: ['0010-documentation-policy.md', '0025-nested-agent-documents.md'] },
     { id: 'commits.setup', group: 'common', axis: null, summary: 'Проверяет установку шаблона коммитов и commit-msg hook на весь клон. Подготовка: harness setup.', adr: ['0020-commit-message-contract-and-clone-setup.md', '0052-hook-resolves-the-harness-at-commit-time.md'] },
     { id: 'comments.csharp', group: 'csharp', axis: 'csharp', summary: 'Ограничивает плотность комментариев: по умолчанию находка от 10 строк комментариев, если их больше 8% авторских строк.', adr: ['0028-recalibrated-csharp-defaults.md', '0043-comment-density-across-languages.md'] },

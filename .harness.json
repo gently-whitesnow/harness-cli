@@ -1,5 +1,5 @@
 {
-  "version": "2.15.0",
+  "version": "2.16.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -55,8 +55,8 @@
       "minimumTokens": 90
     },
     "complexity.csharp": {
-      "meanReach": 8.0,
-      "coreSize": 0
+      "averageReachableFiles": 8.0,
+      "largestCyclicGroupSize": 0
     },
     "commits": {
       "language": "ru",

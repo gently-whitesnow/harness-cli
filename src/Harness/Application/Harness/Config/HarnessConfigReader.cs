@@ -34,7 +34,7 @@ internal static class HarnessConfigReader
         if (repository.TrackedEntries.Any(candidate => candidate.Path == HarnessConfig.RetiredBudgetFileName))
         {
             return (null, $"'{HarnessConfig.RetiredBudgetFileName}' is tracked, but this contract keeps no DSM budget: "
-                + "complexity.csharp compares mean reach and core size with the limits built into the binary. "
+                + "complexity.csharp compares average reachable files and largest cyclic group size with the limits declared in settings. "
                 + $"Run `git rm {HarnessConfig.RetiredBudgetFileName}` and commit.");
         }
 

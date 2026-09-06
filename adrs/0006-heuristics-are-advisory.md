@@ -38,7 +38,7 @@ logical LOC, lexical branch tokens, constructor parameters, public members, `usi
 полный измеренный список.
 
 Контракт 2.0 применяет это правило к DSM-метрикам: `explain complexity.csharp` называет
-формулы propagation cost/core size и их ограничения; решение об их ratchet-enforcement
+формулы propagation cost/размер циклической группы и их ограничения; решение об их ratchet-enforcement
 принадлежит ADR-0032, а не этому историческому правилу эвристик.
 
 ## Consequences

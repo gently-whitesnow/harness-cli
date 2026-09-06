@@ -117,30 +117,30 @@ internal static class HarnessSettingsReader
             return (null, $"'settings.{Complexity}' must be present");
         }
 
-        var failure = ValidateObject(declared, Complexity, ["meanReach", "coreSize"], null);
+        var failure = ValidateObject(declared, Complexity, ["averageReachableFiles", "largestCyclicGroupSize"], null);
         if (failure is not null)
         {
             return (null, failure);
         }
 
-        var at = $"settings.{Complexity}.meanReach";
-        if (!declared.TryGetProperty("meanReach", out var reach))
+        var at = $"settings.{Complexity}.averageReachableFiles";
+        if (!declared.TryGetProperty("averageReachableFiles", out var reach))
         {
             return (null, $"'{at}' must be present");
         }
 
         if (reach.ValueKind != JsonValueKind.Number
-            || !reach.TryGetDouble(out var meanReach)
-            || !double.IsFinite(meanReach)
-            || meanReach < 1)
+            || !reach.TryGetDouble(out var averageReachableFiles)
+            || !double.IsFinite(averageReachableFiles)
+            || averageReachableFiles < 1)
         {
             return (null, $"'{at}' must be a number of files not below 1; a file always reaches itself");
         }
 
-        var (coreSize, coreFailure) = ReadInt(declared, Complexity, "coreSize", null);
-        return coreFailure is not null
-            ? (null, coreFailure)
-            : (new ComplexitySettings(meanReach, coreSize), null);
+        var (largestCyclicGroupSize, cyclicGroupFailure) = ReadInt(declared, Complexity, "largestCyclicGroupSize", null);
+        return cyclicGroupFailure is not null
+            ? (null, cyclicGroupFailure)
+            : (new ComplexitySettings(averageReachableFiles, largestCyclicGroupSize), null);
     }
 
     private static (CommitSettings? Settings, string? Failure) ReadCommits(JsonElement settings)

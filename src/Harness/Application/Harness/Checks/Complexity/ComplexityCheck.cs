@@ -42,12 +42,12 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
         var limit = context.Config?.Settings.Complexity ?? ComplexitySettings.Default;
         var observations = new List<string>
         {
-            $"limits: mean reach {Files(limit.MeanReach)} · core size {limit.CoreSize} files",
-            $"mean reach: {Files(metric.MeanReach)} "
+            $"limits: average reachable files {Files(limit.AverageReachableFiles)} · largest cyclic group size {limit.LargestCyclicGroupSize} files",
+            $"average reachable files: {Files(metric.AverageReachableFiles)} "
                 + $"({metric.ReachablePairs} reachable file pairs / {metric.AuthoredFiles} files; "
                 + $"propagation cost {Percent(metric.PropagationCostPercentage)})",
-            $"core size: {metric.CoreFiles} files "
-                + $"({Percent(metric.CorePercentage)} of {metric.AuthoredFiles} files)",
+            $"largest cyclic group size: {metric.LargestCyclicGroupSize} files "
+                + $"({Percent(metric.LargestCyclicGroupPercentage)} of {metric.AuthoredFiles} files)",
             scope.Describe(),
         };
         if (scope.DescribeMarkedGenerated() is { } marked)
@@ -56,23 +56,23 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
         }
 
         var findings = new List<Finding>();
-        if (metric.MeanReach > limit.MeanReach)
+        if (metric.AverageReachableFiles > limit.AverageReachableFiles)
         {
             findings.Add(new Finding(
                 FindingSeverity.Blocking,
                 scope.Location,
-                $"mean reach {Files(metric.MeanReach)} exceeds the {Files(limit.MeanReach)} the "
+                $"average reachable files {Files(metric.AverageReachableFiles)} exceeds the {Files(limit.AverageReachableFiles)} the "
                     + "standard allows; cut edges from the hubs named below or change the tracked policy knowingly."));
             findings.AddRange(Hubs(scope));
         }
 
-        if (metric.CoreFiles > limit.CoreSize)
+        if (metric.LargestCyclicGroupSize > limit.LargestCyclicGroupSize)
         {
-            findings.AddRange(RepositoryComplexity.LargestCore(scope.Graph).Select(path => new Finding(
+            findings.AddRange(RepositoryComplexity.LargestCyclicGroup(scope.Graph).Select(path => new Finding(
                 FindingSeverity.Blocking,
                 path,
-                $"This file belongs to the largest SCC ({metric.CoreFiles} files); the standard allows "
-                    + $"{limit.CoreSize} — break the cycle.")));
+                $"This file belongs to the largest SCC ({metric.LargestCyclicGroupSize} files); the standard allows "
+                    + $"{limit.LargestCyclicGroupSize} — break the cycle.")));
         }
 
         return CheckEvaluation.From(findings, observations: observations);
@@ -91,7 +91,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
             .Select(file => new Finding(
                 FindingSeverity.Blocking,
                 file.Path,
-                $"A change here reaches {file.Files} of {total} files."));
+                $"Dependencies from here reach {file.Files} of {total} files."));
     }
 
     private static string Files(double value)

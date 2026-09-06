@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 переживает удаление worktree и не зависит от того, какой бинарь выполнял setup. Не найдя ни одного,
 hook отказывает в коммите и печатает оба просмотренных места. User-каталоги и tracked-файлы не меняются.
 
-`HARNESS_VERSION=2.15.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+`HARNESS_VERSION=2.16.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
@@ -61,8 +61,8 @@ application|library`. `init` также активирует шаблон ком
 его не запускает и не инспектирует. Здесь это `./verify.sh`; commit range задаёт отдельно CI.
 
 Применимый `complexity.csharp` измеряет файлы внутри архитектурных зон sliced-dotnet (тесты вне
-зоны не входят) и сравнивает mean reach — сколько файлов достигает изменение в среднем — и core size
-с потолком из `settings."complexity.csharp"`: `meanReach` и `coreSize`, дефолт контракта 8.0 файла и 0,
+зоны не входят) и сравнивает среднюю достижимость файлов — среднее число файлов, достижимых по зависимостям, включая исходный, — и размер циклической группы
+с потолком из `settings."complexity.csharp"`: `averageReachableFiles` и `largestCyclicGroupSize`, дефолт контракта 8.0 файла и 0,
 значения sliced-dotnet/1. Отдельного файла и команды, двигающей число, нет: потолок правится вместе с
 остальными settings одним reviewable-диффом. Превышение блокирует `check`, а отчёт называет
 файлы вне `Host` с наибольшей достижимостью, чтобы было видно, какие рёбра резать.
@@ -91,7 +91,7 @@ GitLab:
 
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:2.15.0
+  image: ghcr.io/gently-whitesnow/harness:2.16.0
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"
@@ -127,7 +127,7 @@ GitHub Actions или любой контур без доступа к ghcr.io:
 - форма sliced-dotnet: канонические слои, слайсы, направления Proven-зависимостей и
   неблокирующие структурные advisories: группировка плоских каталогов, плотность
   X-контрактов, словарь имён по всему zone;
-- DSM-сложность: mean reach и core size файлового графа продукта, propagation cost как справка;
+- DSM-сложность: средняя достижимость файлов и размер циклической группы файлового графа продукта, propagation cost как справка;
 - не больше одного верхнеуровневого C# `class` или `record` в authored-файле;
 - нормализованные межфайловые повторы C#;
 - документационная политика: один корневой навигационный документ и симлинки на него;

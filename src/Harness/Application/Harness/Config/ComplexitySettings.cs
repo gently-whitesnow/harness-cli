@@ -5,7 +5,7 @@ namespace Harness.Config;
 /// and files in the largest cyclic group. The contract defaults describe sliced-dotnet/1, where
 /// reach is bounded by one slice plus the composition root and the product graph is a DAG.
 /// </summary>
-internal sealed record ComplexitySettings(double MeanReach, int CoreSize)
+internal sealed record ComplexitySettings(double AverageReachableFiles, int LargestCyclicGroupSize)
 {
-    public static ComplexitySettings Default { get; } = new(MeanReach: 8.0, CoreSize: 0);
+    public static ComplexitySettings Default { get; } = new(AverageReachableFiles: 8.0, LargestCyclicGroupSize: 0);
 }

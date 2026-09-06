@@ -16,7 +16,7 @@ public sealed class ComplexityTests
     }
 
     [Fact]
-    public void A_three_file_tree_has_the_manually_calculated_mean_reach_and_no_core()
+    public void A_three_file_tree_has_the_manually_calculated_average_reachable_files_and_no_cyclic_group()
     {
         using var repository = Graph(
             ("A", ["B"]),
@@ -26,13 +26,13 @@ public sealed class ComplexityTests
         var run = Measure(repository);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("mean reach: 2.00 files (6 reachable file pairs / 3 files; propagation cost 66.67%)"), run.Output);
-        Assert.True(run.OutputContains("core size: 0 files (0.00% of 3 files)"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 2.00 files (6 reachable file pairs / 3 files; propagation cost 66.67%)"), run.Output);
+        Assert.True(run.OutputContains("largest cyclic group size: 0 files (0.00% of 3 files)"), run.Output);
         Assert.True(run.OutputContains("scope: 3 authored files (no architecture zone; the repository is measured whole)"), run.Output);
     }
 
     [Fact]
-    public void A_cycle_of_n_files_has_full_propagation_and_an_n_file_core()
+    public void A_cycle_of_n_files_has_full_propagation_and_an_n_file_cyclic_group()
     {
         using var repository = Graph(
             ("A", ["B"]),
@@ -41,12 +41,26 @@ public sealed class ComplexityTests
 
         var run = Measure(repository);
 
-        Assert.True(run.OutputContains("mean reach: 3.00 files (9 reachable file pairs / 3 files; propagation cost 100.00%)"), run.Output);
-        Assert.True(run.OutputContains("core size: 3 files (100.00% of 3 files)"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 3.00 files (9 reachable file pairs / 3 files; propagation cost 100.00%)"), run.Output);
+        Assert.True(run.OutputContains("largest cyclic group size: 3 files (100.00% of 3 files)"), run.Output);
     }
 
     [Fact]
-    public void A_complete_graph_has_full_propagation_and_a_full_core()
+    public void Intersecting_cycles_measure_the_whole_group_not_a_simple_cycle_length()
+    {
+        using var repository = Graph(
+            ("A", ["B"]),
+            ("B", ["A", "C"]),
+            ("C", ["B"]));
+
+        var run = Measure(repository);
+
+        Assert.True(run.OutputContains("largest cyclic group size: 3 files"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 3.00 files"), run.Output);
+    }
+
+    [Fact]
+    public void A_complete_graph_has_full_propagation_and_a_full_cyclic_group()
     {
         using var repository = Graph(
             ("A", ["B", "C"]),
@@ -55,12 +69,12 @@ public sealed class ComplexityTests
 
         var run = Measure(repository);
 
-        Assert.True(run.OutputContains("mean reach: 3.00 files (9 reachable file pairs / 3 files; propagation cost 100.00%)"), run.Output);
-        Assert.True(run.OutputContains("core size: 3 files (100.00% of 3 files)"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 3.00 files (9 reachable file pairs / 3 files; propagation cost 100.00%)"), run.Output);
+        Assert.True(run.OutputContains("largest cyclic group size: 3 files (100.00% of 3 files)"), run.Output);
     }
 
     [Fact]
-    public void A_core_with_a_periphery_weights_each_component_by_its_file_count()
+    public void A_cyclic_group_with_a_periphery_weights_each_component_by_its_file_count()
     {
         using var repository = Graph(
             ("A", ["B"]),
@@ -70,8 +84,8 @@ public sealed class ComplexityTests
 
         var run = Measure(repository);
 
-        Assert.True(run.OutputContains("mean reach: 2.00 files (8 reachable file pairs / 4 files; propagation cost 50.00%)"), run.Output);
-        Assert.True(run.OutputContains("core size: 2 files (50.00% of 4 files)"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 2.00 files (8 reachable file pairs / 4 files; propagation cost 50.00%)"), run.Output);
+        Assert.True(run.OutputContains("largest cyclic group size: 2 files (50.00% of 4 files)"), run.Output);
     }
 
     [Fact]
@@ -85,8 +99,8 @@ public sealed class ComplexityTests
 
         var run = Measure(repository);
 
-        Assert.True(run.OutputContains("mean reach: 1.00 files (4 reachable file pairs / 4 files; propagation cost 25.00%)"), run.Output);
-        Assert.True(run.OutputContains("core size: 0 files (0.00% of 4 files)"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 1.00 files (4 reachable file pairs / 4 files; propagation cost 25.00%)"), run.Output);
+        Assert.True(run.OutputContains("largest cyclic group size: 0 files (0.00% of 4 files)"), run.Output);
     }
 
     [Fact]
@@ -101,8 +115,8 @@ public sealed class ComplexityTests
 
         Assert.Equal(0, first.ExitCode);
         Assert.Equal(first.Output, second.Output);
-        Assert.True(first.OutputContains("mean reach:"), first.Output);
-        Assert.True(first.OutputContains("core size:"), first.Output);
+        Assert.True(first.OutputContains("average reachable files:"), first.Output);
+        Assert.True(first.OutputContains("largest cyclic group size:"), first.Output);
     }
 
     [Fact]
@@ -113,9 +127,9 @@ public sealed class ComplexityTests
         var run = HarnessCli.Run(repository.Path, "explain", Check);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("Mean reach formula"), run.Output);
+        Assert.True(run.OutputContains("Average reachable files formula"), run.Output);
         Assert.True(run.OutputContains("Scope"), run.Output);
-        Assert.True(run.OutputContains("Core size formula"), run.Output);
+        Assert.True(run.OutputContains("Largest cyclic group size formula"), run.Output);
         Assert.True(run.OutputContains("Why the limit is a constant"), run.Output);
         Assert.True(run.OutputContains("Proven"), run.Output);
         Assert.True(run.OutputContains("10.1287/mnsc.1060.0552"), run.Output);
@@ -144,7 +158,7 @@ public sealed class ComplexityTests
         var run = Measure(repository);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("mean reach: 1.33 files (4 reachable file pairs / 3 files; propagation cost 44.44%)"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 1.33 files (4 reachable file pairs / 3 files; propagation cost 44.44%)"), run.Output);
         Assert.True(run.OutputContains("scope: 3 files inside architecture zone [src/App]; 1 authored file outside the zones is not measured"), run.Output);
     }
 
@@ -159,7 +173,7 @@ public sealed class ComplexityTests
         var run = Measure(repository);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("mean reach: 1.50 files (3 reachable file pairs / 2 files"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 1.50 files (3 reachable file pairs / 2 files"), run.Output);
         Assert.True(run.OutputContains("scope: 2 authored files (no architecture zone"), run.Output);
     }
 
@@ -178,7 +192,7 @@ public sealed class ComplexityTests
         var run = Measure(repository);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("mean reach: 1.50 files (3 reachable file pairs / 2 files"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 1.50 files (3 reachable file pairs / 2 files"), run.Output);
         Assert.True(run.OutputContains("scope: 2 authored files outside 1 test project [tests/Lib.Tests] (no architecture zone); 2 authored files under test projects are not measured"), run.Output);
     }
 
@@ -240,7 +254,7 @@ public sealed class ComplexityTests
         var run = Measure(repository);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("mean reach: 1.50 files (3 reachable file pairs / 2 files"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 1.50 files (3 reachable file pairs / 2 files"), run.Output);
         Assert.True(
             run.OutputContains("generated markers: 1 tracked C# file with an <auto-generated> header is not read: src/Graph/Hub.cs"),
             run.Output);

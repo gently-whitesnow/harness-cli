@@ -71,8 +71,8 @@ public sealed class InitCommandTests
         AssertSection(settings, "comments.yaml", ("minimumCommentLines", 10), ("percentageLimit", 8));
         AssertSection(settings, "comments.typescript", ("minimumCommentLines", 10), ("percentageLimit", 8));
         AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));
-        Assert.Equal(8.0, settings.GetProperty("complexity.csharp").GetProperty("meanReach").GetDouble());
-        Assert.Equal(0, settings.GetProperty("complexity.csharp").GetProperty("coreSize").GetInt32());
+        Assert.Equal(8.0, settings.GetProperty("complexity.csharp").GetProperty("averageReachableFiles").GetDouble());
+        Assert.Equal(0, settings.GetProperty("complexity.csharp").GetProperty("largestCyclicGroupSize").GetInt32());
         Assert.Equal("ru", settings
             .GetProperty("commits").GetProperty("language").GetString());
         Assert.True(settings
@@ -201,7 +201,7 @@ public sealed class InitCommandTests
 
         Assert.Equal(0, check.ExitCode);
         Assert.Contains("architecture map: zone src/App", check.Output, StringComparison.Ordinal);
-        Assert.Contains("limits: mean reach 8.00 files", check.Output, StringComparison.Ordinal);
+        Assert.Contains("limits: average reachable files 8.00 files", check.Output, StringComparison.Ordinal);
     }
 
     [Fact]

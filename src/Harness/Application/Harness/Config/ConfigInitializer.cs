@@ -136,8 +136,8 @@ internal static class ConfigInitializer
                   "minimumTokens": {{defaults.Duplication.MinimumTokens}}
                 },
                 "complexity.csharp": {
-                  "meanReach": {{defaults.Complexity.MeanReach.ToString("0.0", CultureInfo.InvariantCulture)}},
-                  "coreSize": {{defaults.Complexity.CoreSize}}
+                  "averageReachableFiles": {{defaults.Complexity.AverageReachableFiles.ToString("0.0", CultureInfo.InvariantCulture)}},
+                  "largestCyclicGroupSize": {{defaults.Complexity.LargestCyclicGroupSize}}
                 },
                 "commits": {
                   "language": "{{new CommitSettings(commitLanguage, defaults.Commits.RequireSetup).Code}}",

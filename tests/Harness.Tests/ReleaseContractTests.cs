@@ -83,6 +83,28 @@ public sealed class ReleaseContractTests
     }
 
     [Fact]
+    public void Upgrade_names_the_dsm_keys_but_preserves_values_until_manual_migration()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("2.15.0")
+            .Settings("""{ "complexity.csharp": { "meanReach": 9, "coreSize": 2 } }"""));
+        var before = File.ReadAllText(repository.Absolute(".harness.json"));
+
+        var run = HarnessCli.Run(repository.Path, "upgrade");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("meanReach to averageReachableFiles", run.Output, StringComparison.Ordinal);
+        Assert.Contains("to largestCyclicGroupSize", run.Output, StringComparison.Ordinal);
+        Assert.Equal(before.Replace("2.15.0", Release.Current, StringComparison.Ordinal),
+            File.ReadAllText(repository.Absolute(".harness.json")));
+        Assert.Equal(2, HarnessCli.Run(repository.Path, "check").ExitCode);
+
+        repository.WriteFile(".harness.json", File.ReadAllText(repository.Absolute(".harness.json"))
+            .Replace("meanReach", "averageReachableFiles", StringComparison.Ordinal)
+            .Replace("coreSize", "largestCyclicGroupSize", StringComparison.Ordinal));
+        Assert.Equal(0, HarnessCli.Run(repository.Path, "check").ExitCode);
+    }
+
+    [Fact]
     public void Upgrade_dry_run_describes_the_migration_without_changing_the_pin()
     {
         using var repository = Fixtures.Compliant(Frame.AllPresent().Version("1.5.0"));
