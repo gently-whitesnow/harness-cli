@@ -89,14 +89,14 @@ internal static class ConsoleReport
 
         text.Append('\n');
 
-        foreach (var observation in gate.Observations)
-        {
-            text.Append("    ").Append(observation).Append('\n');
-        }
-
         if (!verbose)
         {
             return;
+        }
+
+        foreach (var detail in gate.Details)
+        {
+            text.Append("    ").Append(detail).Append('\n');
         }
 
         text.Append("    outcome: ").Append(Label(gate.Outcome)).Append('\n');

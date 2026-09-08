@@ -5,6 +5,9 @@
 Accepted. Дополняет cross-API правило `sliced-dotnet/1` из
 [ADR-0033](0033-canonical-standard-over-declarations.md) неблокирующими сигналами.
 
+Эвристические advisories отменены [ADR-0053](0053-explicit-architecture-checks.md)
+в контракте 2.17.0; доказательные правила выделены в самостоятельные проверки.
+
 ## Context
 
 Feature-Sliced Design 2.1 разрешает `@x`-нотацию только на слое entities: у FSD есть

@@ -40,7 +40,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
             projects.Select(project => (project.Path, DotNetRepository.IsTestProject(project))).ToList());
         var metric = RepositoryComplexity.Measure(scope.Graph);
         var limit = context.Config?.Settings.Complexity ?? ComplexitySettings.Default;
-        var observations = new List<string>
+        var details = new List<string>
         {
             $"limits: average reachable files {Files(limit.AverageReachableFiles)} · largest cyclic group size {limit.LargestCyclicGroupSize} files",
             $"average reachable files: {Files(metric.AverageReachableFiles)} "
@@ -52,7 +52,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
         };
         if (scope.DescribeMarkedGenerated() is { } marked)
         {
-            observations.Add(marked);
+            details.Add(marked);
         }
 
         var findings = new List<Finding>();
@@ -75,7 +75,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
                     + $"{limit.LargestCyclicGroupSize} — break the cycle.")));
         }
 
-        return CheckEvaluation.From(findings, observations: observations);
+        return CheckEvaluation.From(findings, details: details);
     }
 
     /// <summary>

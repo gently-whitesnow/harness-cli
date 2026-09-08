@@ -5,15 +5,9 @@ using Harness.Structure;
 
 namespace Harness.Checks.Architecture;
 
-internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepositoryCheck
+internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer, string rule) : IRepositoryCheck
 {
     private const int ShownDependencyGroups = 5;
-
-    // ADR-0038: adapted from Steiger's shared-lib-grouping THRESHOLD of direct children.
-    private const int FlatDirectoryFileLimit = 20;
-
-    // ADR-0039: distinct cross-API consumers that make a slice look like a lower layer.
-    private const int CrossApiFanInLimit = 4;
 
     // Mirrors the generated-suffix judgement of the C# source reader.
     private static readonly string[] GeneratedSourceSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
@@ -86,39 +80,52 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             ["Infrastructure"] = ["Application", "Domain"],
         };
 
-    public string Id => "architecture.sliced-dotnet";
+    public const string Family = "architecture.sliced-dotnet";
 
-    public string Group => "architecture";
+    public static readonly IReadOnlyDictionary<string, string> Rules = new Dictionary<string, string>
+    {
+        ["zone-shape"] = "canonical zones, required layers and source placement",
+        ["slice-shape"] = "slice groups, input mirrors and slice placement",
+        ["segment-names"] = "declared segment and slice naming vocabulary",
+        ["layer-assemblies"] = "one project per layer, owned compilation and project references",
+        ["dependency-direction"] = "source dependencies follow the layer DAG and zone boundary",
+        ["slice-isolation"] = "same-layer slices communicate through explicit cross-API",
+        ["public-api"] = "Application slice boundaries use Contracts; layers publish no API",
+        ["cross-api"] = "X contracts are imported only by their named consumer or Host",
+    };
 
-    public IReadOnlyList<EvidenceFile> Evidence => [ProjectEvidence];
+    public string Id => $"{Family}.{rule}";
 
-    public string Summary => "sliced-dotnet zones, layers and slices";
+    public string Group => Family;
 
-    public string Explanation =>
+    public IReadOnlyList<EvidenceFile> Evidence => rule == "layer-assemblies" ? [ProjectEvidence] : [];
+
+    public string Summary => Rules[rule];
+
+    public string Explanation => $"{Id}: {Summary}\n\n" +
         """
         Rationale
           The sliced-dotnet/1 standard makes the tracked directory tree the architecture map.
           Every application uses the same layer vocabulary, so a review does not depend on a
           repository-specific declaration. This is tier 1 of the contract 2.0 model: immutable
-          topology invariants. Tier 2 is the DSM held under the constant limits of the standard;
+          topology invariants. Tier 2 is the DSM held under the declared settings limits;
           tier 3 is explicit repository policy. ADR-0032 defines the tiers, ADR-0033 defines sliced-dotnet and ADR-0051 puts
           the slices of sliced-dotnet/1 directly in the layer root.
 
         What it reads
-          Every tracked path in Git, the non-generated C# sources used by the dependency
-          graph, and every tracked *.csproj as XML — the way the .NET policy checks of
-          ADR-0019 read it, without MSBuild evaluation. A directory containing Application/ starts one zone. The check discovers
+          The family reads tracked paths and the non-generated C# dependency graph.
+          Only layer-assemblies reads tracked *.csproj XML, without MSBuild evaluation.
+          Segment-names reads paths alone. The other checks share one source graph.
+          A directory containing Application/ starts one zone. The family discovers
           canonical layer directories and the slices directly below Application/, including one
           optional grouping level. Dependency edges are lexical evidence: only Proven edges can fail this
-          fitness function; Inferred edges are ignored by blocking invariants. The advisory
-          insignificant-slice convention accepts both Proven and Inferred resolved edges from the
-          slice's own input mirrors to avoid claiming that a referenced slice is unused.
+          fitness function; Inferred edges are ignored. The graph is shared within one run.
 
         What it accepts
           Every zone contains Host, Application and at least one of Api or Consumers. Every
           present layer contains a tracked file other than .gitkeep, .keep or .gitignore, and
           every directory directly below a zone is a canonical layer. The architecture map is
-          printed on every attempted run, including nested paths that would otherwise disappear.
+          printed with --verbose, including nested paths that would otherwise disappear.
 
           The layer DAG is an invariant, not a score:
             Host           -> every layer
@@ -176,25 +183,13 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           part of this .NET standard.
           An essence-based leaf below a slice group, and an essence-named directory in the root of
           a mirror layer, are rejected as segments on a sliced dimension, following Steiger's
-          no-segments-on-sliced-layers rule. The check still advises on slices without a resolved
-          incoming reference from their own input mirror, mixed singular/plural names and more
-          than 20 ungrouped slices.
-          Five further structure conventions are printed as advisory observations under every
-          policy, including required: a directory anywhere in the zone that directly holds 20 or
-          more authored .cs files (flat-directory-grouping, adapting Steiger's shared-lib-grouping
-          threshold), a pair of slices publishing cross-APIs for each other (mutual-cross-api),
-          a slice whose cross-APIs are consumed by 4 or more distinct slices (cross-api-fan-in) —
-          the density of the X graph is the only layering signal on the single slice layer — an
-          essence-named directory at any depth outside the positions the segment rules already
-          classify (directories-by-purpose), a single group holding every slice of the zone
-          (repetitive-naming: the group name repeats on every slice and carries no information)
-          and a direct segment that repeats the name of its own slice (ambiguous-slice-names).
-          These observations never change the exit code.
+          no-segments-on-sliced-layers rule. These are explicit vocabulary rules; no naming,
+          size or cross-API density heuristic is reported as an architectural problem.
 
         Policy
           A violation is blocking when the tracked policy for this check is required, and no
           path, file or finding is exempt from it. A repository that has not moved to the
-          standard yet may run the whole check `advisory` or `off`; that broader decision is one
+          standard yet may run each individual check `advisory` or `off`; that broader decision is one
           reviewable line in the tracked frame and the report states it on every run.
 
         Remediation
@@ -216,20 +211,18 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
           after the purpose it serves. If the name is a leaf below a slice group, either choose a
           business slice name or move the segment inside a named slice. These naming checks expose
           structural ambiguity; they do not prove semantic slice cohesion.
-          A type-like name in a member access can look connected to the lexical reader. That
-          Inferred edge cannot produce a blocking finding, but it can establish a reference for
-          insignificant-slice; inspect the named files behind every reported Proven violation.
+          Inspect the named files behind every reported Proven violation.
+          Select all architecture checks with architecture or architecture.sliced-dotnet;
+          policy accepts only the individual IDs, never an aggregate switch.
 
         Decisions
           adrs/0032-topology-over-thresholds.md
           adrs/0033-canonical-standard-over-declarations.md
           adrs/0036-input-layers-read-domain.md
           adrs/0037-segments-by-purpose.md
-          adrs/0038-flat-directory-grouping.md
-          adrs/0039-cross-api-density.md
-          adrs/0040-zone-wide-vocabulary.md
           adrs/0041-layer-is-the-assembly.md
           adrs/0051-slices-in-the-layer-root.md
+          adrs/0053-explicit-architecture-checks.md
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)
@@ -255,106 +248,80 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         if (zones.Count == 0)
         {
             return CheckEvaluation.From(
-                [Block(".", "no architecture zone found; sliced-dotnet/1 requires a directory containing Application/")],
-                observations: ["architecture map: no zones"]);
-        }
-
-        var (projects, projectFailure) = ReadProjects(context);
-        if (projectFailure is not null)
-        {
-            return CheckEvaluation.Incomplete(projectFailure);
+                rule == "zone-shape"
+                    ? [Block(".", "no architecture zone found; sliced-dotnet/1 requires a directory containing Application/")]
+                    : [],
+                details: ["architecture map: no zones"]);
         }
 
         var shapeFindings = new List<Finding>();
-        var segmentFindings = new List<Finding>();
+        var sliceFindings = new List<Finding>();
+        var apiFindings = new List<Finding>();
+        var findings = new List<Finding>();
         var maps = new List<string>();
         var slicesByZone = new Dictionary<string, SliceMap>(StringComparer.Ordinal);
         foreach (var zone in zones)
         {
             var map = InspectZone(zone, paths, shapeFindings, maps);
             slicesByZone[zone] = map;
-            InspectLayerProjects(zone, zones, paths, projects, shapeFindings);
-            InspectSegmentPurposes(zone, map, paths, segmentFindings);
-            InspectStructureAdvisories(zone, map, paths, maps);
+            InspectMirrors(zone, paths.Select(path => Relative(path, zone)).ToList(), map, sliceFindings);
+            InspectLayerPublicApi(zone, paths.Select(path => Relative(path, zone)).ToList(), apiFindings);
+            if (rule == "segment-names")
+            {
+                InspectSegmentPurposes(zone, map, paths, findings);
+            }
         }
 
-        if (shapeFindings.Count > 0)
+        if (rule == "layer-assemblies")
         {
-            return CheckEvaluation.From(
-                [.. shapeFindings, .. segmentFindings],
-                observations: maps);
+            var (projects, projectFailure) = ReadProjects(context);
+            if (projectFailure is not null)
+            {
+                return CheckEvaluation.Incomplete(projectFailure, details: maps);
+            }
+            foreach (var zone in zones)
+            {
+                InspectLayerProjects(zone, zones, paths, projects, findings);
+            }
+            return CheckEvaluation.From(findings, details: maps);
+        }
+        if (rule == "segment-names")
+        {
+            return CheckEvaluation.From(findings, details: maps);
         }
 
+        findings.AddRange(rule switch
+        {
+            "zone-shape" => shapeFindings,
+            "slice-shape" => sliceFindings,
+            "public-api" => apiFindings,
+            _ => [],
+        });
         var (graph, failure) = analyzer.ReadGraph(context.Repository);
         if (graph is null)
         {
-            return CheckEvaluation.Incomplete(failure!, segmentFindings, maps);
+            return CheckEvaluation.Incomplete(failure!, findings, maps);
         }
-
         var dependencies = InspectDependencies(
             zones,
             slicesByZone.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value.Slices),
-            graph);
-        maps.AddRange(InspectConventions(zones, slicesByZone, paths, graph));
-        var detailed = segmentFindings
-            .Concat(dependencies.Select(dependency => dependency.Finding))
-            .ToList();
-        var summary = segmentFindings
-            .Concat(Summarize(dependencies))
-            .ToList();
-
-        return CheckEvaluation.From(summary, detailedFindings: detailed, observations: maps);
+            graph).Where(dependency => Owns(dependency.Group.Kind)).ToList();
+        return CheckEvaluation.From(
+            [.. findings, .. Summarize(dependencies)],
+            detailedFindings: [.. findings, .. dependencies.Select(dependency => dependency.Finding)],
+            details: maps);
     }
 
-    private static List<string> InspectConventions(
-        IReadOnlyList<string> zones,
-        IReadOnlyDictionary<string, SliceMap> slicesByZone,
-        IReadOnlyList<string> paths,
-        SourceGraph graph)
+    private bool Owns(string kind) => rule switch
     {
-        var observations = new List<string>();
-        foreach (var zone in zones)
-        {
-            var map = slicesByZone[zone];
-            var entries = paths
-                .Select(path => Relative(path, zone))
-                .Where(path => path.Length > 0 && !path.StartsWith("../", StringComparison.Ordinal))
-                .ToList();
-
-            foreach (var slice in map.Slices)
-            {
-                var referencedByOwnInput = graph.Edges.Any(edge =>
-                {
-                    var from = Address(edge.From.Path, zones);
-                    var to = Address(edge.To.Path, zones);
-                    return string.Equals(from.Zone, zone, StringComparison.Ordinal)
-                        && from.Layer is "Api" or "Consumers"
-                        && string.Equals(SliceOf(from, map.Slices)?.Name, slice, StringComparison.Ordinal)
-                        && to.Layer == "Application"
-                        && string.Equals(SliceOf(to, map.Slices)?.Name, slice, StringComparison.Ordinal);
-                });
-                if (!referencedByOwnInput)
-                {
-                    observations.Add(
-                        $"advisory {At(zone, $"Application/{slice}")}: insignificant-slice: slice '{slice}', "
-                        + $"dimension 'Application', has no resolved incoming reference from its own "
-                        + $"Api/{slice}/ or Consumers/{slice}/ mirror");
-                }
-
-            }
-
-            AddPluralizationAdvice(zone, map, observations);
-            var ungrouped = map.Slices.Where(slice => !slice.Contains('/')).ToList();
-            if (ungrouped.Count > 20)
-            {
-                observations.Add(
-                    $"advisory {At(zone, "Application")}: excessive-slicing: dimension 'Application' has "
-                    + $"{ungrouped.Count} ungrouped slices; group slices by business area when the flat list exceeds 20");
-            }
-        }
-
-        return observations;
-    }
+        "zone-shape" => kind == "outside-layer",
+        "slice-shape" => kind == "outside-slice",
+        "dependency-direction" => kind is "cross-zone" or "layer-pair",
+        "slice-isolation" => kind == "slice-pair",
+        "public-api" => kind == "application-public-api",
+        "cross-api" => kind == "cross-api-consumer",
+        _ => false,
+    };
 
     private static void InspectSegmentPurposes(
         string zone,
@@ -372,7 +339,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             var leaf = slice.Split('/')[^1];
             if (IsEssenceBasedSegmentName(leaf))
             {
-                findings.Add(Advice(
+                findings.Add(Block(
                     At(zone, $"Application/{slice}"),
                     $"no-segments-on-sliced-layers: application slice '{slice}' ends in essence-based "
                     + $"name '{leaf}'; choose a business slice name or move that segment inside a named slice"));
@@ -389,7 +356,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Order(StringComparer.OrdinalIgnoreCase))
                 {
-                    findings.Add(Advice(
+                    findings.Add(Block(
                         At(zone, $"{slicePrefix}{segment}"),
                         $"segments-by-purpose: slice '{slice}', dimension '{dimension}', segment '{segment}' "
                         + "names what its contents are; rename it after the purpose those contents serve"));
@@ -408,261 +375,12 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Order(StringComparer.OrdinalIgnoreCase))
             {
-                findings.Add(Advice(
+                findings.Add(Block(
                     At(zone, $"{layerPrefix}{segment}"),
                     $"segments-by-purpose: sliceless layer '{layer}', segment '{segment}' names what its "
                     + "contents are; rename it after the purpose those contents serve"));
             }
         }
-    }
-
-    /// <summary>
-    /// Non-blocking structure conventions from ADR-0038, ADR-0039, ADR-0040 and ADR-0051.
-    /// Following the insignificant-slice precedent, they are printed as advisory observations
-    /// rather than findings, so no policy — including required — can turn them into a
-    /// blocking verdict.
-    /// </summary>
-    private static void InspectStructureAdvisories(
-        string zone,
-        SliceMap map,
-        IReadOnlyList<string> paths,
-        List<string> observations)
-    {
-        var entries = paths
-            .Select(path => Relative(path, zone))
-            .Where(path => path.Length > 0 && !path.StartsWith("../", StringComparison.Ordinal))
-            .ToList();
-
-        AddFlatDirectoryAdvice(zone, entries, observations);
-        AddCrossApiDensityAdvice(zone, map, entries, observations);
-        AddZoneVocabularyAdvice(zone, map, entries, observations);
-        AddRepetitiveNamingAdvice(zone, map, observations);
-        AddAmbiguousSliceNameAdvice(zone, map, entries, observations);
-    }
-
-    /// <summary>
-    /// Port of Steiger's repetitive-naming: one group that holds every slice of the zone
-    /// repeats its name on every slice and tells no slice apart from another.
-    /// </summary>
-    private static void AddRepetitiveNamingAdvice(string zone, SliceMap map, List<string> observations)
-    {
-        if (map.Groups.Count != 1 || map.Slices.Count == 0)
-        {
-            return;
-        }
-
-        var group = map.Groups[0];
-        if (map.Slices.All(slice => slice.StartsWith(group + "/", StringComparison.Ordinal)))
-        {
-            observations.Add(
-                $"advisory {At(zone, $"Application/{group}")}: repetitive-naming: every slice of dimension "
-                + $"'Application' sits in the single group '{group}'; the group name repeats on every slice "
-                + "and carries no information — flatten the group or split slices into two or more groups");
-        }
-    }
-
-    /// <summary>
-    /// Port of Steiger's ambiguous-slice-names: a direct segment that repeats the name of its
-    /// own slice says nothing about the purpose of its contents.
-    /// </summary>
-    private static void AddAmbiguousSliceNameAdvice(
-        string zone,
-        SliceMap map,
-        IReadOnlyList<string> entries,
-        List<string> observations)
-    {
-        foreach (var slice in map.Slices)
-        {
-            var leaf = slice.Split('/')[^1];
-            foreach (var dimension in SliceDimensions)
-            {
-                var slicePrefix = $"{dimension}/{slice}/";
-                foreach (var segment in entries
-                    .Where(path => path.StartsWith(slicePrefix, StringComparison.Ordinal))
-                    .Select(path => ImmediateDirectory(path[slicePrefix.Length..]))
-                    .Where(segment => segment is not null
-                        && segment.Equals(leaf, StringComparison.OrdinalIgnoreCase))
-                    .Select(segment => segment!)
-                    .Distinct(StringComparer.Ordinal)
-                    .Order(StringComparer.Ordinal))
-                {
-                    observations.Add(
-                        $"advisory {At(zone, $"{slicePrefix}{segment}")}: ambiguous-slice-names: segment "
-                        + $"'{segment}' of slice '{slice}', dimension '{dimension}', repeats the slice name; "
-                        + "name the segment after its purpose");
-                }
-            }
-        }
-    }
-
-    private static void AddFlatDirectoryAdvice(
-        string zone,
-        IReadOnlyList<string> entries,
-        List<string> observations)
-    {
-        foreach (var directory in entries
-            .Where(IsAuthoredSource)
-            .Select(ParentDirectory)
-            .Where(directory => directory.Length > 0)
-            .GroupBy(directory => directory, StringComparer.Ordinal)
-            .Where(group => group.Count() >= FlatDirectoryFileLimit)
-            .Select(group => (Path: group.Key, Count: group.Count()))
-            .OrderBy(group => group.Path, StringComparer.Ordinal))
-        {
-            observations.Add(
-                $"advisory {At(zone, directory.Path)}: flat-directory-grouping: directory directly holds "
-                + $"{directory.Count} source files; group files by purpose when the flat list reaches "
-                + $"{FlatDirectoryFileLimit}");
-        }
-    }
-
-    private static void AddCrossApiDensityAdvice(
-        string zone,
-        SliceMap map,
-        IReadOnlyList<string> entries,
-        List<string> observations)
-    {
-        var consumersByProducer = new Dictionary<string, SortedSet<string>>(StringComparer.Ordinal);
-        foreach (var producer in map.Slices)
-        {
-            var consumers = CrossApiConsumers(producer, map, entries);
-            if (consumers.Count > 0)
-            {
-                consumersByProducer[producer] = consumers;
-            }
-        }
-
-        foreach (var producer in consumersByProducer.Keys.Order(StringComparer.Ordinal))
-        {
-            foreach (var partner in consumersByProducer[producer]
-                .Where(partner => string.CompareOrdinal(producer, partner) < 0
-                    && consumersByProducer.TryGetValue(partner, out var back)
-                    && back.Contains(producer)))
-            {
-                observations.Add(
-                    $"advisory {At(zone, $"Application/{producer}")}: mutual-cross-api: slices "
-                    + $"'{producer}' and '{partner}' publish cross-APIs for each other; extract the shared "
-                    + "concept into Domain, or merge the slices");
-            }
-
-            var consumers = consumersByProducer[producer];
-            if (consumers.Count >= CrossApiFanInLimit)
-            {
-                observations.Add(
-                    $"advisory {At(zone, $"Application/{producer}")}: cross-api-fan-in: slice "
-                    + $"'{producer}' publishes cross-APIs for {consumers.Count} consumers "
-                    + $"[{string.Join(", ", consumers)}]; the slice behaves like a lower layer; move the "
-                    + "shared concept down to Domain");
-            }
-        }
-    }
-
-    private static SortedSet<string> CrossApiConsumers(
-        string producer,
-        SliceMap map,
-        IReadOnlyList<string> entries)
-    {
-        var consumers = new SortedSet<string>(StringComparer.Ordinal);
-        foreach (var dimension in SliceDimensions)
-        {
-            var prefix = $"{dimension}/{producer}/{CrossApiPath(dimension, string.Empty)}";
-            foreach (var consumerPath in entries
-                .Where(path => path.StartsWith(prefix, StringComparison.Ordinal) && !IsPlaceholder(path))
-                .Select(path => path[prefix.Length..])
-                .Where(path => path.Contains('/')))
-            {
-                var consumer = map.Slices
-                    .OrderByDescending(candidate => candidate.Length)
-                    .FirstOrDefault(candidate => consumerPath.StartsWith(candidate + "/", StringComparison.Ordinal))
-                    ?? consumerPath.Split('/', StringSplitOptions.RemoveEmptyEntries)[0];
-                if (!string.Equals(consumer, producer, StringComparison.Ordinal))
-                {
-                    consumers.Add(consumer);
-                }
-            }
-        }
-
-        return consumers;
-    }
-
-    private static void AddZoneVocabularyAdvice(
-        string zone,
-        SliceMap map,
-        IReadOnlyList<string> entries,
-        List<string> observations)
-    {
-        var directories = new SortedSet<string>(StringComparer.Ordinal);
-        foreach (var entry in entries)
-        {
-            var separator = -1;
-            while ((separator = entry.IndexOf('/', separator + 1)) >= 0)
-            {
-                directories.Add(entry[..separator]);
-            }
-        }
-
-        foreach (var directory in directories)
-        {
-            var name = directory[(directory.LastIndexOf('/') + 1)..];
-            if (!IsEssenceBasedSegmentName(name) || IsSegmentRulePosition(directory, map))
-            {
-                continue;
-            }
-
-            observations.Add(
-                $"advisory {At(zone, directory)}: directories-by-purpose: directory '{name}' names what its "
-                + "contents are; rename it after the purpose those contents serve");
-        }
-    }
-
-    /// <summary>
-    /// True when ADR-0037 or ADR-0051 already classifies this directory: a slice, group or
-    /// mirror position owned by the slice-naming rules, a directory in the root of a mirror
-    /// layer, a layer-level Contracts/, a direct segment of a slice, or a direct segment of a
-    /// sliceless layer. Those keep their existing findings; the whole-zone vocabulary scan of
-    /// ADR-0040 reports only positions outside them.
-    /// </summary>
-    private static bool IsSegmentRulePosition(string directory, SliceMap map)
-    {
-        var parts = directory.Split('/');
-        if (parts.Length == 2 && SlicelessSegmentLayers.Contains(parts[0], StringComparer.Ordinal))
-        {
-            return true;
-        }
-
-        foreach (var dimension in SliceDimensions)
-        {
-            var prefix = $"{dimension}/";
-            if (!directory.StartsWith(prefix, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            var inside = directory[prefix.Length..];
-            if (IsLayerPublicApi(inside))
-            {
-                return true;
-            }
-
-            var slice = map.Slices
-                .OrderByDescending(candidate => candidate.Length)
-                .FirstOrDefault(candidate => inside.Equals(candidate, StringComparison.Ordinal)
-                    || inside.StartsWith(candidate + "/", StringComparison.Ordinal));
-            if (slice is not null)
-            {
-                // The slice position itself belongs to the slice-naming rules; its direct
-                // segment belongs to segments-by-purpose. Deeper nesting is scanned here.
-                return inside.Length == slice.Length || !inside[(slice.Length + 1)..].Contains('/');
-            }
-
-            // A group position in a mirror dimension echoes the Application group, which is
-            // the one place the group name is reported; any other directory in the root of a
-            // mirror layer is judged by no-segments-on-sliced-layers or orphan-slice-mirror.
-            return dimension != "Application"
-                && (!inside.Contains('/') || map.Groups.Contains(inside, StringComparer.Ordinal));
-        }
-
-        return false;
     }
 
     private static (IReadOnlyList<DotNetFile> Projects, string? Failure) ReadProjects(CheckContext context)
@@ -835,12 +553,6 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             && !GeneratedSourceSuffixes.Any(suffix =>
                 path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
 
-    private static string ParentDirectory(string path)
-    {
-        var separator = path.LastIndexOf('/');
-        return separator < 0 ? string.Empty : path[..separator];
-    }
-
     private static bool IsEssenceBasedSegmentName(string name)
         => SteigerBadNamesGeneric.Contains(name)
             || BackendEssenceBasedSegmentNames.Contains(name);
@@ -851,37 +563,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         return separator > 0 ? relativePath[..separator] : null;
     }
 
-    private static void AddPluralizationAdvice(string zone, SliceMap map, List<string> observations)
-    {
-        foreach (var group in map.Slices.GroupBy(
-            slice => slice.Contains('/') ? slice[..slice.LastIndexOf('/')] : string.Empty,
-            StringComparer.Ordinal))
-        {
-            var names = group.Select(slice => slice.Split('/')[^1]).ToList();
-            var plural = names.Where(LooksPlural).ToList();
-            var singular = names.Where(name => !LooksPlural(name)).ToList();
-            if (plural.Count == 0 || singular.Count == 0)
-            {
-                continue;
-            }
-
-            var preference = plural.Count >= singular.Count ? "plural" : "singular";
-            var location = group.Key.Length == 0
-                ? At(zone, "Application")
-                : At(zone, $"Application/{group.Key}");
-            observations.Add(
-                $"advisory {location}: inconsistent-slice-pluralization: dimension 'Application', slices "
-                + $"[{string.Join(", ", names)}] mix singular and plural names; prefer {preference} names in this group");
-        }
-    }
-
-    private static bool LooksPlural(string name)
-        => name.EndsWith('s')
-            && !name.EndsWith("ss", StringComparison.OrdinalIgnoreCase)
-            && !name.EndsWith("us", StringComparison.OrdinalIgnoreCase)
-            && !name.Equals("Status", StringComparison.OrdinalIgnoreCase);
-
-    private static List<DependencyViolation> InspectDependencies(
+    private List<DependencyViolation> InspectDependencies(
         IReadOnlyList<string> zones,
         Dictionary<string, IReadOnlyList<string>> slicesByZone,
         SourceGraph graph)
@@ -939,7 +621,6 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
                     + $"'{edge.From.Path}' names '{edge.To.Path}'");
                 violations[new DependencyEvidence(layerGroup, edge.From.Path, edge.To.Path)] =
                     new(layerGroup, layerFinding);
-                continue;
             }
 
             var slices = slicesByZone[from.Zone!];
@@ -955,7 +636,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         return violations.Values.OrderBy(violation => violation.Finding.Location, StringComparer.Ordinal).ToList();
     }
 
-    private static DependencyViolation? SliceViolation(
+    private DependencyViolation? SliceViolation(
         ReferenceEdge edge,
         LayerAddress from,
         SliceAddress? fromSlice,
@@ -969,7 +650,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         }
 
         var crossConsumer = CrossConsumer(to, toSlice, knownSlices);
-        if (crossConsumer is not null
+        if (rule == "cross-api" && crossConsumer is not null
             && from.Layer != "Host"
             && !string.Equals(fromSlice?.Name, crossConsumer, StringComparison.Ordinal))
         {
@@ -983,7 +664,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             return new DependencyViolation(group, finding);
         }
 
-        if (from.Layer == to.Layer
+        if (rule == "slice-isolation" && from.Layer == to.Layer
             && fromSlice is not null
             && !string.Equals(fromSlice.Name, toSlice.Name, StringComparison.Ordinal)
             && crossConsumer is null)
@@ -998,7 +679,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
             return new DependencyViolation(group, finding);
         }
 
-        if (to.Layer == "Application"
+        if (rule == "public-api" && to.Layer == "Application"
             && from.Layer != "Host"
             && !(from.Layer == "Application"
                 && string.Equals(fromSlice?.Name, toSlice.Name, StringComparison.Ordinal))
@@ -1183,8 +864,6 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
         }
 
         var sliceMap = DiscoverSlices(entries);
-        InspectLayerPublicApi(zone, entries, findings);
-        InspectMirrors(zone, entries, sliceMap, findings);
         maps.Add($"architecture map: zone {Display(zone)} · layers [{string.Join(", ", presentLayers)}] "
             + $"· slices [{string.Join(", ", sliceMap.Slices)}]"
             + (sliceMap.Nested.Count == 0
@@ -1421,9 +1100,6 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer) : IRepo
 
     private static Finding Block(string location, string message)
         => new(FindingSeverity.Blocking, location, message);
-
-    private static Finding Advice(string location, string message)
-        => new(FindingSeverity.Advisory, location, message);
 
     private sealed record SliceMap(
         List<string> Slices,

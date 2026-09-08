@@ -28,8 +28,7 @@ internal static class WarningSuppressionsExplanation
           A rule switched off for the whole repository — `dotnet_diagnostic.<code>.severity =
           none` in a section such as `[*.cs]` or `[*]`, or `NoWarn` in Directory.Build.props — is
           the tracked, reviewable decision `policy: off` is for harness checks. It never fails
-          the run; every such switch is listed as an observation on every run, so the list stays
-          visible instead of accumulating.
+          the run; every such switch is listed as a neutral detail with --verbose.
 
         Remediation
           Fix the code the diagnostic points at. When the rule is wrong for this repository as a

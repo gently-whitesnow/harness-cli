@@ -8,4 +8,4 @@ internal sealed record GateReport(
     IReadOnlyList<Finding> DetailedFindings,
     TimeSpan Duration,
     string? OutcomeReason,
-    IReadOnlyList<string> Observations);
+    IReadOnlyList<string> Details);

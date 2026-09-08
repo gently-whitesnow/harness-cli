@@ -179,17 +179,20 @@ internal static class GateEngine
             case CheckPolicy.Required when FindingPolicy.ShouldRequire(findings):
                 (findings, reason) = FindingPolicy.Require(findings, outcome, reason);
                 detailed = FindingPolicy.RequireSeverity(detailed);
-                outcome = CheckOutcome.Failed;
+                outcome = outcome == CheckOutcome.Incomplete ? CheckOutcome.Incomplete : CheckOutcome.Failed;
                 break;
 
-            case CheckPolicy.Advisory when outcome == CheckOutcome.Failed:
+            case CheckPolicy.Advisory when outcome is CheckOutcome.Failed or CheckOutcome.Incomplete:
                 findings = findings
                     .Select(FindingPolicy.Demote)
                     .ToList();
                 detailed = detailed.Select(FindingPolicy.Demote).ToList();
-                outcome = CheckOutcome.Passed;
-                reason = $"{HarnessConfig.FileName} sets this check to advisory, so its violations are reported "
-                    + "without failing the run.";
+                if (outcome == CheckOutcome.Failed)
+                {
+                    outcome = CheckOutcome.Passed;
+                    reason = $"{HarnessConfig.FileName} sets this check to advisory, so its violations are reported "
+                        + "without failing the run.";
+                }
                 break;
 
             // The repository has committed to this one, so an open question is no longer an
@@ -210,7 +213,7 @@ internal static class GateEngine
             detailed,
             duration,
             reason,
-            evaluation.Observations);
+            evaluation.Details);
     }
 
     private static GateReport Excluded(
@@ -254,6 +257,7 @@ internal static class GateEngine
     private static bool Matches(IRepositoryCheck check, string selector)
         => string.Equals(check.Id, selector, StringComparison.Ordinal)
             || string.Equals(check.Group, selector, StringComparison.Ordinal)
+            || (selector == "architecture" && check.Group == "architecture.sliced-dotnet")
             || string.Equals(check.Applicability, selector, StringComparison.Ordinal);
 
     private static List<string> UnknownSelectors(

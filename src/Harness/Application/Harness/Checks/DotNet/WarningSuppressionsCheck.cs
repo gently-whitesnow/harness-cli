@@ -82,7 +82,7 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
                     + "for the whole repository in .editorconfig [*.cs] or Directory.Build.props"))
             .ToList();
 
-        var observations = sites
+        var details = sites
             .Where(site => site.RepositoryWide)
             .OrderBy(site => site.Code, StringComparer.OrdinalIgnoreCase)
             .ThenBy(site => site.Location, StringComparer.Ordinal)
@@ -92,7 +92,7 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
         return CheckEvaluation.From(
             findings,
             findings.Count == 0 ? "no diagnostic is silenced at an address" : null,
-            observations: observations);
+            details: details);
     }
 
     private static string? CollectFromSources(CheckContext context, List<Site> sites)

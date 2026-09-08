@@ -11,16 +11,25 @@ namespace Harness.Infrastructure.Languages.CSharp;
 /// </summary>
 internal sealed class CSharpAnalyzer(CSharpSources sources) : ILanguageAnalyzer
 {
+    private IRepository? read;
+    private (SourceGraph? Graph, string? Failure) result;
+
     public Language Language => Language.CSharp;
 
     public string NothingToAnalyze => ICSharpSources.NothingToAnalyze;
 
     public (SourceGraph? Graph, string? Failure) ReadGraph(IRepository repository)
     {
-        var (files, failure) = sources.Read(repository);
-        return failure is not null
-            ? (null, failure)
-            : (CSharpGraphBuilder.Build(files, sources.MarkedGenerated(repository)), null);
+        // Like CSharpSources, cache one immutable repository snapshot shared by this run.
+        if (!ReferenceEquals(read, repository))
+        {
+            var (files, failure) = sources.Read(repository);
+            result = failure is not null
+                ? (null, failure)
+                : (CSharpGraphBuilder.Build(files, sources.MarkedGenerated(repository)), null);
+            read = repository;
+        }
+        return result;
     }
 
 }

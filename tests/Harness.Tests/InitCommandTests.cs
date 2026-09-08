@@ -197,7 +197,7 @@ public sealed class InitCommandTests
                 StringComparison.Ordinal));
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
 
-        var check = HarnessCli.Run(repository.Path, "check");
+        var check = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, check.ExitCode);
         Assert.Contains("architecture map: zone src/App", check.Output, StringComparison.Ordinal);

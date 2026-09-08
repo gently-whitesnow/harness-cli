@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 переживает удаление worktree и не зависит от того, какой бинарь выполнял setup. Не найдя ни одного,
 hook отказывает в коммите и печатает оба просмотренных места. User-каталоги и tracked-файлы не меняются.
 
-`HARNESS_VERSION=2.16.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+`HARNESS_VERSION=2.17.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
@@ -91,7 +91,7 @@ GitLab:
 
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:2.16.0
+  image: ghcr.io/gently-whitesnow/harness:2.17.0
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"
@@ -124,9 +124,10 @@ GitHub Actions или любой контур без доступа к ghcr.io:
 То, что не воспроизводит чужой пайплайн и что в каждом репозитории расходится:
 
 - связанность: граф зависимостей между модулями и типами; доказанный цикл модулей blocking;
-- форма sliced-dotnet: канонические слои, слайсы, направления Proven-зависимостей и
-  неблокирующие структурные advisories: группировка плоских каталогов, плотность
-  X-контрактов, словарь имён по всему zone;
+- sliced-dotnet: восемь самостоятельных правил формы зон и слайсов, имён сегментов,
+  сборок, направлений Proven-зависимостей, изоляции, публичного API и адресности X;
+  группа `architecture.sliced-dotnet` (также `architecture`) — селектор; policy задаётся
+  для каждого ID. `upgrade` переносит старый режим во все восемь правил;
 - DSM-сложность: средняя достижимость файлов и размер циклической группы файлового графа продукта, propagation cost как справка;
 - не больше одного верхнеуровневого C# `class` или `record` в authored-файле;
 - нормализованные межфайловые повторы C#;

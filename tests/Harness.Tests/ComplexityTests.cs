@@ -110,11 +110,15 @@ public sealed class ComplexityTests
             ("A", ["B"]),
             ("B", []));
 
-        var first = HarnessCli.Run(repository.Path, "check");
-        var second = HarnessCli.Run(repository.Path, "check");
+        var first = HarnessCli.RunVerbose(repository.Path, "check");
+        var second = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, first.ExitCode);
-        Assert.Equal(first.Output, second.Output);
+        Assert.Equal(
+            first.Output.Split('\n').Where(line => line.Contains("files:", StringComparison.Ordinal)
+                || line.Contains("cyclic group size:", StringComparison.Ordinal)),
+            second.Output.Split('\n').Where(line => line.Contains("files:", StringComparison.Ordinal)
+                || line.Contains("cyclic group size:", StringComparison.Ordinal)));
         Assert.True(first.OutputContains("average reachable files:"), first.Output);
         Assert.True(first.OutputContains("largest cyclic group size:"), first.Output);
     }
@@ -274,7 +278,7 @@ public sealed class ComplexityTests
         """;
 
     private static CliRun Measure(RepositoryFixture repository)
-        => HarnessCli.Run(repository.Path, "check", "--only", Check);
+        => HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
     private static RepositoryFixture Graph(params (string Name, string[] Dependencies)[] files)
     {

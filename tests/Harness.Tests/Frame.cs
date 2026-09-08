@@ -17,7 +17,15 @@ public sealed class Frame
 
     private static readonly string[] Checks =
     [
-        "harness.config", "architecture.sliced-dotnet", "complexity.csharp", "docs.policy",
+        "harness.config",
+        "architecture.sliced-dotnet.zone-shape",
+        "architecture.sliced-dotnet.slice-shape",
+        "architecture.sliced-dotnet.segment-names",
+        "architecture.sliced-dotnet.layer-assemblies",
+        "architecture.sliced-dotnet.dependency-direction",
+        "architecture.sliced-dotnet.slice-isolation",
+        "architecture.sliced-dotnet.public-api",
+        "architecture.sliced-dotnet.cross-api", "complexity.csharp", "docs.policy",
         "commits.setup", "comments.csharp", "comments.yaml", "comments.typescript",
         "types-per-file.csharp", "dependencies.csharp",
         "duplication.csharp", "build-properties.dotnet", "central-packages.dotnet",
@@ -94,6 +102,14 @@ public sealed class Frame
 
     public Frame Policy(string selector, string value)
     {
+        if (selector == "architecture.sliced-dotnet")
+        {
+            foreach (var check in Checks.Where(check => check.StartsWith(selector + ".", StringComparison.Ordinal)))
+            {
+                policy[check] = value;
+            }
+            return this;
+        }
         policy[selector] = value;
         return this;
     }
