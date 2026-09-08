@@ -5,6 +5,9 @@
 Accepted. Дополняет конвенции `sliced-dotnet/1` из
 [ADR-0033](0033-canonical-standard-over-declarations.md) неблокирующим сигналом.
 
+Эвристические advisories отменены [ADR-0053](0053-explicit-architecture-checks.md)
+в контракте 2.17.0; доказательные правила выделены в самостоятельные проверки.
+
 ## Context
 
 Steiger на commit `e21b75e71dc9a7805f9045d3a29c01566167e1c2` реализует правило

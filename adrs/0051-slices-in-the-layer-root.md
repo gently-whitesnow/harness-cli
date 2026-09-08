@@ -7,6 +7,9 @@ Accepted. Уточняет [ADR-0033](0033-canonical-standard-over-declarations.
 [ADR-0037](0037-segments-by-purpose.md) и [ADR-0050](0050-domain-is-the-bottom-layer.md);
 контракт `2.13.0`, имя стандарта остаётся `sliced-dotnet/1`.
 
+Эвристические advisories отменены [ADR-0053](0053-explicit-architecture-checks.md)
+в контракте 2.17.0; доказательные правила выделены в самостоятельные проверки.
+
 ## Context
 
 FSD кладёт слайсы прямо в корень слоя: `src/<слой>/<слайс>/<сегмент>`, промежуточного

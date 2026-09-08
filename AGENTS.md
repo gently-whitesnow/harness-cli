@@ -6,7 +6,6 @@ Standalone CLI, который держит одну и ту же harness-рам
 выполняет разные для репозиториев измерения. [ADR-0046](adrs/0046-unified-verification-entry-point.md)
 
 ## Рамка
-
 Репозиторий отвечает на все вопросы рамки в собственном tracked `.harness.json`. Ответы
 self-reported: адрес служит навигацией, а не доказательством. Формы ответа:
 
@@ -54,10 +53,10 @@ central package versions в ближайшем `Directory.Packages.props`, `.sln
 эталонный code-style baseline в цепочке `.editorconfig` над каждым проектом (`explain
 editorconfig.dotnet` печатает эталон, `init` записывает его) и учёт подавлений warnings:
 адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
-блокируются; выключение правила для всего репозитория печатается observation. Читается только
+блокируются; выключение правила для всего репозитория печатается в verbose details. Читается только
 tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"2.16.0"`). Бинарь исполняет только этот контракт;
+`version` — строка текущего контракта (`"2.17.0"`). Бинарь исполняет только этот контракт;
 любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
 маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -70,9 +69,12 @@ Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`
 кросс-импорт — только явный cross-API `X/<Потребитель>` (аналог `@x` FSD 2.1), верхние слои
 читают любой `Domain`-слайс, прямой сегмент именуется по назначению; слой = сборка: один
 `.csproj` на слой с C#-кодом, без linked-компиляции чужих слоёв, ProjectReference — по той же
-таблице. Advisory без влияния на код возврата: плоский каталог 20+ файлов, плотность X-контрактов,
-essence-имена вне сегментных позиций, единственная группа со всеми слайсами, сегмент с именем
-слайса. Standalone-библиотека отвечает `"architecture": { "applicable": false, "reason": "..." }`.
+таблице. Восемь самостоятельных ID группы `architecture.sliced-dotnet`: `zone-shape`,
+`slice-shape`, `segment-names`, `layer-assemblies`, `dependency-direction`, `slice-isolation`,
+`public-api`, `cross-api` (полный ID — группа + суффикс). Каждый имеет явную policy;
+`architecture` и `architecture.sliced-dotnet` — групповые селекторы без агрегатной policy.
+Эвристических advisories нет; карта и DSM — нейтральные verbose details.
+[ADR-0053](adrs/0053-explicit-architecture-checks.md). Standalone-библиотека отвечает `"architecture": { "applicable": false, "reason": "..." }`.
 [ADR-0033](adrs/0033-canonical-standard-over-declarations.md), [ADR-0037](adrs/0037-segments-by-purpose.md)–[ADR-0041](adrs/0041-layer-is-the-assembly.md), [ADR-0050](adrs/0050-domain-is-the-bottom-layer.md), [ADR-0051](adrs/0051-slices-in-the-layer-root.md)
 
 `"latest"` включает rolling-контракт. `harness init` спрашивает только application или
@@ -95,7 +97,6 @@ standalone-library (либо принимает `--kind application|library` б�
 [ADR-0026](adrs/0026-untracked-evidence-is-named-in-the-report.md)
 
 ## Раскладка
-
 - `src/Harness` — сам CLI: NativeAOT, слой = отдельный проект `Harness.<Слой>.csproj`, публикуется `Host`.
   - `Host/` — composition root, статический реестр и запуск процесса.
   - `Api/Harness/Cli/` — входное зеркало с разбором командной строки.
@@ -132,7 +133,6 @@ dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
 ```
 
 ## Коды возврата
-
 - `0` — каждая выбранная применимая blocking-проверка отработала и прошла. Advisory-находки
   и readiness gaps при этом могут быть: отчёт скажет об этом вместо `PASS`.
 - `1` — выбранная применимая blocking-проверка доказала нарушение.

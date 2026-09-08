@@ -45,7 +45,7 @@ internal static class CheckRegistry
         [
             new HarnessConfigCheck(),
 
-            new SlicedDotNetShapeCheck(csharpAnalyzer),
+            .. SlicedDotNetShapeCheck.Rules.Keys.Select(rule => new SlicedDotNetShapeCheck(csharpAnalyzer, rule)),
             .. LanguageAnalyzers.Select(analyzer => new ComplexityCheck(analyzer)),
 
             new DocumentationPolicyCheck(),

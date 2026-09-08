@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 2.16.0 · no dependencies. */
+/* Harness CLI landing · contract 2.17.0 · no dependencies. */
 (function () {
   'use strict';
 
@@ -12,7 +12,14 @@
 
   const CHECKS = [
     { id: 'harness.config', group: 'common', axis: null, summary: 'Полный .harness.json в Git: версия, ответы и правила явно заданы для этого репозитория.', adr: ['0014-frame-answers-are-self-reported.md', '0016-versioned-frame-and-explicit-initialization.md'] },
-    { id: 'architecture.sliced-dotnet', group: 'arch', axis: null, summary: 'Слои и слайсы sliced-dotnet/1: понятное место для кода и проверяемые границы импортов. Для standalone-библиотеки неприменима.', adr: ['0033-canonical-standard-over-declarations.md', '0041-layer-is-the-assembly.md', '0051-slices-in-the-layer-root.md'] },
+    { id: 'architecture.sliced-dotnet.zone-shape', group: 'arch', axis: null, summary: 'Канонические зоны, обязательные слои и расположение исходников.', adr: ['0053-explicit-architecture-checks.md'] },
+    { id: 'architecture.sliced-dotnet.slice-shape', group: 'arch', axis: null, summary: 'Структура слайсов и групп, обязательные входные зеркала, отсутствие сирот.', adr: ['0053-explicit-architecture-checks.md'] },
+    { id: 'architecture.sliced-dotnet.segment-names', group: 'arch', axis: null, summary: 'Явный словарь запрещённых имён слайсов и непосредственных сегментов.', adr: ['0053-explicit-architecture-checks.md'] },
+    { id: 'architecture.sliced-dotnet.layer-assemblies', group: 'arch', axis: null, summary: 'Слой = сборка: один проект, собственные исходники и допустимые ProjectReference.', adr: ['0053-explicit-architecture-checks.md'] },
+    { id: 'architecture.sliced-dotnet.dependency-direction', group: 'arch', axis: null, summary: 'Доказанные импорты соблюдают направления слоёв и границы зон.', adr: ['0053-explicit-architecture-checks.md'] },
+    { id: 'architecture.sliced-dotnet.slice-isolation', group: 'arch', axis: null, summary: 'Слайсы одного слоя взаимодействуют через явный X-контракт.', adr: ['0053-explicit-architecture-checks.md'] },
+    { id: 'architecture.sliced-dotnet.public-api', group: 'arch', axis: null, summary: 'Вход в Application-слайс через Contracts; у слоя общего API нет.', adr: ['0053-explicit-architecture-checks.md'] },
+    { id: 'architecture.sliced-dotnet.cross-api', group: 'arch', axis: null, summary: 'X-контракт импортирует только адресованный потребитель или Host.', adr: ['0053-explicit-architecture-checks.md'] },
     { id: 'complexity.csharp', group: 'csharp', axis: 'csharp', summary: 'Ограничивает связанность файлов: средняя достижимость файлов ≤ 8, размер циклической группы — 0 по умолчанию.', adr: ['0032-topology-over-thresholds.md', '0042-dsm-over-the-product-in-files.md', '0048-dsm-product-boundary-without-a-zone.md', '0052-dsm-ceiling-is-a-declared-setting.md'] },
     { id: 'docs.policy', group: 'common', axis: null, summary: 'Короткие AGENTS.md и README.md — до 150 строк. CLAUDE.md ссылается на соседний AGENTS.md; решения живут в adrs/, навыки — в SKILL.md. Прочий Markdown запрещён.', adr: ['0010-documentation-policy.md', '0025-nested-agent-documents.md'] },
     { id: 'commits.setup', group: 'common', axis: null, summary: 'Проверяет установку шаблона коммитов и commit-msg hook на весь клон. Подготовка: harness setup.', adr: ['0020-commit-message-contract-and-clone-setup.md', '0052-hook-resolves-the-harness-at-commit-time.md'] },

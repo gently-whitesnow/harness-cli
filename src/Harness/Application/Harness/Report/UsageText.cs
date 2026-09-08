@@ -23,12 +23,16 @@ internal static class UsageText
         Options
           --only <ids>   run one check, or the given check/group identifiers (comma separated)
           --skip <ids>   exclude the given check or group identifiers; they stay visible in the summary
-          --verbose      show findings, reasons and timings
+          --verbose      show findings, neutral details, reasons and timings
           --all          show every measured subject instead of top findings; implies --verbose
           --kind         repository kind for non-interactive initialization
           --latest       make an initialized frame follow the installed binary's contract
-          --dry-run      describe the contract migration without changing the pin
+          --dry-run      describe the contract migration without writing changes
           --language     language for human-written commit subjects and bodies (default: ru)
+
+        Architecture selectors
+          architecture and architecture.sliced-dotnet select all eight architecture checks.
+          Policy declares each individual check ID; group policy is not accepted.
 
         Exit codes
           0  every selected applicable blocking check completed and passed

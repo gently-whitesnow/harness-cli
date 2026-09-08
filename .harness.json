@@ -1,5 +1,5 @@
 {
-  "version": "2.16.0",
+  "version": "2.17.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -65,7 +65,14 @@
   },
   "policy": {
     "harness.config": "required",
-    "architecture.sliced-dotnet": "required",
+    "architecture.sliced-dotnet.zone-shape": "required",
+    "architecture.sliced-dotnet.slice-shape": "required",
+    "architecture.sliced-dotnet.segment-names": "required",
+    "architecture.sliced-dotnet.layer-assemblies": "required",
+    "architecture.sliced-dotnet.dependency-direction": "required",
+    "architecture.sliced-dotnet.slice-isolation": "required",
+    "architecture.sliced-dotnet.public-api": "required",
+    "architecture.sliced-dotnet.cross-api": "required",
     "complexity.csharp": "required",
     "docs.policy": "required",
     "commits.setup": "required",

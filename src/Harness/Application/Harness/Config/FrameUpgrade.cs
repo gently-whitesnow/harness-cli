@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using Harness.Checks.Architecture;
 using Harness.Repository;
 using Harness.Versioning;
 
@@ -30,12 +32,18 @@ internal static class FrameUpgrade
             return (null, failure);
         }
 
-        if (pin is "latest" || pin == HarnessVersion.Current.ToString())
+        var (migrated, migrationFailure) = SplitArchitecturePolicy(text);
+        if (migrationFailure is not null)
+        {
+            return (null, migrationFailure);
+        }
+        var policyChanged = migrated != text;
+        if (!policyChanged && (pin is "latest" || pin == HarnessVersion.Current.ToString()))
         {
             return ($"{HarnessConfig.FileName} already runs contract {pin}; there is no pin to raise.\n", null);
         }
 
-        if (!HarnessVersion.TryParse(pin, out var version))
+        if (!HarnessVersion.TryParse(pin == "latest" ? HarnessVersion.Current.ToString() : pin, out var version))
         {
             return (null, $"'version' is not a harness release: {pin}.");
         }
@@ -45,18 +53,21 @@ internal static class FrameUpgrade
             return (null, $"This binary is harness {HarnessVersion.Current} and cannot migrate the newer pin {pin}; update the harness first.");
         }
 
+        var target = pin == "latest" ? pin : HarnessVersion.Current.ToString();
         if (!dryRun)
         {
-            var rewriteFailure = Rewrite(path, text, pin, HarnessVersion.Current.ToString());
+            var rewriteFailure = Rewrite(path, migrated!, pin, target);
             if (rewriteFailure is not null)
             {
                 return (null, rewriteFailure);
             }
         }
 
-        var action = dryRun ? "Would raise" : "Raised";
+        var action = pin == target
+            ? dryRun ? "Would update" : "Updated"
+            : dryRun ? "Would raise" : "Raised";
         return ($$"""
-        {{action}} {{HarnessConfig.FileName}} from {{pin}} to {{HarnessVersion.Current}}.
+        {{action}} {{HarnessConfig.FileName}} from {{pin}} to {{target}}.
         Contract 2.0 migration:
           removed  maintainability.csharp, cohesion.csharp, suppress, overrides and legacy defaults
           added    architecture: { "standard": "sliced-dotnet/1" } or { "applicable": false, "reason": "..." }
@@ -175,8 +186,49 @@ internal static class FrameUpgrade
                    not a simple cycle length, and is zero without cycles
           kept     the calculations and default limits 8.0 / 0; upgrade changes only the pin,
                    so rename the settings keys manually before running check
-        Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : "Only the pin was changed; repository answers were not guessed.")}}
+        Release 2.17 changes:
+          removed  built-in architecture smells: flat-directory-grouping, mutual-cross-api,
+                   cross-api-fan-in, directories-by-purpose, insignificant-slice, excessive-slicing,
+                   inconsistent-slice-pluralization, repetitive-naming and ambiguous-slice-names
+          split    architecture.sliced-dotnet policy into zone-shape, slice-shape, segment-names,
+                   layer-assemblies, dependency-direction, slice-isolation, public-api and cross-api
+                   under the architecture.sliced-dotnet prefix; upgrade copies the old value to each
+                   individual check and removes the aggregate key; init makes all eight required
+          kept     architecture and architecture.sliced-dotnet as group selectors, not policy keys;
+                   architecture maps, DSM and repository-wide warning settings as verbose details
+          fixed    Incomplete remains Incomplete even when required findings have been proved
+        Review these sections, then run `harness check --verbose`. {{(dryRun ? "Nothing was written." : policyChanged ? "The pin and architecture policy were migrated; repository answers were not guessed." : "Only the pin was changed; repository answers were not guessed.")}}
         """ + "\n", null);
+    }
+
+    private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)
+    {
+        var document = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions
+        {
+            CommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true,
+        })!;
+        if (document["policy"] is not JsonObject policy
+            || !policy.TryGetPropertyValue(SlicedDotNetShapeCheck.Family, out var old))
+        {
+            return (text, null);
+        }
+        if (old is not JsonValue value || !value.TryGetValue<string>(out var mode)
+            || mode is not ("required" or "advisory" or "off"))
+        {
+            return (null, "Cannot migrate architecture.sliced-dotnet policy: expected required, advisory or off.");
+        }
+        foreach (var rule in SlicedDotNetShapeCheck.Rules.Keys)
+        {
+            var id = $"{SlicedDotNetShapeCheck.Family}.{rule}";
+            if (policy.ContainsKey(id))
+            {
+                return (null, $"Cannot migrate architecture policy: both aggregate and individual '{id}' are present.");
+            }
+            policy[id] = mode;
+        }
+        policy.Remove(SlicedDotNetShapeCheck.Family);
+        return (document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n", null);
     }
 
     private static (string? Pin, string? Failure) ReadPin(string text)

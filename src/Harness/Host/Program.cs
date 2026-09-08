@@ -225,6 +225,17 @@ switch (invocation.Kind)
 
     case CommandKind.Explain:
     {
+        if (invocation.CheckId is "architecture" or "architecture.sliced-dotnet")
+        {
+            var members = checks.Where(candidate => candidate.Group == "architecture.sliced-dotnet").ToList();
+            foreach (var member in members)
+            {
+                Console.WriteLine($"{member.Id}  {member.Summary}");
+            }
+            Console.WriteLine();
+            Console.WriteLine(members[0].Explanation);
+            return ExitCodes.Success;
+        }
         var check = checks.FirstOrDefault(candidate => candidate.Id == invocation.CheckId);
         if (check is null)
         {

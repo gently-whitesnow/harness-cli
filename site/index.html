@@ -33,7 +33,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5V7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17M17 21h2.5a1.5 1.5 0 0 0 1.5-1.5V17M8 12.5l2.5 2.5L16 9.5" />
         </svg>
-        harness <span class="version">2.16.0</span>
+        harness <span class="version">2.17.0</span>
       </a>
       <nav aria-label="Основная навигация">
         <a href="#checks">Проверки</a>
@@ -61,7 +61,7 @@
             <div class="terminal">
 <pre><code>$ harness check
 
-<strong>FAIL</strong> · harness 2.16.0
+<strong>FAIL</strong> · harness 2.17.0
 
 <strong>×</strong> dependencies.csharp
   Orders → Billing → Orders
@@ -103,7 +103,7 @@ exit 1</code></pre>
             <div>
               <p>Все проверки кода, структуры и правил репозитория стартуют как <code>required</code>. Для standalone-библиотеки стандарт архитектуры неприменим. Языки, которых в проекте нет, отмечаются как неприменимые с причиной.</p>
               <p>Ответы о тестах, сборке и других инструментах <code>init</code> оставляет пустыми; соответствующие <code>frame.*</code> временно стоят в <code>off</code>. Исключение — <code>frame.verify</code>: путь к общему скрипту нужен сразу. Заполните ответы и включите проверки — это завершение настройки.</p>
-              <p>У архитектуры есть и рекомендательные замечания: например, плоский каталог из 20+ файлов. Они остаются неблокирующими даже при <code>required</code>.</p>
+              <p>У архитектуры восемь самостоятельных проверок с явной policy. Каждая находка блокирует при <code>required</code>; эвристические рекомендации удалены. Селекторы <code>architecture</code> и <code>architecture.sliced-dotnet</code> выбирают всю группу.</p>
             </div>
           </details>
         </div>
@@ -145,7 +145,7 @@ exit 1</code></pre>
               <ul class="check-list" id="dotnet-checks" aria-label="Проверки .NET"></ul>
             </details>
             <details>
-              <summary>Архитектура .NET-приложения <span>Слои и слайсы sliced-dotnet/1 · 1 проверка</span></summary>
+              <summary>Архитектура .NET-приложения <span>Слои и слайсы sliced-dotnet/1 · 8 проверок</span></summary>
               <ul class="check-list" id="architecture-checks" aria-label="Проверка архитектуры"></ul>
               <p><a href="#architecture">Посмотреть раскладку проекта ↓</a></p>
             </details>

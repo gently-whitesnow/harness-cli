@@ -1,5 +1,9 @@
 # ADR Registry
 
+- [ADR-0053](0053-explicit-architecture-checks.md) — восемь самостоятельных архитектурных
+  проверок, удаление эвристик и observations, перенос policy в контракте 2.17.0.
+
+
 Архитектурные решения Harness CLI. Один ADR = один файл. После `Accepted`
 неизменяемо само `Decision`; пересмотр решения — новым ADR со ссылкой `Superseded by`.
 Фактологическую ошибку в `Context` или `Consequences` можно исправить, не переписывая

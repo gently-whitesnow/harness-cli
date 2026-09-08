@@ -162,7 +162,7 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
-    public void Every_run_prints_all_detected_zones_layers_and_slices()
+    public void Verbose_prints_all_detected_zones_layers_and_slices()
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
@@ -174,7 +174,7 @@ public sealed class ArchitectureShapeTests
             .WithInputMirrors()
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "architecture.sliced-dotnet");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "architecture.sliced-dotnet");
 
         Assert.Equal(0, run.ExitCode);
         Assert.Contains(
@@ -372,7 +372,7 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
-    public void Heuristic_slice_conventions_remain_advisory()
+    public void Heuristic_slice_conventions_are_not_reported()
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
@@ -386,8 +386,8 @@ public sealed class ArchitectureShapeTests
         var run = Shape(repository);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Contains("insignificant-slice", run.Output, StringComparison.Ordinal);
-        Assert.Contains("inconsistent-slice-pluralization", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("insignificant-slice", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("inconsistent-slice-pluralization", run.Output, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -631,10 +631,10 @@ public sealed class ArchitectureShapeTests
     }
 
     [Theory]
-    [InlineData(19, false)]
-    [InlineData(20, true)]
-    [InlineData(21, true)]
-    public void Flat_directory_grouping_advisory_starts_at_twenty_direct_source_files(int files, bool advised)
+    [InlineData(19)]
+    [InlineData(20)]
+    [InlineData(21)]
+    public void Flat_directory_size_is_not_a_violation(int files)
     {
         var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
@@ -651,18 +651,7 @@ public sealed class ArchitectureShapeTests
         var run = Shape(committed);
 
         Assert.Equal(0, run.ExitCode);
-        if (advised)
-        {
-            Assert.Contains(
-                $"advisory src/Orders/Application/Sales/Pricing: flat-directory-grouping: "
-                + $"directory directly holds {files} source files",
-                run.Output,
-                StringComparison.Ordinal);
-        }
-        else
-        {
-            Assert.DoesNotContain("flat-directory-grouping", run.Output, StringComparison.Ordinal);
-        }
+        Assert.DoesNotContain("flat-directory-grouping", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -690,7 +679,7 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
-    public void Mutual_cross_api_pair_is_an_advisory_observation()
+    public void Mutual_cross_api_pair_is_not_a_violation()
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
@@ -704,11 +693,7 @@ public sealed class ArchitectureShapeTests
         var run = Shape(repository);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Contains(
-            "advisory src/Orders/Application/Billing: mutual-cross-api: slices 'Billing' and 'Sales' "
-            + "publish cross-APIs for each other",
-            run.Output,
-            StringComparison.Ordinal);
+        Assert.DoesNotContain("mutual-cross-api", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -729,9 +714,9 @@ public sealed class ArchitectureShapeTests
     }
 
     [Theory]
-    [InlineData(3, false)]
-    [InlineData(4, true)]
-    public void Cross_api_fan_in_advisory_starts_at_four_distinct_consumers(int consumers, bool advised)
+    [InlineData(3)]
+    [InlineData(4)]
+    public void Cross_api_consumer_count_is_not_a_violation(int consumers)
     {
         string[] names = ["Billing", "Sales", "Shipping", "Support"];
         var repository = ArchitectureRepository()
@@ -750,32 +735,15 @@ public sealed class ArchitectureShapeTests
         var run = Shape(committed);
 
         Assert.Equal(0, run.ExitCode);
-        if (advised)
-        {
-            Assert.Contains(
-                "advisory src/Orders/Application/Catalog: cross-api-fan-in: slice 'Catalog' "
-                + "publishes cross-APIs for 4 consumers [Billing, Sales, Shipping, Support]",
-                run.Output,
-                StringComparison.Ordinal);
-        }
-        else
-        {
-            Assert.DoesNotContain("cross-api-fan-in", run.Output, StringComparison.Ordinal);
-        }
+        Assert.DoesNotContain("cross-api-fan-in", run.Output, StringComparison.Ordinal);
     }
 
     [Theory]
-    [InlineData("Application/Sales/Contracts/Common/Model.cs", "Application/Sales/Contracts/Common", "Common")]
-    [InlineData("Api/Sales/Http/Validation/Rule.cs", "Api/Sales/Http/Validation", "Validation")]
-    [InlineData("Host/Kernel/Utils/Text.cs", "Host/Kernel/Utils", "Utils")]
-    [InlineData(
-        "Application/Sales/Persistence/Validators/Input.cs",
-        "Application/Sales/Persistence/Validators",
-        "Validators")]
-    public void Essence_named_directories_outside_segment_positions_are_advisory_observations(
-        string relativePath,
-        string directory,
-        string name)
+    [InlineData("Application/Sales/Contracts/Common/Model.cs")]
+    [InlineData("Api/Sales/Http/Validation/Rule.cs")]
+    [InlineData("Host/Kernel/Utils/Text.cs")]
+    [InlineData("Application/Sales/Persistence/Validators/Input.cs")]
+    public void Essence_named_directories_outside_segment_positions_are_not_judged(string relativePath)
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
@@ -788,11 +756,7 @@ public sealed class ArchitectureShapeTests
         var run = Shape(repository);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Contains(
-            $"advisory src/Orders/{directory}: directories-by-purpose: directory '{name}' names what its "
-            + "contents are",
-            run.Output,
-            StringComparison.Ordinal);
+        Assert.DoesNotContain("directories-by-purpose", run.Output, StringComparison.Ordinal);
         Assert.DoesNotContain("segments-by-purpose", run.Output, StringComparison.Ordinal);
     }
 
@@ -817,7 +781,7 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
-    public void Required_policy_fails_on_segment_finding_even_when_the_csharp_graph_is_unreadable()
+    public void Required_policy_preserves_graph_failure_alongside_segment_finding()
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Broken.cs", "sealed class Broken;")
@@ -831,7 +795,7 @@ public sealed class ArchitectureShapeTests
 
         var run = Shape(repository);
 
-        Assert.Equal(1, run.ExitCode);
+        Assert.Equal(2, run.ExitCode);
         Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
         Assert.Contains("outcome: failed", run.Output, StringComparison.Ordinal);
     }
@@ -932,11 +896,11 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
-    public void Not_applicable_architecture_still_prints_an_observation()
+    public void Not_applicable_architecture_preserves_its_verbose_detail()
     {
         using var repository = Fixtures.Compliant();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "architecture.sliced-dotnet");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "architecture.sliced-dotnet");
 
         Assert.Equal(0, run.ExitCode);
         Assert.Contains("architecture map: not applicable — standalone fixture repository", run.Output, StringComparison.Ordinal);
@@ -1453,7 +1417,7 @@ public sealed class ArchitectureShapeTests
 
         var run = Shape(repository);
 
-        Assert.Equal(1, run.ExitCode);
+        Assert.Equal(2, run.ExitCode);
         Assert.Contains("missing required layer 'Host'", run.Output, StringComparison.Ordinal);
         Assert.Contains("noncanonical-layer-directory: 'Helpers'", run.Output, StringComparison.Ordinal);
         Assert.Contains("architecture map: zone src/Orders", run.Output, StringComparison.Ordinal);
@@ -1492,17 +1456,17 @@ public sealed class ArchitectureShapeTests
         Assert.Contains("Slice isolation is evaluated within one layer", run.Output, StringComparison.Ordinal);
         Assert.Contains("makes <Name> a slice", run.Output, StringComparison.Ordinal);
         Assert.Contains("Inferred", run.Output, StringComparison.Ordinal);
-        Assert.Contains("insignificant-slice convention accepts both Proven and Inferred", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("insignificant-slice", run.Output, StringComparison.Ordinal);
         Assert.Contains("segments-by-purpose", run.Output, StringComparison.Ordinal);
         Assert.Contains("no-segments-on-sliced-layers", run.Output, StringComparison.Ordinal);
         Assert.Contains("no-layer-public-api", run.Output, StringComparison.Ordinal);
-        Assert.Contains("repetitive-naming", run.Output, StringComparison.Ordinal);
-        Assert.Contains("ambiguous-slice-names", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("repetitive-naming", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("ambiguous-slice-names", run.Output, StringComparison.Ordinal);
         Assert.Contains("do not prove semantic slice cohesion", run.Output, StringComparison.Ordinal);
         Assert.Contains("adrs/0036-input-layers-read-domain.md", run.Output, StringComparison.Ordinal);
         Assert.Contains("adrs/0037-segments-by-purpose.md", run.Output, StringComparison.Ordinal);
         Assert.Contains("adrs/0051-slices-in-the-layer-root.md", run.Output, StringComparison.Ordinal);
-        Assert.Contains("member access", run.Output, StringComparison.Ordinal);
+
         Assert.Contains("sliced-dotnet/1 standard", run.Output, StringComparison.Ordinal);
     }
 
@@ -1588,7 +1552,7 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
-    public void A_single_group_holding_every_slice_is_repetitive_naming()
+    public void A_single_group_holding_every_slice_is_allowed()
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
@@ -1600,12 +1564,7 @@ public sealed class ArchitectureShapeTests
         var run = Shape(repository);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Contains(
-            "advisory src/Orders/Application/Orders: repetitive-naming: every slice of dimension 'Application' "
-            + "sits in the single group 'Orders'; the group name repeats on every slice and carries no "
-            + "information — flatten the group or split slices into two or more groups",
-            run.Output,
-            StringComparison.Ordinal);
+        Assert.DoesNotContain("repetitive-naming", run.Output, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -1628,7 +1587,7 @@ public sealed class ArchitectureShapeTests
     }
 
     [Fact]
-    public void A_segment_repeating_its_slice_name_is_ambiguous()
+    public void A_segment_repeating_its_slice_name_is_allowed()
     {
         using var repository = ArchitectureRepository()
             .WriteFile("src/Orders/Host/Program.cs", "sealed class Program;")
@@ -1641,11 +1600,7 @@ public sealed class ArchitectureShapeTests
         var run = Shape(repository);
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Contains(
-            "advisory src/Orders/Application/Graph/Graph: ambiguous-slice-names: segment 'Graph' of slice "
-            + "'Graph', dimension 'Application', repeats the slice name; name the segment after its purpose",
-            run.Output,
-            StringComparison.Ordinal);
+        Assert.DoesNotContain("ambiguous-slice-names", run.Output, StringComparison.Ordinal);
     }
 
     private static RepositoryFixture ArchitectureRepository(string policy = "required")

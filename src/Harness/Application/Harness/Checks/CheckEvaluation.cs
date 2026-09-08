@@ -1,6 +1,6 @@
 namespace Harness.Checks;
 
-/// <summary>What one check concluded, with the findings and observations behind it.</summary>
+/// <summary>What one check concluded, with the findings and details behind it.</summary>
 /// <remarks>
 /// <c>OutcomeReason</c> says what the outcome means for this repository, in one line: why
 /// the check is incomplete, not applicable or a readiness gap, or what a check that passed
@@ -11,13 +11,13 @@ internal sealed record CheckEvaluation(
     IReadOnlyList<Finding> Findings,
     string? OutcomeReason,
     IReadOnlyList<Finding> DetailedFindings,
-    IReadOnlyList<string> Observations)
+    IReadOnlyList<string> Details)
 {
     public static CheckEvaluation From(
         IReadOnlyList<Finding> findings,
         string? reason = null,
         IReadOnlyList<Finding>? detailedFindings = null,
-        IReadOnlyList<string>? observations = null)
+        IReadOnlyList<string>? details = null)
         => new(
             findings.Any(finding => finding.Severity == FindingSeverity.Blocking)
                 ? CheckOutcome.Failed
@@ -25,23 +25,23 @@ internal sealed record CheckEvaluation(
             findings,
             reason,
             detailedFindings ?? findings,
-            observations ?? []);
+            details ?? []);
 
     public static CheckEvaluation Passed(string reason) => new(CheckOutcome.Passed, [], reason, [], []);
 
-    public static CheckEvaluation Incomplete(string reason, IReadOnlyList<string>? observations = null)
-        => new(CheckOutcome.Incomplete, [], reason, [], observations ?? []);
+    public static CheckEvaluation Incomplete(string reason, IReadOnlyList<string>? details = null)
+        => new(CheckOutcome.Incomplete, [], reason, [], details ?? []);
 
     public static CheckEvaluation Incomplete(
         string reason,
         IReadOnlyList<Finding> findings,
-        IReadOnlyList<string>? observations = null)
-        => new(CheckOutcome.Incomplete, findings, reason, findings, observations ?? []);
+        IReadOnlyList<string>? details = null)
+        => new(CheckOutcome.Incomplete, findings, reason, findings, details ?? []);
 
     public static CheckEvaluation Skipped(string reason) => new(CheckOutcome.Skipped, [], reason, [], []);
 
-    public static CheckEvaluation NotApplicable(string reason, IReadOnlyList<string>? observations = null)
-        => new(CheckOutcome.NotApplicable, [], reason, [], observations ?? []);
+    public static CheckEvaluation NotApplicable(string reason, IReadOnlyList<string>? details = null)
+        => new(CheckOutcome.NotApplicable, [], reason, [], details ?? []);
 
     public static CheckEvaluation ReadinessGap(string reason) => new(CheckOutcome.ReadinessGap, [], reason, [], []);
 }
