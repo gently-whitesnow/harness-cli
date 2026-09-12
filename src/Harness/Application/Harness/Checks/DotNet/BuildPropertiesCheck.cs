@@ -7,7 +7,7 @@ internal sealed class BuildPropertiesCheck : DotNetCheck
 {
     private const string ContinuousIntegration = "ContinuousIntegrationBuild";
 
-    private static readonly EvidenceFile BuildProps = new("Directory.Build.props");
+    private static readonly EvidenceFile BuildProps = new("Directory.Build.props", Inherited: true);
 
     private static readonly IReadOnlyDictionary<string, string> Required =
         new Dictionary<string, string>(StringComparer.Ordinal)

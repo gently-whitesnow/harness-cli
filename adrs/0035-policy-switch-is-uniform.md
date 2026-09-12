@@ -5,7 +5,9 @@
 Accepted. Уточняет [ADR-0032](0032-topology-over-thresholds.md) и
 [ADR-0033](0033-canonical-standard-over-declarations.md). Требование перечислить каждую
 shipped-проверку — Superseded by [ADR-0054](0054-explicit-only-frame.md); три значения
-policy и запрет адресного подавления действуют.
+policy и запрет адресного подавления действуют. Область репозитория целиком —
+Superseded by [ADR-0060](0060-explicit-workspace-projects.md) для явно зарегистрированных
+проектов workspace; внутри проекта адресные исключения по-прежнему запрещены.
 
 ## Context
 

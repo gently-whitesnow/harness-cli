@@ -31,6 +31,12 @@ internal static class EditorConfigGlob
             var character = pattern[index];
             switch (character)
             {
+                // A whole **/ segment also matches zero directories.
+                case '*' when index + 2 < pattern.Length && pattern[index + 1] == '*'
+                    && pattern[index + 2] == '/' && (index == 0 || pattern[index - 1] == '/'):
+                    regex.Append("(?:.*/)?");
+                    index += 2;
+                    break;
                 case '*' when index + 1 < pattern.Length && pattern[index + 1] == '*':
                     regex.Append(".*");
                     index++;
@@ -49,6 +55,11 @@ internal static class EditorConfigGlob
                     break;
                 case '}':
                     regex.Append(')');
+                    break;
+                // EditorConfig negates a character class with !, while regex uses ^.
+                case '[' when index + 1 < pattern.Length && pattern[index + 1] == '!':
+                    regex.Append("[^");
+                    index++;
                     break;
                 case '[':
                 case ']':

@@ -14,6 +14,8 @@ internal sealed record HarnessConfig
 
     public const string RetiredBudgetFileName = ".harness.budget.json";
 
+    public IReadOnlyList<string> Projects { get; init; } = [];
+
     public required HarnessVersion Version { get; init; }
 
     public required bool TracksLatest { get; init; }
@@ -131,5 +133,29 @@ internal sealed record HarnessConfig
         carries required, advisory or off, and its settings section in full. An axis with tracked
         sources must be declared applicable or declined with a reason — harness.coverage says which.
         Run `harness explain <check-id>` for what one answer means and how it is reported.
+        """;
+
+    /// <summary>The smallest frame for a registered project; pin and commit settings stay in the root.</summary>
+    public static string ProjectTemplate =>
+        $$"""
+        A minimal {{FileName}} for a registered project, committed in the project directory
+        (`version`, `projects`, `settings.commits` and `policy.commits.setup` stay in the root):
+
+          {
+            "answers": {
+              "verify": { "present": false, "reason": "verified by the root verify script" }
+            },
+            "applicability": {},
+            "settings": {},
+            "policy": {
+              "harness.coverage": "required",
+              "docs.policy": "required",
+              "frame.verify": "required"
+            }
+          }
+
+        Answers, applicability, settings and policy are not inherited from the root; every
+        question the project policy names is answered here. Run `harness explain harness.config`
+        for the workspace rules.
         """;
 }

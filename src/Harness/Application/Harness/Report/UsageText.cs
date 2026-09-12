@@ -9,7 +9,7 @@ internal static class UsageText
         harness — repository quality CLI
 
         Usage
-          harness check [path] [--only <ids>] [--skip <ids>] [--verbose] [--all]
+          harness check [path] [--project <path>] [--only <ids>] [--skip <ids>] [--verbose] [--all]
           harness init [path] [--kind <application|library>] [--languages <keys>] [--latest] [--language <en|ru>]
           harness upgrade [path] [--dry-run]
           harness setup [path]
@@ -21,6 +21,7 @@ internal static class UsageText
           harness help
 
         Options
+          --project      check one registered project; validates every frame and reports a partial run
           --only <ids>   run one check, or the given check/group identifiers (comma separated)
           --skip <ids>   exclude the given check or group identifiers; they stay visible in the summary
           --verbose      show findings, neutral details, reasons and timings
@@ -35,6 +36,12 @@ internal static class UsageText
           A check the policy does not name is outside the frame and does not run; a check it
           names carries required, advisory or off and its settings section in full.
           harness.coverage reports a tracked language or stack the frame has not decided about.
+
+        Workspace
+          Root projects registers disjoint directories with tracked .harness.json files.
+          Only the root declares version and commit settings; project frames are explicit.
+          check covers the root remainder and every project, regardless of working directory.
+          Cross-project duplication and dependency graphs are not measured.
 
         Architecture selectors
           architecture and architecture.sliced-dotnet select all eight architecture checks.

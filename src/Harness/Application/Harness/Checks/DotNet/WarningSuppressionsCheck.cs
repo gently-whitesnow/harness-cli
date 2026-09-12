@@ -14,9 +14,13 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
 {
     private static readonly EvidenceFile Sources = new("*.cs");
 
-    private static readonly EvidenceFile BuildProps = new("Directory.Build.props");
+    // EditorConfig applies to all supported .NET languages; pragma parsing remains C# only.
+    private static readonly EvidenceFile[] EditorConfigSources =
+        [Sources, new("*.vb"), new("*.fs"), new("*.fsi")];
 
-    private static readonly EvidenceFile EditorConfig = new(".editorconfig");
+    private static readonly EvidenceFile BuildProps = new("Directory.Build.props", Inherited: true);
+
+    private static readonly EvidenceFile EditorConfig = new(".editorconfig", Inherited: true);
 
     private static readonly string[] GeneratedSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
 
@@ -35,7 +39,7 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
 
     public override string Explanation => WarningSuppressionsExplanation.Text;
 
-    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [Sources, BuildProps, EditorConfig];
+    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [.. EditorConfigSources, BuildProps, EditorConfig];
 
     protected override CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects)
     {
@@ -52,7 +56,13 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
             CollectFromXml(project, sites, repositoryWide: false);
         }
 
-        foreach (var entry in context.Tracked(BuildProps))
+        // MSBuild imports only the nearest Directory.Build.props above a project.
+        var applied = projects
+            .Select(project => context.Nearest(BuildProps, project.Path))
+            .OfType<TrackedEntry>()
+            .DistinctBy(entry => entry.Path)
+            .OrderBy(entry => entry.Path, StringComparer.Ordinal);
+        foreach (var entry in applied)
         {
             var (props, readFailure) = DotNetRepository.Read(context.Repository, entry);
             if (props is null)
@@ -63,15 +73,21 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
             CollectFromXml(props, sites, repositoryWide: true);
         }
 
-        foreach (var entry in context.Tracked(EditorConfig))
+        var (configs, configFailure) = EditorConfigChain.ReadAll(context, EditorConfig);
+        if (configs is null)
         {
-            var (file, readFailure) = EditorConfigFile.Read(context.Repository, entry);
-            if (file is null)
-            {
-                return CheckEvaluation.Incomplete(readFailure!);
-            }
+            return CheckEvaluation.Incomplete(configFailure!);
+        }
 
-            CollectFromEditorConfig(file, sites);
+        var covered = CoveredSources(context, configs);
+        foreach (var file in configs)
+        {
+            var paths = covered.TryGetValue(file, out var addressed) ? addressed : [];
+            var sections = file.Sections
+                .Where(section => section.Entries.Any(entry => SilencingSeverities.Contains(Severity(entry.Value))))
+                .Where(section => paths.Any(path => EditorConfigGlob.Matches(section.Glob, path)))
+                .ToList();
+            CollectFromEditorConfig(file with { Sections = sections }, sites);
         }
 
         var findings = sites
@@ -93,6 +109,40 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
             findings,
             findings.Count == 0 ? "no diagnostic is silenced at an address" : null,
             details: details);
+    }
+
+    /// <summary>
+    /// The sources each .editorconfig is in force for, relative to its directory: a section is
+    /// judged in the frame whose tracked sources it addresses. The chain is resolved per directory.
+    /// </summary>
+    private static Dictionary<EditorConfigFile, List<string>> CoveredSources(
+        CheckContext context,
+        IReadOnlyList<EditorConfigFile> configs)
+    {
+        var covered = new Dictionary<EditorConfigFile, List<string>>(ReferenceEqualityComparer.Instance);
+        var chains = new Dictionary<string, List<EditorConfigFile>>(StringComparer.Ordinal);
+        foreach (var source in EditorConfigSources.SelectMany(context.Tracked))
+        {
+            var directory = EditorConfigChain.DirectoryOf(source.Path);
+            if (!chains.TryGetValue(directory, out var chain))
+            {
+                chain = EditorConfigChain.ChainFor(configs, source.Path);
+                chains[directory] = chain;
+            }
+
+            foreach (var file in chain)
+            {
+                if (!covered.TryGetValue(file, out var paths))
+                {
+                    paths = [];
+                    covered[file] = paths;
+                }
+
+                paths.Add(EditorConfigChain.RelativeTo(context.Repository.RootPath, file.Directory, source.Path));
+            }
+        }
+
+        return covered;
     }
 
     private static string? CollectFromSources(CheckContext context, List<Site> sites)

@@ -9,4 +9,5 @@ internal sealed record GateReport(
     TimeSpan Duration,
     string? OutcomeReason,
     IReadOnlyList<string> Details,
-    bool OutsideFrame = false);
+    bool OutsideFrame = false,
+    string? Policy = null);

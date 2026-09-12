@@ -6,8 +6,10 @@ Standalone CLI, который держит одну и ту же harness-рам
 выполняет разные для репозиториев измерения. [ADR-0046](adrs/0046-unified-verification-entry-point.md)
 
 ## Рамка
-Репозиторий отвечает на все вопросы рамки в собственном tracked `.harness.json`. Ответы
-self-reported: адрес служит навигацией, а не доказательством. Формы ответа:
+Корневой tracked `.harness.json` задаёт версию и commit-интеграцию; `projects` регистрирует непересекающиеся
+каталоги с рамками без наследования. Корень покрывает остальные файлы; графы и дубли только локальные.
+`check --project <path>` — корень и проект после валидации всех конфигов, частичный прогон.
+[ADR-0060](adrs/0060-explicit-workspace-projects.md). Ответы self-reported; адрес — навигация. Формы:
 
 ```jsonc
 "tests.unit":  { "paths": ["tests/Unit"] }                        // есть; адрес — проект, не файлы
@@ -62,7 +64,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
 блокируются; выключение правила для всего репозитория печатается в verbose details. Читается tracked XML и текст без MSBuild evaluation. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"3.2.0"`). Бинарь исполняет только его; другой pin даёт
+`version` — строка текущего контракта (`"3.3.0"`). Бинарь исполняет только его; другой pin даёт
 `Incomplete`, а меняет pin только `harness upgrade`, печатающий маршрут от pin и фрагменты для
 обнаруженных осей. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -133,13 +135,11 @@ dotnet format Harness.slnx --verify-no-changes --severity warn # формат и
 dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
 ./src/Harness/bin/Release/net10.0/osx-arm64/publish/harness check
 ```
-
 ## Коды возврата
 - `0` — каждая выбранная применимая blocking-проверка отработала и прошла. Advisory-находки
   и readiness gaps при этом могут быть: отчёт скажет об этом вместо `PASS`.
 - `1` — выбранная применимая blocking-проверка доказала нарушение.
 - `2` — проверку не удалось выполнить достоверно; сюда же относится отсутствующий или невалидный `.harness.json`.
-
 ## Документация
 `AGENTS.md` — источник агентской навигации, обычный tracked-файл не более 150 физических
 строк. `CLAUDE.md` — прямой относительный симлинк на соседний `AGENTS.md`. `README.md` —

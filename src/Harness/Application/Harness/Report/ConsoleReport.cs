@@ -7,7 +7,11 @@ namespace Harness.Report;
 /// <summary>Renders a complete scan as compact status rows, with evidence on demand.</summary>
 internal static class ConsoleReport
 {
-    public static string Render(RunReport report, bool verbose, bool focused, bool all = false)
+    // "required", "advisory", "off" and "outside" all fit; the header shares the width so the
+    // TIME column lines up under --verbose.
+    private const int PolicyWidth = 8;
+
+    public static string Render(RunReport report, bool verbose, bool focused, bool all = false, bool showPolicy = false)
     {
         var text = new StringBuilder();
 
@@ -39,6 +43,10 @@ internal static class ConsoleReport
         if (visibleGates.Count > 0)
         {
             text.Append("   ").Append("CHECK ID".PadRight(identifierWidth)).Append("FINDINGS");
+            if (showPolicy)
+            {
+                text.Append("  ").Append("POLICY".PadRight(PolicyWidth));
+            }
             if (verbose)
             {
                 text.Append("  TIME");
@@ -49,7 +57,7 @@ internal static class ConsoleReport
 
         foreach (var gate in visibleGates)
         {
-            AppendGate(text, gate, verbose, all, identifierWidth);
+            AppendGate(text, gate, verbose, all, identifierWidth, showPolicy);
         }
 
         AppendOutsideFrame(text, report, verbose, focused);
@@ -100,11 +108,17 @@ internal static class ConsoleReport
         GateReport gate,
         bool verbose,
         bool all,
-        int identifierWidth)
+        int identifierWidth,
+        bool showPolicy)
     {
         text.Append(Status(gate)).Append(' ');
         text.Append(gate.Id.PadRight(identifierWidth))
             .Append(IssueCount(gate, all).ToString(CultureInfo.InvariantCulture).PadLeft("FINDINGS".Length));
+
+        if (showPolicy)
+        {
+            text.Append("  ").Append((gate.Policy ?? "outside").PadRight(PolicyWidth));
+        }
 
         if (verbose)
         {
@@ -220,15 +234,14 @@ internal static class ConsoleReport
         => severity == FindingSeverity.Blocking ? "violation" : "advisory ";
 
     private static string Headline(RunReport report)
-        => report.ExitCode switch
+        => Headline(report.ExitCode, report.NothingWasVerified, report.HasReadinessGaps);
+
+    /// <summary>The one verdict word, shared by a single run and a workspace of runs.</summary>
+    public static string Headline(int exitCode, bool nothingWasVerified, bool hasReadinessGaps)
+        => exitCode switch
         {
             ExitCodes.Violation => "FAIL",
-            ExitCodes.Success => report switch
-            {
-                { NothingWasVerified: true } => "NOTHING VERIFIED",
-                { HasReadinessGaps: true } => "PASS WITH GAPS",
-                _ => "PASS",
-            },
+            ExitCodes.Success => nothingWasVerified ? "NOTHING VERIFIED" : hasReadinessGaps ? "PASS WITH GAPS" : "PASS",
             _ => "INCOMPLETE",
         };
 

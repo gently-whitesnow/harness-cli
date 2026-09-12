@@ -1,5 +1,6 @@
 using Harness.Config;
 using Harness.Repository;
+using Harness.Versioning;
 
 namespace Harness.Checks;
 
@@ -26,32 +27,50 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
         $"""
         Rationale
           The harness holds the same frame over every repository it is pointed at, and the
-          frame is a document the repository owns rather than a flag someone passes. One
-          tracked file therefore carries its answers and check policy — and the same file is
-          what a reviewer, an agent and CI all read.
+          frame is a document the repository owns rather than a flag someone passes. The
+          root frame can register independent project frames; each tracked file carries the
+          answers and check policy that reviewers, agents and CI read for its own scope.
 
         What it reads
-          The tracked {HarnessConfig.FileName} at the repository root, and nothing else. An
-          untracked file does not exist for the harness, so every developer, agent and CI
-          job reads the same frame. `init` writes the file without staging it, so a run that
-          finds it in the working tree only says so under `not in the index`.
+          The tracked root {HarnessConfig.FileName}, plus every project config explicitly
+          registered in its `projects` array. All frames are validated before selection;
+          an invalid unselected project still makes the workspace incomplete. Unregistered
+          tracked nested configs are refused, including when the root has no projects;
+          `harness upgrade` lists them. A property repeated at any depth of any frame leaves
+          it ambiguous and is refused rather than read last-wins.
+          A file outside the index is not evidence. `init` does not stage its output.
+          The root owns files outside registered projects; each project owns its directory.
+          Checks use project-relative inventory and can read named tracked ancestor
+          .editorconfig and Directory.* build evidence without including sibling sources.
 
         What it accepts
-          version       required; the current harness contract, such as "2.0.0", or "latest"
-                        to follow the installed binary. For a different pin, run `harness upgrade`;
-                        it is the only supported path to update the tracked config.
+          version       required only in the root; the current contract "{HarnessVersion.Current}",
+                        or "latest" to follow the installed binary. Projects cannot declare it.
+                        For a different pin, `harness upgrade` updates the root contract.
+          projects      optional root-only array of normalized repository-relative directories.
+                        Each must contain a tracked {HarnessConfig.FileName}; duplicates,
+                        overlapping directories and glob patterns are refused.
           policy        the checks this repository runs, each `required`, `advisory` or `off`.
                         A shipped check the policy does not name is outside the frame: it does
                         not run and the report counts it once under "outside the frame".
           applicability every axis a named check belongs to, marked true or false with reason;
                         an axis no named check belongs to needs no entry.
-          settings      `commits`, and one complete section per named check that reads one
-                        (comments.*, duplication.*, complexity.*); a section for a check the
-                        policy does not name is refused — there are no hidden defaults.
+          settings      an explicit object, with one complete section per configurable check
+                        named in policy (comments.*, duplication.*, complexity.*). Only the
+                        root declares `settings.commits` and `policy.commits.setup`.
+                        Projects share that root version and commit envelope; answers,
+                        applicability, policy, architecture and other settings never inherit.
+                        A settings section without a policy entry is refused.
           answers       one self-reported answer for every `frame` question the policy names,
                         keyed without the `frame.` prefix; other questions may be answered.
           architecture  required once an architecture.sliced-dotnet check is named: the
                         sliced-dotnet/1 standard, or not applicable with a reason.
+
+        Workspace runs
+          `harness check` runs the root and all projects. `--project <directory>` runs the
+          root and that registered project and reports partial coverage. Findings name the
+          frame, config and policy. Duplication and dependency graphs are measured within
+          each frame; cross-project duplication and graph relationships are not measured.
 
         Why it is incomplete rather than a violation
           Without a readable frame the harness cannot state what this repository answers, so

@@ -21,7 +21,8 @@ internal static class GateEngine
         IRepository repository,
         IReadOnlyList<string> only,
         IReadOnlyList<string> skip,
-        IReadOnlyList<IRepositoryCheck> checks)
+        IReadOnlyList<IRepositoryCheck> checks,
+        HarnessConfig? suppliedConfig = null)
     {
         var invalidSelection = InvalidSelectionReport(only, skip, checks);
         if (invalidSelection is not null)
@@ -30,7 +31,9 @@ internal static class GateEngine
         }
 
         var descriptors = CheckCatalog.Describe(checks);
-        var (config, configFailure) = HarnessConfigReader.Load(repository, descriptors);
+        var (config, configFailure) = suppliedConfig is null
+            ? HarnessConfigReader.Load(repository, descriptors)
+            : (suppliedConfig, (string?)null);
         var invalidConfig = InvalidConfigReport(repository, config, configFailure, checks, descriptors);
         if (invalidConfig is not null)
         {
@@ -83,6 +86,14 @@ internal static class GateEngine
             Pin(config),
             UntrackedEvidence(repository, unexplained));
     }
+
+    /// <summary>A run stopped at the frame, so a workspace the engine refuses reads like a frame the reader refuses.</summary>
+    public static RunReport Incomplete(IRepository repository, string failure, IReadOnlyList<IRepositoryCheck> checks)
+        => InvalidConfigReport(repository, null, failure, checks, CheckCatalog.Describe(checks))
+            ?? new RunReport(repository.RootPath, [], ToolError: failure);
+
+    public static RunReport Refused(string reason)
+        => new(RepositoryPath: null, Gates: [], ToolError: reason);
 
     private static RunReport? InvalidSelectionReport(
         IReadOnlyList<string> only,
@@ -216,7 +227,8 @@ internal static class GateEngine
             detailed,
             duration,
             reason,
-            evaluation.Details);
+            evaluation.Details,
+            Policy: PolicyName(policy));
     }
 
     private static GateReport Excluded(
@@ -233,7 +245,8 @@ internal static class GateEngine
             policy == CheckPolicy.Off
                 ? $"{HarnessConfig.FileName} turns this check off."
                 : explicitlySkipped ? "excluded by --skip." : null,
-            []);
+            [],
+            Policy: PolicyName(policy));
 
     /// <summary>A row only when asked for by name; otherwise one line of the summary counts it.</summary>
     private static GateReport OutsideFrame(IRepositoryCheck check, bool named)
@@ -250,6 +263,14 @@ internal static class GateEngine
                 : null,
             [],
             OutsideFrame: true);
+
+    private static string PolicyName(CheckPolicy policy)
+        => policy switch
+        {
+            CheckPolicy.Required => "required",
+            CheckPolicy.Advisory => "advisory",
+            _ => "off",
+        };
 
     private static CheckEvaluation Evaluate(IRepositoryCheck check, CheckContext context)
     {

@@ -29,6 +29,7 @@ public sealed class WarningSuppressionsTests
                 "    <TargetFramework>net10.0</TargetFramework>\n    <NoWarn>$(NoWarn);CS1591</NoWarn>\n    <WarningsNotAsErrors>CS0618</WarningsNotAsErrors>",
                 StringComparison.Ordinal))
             .WriteFile("src/App/Widget.cs", SuppressingSource)
+            .WriteFile("tests/Unit/WidgetTests.cs", Fixtures.FormattedSource)
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check, "--all");
@@ -100,12 +101,29 @@ public sealed class WarningSuppressionsTests
     }
 
     [Fact]
+    public void Section_addressing_no_tracked_source_silences_nothing()
+    {
+        using var repository = Fixtures.Compliant()
+            .WriteFile("Directory.Build.props", Fixtures.HardenedBuildProps)
+            .WriteFile(".editorconfig", "root = true\n[legacy/**/*.cs]\ndotnet_diagnostic.CA1707.severity = none\n")
+            .WriteFile("src/App/App.csproj", Fixtures.SimpleSdkProject)
+            .WriteFile("src/App/Widget.cs", Fixtures.FormattedSource)
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.DoesNotContain("silences CA1707", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Name_prefix_section_without_generated_marker_is_an_address()
     {
         using var repository = Fixtures.Compliant()
             .WriteFile("Directory.Build.props", Fixtures.HardenedBuildProps)
             .WriteFile(".editorconfig", "root = true\n[*.g.cs]\ndotnet_diagnostic.IDE0130.severity = none\n")
             .WriteFile("src/App/App.csproj", Fixtures.SimpleSdkProject)
+            .WriteFile("src/App/Client.g.cs", "namespace App;\npublic class Client { }\n")
             .WriteFile("src/App/Widget.cs", Fixtures.FormattedSource)
             .Commit();
 

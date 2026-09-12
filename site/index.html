@@ -33,7 +33,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5V7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17M17 21h2.5a1.5 1.5 0 0 0 1.5-1.5V17M8 12.5l2.5 2.5L16 9.5" />
         </svg>
-        harness <span class="version">3.2.0</span>
+        harness <span class="version">3.3.0</span>
       </a>
       <nav aria-label="Основная навигация">
         <a href="#checks">Проверки</a>
@@ -61,7 +61,7 @@
             <div class="terminal">
 <pre><code>$ harness check
 
-<strong>FAIL</strong> · harness 3.2.0
+<strong>FAIL</strong> · harness 3.3.0
 
 <strong>×</strong> dependencies.csharp
   Orders → Billing → Orders
@@ -99,6 +99,15 @@ exit 1</code></pre>
             <li>не названа в <code>policy</code> — вне рамки: не запускается, в отчёте одна строка <code>outside the frame</code></li>
           </ul>
           <p class="note">Любую проверку можно смягчить или отключить. Спрятать отдельную находку исключением для файла нельзя. Названная проверка несёт свои настройки полностью: скрытых дефолтов нет.</p>
+          <details class="read-more">
+            <summary>Несколько проектов в одном Git-репозитории</summary>
+            <div>
+              <p>Корневой <code>.harness.json</code> регистрирует непересекающиеся каталоги: <code>"projects": ["apps/api", "apps/web"]</code>. Каждый содержит tracked <code>.harness.json</code> с собственными ответами, applicability, policy и settings. Наследования нет; версия и commit-интеграция остаются только в корне.</p>
+              <p>Корень покрывает файлы вне проектов. Проверку можно выключить или оставить advisory целиком для одного проекта; исключений для файлов внутри проекта нет. Общие tracked настройки предков доступны при чтении, но соседний код не входит в измерение.</p>
+              <p><code>harness check</code> проверяет весь workspace; <code>harness check --project apps/api</code> — корневая область и выбранный проект после валидации всех конфигов, явно частичный прогон. <code>--verbose</code> показывает область. Незарегистрированный вложенный конфиг — ошибка.</p>
+              <p class="note">Дублирование и графы измеряются локально: межпроектные повторы и зависимости не проверены. Границы проектов меняют область метрик и требуют ревью. <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0060-explicit-workspace-projects.md">ADR-0060</a>.</p>
+            </div>
+          </details>
           <details class="read-more">
             <summary>Что включено сразу после init</summary>
             <div>
