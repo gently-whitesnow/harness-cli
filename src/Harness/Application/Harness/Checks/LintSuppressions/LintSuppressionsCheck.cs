@@ -83,17 +83,20 @@ internal sealed partial class LintSuppressionsCheck(IGoSources sources) : IRepos
     // The golangci-lint form: `//nolint:linter1,linter2 // reason`, no space after the slashes.
     private static void Judge(string path, GoComment comment, List<Finding> findings)
     {
-        var match = Directive().Match(comment.Text);
-        if (!match.Success)
+        if (!Directive().IsMatch(comment.Text))
         {
             return;
         }
 
         var location = $"{path}:{comment.Line}";
-        var linters = match.Groups["linters"].Value
+        var explanation = comment.Text.IndexOf("//", StringComparison.Ordinal);
+        var directive = explanation < 0 ? comment.Text : comment.Text[..explanation];
+        var reason = explanation < 0 ? string.Empty : comment.Text[(explanation + 2)..].Trim();
+        var blanket = !directive.StartsWith("nolint:", StringComparison.Ordinal)
+            || directive.StartsWith("nolint:all", StringComparison.Ordinal);
+        var linters = !directive.StartsWith("nolint:", StringComparison.Ordinal) ? [] : directive["nolint:".Length..]
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var reason = match.Groups["reason"].Success ? match.Groups["reason"].Value.Trim() : string.Empty;
-        if (linters.Length == 0 || linters.Contains("all", StringComparer.OrdinalIgnoreCase))
+        if (blanket || linters.Length == 0 || linters.Contains("all", StringComparer.OrdinalIgnoreCase))
         {
             findings.Add(new Finding(
                 FindingSeverity.Blocking,
@@ -168,6 +171,6 @@ internal sealed partial class LintSuppressionsCheck(IGoSources sources) : IRepos
 
     private static string At(string path, ConfigNode node) => node.Line > 0 ? $"{path}:{node.Line}" : path;
 
-    [GeneratedRegex(@"^nolint(?::(?<linters>[A-Za-z0-9_,\- ]*))?(?:\s*//\s*(?<reason>.*))?\s*$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^nolint( |:|$)", RegexOptions.CultureInvariant)]
     private static partial Regex Directive();
 }

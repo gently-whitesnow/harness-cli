@@ -117,6 +117,24 @@ public sealed class GoLanguageTests
         Assert.False(run.OutputContains("cmd/app: Dependencies"), run.Output);
     }
 
+    [Theory]
+    [InlineData("module example.com/app // module comment\n")]
+    [InlineData("module\texample.com/app\n")]
+    [InlineData("  module\t\"example.com/app\"\t// module comment\r\n")]
+    [InlineData("module example.com/app// module comment\n")]
+    public void Module_whitespace_quotes_and_comments_preserve_import_edges(string declaration)
+    {
+        using var repository = Packages(Frame.AllPresent().Settings(
+            """{ "complexity.go": { "averageReachableFiles": 2.0, "largestCyclicGroupSize": 0 } }"""))
+            .WriteFile("go.mod", declaration).Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Complexity);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.True(run.OutputContains("average reachable packages: 2.80 packages (14 reachable package pairs / 5 packages"), run.Output);
+        Assert.True(run.OutputContains("internal/p1: Dependencies from here reach 4 of 5 packages."), run.Output);
+    }
+
     [Fact]
     public void A_go_mod_left_out_of_the_index_makes_the_dsm_incomplete_and_is_named()
     {
@@ -152,6 +170,37 @@ public sealed class GoLanguageTests
         Assert.True(run.OutputContains("internal/sample/run.go:6: silences every linter via //nolint:all;"), run.Output);
         Assert.False(run.OutputContains("run.go:7"), run.Output);
         Assert.False(run.OutputContains("run.go:8"), run.Output);
+    }
+
+    [Theory]
+    [InlineData("//nolint because legacy")]
+    [InlineData("//nolint because legacy // explanation")]
+    [InlineData("//nolint:all because legacy // explanation")]
+    [InlineData("//nolint:all! // explanation")]
+    public void Blanket_nolint_directives_remain_blocking_with_trailing_text(string directive)
+    {
+        using var repository = Fixtures.Compliant()
+            .WriteFile("run.go", $"package sample\n{directive}\nfunc Run() {{}}\n").Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", LintSuppressions);
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.True(run.OutputContains("run.go:2: silences every linter"), run.Output);
+    }
+
+    [Theory]
+    [InlineData("//nolintish is ordinary prose")]
+    [InlineData("// nolint is ordinary prose")]
+    [InlineData("//nolint:errcheck // closing a read-only file")]
+    public void Prose_and_justified_specific_nolint_directives_still_pass(string comment)
+    {
+        using var repository = Fixtures.Compliant()
+            .WriteFile("run.go", $"package sample\n{comment}\nfunc Run() {{}}\n").Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", LintSuppressions);
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("outcome: passed"), run.Output);
     }
 
     [Fact]

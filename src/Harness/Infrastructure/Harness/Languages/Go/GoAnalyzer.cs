@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Harness.Languages;
 using Harness.Languages.Go;
 using Harness.Repository;
@@ -12,7 +13,7 @@ namespace Harness.Infrastructure.Languages.Go;
 /// names a package of a tracked go.mod module in this repository; every other import is
 /// external. The compiler forbids import cycles, so the graph is a DAG by construction.
 /// </summary>
-internal sealed class GoAnalyzer(IGoSources sources) : ILanguageAnalyzer
+internal sealed partial class GoAnalyzer(IGoSources sources) : ILanguageAnalyzer
 {
     public const string ModuleFile = "go.mod";
 
@@ -144,9 +145,9 @@ internal sealed class GoAnalyzer(IGoSources sources) : ILanguageAnalyzer
             }
 
             var path = text.Split('\n')
-                .Select(line => line.Trim())
-                .Where(line => line.StartsWith("module ", StringComparison.Ordinal))
-                .Select(line => line["module ".Length..].Trim().Trim('"'))
+                .Select(line => ModuleDirective().Match(line))
+                .Where(match => match.Success)
+                .Select(match => match.Groups["path"].Value)
                 .FirstOrDefault();
             if (string.IsNullOrEmpty(path))
             {
@@ -159,6 +160,9 @@ internal sealed class GoAnalyzer(IGoSources sources) : ILanguageAnalyzer
 
         return (modules, null);
     }
+
+    [GeneratedRegex("""^[ \t]*module[ \t]+(?:"(?<path>[^"\\\r\n]+)"|(?<path>[^\s"\\]+?))[ \t]*(?://[^\r\n]*)?\r?$""", RegexOptions.CultureInvariant)]
+    private static partial Regex ModuleDirective();
 
     private sealed record GoModule(string Directory, string Path);
 }
