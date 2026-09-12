@@ -36,6 +36,14 @@ internal static class FrameUpgrade
             return (null, failure);
         }
 
+        // The reader refuses an ambiguous frame, so the upgrade names the duplicate first
+        // instead of rewriting a pin that `check` would then reject.
+        var duplicate = DuplicateProperty(text);
+        if (duplicate is not null)
+        {
+            return (null, ConfigJson.Failure($"duplicate property '{duplicate}' leaves the frame ambiguous; keep one before upgrading"));
+        }
+
         var (migrated, migrationFailure) = SplitArchitecturePolicy(text);
         if (migrationFailure is not null)
         {
@@ -102,24 +110,33 @@ internal static class FrameUpgrade
     /// </summary>
     private static string Additions(IRepository repository, string text, IReadOnlyList<CheckDescriptor> checks)
     {
-        using var document = JsonDocument.Parse(text, ParseOptions);
+        using var document = JsonDocument.Parse(text, ConfigJson.ParseOptions);
         var (projects, failure) = WorkspaceProjects.Read(document.RootElement);
         if (projects is null)
         {
             return $"Workspace registration needs review: {failure}.\n";
         }
 
+        // A nested config nobody registered stops `check` outright, so the upgrade names each
+        // one before the owner decides whether it is a project frame or a leftover.
+        var unregistered = WorkspaceScope.Unregistered(repository, projects);
+        var review = unregistered.Count == 0
+            ? string.Empty
+            : "Tracked nested configs that root 'projects' does not register stop verification; "
+                + "register each directory or remove the file:\n  "
+                + string.Join("\n  ", unregistered) + "\n";
+
         if (projects.Count == 0)
         {
-            return ScopeAdditions(repository, text, checks);
+            return review + ScopeAdditions(repository, text, checks);
         }
 
-        var report = new StringBuilder("Workspace root (.harness.json):\n");
-        report.Append(ScopeAdditions(new ScopedRepository(repository, string.Empty, projects), text, checks));
-        var projectChecks = checks.Where(check => check.Id != "commits.setup").ToList();
+        var report = new StringBuilder(review).Append("Workspace root (.harness.json):\n");
+        report.Append(ScopeAdditions(WorkspaceScope.RootScope(repository, projects), text, checks));
+        var projectChecks = checks.Where(check => WorkspaceScope.IsProjectCheck(check.Id)).ToList();
         foreach (var project in projects)
         {
-            report.Append($"Project {project} ({project}/{HarnessConfig.FileName}):\n");
+            report.Append($"Project {project} ({WorkspaceScope.ConfigPath(project)}):\n");
             var scope = new ScopedRepository(repository, project);
             var entry = scope.TrackedEntries.FirstOrDefault(candidate => candidate.Path == HarnessConfig.FileName);
             if (entry is null)
@@ -151,7 +168,7 @@ internal static class FrameUpgrade
 
     private static string ScopeAdditions(IRepository repository, string text, IReadOnlyList<CheckDescriptor> checks)
     {
-        var document = JsonNode.Parse(text, documentOptions: ParseOptions) as JsonObject;
+        var document = JsonNode.Parse(text, documentOptions: ConfigJson.ParseOptions) as JsonObject;
         var policy = document?["policy"] as JsonObject ?? [];
         var applicability = document?["applicability"] as JsonObject ?? [];
         var detected = FrameAxis.Detected(repository);
@@ -193,12 +210,6 @@ internal static class FrameUpgrade
 
         return report.ToString();
     }
-
-    private static readonly JsonDocumentOptions ParseOptions = new()
-    {
-        CommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
-    };
 
     private static readonly IReadOnlyList<(HarnessVersion Since, string Note)> ReleaseNotes =
     [
@@ -420,16 +431,14 @@ internal static class FrameUpgrade
           scope    root checks cover files outside projects; project checks cover their own files;
                    cross-project duplication and dependency graphs are not measured
           added    harness check --project <path> reports a partial run after workspace validation
+          changed  a property repeated at any depth of a frame is refused as ambiguous; the
+                   last value used to win silently, and upgrade now names the duplicate first
         """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)
     {
-        var document = JsonNode.Parse(text, documentOptions: new JsonDocumentOptions
-        {
-            CommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true,
-        })!;
+        var document = JsonNode.Parse(text, documentOptions: ConfigJson.ParseOptions)!;
         if (document["policy"] is not JsonObject policy
             || !policy.TryGetPropertyValue(SlicedDotNetShapeCheck.Family, out var old))
         {
@@ -453,15 +462,18 @@ internal static class FrameUpgrade
         return (document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n", null);
     }
 
+    // Called after ReadPin, so the text is known to parse.
+    private static string? DuplicateProperty(string text)
+    {
+        using var document = JsonDocument.Parse(text, ConfigJson.ParseOptions);
+        return ConfigJson.DuplicateProperty(document.RootElement);
+    }
+
     private static (string? Pin, string? Failure) ReadPin(string text)
     {
         try
         {
-            using var document = JsonDocument.Parse(text, new JsonDocumentOptions
-            {
-                CommentHandling = JsonCommentHandling.Skip,
-                AllowTrailingCommas = true,
-            });
+            using var document = JsonDocument.Parse(text, ConfigJson.ParseOptions);
             if (document.RootElement.ValueKind != JsonValueKind.Object
                 || !document.RootElement.TryGetProperty("version", out var version)
                 || version.ValueKind != JsonValueKind.String)

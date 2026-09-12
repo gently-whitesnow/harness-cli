@@ -5,7 +5,9 @@ namespace Harness.Repository;
 /// `Directory.Packages.props`, or a `*.ext` pattern when any file of that shape answers the
 /// question. Naming it is what lets a run tell "never written" from "never staged" (ADR-0026).
 /// </summary>
-internal sealed record EvidenceFile(string Name)
+/// <param name="Name">The file name, or a `*.ext` pattern.</param>
+/// <param name="Inherited">Resolved by walking up, so a project frame reads the copies above it (ADR-0060); never a pattern.</param>
+internal sealed record EvidenceFile(string Name, bool Inherited = false)
 {
     public bool IsPattern => Name.StartsWith('*');
 

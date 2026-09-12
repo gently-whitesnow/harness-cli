@@ -13,7 +13,7 @@ internal sealed class EditorConfigCheck : DotNetCheck
 {
     private const string SampleFile = "Sample.cs";
 
-    private static readonly EvidenceFile EditorConfig = new(".editorconfig");
+    private static readonly EvidenceFile EditorConfig = new(".editorconfig", Inherited: true);
 
     private static readonly IReadOnlyList<KeyValuePair<string, string>> Required =
     [

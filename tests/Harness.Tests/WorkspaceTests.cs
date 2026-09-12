@@ -367,6 +367,122 @@ public sealed class WorkspaceTests
         Assert.Contains("answers", run.Output, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Unresolved_merge_conflict_is_reported_not_crashed()
+    {
+        using var repository = Workspace("app").WriteFile("app/shared.txt", "base\n").CommitAs("base");
+        repository.Git("checkout", "--quiet", "-b", "feature");
+        repository.WriteFile("app/shared.txt", "feature\n").CommitAs("feature");
+        repository.Git("checkout", "--quiet", "main");
+        repository.WriteFile("app/shared.txt", "main\n").CommitAs("main");
+        var merge = ProcessLauncher.Run("git", ["merge", "feature"], repository.Path);
+        Assert.NotEqual(0, merge.ExitCode);
+        Assert.Contains("app/shared.txt", repository.Git("diff", "--name-only", "--diff-filter=U"), StringComparison.Ordinal);
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.True(run.ExitCode is 0 or 1 or 2, run.Output);
+        Assert.DoesNotContain("Unhandled exception", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("same key", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Duplicate_properties_in_the_root_frame_are_incomplete_and_named_by_upgrade()
+    {
+        using var repository = Fixtures.WithRawFrame(
+            """{"version":"latest","settings":{"commits":{"language":"ru","requireSetup":false}},"policy":{"docs.policy":"required","docs.policy":"off"}}""");
+
+        var check = HarnessCli.RunVerbose(repository.Path, "check");
+        var upgrade = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+
+        Assert.Equal(2, check.ExitCode);
+        Assert.Contains("duplicate property 'policy.docs.policy'", check.Output, StringComparison.Ordinal);
+        Assert.Equal(2, upgrade.ExitCode);
+        Assert.Contains("duplicate property 'policy.docs.policy'", upgrade.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Upgrade_names_unregistered_nested_configs()
+    {
+        using var repository = Fixtures.Compliant()
+            .WriteFile("docs/examples/.harness.json", ProjectFrame()).Commit();
+
+        var upgrade = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+        var check = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.Equal(0, upgrade.ExitCode);
+        Assert.Contains("docs/examples/.harness.json", upgrade.Output, StringComparison.Ordinal);
+        Assert.Equal(2, check.ExitCode);
+        Assert.Contains("harness.config", check.Output, StringComparison.Ordinal);
+        Assert.Contains("harness " + Release.Current, check.Output, StringComparison.Ordinal);
+        Assert.Contains("docs/examples/.harness.json", check.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("WORKSPACE RUN", check.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Missing_project_config_shows_the_project_template()
+    {
+        using var repository = Workspace("app").Remove("app/.harness.json").Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("for a registered project", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"version\"", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("not in the index", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Project_selector_is_reported_when_the_root_frame_cannot_be_read()
+    {
+        using var repository = Workspace("app").WriteFile(".harness.json", "{ invalid").Commit();
+
+        var run = HarnessCli.Run(repository.Path, "check", "--project", "app");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("Project 'app' was not verified", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Root_only_selection_says_the_selected_project_was_not_run()
+    {
+        using var repository = Workspace("app");
+
+        var run = HarnessCli.Run(repository.Path, "check", "--project", "app", "--only", "commits");
+
+        Assert.Contains("Project 'app' was not run", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("other projects were not measured", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Scope: app", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Project_selector_on_a_plain_repository_names_the_missing_registration()
+    {
+        using var repository = Fixtures.Compliant();
+
+        var run = HarnessCli.Run(repository.Path, "check", "--project", "src");
+
+        Assert.Equal(2, run.ExitCode);
+        Assert.Contains("registers no projects", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("other projects were not measured", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Workspace_headline_agrees_with_the_scope_verdicts()
+    {
+        using var repository = Workspace("app")
+            .WriteFile("app/.harness.json", ProjectFrame("advisory"))
+            .WriteFile("app/notes.md", "# Advisory finding\n")
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.StartsWith("PASS  WORKSPACE RUN", run.Output, StringComparison.Ordinal);
+        Assert.Contains("POLICY    TIME", run.Output, StringComparison.Ordinal);
+        Assert.Contains("advisory  ", run.Output, StringComparison.Ordinal);
+    }
+
     private static RepositoryFixture Workspace(params string[] projects)
     {
         var repository = Fixtures.WithRawFrame(RootFrame(projects));

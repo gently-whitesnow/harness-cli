@@ -28,8 +28,11 @@ internal static class HarnessConfigReader
         var entry = repository.TrackedEntries.FirstOrDefault(candidate => candidate.Path == HarnessConfig.FileName);
         if (entry is null)
         {
-            return (null, $"'{HarnessConfig.FileName}' is not tracked in this repository, so nothing about the harness frame "
-                + $"can be established.{Environment.NewLine}{HarnessConfig.Template}");
+            return workspace is null
+                ? (null, $"'{HarnessConfig.FileName}' is not tracked in this repository, so nothing about the harness frame "
+                    + $"can be established.{Environment.NewLine}{HarnessConfig.Template}")
+                : (null, $"'{HarnessConfig.FileName}' is not tracked in this project directory, so nothing about the project "
+                    + $"frame can be established.{Environment.NewLine}{HarnessConfig.ProjectTemplate}");
         }
 
         if (repository.TrackedEntries.Any(candidate => candidate.Path == HarnessConfig.RetiredBudgetFileName))
@@ -48,11 +51,7 @@ internal static class HarnessConfigReader
         JsonDocument document;
         try
         {
-            document = JsonDocument.Parse(text, new JsonDocumentOptions
-            {
-                CommentHandling = JsonCommentHandling.Skip,
-                AllowTrailingCommas = true,
-            });
+            document = JsonDocument.Parse(text, ConfigJson.ParseOptions);
         }
         catch (JsonException exception)
         {
@@ -61,46 +60,16 @@ internal static class HarnessConfigReader
 
         using (document)
         {
-            var duplicate = DuplicateProperty(document.RootElement);
+            var duplicate = ConfigJson.DuplicateProperty(document.RootElement);
             if (duplicate is not null)
             {
-                return (null, ConfigJson.Failure($"duplicate property '{duplicate}'"));
+                return (null, ConfigJson.Failure($"duplicate property '{duplicate}' leaves the frame ambiguous; keep one"));
             }
 
             return workspace is null
                 ? Read(document.RootElement, checks)
                 : ReadProject(document.RootElement, checks, workspace);
         }
-    }
-
-    private static string? DuplicateProperty(JsonElement element)
-    {
-        if (element.ValueKind == JsonValueKind.Array)
-        {
-            return element.EnumerateArray().Select(DuplicateProperty).FirstOrDefault(value => value is not null);
-        }
-
-        if (element.ValueKind != JsonValueKind.Object)
-        {
-            return null;
-        }
-
-        var names = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var property in element.EnumerateObject())
-        {
-            if (!names.Add(property.Name))
-            {
-                return property.Name;
-            }
-
-            var nested = DuplicateProperty(property.Value);
-            if (nested is not null)
-            {
-                return property.Name + "." + nested;
-            }
-        }
-
-        return null;
     }
 
     private static (HarnessConfig? Config, string? Failure) ReadProject(
@@ -137,11 +106,7 @@ internal static class HarnessConfigReader
             return (null, ConfigJson.Failure("'settings.commits' belongs only in the workspace root"));
         }
 
-        var envelope = JsonNode.Parse(root.GetRawText(), documentOptions: new JsonDocumentOptions
-        {
-            CommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true,
-        })!.AsObject();
+        var envelope = JsonNode.Parse(root.GetRawText(), documentOptions: ConfigJson.ParseOptions)!.AsObject();
         envelope["version"] = workspace.TracksLatest ? "latest" : workspace.Version.ToString();
         envelope["settings"]!["commits"] = new JsonObject
         {

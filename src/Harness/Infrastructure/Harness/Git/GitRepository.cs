@@ -182,9 +182,13 @@ internal sealed class GitRepository : IRepository
         return (blob.StandardOutput, null);
     }
 
+    /// <summary>One entry per path: an unresolved merge lists a path per stage, and "ours" is the one read.</summary>
     private static (List<TrackedEntry> Entries, string? Failure) ParseIndex(string output)
     {
+        const string oursStage = "2";
+
         var entries = new List<TrackedEntry>();
+        var positions = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var record in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
         {
             // "<mode> <object> <stage>\t<path>"
@@ -200,7 +204,19 @@ internal sealed class GitRepository : IRepository
                 return (entries, $"Unexpected Git index record: '{record}'.");
             }
 
-            entries.Add(new TrackedEntry(record[(tab + 1)..], fields[0], fields[1]));
+            var entry = new TrackedEntry(record[(tab + 1)..], fields[0], fields[1]);
+            if (positions.TryGetValue(entry.Path, out var position))
+            {
+                if (fields.Length > 2 && fields[2] == oursStage)
+                {
+                    entries[position] = entry;
+                }
+
+                continue;
+            }
+
+            positions[entry.Path] = entries.Count;
+            entries.Add(entry);
         }
 
         return (entries, null);

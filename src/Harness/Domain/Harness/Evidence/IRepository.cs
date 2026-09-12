@@ -6,9 +6,14 @@ internal interface IRepository
 
     IReadOnlyList<TrackedEntry> TrackedEntries { get; }
 
-    IReadOnlyList<TrackedEntry> AncestorEvidence => [];
-
     TimeSpan ReadDuration { get; }
+
+    /// <summary>
+    /// The tracked copies of one file name in the directories above this repository's root,
+    /// nearest first, as `../`-prefixed entries. A whole repository has nothing above it; a
+    /// project scope answers with the shared configuration its toolchain resolves by walking up.
+    /// </summary>
+    IReadOnlyList<TrackedEntry> Ancestors(string fileName) => [];
 
     (IReadOnlyList<(string ObjectId, string Message)>? Commits, string? Failure) ReadCommits(
         string revisionRange);

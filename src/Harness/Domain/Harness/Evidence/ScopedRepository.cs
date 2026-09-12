@@ -1,12 +1,18 @@
 namespace Harness.Repository;
 
-/// <summary>A project's inventory is local; named ancestor build evidence stays readable.</summary>
+/// <summary>
+/// One frame's view of the index: a project owns the entries under its directory, the root
+/// owns everything outside the registered projects, and a named file the toolchain resolves by
+/// walking up stays readable through <see cref="Ancestors"/> without becoming inventory.
+/// </summary>
 internal sealed class ScopedRepository : IRepository
 {
     private readonly IRepository repository;
     private readonly string project;
     private readonly IReadOnlyList<string> excluded;
-    private readonly Dictionary<string, TrackedEntry> original;
+    private readonly Dictionary<string, TrackedEntry> byPath;
+    private readonly Dictionary<string, TrackedEntry> sources;
+    private readonly Dictionary<string, IReadOnlyList<TrackedEntry>> ancestors = new(StringComparer.Ordinal);
 
     public ScopedRepository(IRepository repository, string project, IReadOnlyList<string>? excluded = null)
     {
@@ -14,42 +20,64 @@ internal sealed class ScopedRepository : IRepository
         this.project = project;
         this.excluded = excluded ?? [];
         RootPath = project.Length == 0 ? repository.RootPath : Path.Combine(repository.RootPath, project);
-        original = repository.TrackedEntries.Where(entry => Owns(entry.Path))
-            .ToDictionary(entry => Local(entry.Path), StringComparer.Ordinal);
-        TrackedEntries = original.Select(pair => pair.Value with { Path = pair.Key }).ToList();
-        var ancestors = new List<TrackedEntry>();
-        if (project.Length > 0)
+
+        // The index is read once into a map so scoping does not rescan it per lookup; a path
+        // repeated by the index (an unresolved merge keeps several stages) is one entry here.
+        byPath = new Dictionary<string, TrackedEntry>(StringComparer.Ordinal);
+        foreach (var entry in repository.TrackedEntries)
         {
-            var directory = project;
-            var prefix = string.Empty;
-            while (directory.Length > 0)
-            {
-                var slash = directory.LastIndexOf('/');
-                directory = slash < 0 ? string.Empty : directory[..slash];
-                prefix += "../";
-                foreach (var name in new[] { ".editorconfig", "Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props" })
-                {
-                    var path = directory.Length == 0 ? name : directory + "/" + name;
-                    var entry = repository.TrackedEntries.FirstOrDefault(candidate => candidate.Path == path);
-                    if (entry is not null)
-                    {
-                        original[prefix + name] = entry;
-                        ancestors.Add(entry with { Path = prefix + name });
-                    }
-                }
-            }
+            byPath.TryAdd(entry.Path, entry);
         }
 
-        AncestorEvidence = ancestors;
+        sources = new Dictionary<string, TrackedEntry>(StringComparer.Ordinal);
+        var owned = new List<TrackedEntry>();
+        foreach (var entry in byPath.Values.Where(entry => Owns(entry.Path)))
+        {
+            var local = Local(entry.Path);
+            sources[local] = entry;
+            owned.Add(entry with { Path = local });
+        }
+
+        TrackedEntries = owned;
     }
 
     public string RootPath { get; }
 
     public IReadOnlyList<TrackedEntry> TrackedEntries { get; }
 
-    public IReadOnlyList<TrackedEntry> AncestorEvidence { get; }
-
     public TimeSpan ReadDuration => repository.ReadDuration;
+
+    public IReadOnlyList<TrackedEntry> Ancestors(string fileName)
+    {
+        if (project.Length == 0)
+        {
+            return [];
+        }
+
+        if (ancestors.TryGetValue(fileName, out var known))
+        {
+            return known;
+        }
+
+        var found = new List<TrackedEntry>();
+        var directory = project;
+        var prefix = string.Empty;
+        while (directory.Length > 0)
+        {
+            var slash = directory.LastIndexOf('/');
+            directory = slash < 0 ? string.Empty : directory[..slash];
+            prefix += "../";
+            var path = directory.Length == 0 ? fileName : directory + "/" + fileName;
+            if (byPath.TryGetValue(path, out var entry))
+            {
+                sources[prefix + fileName] = entry;
+                found.Add(entry with { Path = prefix + fileName });
+            }
+        }
+
+        ancestors[fileName] = found;
+        return found;
+    }
 
     public (IReadOnlyList<(string ObjectId, string Message)>? Commits, string? Failure) ReadCommits(string revisionRange)
         => repository.ReadCommits(revisionRange);
@@ -61,12 +89,12 @@ internal sealed class ScopedRepository : IRepository
     }
 
     public (string? Target, string? Failure) ReadSymbolicLinkTarget(TrackedEntry entry)
-        => original.TryGetValue(entry.Path, out var source)
+        => sources.TryGetValue(entry.Path, out var source)
             ? repository.ReadSymbolicLinkTarget(source)
             : (null, $"'{entry.Path}' is outside this project's tracked evidence");
 
     public (string? Text, string? Failure) ReadTrackedText(TrackedEntry entry)
-        => original.TryGetValue(entry.Path, out var source)
+        => sources.TryGetValue(entry.Path, out var source)
             ? repository.ReadTrackedText(source)
             : (null, $"'{entry.Path}' is outside this project's tracked evidence");
 

@@ -87,6 +87,14 @@ internal static class GateEngine
             UntrackedEvidence(repository, unexplained));
     }
 
+    /// <summary>A run stopped at the frame, so a workspace the engine refuses reads like a frame the reader refuses.</summary>
+    public static RunReport Incomplete(IRepository repository, string failure, IReadOnlyList<IRepositoryCheck> checks)
+        => InvalidConfigReport(repository, null, failure, checks, CheckCatalog.Describe(checks))
+            ?? new RunReport(repository.RootPath, [], ToolError: failure);
+
+    public static RunReport Refused(string reason)
+        => new(RepositoryPath: null, Gates: [], ToolError: reason);
+
     private static RunReport? InvalidSelectionReport(
         IReadOnlyList<string> only,
         IReadOnlyList<string> skip,

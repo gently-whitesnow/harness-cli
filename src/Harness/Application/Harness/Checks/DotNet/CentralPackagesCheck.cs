@@ -5,7 +5,7 @@ namespace Harness.Checks.DotNet;
 
 internal sealed class CentralPackagesCheck : DotNetCheck
 {
-    private static readonly EvidenceFile PackagesProps = new("Directory.Packages.props");
+    private static readonly EvidenceFile PackagesProps = new("Directory.Packages.props", Inherited: true);
 
     public override string Id => "central-packages.dotnet";
 

@@ -20,10 +20,12 @@ internal sealed class CheckContext(
 
     public string? ConfigFailure { get; } = configFailure;
 
+    /// <summary>Declared evidence in this scope; an inherited name also brings the `../` copies above it.</summary>
     public IReadOnlyList<TrackedEntry> Tracked(EvidenceFile file)
     {
         RequireDeclared(file);
-        return Repository.TrackedEntries.Concat(Repository.AncestorEvidence).Where(entry => file.Matches(entry.Path)).ToList();
+        var local = Repository.TrackedEntries.Where(entry => file.Matches(entry.Path));
+        return (file.Inherited && !file.IsPattern ? local.Concat(Repository.Ancestors(file.Name)) : local).ToList();
     }
 
     /// <summary>The declared evidence in the directory of <paramref name="startPath"/>, else above it.</summary>
@@ -47,7 +49,8 @@ internal sealed class CheckContext(
 
             if (directory.Length == 0)
             {
-                return Repository.AncestorEvidence.FirstOrDefault(entry => file.Matches(entry.Path));
+                var above = file.Inherited ? Repository.Ancestors(file.Name) : [];
+                return above.Count > 0 ? above[0] : null;
             }
 
             directory = DirectoryOf(directory);

@@ -35,7 +35,9 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           The tracked root {HarnessConfig.FileName}, plus every project config explicitly
           registered in its `projects` array. All frames are validated before selection;
           an invalid unselected project still makes the workspace incomplete. Unregistered
-          tracked nested configs are refused, including when the root has no projects.
+          tracked nested configs are refused, including when the root has no projects;
+          `harness upgrade` lists them. A property repeated at any depth of any frame leaves
+          it ambiguous and is refused rather than read last-wins.
           A file outside the index is not evidence. `init` does not stage its output.
           The root owns files outside registered projects; each project owns its directory.
           Checks use project-relative inventory and can read named tracked ancestor
