@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Harness.Languages;
 
 namespace Harness.Config;
 
@@ -10,12 +11,24 @@ namespace Harness.Config;
 /// </summary>
 internal static class FrameSections
 {
-    public static string DefaultPolicy(string checkId)
+    /// <summary>The axes of application code; a frame without one belongs to a configuration repository.</summary>
+    public static readonly IReadOnlyList<string> ApplicationAxes = [Language.CSharp.Key, Language.TypeScript.Key, Language.Go.Key];
+
+    // Calibrated on one configuration repository: visible, not blocking, until more pilots move them.
+    private static readonly string[] AdvisoryUntilCalibrated = ["secrets.ansible", "role-shape.ansible"];
+
+    public static bool HasApplicationLanguage(IEnumerable<string> axisKeys)
+        => axisKeys.Any(key => ApplicationAxes.Contains(key, StringComparer.Ordinal));
+
+    public static string DefaultPolicy(string checkId, bool applicationLanguage)
         => checkId == "frame.verify"
             ? "required"
             : checkId.StartsWith($"{HarnessConfig.FrameGroup}.", StringComparison.Ordinal)
                 ? "off"
-                : "required";
+                : AdvisoryUntilCalibrated.Contains(checkId, StringComparer.Ordinal)
+                    || (checkId == Language.Yaml.Qualify(HarnessSettings.CommentsGroup) && !applicationLanguage)
+                    ? "advisory"
+                    : "required";
 
     /// <summary>The default settings section of a check, as JSON lines, or null when it has none.</summary>
     public static string? DefaultSettings(CheckDescriptor check, CommitSettings? commits = null)
@@ -67,11 +80,15 @@ internal static class FrameSections
     public static string ApplicabilityEntry(FrameAxis axis)
         => $"\"{axis.Key}\": {{ \"applicable\": true }}";
 
-    public static string PolicyEntry(CheckDescriptor check)
-        => $"\"{check.Id}\": \"{DefaultPolicy(check.Id)}\"";
+    public static string PolicyEntry(CheckDescriptor check, bool applicationLanguage)
+        => $"\"{check.Id}\": \"{DefaultPolicy(check.Id, applicationLanguage)}\"";
 
     /// <summary>The fragment that adds one axis to a frame, indented for pasting into the three objects.</summary>
-    public static string AxisFragment(FrameAxis axis, IReadOnlyList<CheckDescriptor> checks, bool architectureMissing)
+    public static string AxisFragment(
+        FrameAxis axis,
+        IReadOnlyList<CheckDescriptor> checks,
+        bool architectureMissing,
+        bool applicationLanguage)
     {
         var members = checks.Where(check => check.Applicability == axis.Key).ToList();
         var text = new StringBuilder();
@@ -83,7 +100,7 @@ internal static class FrameSections
         }
 
         text.Append("\"policy\": {\n")
-            .Append(Indent(string.Join(",\n", members.Select(PolicyEntry)), "  "))
+            .Append(Indent(string.Join(",\n", members.Select(check => PolicyEntry(check, applicationLanguage))), "  "))
             .Append("\n}");
         if (axis.Key == "csharp" && architectureMissing)
         {
@@ -95,7 +112,7 @@ internal static class FrameSections
 
     public static string ArchitectureFragment(IReadOnlyList<CheckDescriptor> checks)
     {
-        var policy = checks.Where(check => check.Group == "architecture.sliced-dotnet").Select(PolicyEntry);
+        var policy = checks.Where(check => check.Group == "architecture.sliced-dotnet").Select(check => PolicyEntry(check, applicationLanguage: true));
         return "Choose the repository kind, as in `harness init --kind`:\n"
             + "  application: \"architecture\": { \"standard\": \"sliced-dotnet/1\" }\n"
             + "  library: \"architecture\": { \"applicable\": false, \"reason\": \"standalone library\" }\n"

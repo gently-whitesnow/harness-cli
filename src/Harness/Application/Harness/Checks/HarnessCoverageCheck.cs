@@ -8,9 +8,9 @@ namespace Harness.Checks;
 /// sources but no applicability entry is a feature the repository forgot rather than declined:
 /// under the explicit-only frame its checks silently stay outside. The check names the axis
 /// and prints the fragment `init` would have written, and leaves the paste to the owner —
-/// the harness never edits a tracked file.
+/// the harness never edits a tracked file. The composition root hands it what the binary ships.
 /// </summary>
-internal sealed class HarnessCoverageCheck : IRepositoryCheck
+internal sealed class HarnessCoverageCheck(Func<IReadOnlyList<CheckDescriptor>> shipped) : IRepositoryCheck
 {
     private const int ShownSources = 3;
 
@@ -35,8 +35,9 @@ internal sealed class HarnessCoverageCheck : IRepositoryCheck
         What it reads
           The Git index, through the source shapes of every axis the harness ships:
           {{string.Join(", ", FrameAxis.All.Select(axis => $"{axis.Key} ({string.Join(" ", axis.Sources.Select(source => source.Name))})"))}}.
-          Generated, vendored and build-output locations are not counted. It reads no file
-          contents.
+          Generated, vendored and build-output locations are not counted. Root YAML file
+          contents are read to detect Ansible plays with `hosts:`. Verbose details count
+          suffixes outside the axes, excluding Markdown and dot-files; this is not a finding.
 
         Rule
           For each axis with at least one tracked source, `applicability.<axis>` must exist —
@@ -63,22 +64,17 @@ internal sealed class HarnessCoverageCheck : IRepositoryCheck
             return CheckEvaluation.Incomplete(context.ConfigFailure!);
         }
 
-        var checks = context.Checks;
+        var checks = shipped();
         var findings = new List<Finding>();
         var details = new List<string>();
-        foreach (var axis in FrameAxis.All)
+        var detected = FrameAxis.All
+            .Select(axis => (Axis: axis, Sources: axis.Detect(context.Repository, axis.Sources.SelectMany(context.Tracked))))
+            .Where(entry => entry.Sources.Count > 0)
+            .ToList();
+        var applicationLanguage = FrameSections.HasApplicationLanguage(detected.Select(entry => entry.Axis.Key)
+            .Concat(context.Config.Applicability.Where(entry => entry.Value.IsApplicable).Select(entry => entry.Key)));
+        foreach (var (axis, sources) in detected)
         {
-            var sources = axis.Sources.SelectMany(context.Tracked)
-                .Where(entry => !entry.IsSymbolicLink && !Repository.RepositoryLocations.IsGenerated(entry.Path))
-                .Select(entry => entry.Path)
-                .Distinct(StringComparer.Ordinal)
-                .Order(StringComparer.Ordinal)
-                .ToList();
-            if (sources.Count == 0)
-            {
-                continue;
-            }
-
             if (context.Config.Applicability.TryGetValue(axis.Key, out var answer))
             {
                 details.Add($"{axis.Key}: {sources.Count} tracked source{(sources.Count == 1 ? "" : "s")}, "
@@ -95,7 +91,12 @@ internal sealed class HarnessCoverageCheck : IRepositoryCheck
                     + $"({shown}{(remaining > 0 ? $" and {remaining} more" : "")}) but no `applicability.{axis.Key}` entry; "
                     + $"add these sections to {HarnessConfig.FileName}, or declare "
                     + $"\"{axis.Key}\": {{ \"applicable\": false, \"reason\": \"...\" }}:\n"
-                    + FrameSections.Indent(FrameSections.AxisFragment(axis, checks, context.Config.Architecture is null), "      ")));
+                    + FrameSections.Indent(FrameSections.AxisFragment(axis, checks, context.Config.Architecture is null, applicationLanguage), "      ")));
+        }
+
+        if (SourcesOfNoAxis(context) is { } outside)
+        {
+            details.Add(outside);
         }
 
         return CheckEvaluation.From(
@@ -103,4 +104,26 @@ internal sealed class HarnessCoverageCheck : IRepositoryCheck
             findings.Count == 0 ? "every detected axis is declared in the frame." : null,
             details: details);
     }
+
+    /// <summary>The suffixes no axis reads, counted: the hole ADR-0054 named, visible without a finding.</summary>
+    private static string? SourcesOfNoAxis(CheckContext context)
+    {
+        var counts = context.Repository.TrackedEntries
+            .Where(entry => !entry.IsSymbolicLink && !RepositoryLocations.IsGenerated(entry.Path))
+            .Where(entry => !FrameAxis.All.Any(axis => axis.Sources.Any(source => source.Matches(entry.Path))))
+            .Select(entry => entry.Path[(entry.Path.LastIndexOf('/') + 1)..])
+            .Where(name => !name.StartsWith('.') && !name.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
+            .Select(name => name.LastIndexOf('.') is var dot && dot > 0 ? name[dot..].ToLowerInvariant() : NoSuffix)
+            .GroupBy(suffix => suffix, StringComparer.Ordinal)
+            .Select(group => (Suffix: group.Key, Count: group.Count()))
+            .OrderByDescending(entry => entry.Count)
+            .ThenBy(entry => entry.Suffix == NoSuffix ? 1 : 0)
+            .ThenBy(entry => entry.Suffix, StringComparer.Ordinal)
+            .ToList();
+        return counts.Count == 0
+            ? null
+            : "sources of no axis: " + string.Join(", ", counts.Select(entry => $"{entry.Suffix} {entry.Count}"));
+    }
+
+    private const string NoSuffix = "no suffix";
 }

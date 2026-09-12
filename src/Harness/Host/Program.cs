@@ -48,7 +48,7 @@ switch (invocation.Kind)
         List<FrameAxis> axes;
         if (invocation.Languages is null)
         {
-            axes = FrameAxis.Detected(initRepository.TrackedEntries);
+            axes = FrameAxis.Detected(initRepository);
         }
         else
         {
@@ -105,6 +105,12 @@ switch (invocation.Kind)
         {
             Console.WriteLine("Go: answer `lint` with the place `go vet ./...` runs and `format` with the place "
                 + "`gofmt -l` is checked (the verify script or a workflow); gofmt has no configuration to point at.");
+        }
+        if (axes.Any(axis => axis.Key == Language.Ansible.Key))
+        {
+            Console.WriteLine("Ansible: answer `lint` with the place `ansible-lint` and `yamllint` run, `build` with the place "
+                + "`ansible-playbook --syntax-check` runs and `tests.integration` with the molecule scenarios "
+                + "(a Makefile target, the verify script or a workflow); the harness runs none of them.");
         }
         var commitSettings = new CommitSettings(invocation.CommitLanguage, RequireSetup: true);
         var (setup, setupFailure) = CheckRegistry.CommitIntegration.Install(

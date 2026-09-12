@@ -29,7 +29,8 @@ internal static class CommentLineExplanation
           comment numerator.
 
           A physical line is counted once when any part of a comment occurs on it. Inline
-          comments and documentation comments count. Comment-shaped text inside a literal
+          comments and documentation comments count unless the language-specific Evidence
+          below excludes them. Comment-shaped text inside a literal
           does not count.
 
 
@@ -74,8 +75,14 @@ internal static class CommentLineExplanation
             : language == Language.Yaml
                 ? """
               The check reads Git-tracked `.yml` and `.yaml` files outside generated, vendored
-              and build-output locations. A `#` at the start of a line or after whitespace
-              counts; a `#` inside a quoted scalar or a `|`/`>` block scalar is content.
+              and build-output locations. A `#` at the start of a line or after whitespace is a
+              comment; a `#` inside a quoted scalar or a `|`/`>` block scalar is content. A
+              block of comment lines whose next non-empty line is a mapping key, a `- ` item —
+              at any depth — or `---` documents that key and leaves both counts, as a Go doc
+              comment does; blank lines between the block and the key are allowed. A trailing
+              comment on a line with a value documents that value and is not counted. A
+              directive — `# yamllint`, `# noqa`, `# ansible-lint` — leaves both counts. What counts is
+              prose: a block followed by another block, or by the end of the file.
             """
                 : language == Language.Go
                 ? """
@@ -119,9 +126,13 @@ internal static class CommentLineExplanation
             """
             : language == Language.Yaml
                 ? """
-              Block scalar content is recognised by indentation deeper than the line that
-              opened it; a plain multi-line scalar that happens to contain ` #` reads as a
-              comment, which is also how YAML reads it.
+              Documentation is told by position, not by content: commented-out configuration
+              directly above a key passes as documentation, and a block that restates the key's
+              name is not caught. The limit measures the prose no key follows — a header
+              paragraph, a commented-out play between two paragraphs, a closing note. Block
+              scalar content is recognised by indentation deeper than the line that opened it;
+              a plain multi-line scalar that happens to contain ` #` reads as a comment, which
+              is also how YAML reads it.
             """
                 : language == Language.Go
                 ? """

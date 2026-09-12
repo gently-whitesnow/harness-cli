@@ -51,15 +51,18 @@ sliced-dotnet, а без зоны — вне tracked тестовых проек
 голый `//nolint` и `//nolint:x` без `// причины`, repo-wide отключения в tracked-конфиге golangci печатает в details.
 `go vet`/`gofmt` — через `answers.lint`/`answers.format`; types-per-file, dependencies, архитектура и editorconfig для Go не делаются. [ADR-0055](adrs/0055-go-language-axis.md)
 
+Ось `ansible` по маркерам: полный digest образов, причины inline `noqa`, циклы ролей; секреты и раскладка ролей
+из `init` — advisory. YAML не считает блоки над ключами любой глубины и trailing-комментарии; без прикладной
+оси `comments.yaml` — advisory. [ADR-0056](adrs/0056-configuration-repository-frame.md), [ADR-0057](adrs/0057-ansible-axis.md)
+
 .NET-проекты разделяют applicability `dotnet`: общий hardened `Directory.Build.props`,
 central package versions в ближайшем `Directory.Packages.props`, `.slnx` вместо `.sln`,
 эталонный code-style baseline в цепочке `.editorconfig` над каждым проектом (`explain
 editorconfig.dotnet` печатает эталон, `init` записывает его) и учёт подавлений warnings:
 адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
-блокируются; выключение правила для всего репозитория печатается в verbose details. Читается только
-tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
+блокируются; выключение правила для всего репозитория печатается в verbose details. Читается tracked XML и текст без MSBuild evaluation. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"3.1.0"`). Бинарь исполняет только его; другой pin даёт
+`version` — строка текущего контракта (`"3.2.0"`). Бинарь исполняет только его; другой pin даёт
 `Incomplete`, а меняет pin только `harness upgrade`, печатающий маршрут от pin и фрагменты для
 обнаруженных осей. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -113,9 +116,7 @@ stdin) и создаёт `architecture`. `duplication.*` стартует `requi
 - `site/` — публичный лендинг без сборки; реестр проверок и версия там зеркалят бинарь и сверяются тестом, таблица «что обновлять» — `site/AGENTS.md` ([ADR-0047](adrs/0047-landing-mirrors-the-contract.md)).
 - `adrs/` — долговременные решения; правила ниже ссылаются туда за обоснованием.
   Реестр — [`adrs/REGISTRY.md`](adrs/REGISTRY.md), шаблон — `adrs/.template.md`.
-
 ## Команды
-
 Репозиторий публичный: tracked-тексты не называют внутренние репозитории, сервисы, домены,
 хосты и локальные пути. Примеры и результаты пилотных прогонов всегда обезличиваются;
 перед сдачей проверь tracked diff на инфраструктурные имена.
@@ -140,7 +141,6 @@ dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
 - `2` — проверку не удалось выполнить достоверно; сюда же относится отсутствующий или невалидный `.harness.json`.
 
 ## Документация
-
 `AGENTS.md` — источник агентской навигации, обычный tracked-файл не более 150 физических
 строк. `CLAUDE.md` — прямой относительный симлинк на соседний `AGENTS.md`. `README.md` —
 краткий обзор. Документ судится по имени, а не по каталогу: эти три имени действуют на любой

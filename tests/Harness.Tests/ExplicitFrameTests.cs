@@ -31,7 +31,7 @@ public sealed class ExplicitFrameTests
         Assert.False(run.OutputContains("comments.csharp"), run.Output);
         Assert.False(run.OutputContains("frame.verify"), run.Output);
         Assert.True(run.OutputContains("outside the frame"), run.Output);
-        Assert.True(verbose.OutputContains("outside the frame  34 checks not named in policy: harness.coverage"), verbose.Output);
+        Assert.True(verbose.OutputContains("outside the frame  39 checks not named in policy: harness.coverage"), verbose.Output);
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public sealed class ExplicitFrameTests
         Assert.True(run.OutputContains("\"yaml\": { \"applicable\": true }"), run.Output);
         Assert.True(run.OutputContains("\"comments.yaml\": {"), run.Output);
         Assert.True(run.OutputContains("\"minimumCommentLines\": 10"), run.Output);
-        Assert.True(run.OutputContains("\"comments.yaml\": \"required\""), run.Output);
+        Assert.True(run.OutputContains("\"comments.yaml\": \"advisory\""), run.Output);
         Assert.False(run.OutputContains("typescript"), run.Output);
     }
 
@@ -221,6 +221,29 @@ public sealed class ExplicitFrameTests
     }
 
     [Fact]
+    public void Coverage_prints_the_suffixes_no_axis_reads_without_a_finding()
+    {
+        using var repository = Fixtures.WithRawFrame(
+            MinimalFrame.Replace("docs.policy", "harness.coverage", StringComparison.Ordinal)
+                .Replace("\"settings\"", "\"applicability\": { \"yaml\": { \"applicable\": true } },\n  \"settings\"", StringComparison.Ordinal))
+            .WriteFile("deploy/values.yml", "key: value\n")
+            .WriteFile("roles/app/templates/compose.yml.j2", "name: app\n")
+            .WriteFile("roles/app/templates/unit.j2", "[Unit]\n")
+            .WriteFile("tools/render.py", "print(1)\n")
+            .WriteFile("inventory.ini", "[all]\n")
+            .WriteFile("Makefile", "all:\n")
+            .WriteFile("docs/GUIDE.md", "# Guide\n")
+            .WriteFile(".gitattributes", "* text=auto\n")
+            .WriteFile("vendor/lib/setup.py", "print(2)\n")
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "harness.coverage");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("sources of no axis: .j2 2, .ini 1, .py 1, no suffix 1"), run.Output);
+    }
+
+    [Fact]
     public void Coverage_names_untracked_sources_it_cannot_see()
     {
         using var repository = Fixtures.WithRawFrame(MinimalFrame.Replace("docs.policy", "harness.coverage", StringComparison.Ordinal))
@@ -294,7 +317,7 @@ public sealed class ExplicitFrameTests
 
         Assert.Equal(2, run.ExitCode);
         Assert.Contains("rust", run.StandardError, StringComparison.Ordinal);
-        Assert.Contains("Known keys: csharp, yaml, typescript, go, dotnet", run.StandardError, StringComparison.Ordinal);
+        Assert.Contains("Known keys: csharp, yaml, typescript, go, ansible, dotnet", run.StandardError, StringComparison.Ordinal);
         Assert.False(File.Exists(repository.Absolute(".harness.json")));
     }
 

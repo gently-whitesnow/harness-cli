@@ -1,4 +1,5 @@
 using Harness.Checks;
+using Harness.Checks.Ansible;
 using Harness.Checks.Architecture;
 using Harness.Checks.Comments;
 using Harness.Checks.Commits;
@@ -10,6 +11,7 @@ using Harness.Checks.Frame;
 using Harness.Checks.LintSuppressions;
 using Harness.Checks.TypesPerFile;
 using Harness.Git;
+using Harness.Infrastructure.Languages.Ansible;
 using Harness.Infrastructure.Languages.CSharp;
 using Harness.Infrastructure.Languages.Go;
 using Harness.Infrastructure.Languages.TypeScript;
@@ -34,10 +36,15 @@ internal static class CheckRegistry
 
     private static readonly GoSources Go = new();
 
+    private static readonly AnsibleSources Ansible = new();
+
     public static readonly ICommitIntegration CommitIntegration = new CommitHookSetup();
 
+    /// <summary>The analyzers whose graph is measured as a DSM; the Ansible role graph is judged for cycles only.</summary>
     public static readonly IReadOnlyList<ILanguageAnalyzer> LanguageAnalyzers =
         [new CSharpAnalyzer(CSharp), new GoAnalyzer(Go)];
+
+    private static readonly ILanguageAnalyzer AnsibleAnalyzer = new AnsibleAnalyzer(Ansible);
 
     public static readonly IReadOnlyList<IRepositoryCheck> All = Shipped();
 
@@ -48,7 +55,7 @@ internal static class CheckRegistry
         return
         [
             new HarnessConfigCheck(),
-            new HarnessCoverageCheck(),
+            new HarnessCoverageCheck(() => CheckCatalog.Describe(All)),
 
             .. SlicedDotNetShapeCheck.Rules.Keys.Select(rule => new SlicedDotNetShapeCheck(csharpAnalyzer, rule)),
             .. LanguageAnalyzers.Select(analyzer => new ComplexityCheck(analyzer)),
@@ -64,6 +71,11 @@ internal static class CheckRegistry
             new DuplicationCheck(new CSharpNormalizedSources(CSharp)),
             new DuplicationCheck(new GoNormalizedSources(Go)),
             new LintSuppressionsCheck(Go),
+            new ImagesCheck(Ansible),
+            new SecretsCheck(Ansible),
+            new AnsibleLintSuppressionsCheck(Ansible),
+            new DependenciesCheck(AnsibleAnalyzer),
+            new RoleShapeCheck(Ansible),
 
             new BuildPropertiesCheck(),
             new CentralPackagesCheck(),

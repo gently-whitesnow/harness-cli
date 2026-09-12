@@ -49,15 +49,22 @@ public static class ProcessLauncher
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException($"Could not start {executable}.");
 
-        if (standardInput is not null)
-        {
-            process.StandardInput.Write(standardInput);
-        }
-
-        process.StandardInput.Close();
-
         var standardOutput = process.StandardOutput.ReadToEndAsync();
         var standardError = process.StandardError.ReadToEndAsync();
+        try
+        {
+            if (standardInput is not null)
+            {
+                process.StandardInput.Write(standardInput);
+            }
+
+            process.StandardInput.Close();
+        }
+        catch (IOException) when (process.WaitForExit(1000))
+        {
+            // A validation failure can exit before reading stdin, especially in NativeAOT.
+            // Judge its captured output and exit code rather than the closed input pipe.
+        }
 
         if (!process.WaitForExit((int)Timeout.TotalMilliseconds))
         {

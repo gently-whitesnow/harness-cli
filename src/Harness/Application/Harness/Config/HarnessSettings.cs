@@ -24,8 +24,8 @@ internal sealed record HarnessSettings(
     public static readonly IReadOnlyList<string> ConfigurableGroups =
         [CommentsGroup, DuplicationGroup, ComplexityGroup];
 
-    public static bool HasSection(CheckDescriptor check)
-        => ConfigurableGroups.Contains(check.Group, StringComparer.Ordinal);
+    public static bool HasSection(string group)
+        => ConfigurableGroups.Contains(group, StringComparer.Ordinal);
 
     public CommentSettings? CommentsFor(Language language)
         => Comments.TryGetValue(language.Qualify(CommentsGroup), out var settings) ? settings : null;

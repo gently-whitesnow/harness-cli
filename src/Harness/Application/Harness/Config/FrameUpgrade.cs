@@ -105,13 +105,15 @@ internal static class FrameUpgrade
         var document = JsonNode.Parse(text, documentOptions: ParseOptions) as JsonObject;
         var policy = document?["policy"] as JsonObject ?? [];
         var applicability = document?["applicability"] as JsonObject ?? [];
-        var detected = FrameAxis.Detected(repository.TrackedEntries);
+        var detected = FrameAxis.Detected(repository);
+        var applicationLanguage = FrameSections.HasApplicationLanguage(
+            detected.Select(axis => axis.Key).Concat(applicability.Where(IsApplicable).Select(entry => entry.Key)));
 
         var report = new StringBuilder();
         foreach (var axis in detected.Where(axis => !applicability.ContainsKey(axis.Key)))
         {
             report.Append($"Sections to add for tracked {axis.Name} sources (or decline the axis with a reason):\n")
-                .Append(FrameSections.Indent(FrameSections.AxisFragment(axis, checks, document?["architecture"] is null), "  "))
+                .Append(FrameSections.Indent(FrameSections.AxisFragment(axis, checks, document?["architecture"] is null, applicationLanguage), "  "))
                 .Append('\n');
         }
 
@@ -139,12 +141,15 @@ internal static class FrameUpgrade
             }
 
             report.Append("  \"policy\": {\n")
-                .Append(string.Join(",\n", missing.Select(check => "    " + FrameSections.PolicyEntry(check))))
+                .Append(string.Join(",\n", missing.Select(check => "    " + FrameSections.PolicyEntry(check, applicationLanguage))))
                 .Append("\n  }\n");
         }
 
         return report.ToString();
     }
+
+    private static bool IsApplicable(KeyValuePair<string, JsonNode?> entry)
+        => entry.Value is JsonObject axis && axis["applicable"]?.GetValueKind() == JsonValueKind.True;
 
     private static readonly JsonDocumentOptions ParseOptions = new()
     {
@@ -347,7 +352,21 @@ internal static class FrameUpgrade
           added    a repository with tracked .go sources and no applicability.go entry gets the
                    harness.coverage fragment; nothing changes for repositories without Go
         """),
-    ];
+
+        (new HarnessVersion(3, 2, 0), """
+        Release 3.2 additions:
+          added    ansible axis detected by ansible.cfg, role entry points and playbooks;
+                   images.ansible requires a full SHA-256 digest; dependencies.ansible finds
+                   role cycles; lint-suppressions.ansible requires reasons for inline noqa
+          added    secrets.ansible and role-shape.ansible start advisory: narrow variable-name
+                   and role-layout checks calibrated on one configuration repository
+          changed  comments.yaml excludes blocks above keys or list items at any depth,
+                   with blank lines allowed, trailing comments and tool directives;
+                   init defaults it to advisory without C#, Go or TypeScript
+          added    harness.coverage reports unknown suffix counts in verbose details;
+                   init and frame explanations point to the Ansible toolchain
+          kept     explicit policy values and docs.policy; no generated-document exceptions
+        """),    ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)
     {
