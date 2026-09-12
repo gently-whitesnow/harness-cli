@@ -1,9 +1,20 @@
 # ADR Registry
 
-- [ADR-0056](0056-explicit-workspace-projects.md) — контракт 3.2: явные непересекающиеся
+- [ADR-0060](0060-explicit-workspace-projects.md) — контракт 3.3: явные непересекающиеся
   проекты с локальными рамками без наследования, одна корневая версия и commit-интеграция;
   полный или явно частичный отчёт, локальные метрики не измеряют межпроектные отношения.
 
+- [ADR-0059](0059-focused-ansible-release.md) — первая ось Ansible: только причины noqa и циклы ролей;
+  образы, секреты и раскладка ролей исключены из релиза 3.2.
+- [ADR-0058](0058-required-initial-frame.md) — все проверки init и новых фрагментов — required;
+  смягчение обсуждается с владельцем, upgrade сохраняет явную policy. Заменяет defaults ниже.
+- [ADR-0057](0057-ansible-axis.md) — контракт 3.2: ось `ansible` по маркерам поверх `yaml` —
+  `lint-suppressions.ansible` (`# noqa` без причины), `dependencies.ansible` (цикл ролей).
+  Образы, секреты и раскладка исключены ADR-0059; ansible-lint и molecule запускает проект.
+- [ADR-0056](0056-configuration-repository-frame.md) — контракт 3.2: рамка для конфигурационных
+  репозиториев — `comments.yaml` не считает блок над ключом любой глубины и trailing-комментарий,
+  `init` пишет его `required` (ADR-0058), `harness.coverage` печатает суффиксы файлов
+  вне осей, `init` подсказывает адреса `ansible-lint`/`--syntax-check`/molecule; `docs.generated` отклонён.
 - [ADR-0055](0055-go-language-axis.md) — контракт 3.1: ось `go` — `comments.go` без
   doc-комментариев и директив, `duplication.go` над общим токенизатором, `complexity.go` по
   пакетам через `go.mod`, `lint-suppressions.go` против голого `//nolint`; `go vet`/`gofmt`
@@ -31,7 +42,7 @@
   каждой shipped-проверки без исключений, включая топологический инвариант и DSM-пределы;
   запрещено адресное подавление файла или находки, а не выключение проверки целиком.
   Полнота списка заменена ADR-0054: не названная проверка — вне рамки.
-  ADR-0056 уточняет область целой проверки для явно зарегистрированного проекта.
+  ADR-0060 уточняет область целой проверки для явно зарегистрированного проекта.
 - [ADR-0027](0027-required-findings-are-blocking.md) — `required` превращает каждую
   находку проверки в blocking-нарушение; `advisory` даёт явное время на исправление.
 - [ADR-0016](0016-versioned-frame-and-explicit-initialization.md) — Версионированные снимки
@@ -112,6 +123,14 @@
   экземпляры общих семейств (узел DSM — пакет, `main` — composition root, циклов нет по
   компилятору), `lint-suppressions.go` — аналог `warning-suppressions.dotnet` с лексическим
   чтением golangci-конфига; `go vet`/`gofmt` — через `answers.lint`/`answers.format`.
+- [ADR-0056](0056-configuration-repository-frame.md) — Контракт 3.2: `comments.yaml`
+  исключает по позиции блок над ключом или элементом списка любой глубины и
+  trailing-комментарий, директивы — код; `init` пишет `comments.yaml: required` (ADR-0058); `harness.coverage` печатает в details суффиксы tracked-файлов вне осей;
+  `ansible-lint`/`yamllint`/molecule — через ответы рамки; `docs.generated` отклонён.
+- [ADR-0057](0057-ansible-axis.md) — Контракт 3.2: ось `ansible` детектируется по `ansible.cfg`,
+  `roles/*/tasks/main.yml`, `playbooks/` или playbook в корне;
+  `lint-suppressions.ansible` — `# noqa` без причины, `dependencies.ansible` — цикл ролей
+  по `meta` и `include_role` тем же ядром `Structure/`. Остальной состав отменён ADR-0059.
 - [ADR-0018](0018-csharp-applicability-and-one-type-per-file.md) — Все C#-проверки имеют
   общий applicability `csharp`; `types-per-file.csharp` блокирует второй верхнеуровневый
   `class` или `record` в одном authored-файле.

@@ -2,8 +2,8 @@ namespace Harness.Structure;
 
 /// <summary>
 /// The dependency graph between modules, collapsed from the references between the types they
-/// declare. A module never depends on itself here: what a module does internally is its own
-/// business, and only what crosses a boundary is a dependency.
+/// declare. Namespace boundaries collapse nested modules; a flat graph keeps exact module
+/// identities and self references, as required for role dependencies.
 /// </summary>
 internal sealed class ModuleGraph
 {
@@ -12,13 +12,16 @@ internal sealed class ModuleGraph
     private readonly List<List<int>> adjacency = [];
     private readonly Dictionary<(int From, int To), ReferenceEdge> representatives = [];
 
-    private ModuleGraph()
+    private readonly bool collapseNestedModules;
+
+    private ModuleGraph(bool collapseNestedModules)
     {
+        this.collapseNestedModules = collapseNestedModules;
     }
 
-    public static List<ModuleCycle> Cycles(IEnumerable<ReferenceEdge> edges)
+    public static List<ModuleCycle> Cycles(IEnumerable<ReferenceEdge> edges, bool collapseNestedModules = true)
     {
-        var graph = new ModuleGraph();
+        var graph = new ModuleGraph(collapseNestedModules);
         foreach (var edge in edges)
         {
             graph.Add(edge);
@@ -29,13 +32,16 @@ internal sealed class ModuleGraph
 
     private void Add(ReferenceEdge edge)
     {
-        if (ModuleBoundary.Between(edge.From.Module, edge.To.Module) is not { } crossed)
+        var boundary = collapseNestedModules
+            ? ModuleBoundary.Between(edge.From.Module, edge.To.Module)
+            : (edge.From.Module, edge.To.Module);
+        if (boundary is not { } crossed)
         {
             return;
         }
 
-        var from = IndexOf(crossed.From);
-        var to = IndexOf(crossed.To);
+        var from = IndexOf(crossed.Item1);
+        var to = IndexOf(crossed.Item2);
         if (representatives.TryAdd((from, to), edge))
         {
             adjacency[from].Add(to);
@@ -70,7 +76,7 @@ internal sealed class ModuleGraph
         }
 
         return StronglyConnectedComponents.Of(adjacency)
-            .Where(component => component.Count > 1)
+            .Where(component => component.Count > 1 || adjacency[component[0]].Contains(component[0]))
             .Select(Describe)
             .OrderBy(cycle => cycle.Modules[0], StringComparer.Ordinal)
             .ToList();

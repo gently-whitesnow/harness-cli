@@ -21,6 +21,7 @@ public sealed class InitCommandTests
         Assert.Equal(0, run.ExitCode);
         Assert.Empty(run.StandardError);
         Assert.Contains(repository.Absolute(".harness.json"), run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("Discuss each finding with the repository owner", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("Review every answer", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("ask the repository owner", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("Track the file", run.StandardOutput, StringComparison.Ordinal);
@@ -51,11 +52,7 @@ public sealed class InitCommandTests
         AssertDefaultSettings(root.GetProperty("settings"));
         Assert.Contains("harness-hooks", repository.Git("config", "--local", "--get", "core.hooksPath"));
         Assert.All(root.GetProperty("policy").EnumerateObject(), entry =>
-            Assert.Equal(entry.Name == "frame.verify"
-                ? "required"
-                : entry.Name.StartsWith("frame.", StringComparison.Ordinal)
-                    ? "off"
-                    : "required", entry.Value.GetString()));
+            Assert.Equal("required", entry.Value.GetString()));
         Assert.StartsWith("{\n", File.ReadAllText(path), StringComparison.Ordinal);
         Assert.Contains("\n  \"policy\": {\n", File.ReadAllText(path), StringComparison.Ordinal);
         Assert.False(root.TryGetProperty("suppress", out _));
@@ -152,7 +149,7 @@ public sealed class InitCommandTests
     }
 
     [Fact]
-    public void Canonical_empty_dotnet_application_is_green_after_init()
+    public void Canonical_empty_dotnet_application_is_green_after_answering_the_frame()
     {
         using var repository = RepositoryFixture.CreateGitRepository()
             .WriteFile("AGENTS.md", "# Navigation\n")
@@ -195,6 +192,16 @@ public sealed class InitCommandTests
                 "\"verify\": {}",
                 "\"verify\": { \"paths\": [\"verify.sh\"] }",
                 StringComparison.Ordinal));
+        var answered = File.ReadAllText(framePath);
+        foreach (var question in Questions.Where(question => question != "verify"))
+        {
+            answered = answered.Replace(
+                $"\"{question}\": {{}}",
+                $"\"{question}\": {{ \"present\": true, \"reason\": \"provided by the fixture\" }}",
+                StringComparison.Ordinal);
+        }
+
+        File.WriteAllText(framePath, answered);
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
 
         var check = HarnessCli.RunVerbose(repository.Path, "check");
@@ -205,7 +212,7 @@ public sealed class InitCommandTests
     }
 
     [Fact]
-    public void Initialized_frame_requires_verify_and_disables_other_unanswered_questions()
+    public void Initialized_frame_requires_every_unanswered_question()
     {
         using var repository = RepositoryFixture.CreateGitRepository();
         Assert.Equal(0, HarnessCli.RunWithInput(repository.Path, "application\n", "init").ExitCode);
@@ -219,8 +226,8 @@ public sealed class InitCommandTests
             Assert.Contains($"frame.{question}", check.Output, StringComparison.Ordinal);
         }
 
-        Assert.Equal(Questions.Length - 1, Occurrences(check.Output, "outcome: skipped"));
-        Assert.Contains("outcome: incomplete", check.Output, StringComparison.Ordinal);
+        Assert.Equal(0, Occurrences(check.Output, "outcome: skipped"));
+        Assert.Equal(Questions.Length, Occurrences(check.Output, "outcome: incomplete"));
     }
 
     [Theory]

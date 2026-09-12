@@ -30,6 +30,7 @@ public sealed class Frame
         "commits.setup", "comments.csharp", "comments.yaml", "comments.typescript",
         "types-per-file.csharp", "dependencies.csharp",
         "duplication.csharp", "comments.go", "duplication.go", "complexity.go", "lint-suppressions.go",
+        "lint-suppressions.ansible", "dependencies.ansible",
         "build-properties.dotnet", "central-packages.dotnet",
         "solution-format.dotnet", "editorconfig.dotnet", "warning-suppressions.dotnet", "frame.tests.unit", "frame.tests.integration",
         "frame.tests.architecture", "frame.format", "frame.lint", "frame.build", "frame.typecheck", "frame.verify",
@@ -56,6 +57,7 @@ public sealed class Frame
         ["yaml"] = """{ "applicable": true }""",
         ["typescript"] = """{ "applicable": true }""",
         ["go"] = """{ "applicable": true }""",
+        ["ansible"] = """{ "applicable": true }""",
     };
 
     private string version = Quote(Release.Current);

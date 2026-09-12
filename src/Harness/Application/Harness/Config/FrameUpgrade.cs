@@ -154,8 +154,7 @@ internal static class FrameUpgrade
         var document = JsonNode.Parse(text, documentOptions: ParseOptions) as JsonObject;
         var policy = document?["policy"] as JsonObject ?? [];
         var applicability = document?["applicability"] as JsonObject ?? [];
-        var detected = FrameAxis.Detected(repository.TrackedEntries);
-
+        var detected = FrameAxis.Detected(repository);
         var report = new StringBuilder();
         foreach (var axis in detected.Where(axis => !applicability.ContainsKey(axis.Key)))
         {
@@ -396,8 +395,22 @@ internal static class FrameUpgrade
           added    a repository with tracked .go sources and no applicability.go entry gets the
                    harness.coverage fragment; nothing changes for repositories without Go
         """),
+
         (new HarnessVersion(3, 2, 0), """
         Release 3.2 additions:
+          added    ansible axis detected by ansible.cfg, role entry points and playbooks;
+                   dependencies.ansible finds
+                   role cycles; lint-suppressions.ansible requires reasons for inline noqa
+          changed  comments.yaml excludes blocks above keys or list items at any depth,
+                   with blank lines allowed, trailing comments and tool directives;
+                   all detected checks, including comments and frame questions, start required;
+                   advisory or off requires an explicit decision with the repository owner
+          added    harness.coverage reports unknown suffix counts in verbose details;
+                   init and frame explanations point to the Ansible toolchain
+          kept     explicit policy values and docs.policy; no generated-document exceptions
+        """),
+        (new HarnessVersion(3, 3, 0), """
+        Release 3.3 additions:
           added    projects: ["apps/api", "apps/web"] registers disjoint project directories;
                    each needs its own tracked .harness.json with an explicit local frame
           shared   version, settings.commits and commits.setup belong only to the root;

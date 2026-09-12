@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Harness CLI — harness начинается с репозитория</title>
-  <meta name="description" content="Агенту предстоит ещё тысяча итераций. Репозиторий должен оставаться понятным. Мой опыт в 29 проверках: общие правила, проверки языков, Go и строгие границы .NET-приложения." />
+  <meta name="description" content="Агенту предстоит ещё тысяча итераций. Репозиторий должен оставаться понятным. Мой опыт в 38 проверках: общие правила, проверки языков, Go, Ansible и строгие границы .NET-приложения." />
   <link rel="canonical" href="https://harness.whitesnow.tech/" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <meta property="og:type" content="website" />
@@ -33,7 +33,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5V7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17M17 21h2.5a1.5 1.5 0 0 0 1.5-1.5V17M8 12.5l2.5 2.5L16 9.5" />
         </svg>
-        harness <span class="version">3.2.0</span>
+        harness <span class="version">3.3.0</span>
       </a>
       <nav aria-label="Основная навигация">
         <a href="#checks">Проверки</a>
@@ -61,7 +61,7 @@
             <div class="terminal">
 <pre><code>$ harness check
 
-<strong>FAIL</strong> · harness 3.2.0
+<strong>FAIL</strong> · harness 3.3.0
 
 <strong>×</strong> dependencies.csharp
   Orders → Billing → Orders
@@ -105,15 +105,15 @@ exit 1</code></pre>
               <p>Корневой <code>.harness.json</code> регистрирует непересекающиеся каталоги: <code>"projects": ["apps/api", "apps/web"]</code>. Каждый содержит tracked <code>.harness.json</code> с собственными ответами, applicability, policy и settings. Наследования нет; версия и commit-интеграция остаются только в корне.</p>
               <p>Корень покрывает файлы вне проектов. Проверку можно выключить или оставить advisory целиком для одного проекта; исключений для файлов внутри проекта нет. Общие tracked настройки предков доступны при чтении, но соседний код не входит в измерение.</p>
               <p><code>harness check</code> проверяет весь workspace; <code>harness check --project apps/api</code> — корневая область и выбранный проект после валидации всех конфигов, явно частичный прогон. <code>--verbose</code> показывает область. Незарегистрированный вложенный конфиг — ошибка.</p>
-              <p class="note">Дублирование и графы измеряются локально: межпроектные повторы и зависимости не проверены. Границы проектов меняют область метрик и требуют ревью. <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0056-explicit-workspace-projects.md">ADR-0056</a>.</p>
+              <p class="note">Дублирование и графы измеряются локально: межпроектные повторы и зависимости не проверены. Границы проектов меняют область метрик и требуют ревью. <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0060-explicit-workspace-projects.md">ADR-0060</a>.</p>
             </div>
           </details>
           <details class="read-more">
             <summary>Что включено сразу после init</summary>
             <div>
-              <p><code>init</code> читает git-индекс и записывает только языки и стеки, у которых есть tracked-исходники (<code>--languages</code> заменяет детекцию для CI). Их проверки стартуют как <code>required</code>; для языков, которых в проекте нет, в файле ничего нет. Вопрос application/library задаётся только при C#; для standalone-библиотеки стандарт архитектуры неприменим.</p>
+              <p><code>init</code> читает git-индекс и записывает только языки и стеки, у которых есть tracked-исходники (<code>--languages</code> заменяет детекцию для CI). Все проверки стартуют как <code>required</code>, включая комментарии; для языков, которых в проекте нет, в файле ничего нет. Вопрос application/library задаётся только при C#; для standalone-библиотеки стандарт архитектуры неприменим.</p>
               <p><code>harness.coverage</code> защищает от забытого стека: язык с tracked-исходниками без записи в <code>applicability</code> — блокирующая находка с готовым JSON-фрагментом для вставки. Отказ выражается явным <code>applicable: false</code> с причиной; сам файл harness не правит.</p>
-              <p>Ответы о тестах, сборке и других инструментах <code>init</code> оставляет пустыми; соответствующие <code>frame.*</code> временно стоят в <code>off</code>. Исключение — <code>frame.verify</code>: путь к общему скрипту нужен сразу. Заполните ответы и включите проверки — это завершение настройки.</p>
+              <p>Ответы о тестах, сборке и других инструментах <code>init</code> оставляет пустыми; все <code>frame.*</code> стоят в <code>required</code>. Заполните ответы — это завершение настройки. Переход на <code>advisory</code> или <code>off</code> агент обсуждает с владельцем для конкретной проверки, включая комментарии.</p>
               <p>У архитектуры восемь самостоятельных проверок с явной policy. Каждая находка блокирует при <code>required</code>; эвристические рекомендации удалены. Селекторы <code>architecture</code> и <code>architecture.sliced-dotnet</code> выбирают всю группу.</p>
             </div>
           </details>
@@ -124,9 +124,9 @@ exit 1</code></pre>
     <section id="checks">
       <div class="container">
         <div class="section-head">
-          <p class="eyebrow">29 проверок · две части</p>
+          <p class="eyebrow">38 проверок · две части</p>
           <h2>Общее для репозитория. Конкретное для его стека.</h2>
-          <p>Сначала — одинаковые вопросы и правила независимо от языка. Затем — проверки исходников и устройства проекта. Самый подробный набор — для C# и .NET; Go получает комментарии, повторы, DSM по пакетам и учёт подавлений линтера.</p>
+          <p>Сначала — одинаковые вопросы и правила независимо от языка. Затем — проверки исходников и устройства проекта. Самый подробный набор — для C# и .NET; Go получает комментарии, повторы, DSM по пакетам и учёт подавлений линтера. Ansible — причины подавлений линтера и циклы ролей.</p>
         </div>
         <div class="catalog">
           <div class="catalog-column">
@@ -164,6 +164,11 @@ exit 1</code></pre>
               <summary>Go <span>Комментарии, повторы, DSM по пакетам, подавления линтера · 4 проверки</span></summary>
               <p>Единица DSM — пакет: файлы одного пакета видят друг друга без импортов, а циклы импортов запрещает компилятор. <code>go vet</code> и <code>gofmt</code> не дублируются: рамка спрашивает, где они запускаются.</p>
               <ul class="check-list" id="go-checks" aria-label="Проверки Go"></ul>
+            </details>
+            <details>
+              <summary>Ansible <span>Причины подавлений линтера и циклы ролей · 2 проверки</span></summary>
+              <p>Ось обнаруживается по ansible.cfg, ролям или плейбукам. YAML-комментарии остаются отдельной проверкой; ansible-lint, syntax-check и molecule запускает verify-скрипт проекта.</p>
+              <ul class="check-list" id="ansible-checks" aria-label="Проверки Ansible"></ul>
             </details>
             <details>
               <summary>YAML, TypeScript и JavaScript <span>Плотность комментариев · 2 проверки</span></summary>

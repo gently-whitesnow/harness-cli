@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 переживает удаление worktree и не зависит от того, какой бинарь выполнял setup. Не найдя ни одного,
 hook отказывает в коммите и печатает оба просмотренных места. User-каталоги и tracked-файлы не меняются.
 
-`HARNESS_VERSION=3.2.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+`HARNESS_VERSION=3.3.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
@@ -47,8 +47,8 @@ harness version                    # релиз бинаря и текущий �
 ```
 
 `init` записывает applicability, settings и policy только обнаруженных стеков. При C# выбор
-`--kind application|library` задаёт sliced-dotnet или неприменимость архитектуры. Неотвеченные
-frame-вопросы — `off`, кроме обязательного `verify`. Pin — текущий релиз; `--latest` включает
+`--kind application|library` задаёт sliced-dotnet или неприменимость архитектуры. Все проверки —
+`required`; смягчение обсуждается с владельцем. Pin — текущий релиз; `--latest` включает
 rolling-контракт. Существующие файлы не перезаписываются, новые не добавляются в Git.
 Для .NET создаётся отсутствующий `.editorconfig` с baseline. `init` также активирует hook;
 после клонирования его готовит `harness setup`. Требуемый, но отсутствующий setup ломает `check`.
@@ -93,7 +93,7 @@ rolling-контракт. Существующие файлы не переза�
 Дублирование и графы измеряются внутри каждого компонента: межпроектные повторы, циклы
 и достижимость этим прогоном не доказаны и не исключены. Изменение границ меняет область
 измерения и требует ревью. Автоматического выбора затронутых проектов и общих presets нет.
-[ADR-0056](adrs/0056-explicit-workspace-projects.md)
+[ADR-0060](adrs/0060-explicit-workspace-projects.md)
 
 ## Версия
 
@@ -107,7 +107,7 @@ rolling-контракт. Существующие файлы не переза�
 GitLab:
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:3.2.0
+  image: ghcr.io/gently-whitesnow/harness:3.3.0
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"
@@ -139,11 +139,11 @@ tracked-исходниками без записи в `applicability` — нах
 ## Собственные проверки
 
 Общий стандарт включает графы зависимостей, восемь правил sliced-dotnet, DSM-сложность,
-дублирование C# и Go, плотность комментариев, документационную политику и .NET baseline.
+дублирование C# и Go, комментарии, документационную политику и .NET baseline;
+Ansible — причины inline `noqa` и циклы ролей (обе проверки стартуют `required`).
 Каждая проверка объясняет формулу, ограничения и исправление через `harness explain`.
 DSM сравнивает среднюю достижимость и размер циклической группы с явными потолками
 `settings."complexity.csharp"` / `settings."complexity.go"` (стартовые значения 8.0 / 0).
-Специфичные для продукта контракты остаются в самом репозитории.
 
 ## Сайт
 

@@ -10,13 +10,6 @@ namespace Harness.Config;
 /// </summary>
 internal static class FrameSections
 {
-    public static string DefaultPolicy(string checkId)
-        => checkId == "frame.verify"
-            ? "required"
-            : checkId.StartsWith($"{HarnessConfig.FrameGroup}.", StringComparison.Ordinal)
-                ? "off"
-                : "required";
-
     /// <summary>The default settings section of a check, as JSON lines, or null when it has none.</summary>
     public static string? DefaultSettings(CheckDescriptor check, CommitSettings? commits = null)
     {
@@ -68,10 +61,13 @@ internal static class FrameSections
         => $"\"{axis.Key}\": {{ \"applicable\": true }}";
 
     public static string PolicyEntry(CheckDescriptor check)
-        => $"\"{check.Id}\": \"{DefaultPolicy(check.Id)}\"";
+        => $"\"{check.Id}\": \"required\"";
 
     /// <summary>The fragment that adds one axis to a frame, indented for pasting into the three objects.</summary>
-    public static string AxisFragment(FrameAxis axis, IReadOnlyList<CheckDescriptor> checks, bool architectureMissing)
+    public static string AxisFragment(
+        FrameAxis axis,
+        IReadOnlyList<CheckDescriptor> checks,
+        bool architectureMissing)
     {
         var members = checks.Where(check => check.Applicability == axis.Key).ToList();
         var text = new StringBuilder();

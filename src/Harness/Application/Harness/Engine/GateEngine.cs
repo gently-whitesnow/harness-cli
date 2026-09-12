@@ -64,7 +64,7 @@ internal static class GateEngine
             var stopwatch = Stopwatch.StartNew();
             var disabled = config?.NotApplicable(check.Applicability);
             var evaluation = disabled is null
-                ? Evaluate(check, new CheckContext(repository, config, configFailure, check.Id, check.Evidence, descriptors))
+                ? Evaluate(check, new CheckContext(repository, config, configFailure, check.Id, check.Evidence))
                 : CheckEvaluation.NotApplicable(
                     $"{HarnessConfig.FileName} answers `{disabled.Key}` not applicable — \"{disabled.Reason}\".");
             stopwatch.Stop();
@@ -118,7 +118,7 @@ internal static class GateEngine
         var stopwatch = Stopwatch.StartNew();
         var evaluation = Evaluate(
             configCheck,
-            new CheckContext(repository, config, configFailure, configCheck.Id, configCheck.Evidence, descriptors));
+            new CheckContext(repository, config, configFailure, configCheck.Id, configCheck.Evidence));
         stopwatch.Stop();
 
         return new RunReport(
