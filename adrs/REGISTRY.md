@@ -1,13 +1,13 @@
 # ADR Registry
 
-- [ADR-0057](0057-ansible-axis.md) — Proposed: ось `ansible` по маркер-файлам поверх `yaml` —
-  `dependencies.ansible` (цикл ролей), `lint-suppressions.ansible` (голый `# noqa`),
-  `images.ansible` (образ только по digest), `secrets.ansible` (форма хранения),
-  `role-shape.ansible` (advisory); правила `ansible-lint`, molecule и DSM для ролей не делаются.
-- [ADR-0056](0056-configuration-repository-frame.md) — Proposed: рамка для конфигурационных
-  репозиториев — `comments.yaml` исключает блок над top-level ключом по позиции, `init` без
-  прикладной оси пишет его `advisory`, `answers.docs.generated` выводит сгенерированный
-  Markdown из `docs.policy`, `harness.coverage` печатает суффиксы файлов вне осей.
+- [ADR-0057](0057-ansible-axis.md) — контракт 3.2: ось `ansible` по маркерам поверх `yaml` —
+  `images.ansible` (полный digest), `secrets.ansible` (форма хранения, advisory),
+  `lint-suppressions.ansible` (`# noqa` без причины), `dependencies.ansible` (цикл ролей),
+  `role-shape.ansible` (advisory); правила `ansible-lint`, molecule, `no_log` и DSM для ролей не делаются.
+- [ADR-0056](0056-configuration-repository-frame.md) — контракт 3.2: рамка для конфигурационных
+  репозиториев — `comments.yaml` не считает блок над ключом любой глубины и trailing-комментарий,
+  `init` без прикладной оси пишет его `advisory`, `harness.coverage` печатает суффиксы файлов
+  вне осей, `init` подсказывает адреса `ansible-lint`/`--syntax-check`/molecule; `docs.generated` отклонён.
 - [ADR-0055](0055-go-language-axis.md) — контракт 3.1: ось `go` — `comments.go` без
   doc-комментариев и директив, `duplication.go` над общим токенизатором, `complexity.go` по
   пакетам через `go.mod`, `lint-suppressions.go` против голого `//nolint`; `go vet`/`gofmt`
@@ -115,16 +115,17 @@
   экземпляры общих семейств (узел DSM — пакет, `main` — composition root, циклов нет по
   компилятору), `lint-suppressions.go` — аналог `warning-suppressions.dotnet` с лексическим
   чтением golangci-конфига; `go vet`/`gofmt` — через `answers.lint`/`answers.format`.
-- [ADR-0056](0056-configuration-repository-frame.md) — Proposed: `comments.yaml` исключает
-  doc-комментарии над top-level ключом по позиции, как `comments.go`; `init` без прикладной
-  оси пишет `comments.yaml: advisory`; необязательный `answers.docs.generated` называет
-  сгенерированный Markdown для `docs.policy`; `harness.coverage` печатает в details суффиксы
-  tracked-файлов вне осей; `ansible-lint`/`yamllint`/molecule — через ответы рамки.
-- [ADR-0057](0057-ansible-axis.md) — Proposed: ось `ansible` детектируется по `ansible.cfg`,
-  `roles/*/tasks/main.yml` или playbook в корне; `dependencies.ansible` — цикл ролей по
-  `meta` и `include_role` тем же ядром `Structure/`; `lint-suppressions.ansible` — `# noqa`
-  без причины; `images.ansible` — `image:` без `@sha256:` в YAML и Jinja; `secrets.ansible`
-  — литерал вместо `!vault`/lookup; `role-shape.ansible` — словарь каталогов роли.
+- [ADR-0056](0056-configuration-repository-frame.md) — Контракт 3.2: `comments.yaml`
+  исключает по позиции блок над ключом или элементом списка любой глубины и
+  trailing-комментарий, директивы — код; `init` без прикладной оси пишет `comments.yaml:
+  advisory`; `harness.coverage` печатает в details суффиксы tracked-файлов вне осей;
+  `ansible-lint`/`yamllint`/molecule — через ответы рамки; `docs.generated` отклонён.
+- [ADR-0057](0057-ansible-axis.md) — Контракт 3.2: ось `ansible` детектируется по `ansible.cfg`,
+  `roles/*/tasks/main.yml`, `playbooks/` или playbook в корне; `images.ansible` — `image:` без
+  полного `@sha256:` digest в YAML и Jinja; `secrets.ansible` — литерал вместо `!vault`/lookup
+  в vars-каталогах (advisory); `lint-suppressions.ansible` — `# noqa` без причины;
+  `dependencies.ansible` — цикл ролей по `meta` и `include_role` тем же ядром `Structure/`;
+  `role-shape.ansible` — словарь каталогов роли (advisory).
 - [ADR-0018](0018-csharp-applicability-and-one-type-per-file.md) — Все C#-проверки имеют
   общий applicability `csharp`; `types-per-file.csharp` блокирует второй верхнеуровневый
   `class` или `record` в одном authored-файле.
