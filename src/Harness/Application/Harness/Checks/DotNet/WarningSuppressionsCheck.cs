@@ -14,6 +14,10 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
 {
     private static readonly EvidenceFile Sources = new("*.cs");
 
+    // EditorConfig applies to all supported .NET languages; pragma parsing remains C# only.
+    private static readonly EvidenceFile[] EditorConfigSources =
+        [Sources, new("*.vb"), new("*.fs"), new("*.fsi")];
+
     private static readonly EvidenceFile BuildProps = new("Directory.Build.props", Inherited: true);
 
     private static readonly EvidenceFile EditorConfig = new(".editorconfig", Inherited: true);
@@ -35,7 +39,7 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
 
     public override string Explanation => WarningSuppressionsExplanation.Text;
 
-    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [Sources, BuildProps, EditorConfig];
+    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [.. EditorConfigSources, BuildProps, EditorConfig];
 
     protected override CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects)
     {
@@ -117,7 +121,7 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
     {
         var covered = new Dictionary<EditorConfigFile, List<string>>(ReferenceEqualityComparer.Instance);
         var chains = new Dictionary<string, List<EditorConfigFile>>(StringComparer.Ordinal);
-        foreach (var source in context.Tracked(Sources))
+        foreach (var source in EditorConfigSources.SelectMany(context.Tracked))
         {
             var directory = EditorConfigChain.DirectoryOf(source.Path);
             if (!chains.TryGetValue(directory, out var chain))
