@@ -35,8 +35,11 @@ internal static class ComplexityExplanation
           by import path against the module path that file declares, nested modules included
           by their own `go.mod`. Test files (`_test.go`) are not read, so a test-only import
           lends no reachability. Generated, vendored and build-output locations, `vendor/`
-          and `testdata/`, directories starting with `_` or `.` and files carrying the
-          canonical `// Code generated ... DO NOT EDIT.` header are excluded by the Go reader.
+          and `testdata/`, directories starting with `_` or `.`, files carrying the
+          canonical `// Code generated ... DO NOT EDIT.` header and files under a
+          `//go:build ignore` constraint (or the legacy `// +build ignore`), which the go
+          tool never builds, are excluded by the Go reader; both kinds are named in the
+          details.
           There is no architecture zone and no test project to draw a boundary from; the
           `scope:` line names the `main` packages, which are the composition root.
 
@@ -82,8 +85,9 @@ internal static class ComplexityExplanation
         Limits
           The graph is the lexical import graph of the tracked source, not runtime calls,
           plugins, reflection or `go:generate` output that is not tracked. Build constraints
-          are not evaluated: every file of a directory contributes its imports whatever
-          `//go:build` says, so platform-specific files widen the reach of their package. A
+          are not evaluated beyond the `ignore` tag standing alone: every other file of a
+          directory contributes its imports whatever `//go:build` says, so platform-specific
+          files widen the reach of their package. A
           directory whose files declare different package names is one node named by its
           first file. `go.work` is not read; only `go.mod` names a module. `replace` and
           `require` directives are not read: an import resolves only when its path starts

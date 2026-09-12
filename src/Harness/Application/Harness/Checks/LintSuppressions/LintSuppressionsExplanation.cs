@@ -14,7 +14,8 @@ internal static class LintSuppressionsExplanation
         What it reads
           Tracked authored `.go` files, test files included — generated, vendored and
           build-output locations, `vendor/`, `testdata/`, directories starting with `_` or `.`
-          and files with a `// Code generated ... DO NOT EDIT.` header are skipped — and a
+          and files with a `// Code generated ... DO NOT EDIT.` header or a `//go:build
+          ignore` constraint are skipped — and a
           tracked `.golangci.yml`, `.golangci.yaml`, `.golangci.toml` or `.golangci.json`. The
           configuration is read lexically: YAML by indentation and `- ` items, TOML by tables
           and `key = value`, JSON through the BCL. No linter is located, installed or run, and
@@ -53,7 +54,8 @@ internal static class LintSuppressionsExplanation
           golangci-lint and is not one here. `formatters.exclusions.paths` and
           `linters.exclusions.paths-except` (v2) are not read: the first silences formatters,
           not linters, and the second narrows a list rather than adding to it. A `//nolint`
-          that a generated file carries is skipped with the file.
+          that a generated file or a file under `//go:build ignore` carries is skipped with
+          the file.
 
         False positives
           A rule whose `path` names one directory on purpose — a legacy tree the owners are

@@ -47,7 +47,8 @@ internal sealed class CSharpGraphBuilder
             imports,
             resolved,
             ambiguous,
-            markedGenerated);
+            markedGenerated,
+            []);
     }
 
     private static TypeNode NodeOf(CSharpFile file, Declaration type)
