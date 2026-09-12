@@ -71,7 +71,7 @@ internal static class FrameSections
         => $"\"{check.Id}\": \"{DefaultPolicy(check.Id)}\"";
 
     /// <summary>The fragment that adds one axis to a frame, indented for pasting into the three objects.</summary>
-    public static string AxisFragment(FrameAxis axis, IReadOnlyList<CheckDescriptor> checks)
+    public static string AxisFragment(FrameAxis axis, IReadOnlyList<CheckDescriptor> checks, bool architectureMissing)
     {
         var members = checks.Where(check => check.Applicability == axis.Key).ToList();
         var text = new StringBuilder();
@@ -85,7 +85,22 @@ internal static class FrameSections
         text.Append("\"policy\": {\n")
             .Append(Indent(string.Join(",\n", members.Select(PolicyEntry)), "  "))
             .Append("\n}");
+        if (axis.Key == "csharp" && architectureMissing)
+        {
+            text.Append('\n').Append(ArchitectureFragment(checks));
+        }
+
         return text.ToString();
+    }
+
+    public static string ArchitectureFragment(IReadOnlyList<CheckDescriptor> checks)
+    {
+        var policy = checks.Where(check => check.Group == "architecture.sliced-dotnet").Select(PolicyEntry);
+        return "Choose the repository kind, as in `harness init --kind`:\n"
+            + "  application: \"architecture\": { \"standard\": \"sliced-dotnet/1\" }\n"
+            + "  library: \"architecture\": { \"applicable\": false, \"reason\": \"standalone library\" }\n"
+            + "For either kind, add these checks to policy:\n\"policy\": {\n"
+            + Indent(string.Join(",\n", policy), "  ") + "\n}";
     }
 
     public static string Indent(string text, string prefix)

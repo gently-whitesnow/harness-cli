@@ -95,7 +95,7 @@ internal sealed class HarnessCoverageCheck : IRepositoryCheck
                     + $"({shown}{(remaining > 0 ? $" and {remaining} more" : "")}) but no `applicability.{axis.Key}` entry; "
                     + $"add these sections to {HarnessConfig.FileName}, or declare "
                     + $"\"{axis.Key}\": {{ \"applicable\": false, \"reason\": \"...\" }}:\n"
-                    + FrameSections.Indent(FrameSections.AxisFragment(axis, checks), "      ")));
+                    + FrameSections.Indent(FrameSections.AxisFragment(axis, checks, context.Config.Architecture is null), "      ")));
         }
 
         return CheckEvaluation.From(
