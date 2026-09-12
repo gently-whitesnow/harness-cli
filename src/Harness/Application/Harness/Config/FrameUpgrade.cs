@@ -111,11 +111,18 @@ internal static class FrameUpgrade
         foreach (var axis in detected.Where(axis => !applicability.ContainsKey(axis.Key)))
         {
             report.Append($"Sections to add for tracked {axis.Name} sources (or decline the axis with a reason):\n")
-                .Append(FrameSections.Indent(FrameSections.AxisFragment(axis, checks), "  "))
+                .Append(FrameSections.Indent(FrameSections.AxisFragment(axis, checks, document?["architecture"] is null), "  "))
                 .Append('\n');
         }
 
         var declared = detected.Where(axis => applicability.ContainsKey(axis.Key)).Select(axis => axis.Key).ToHashSet(StringComparer.Ordinal);
+        if (declared.Contains("csharp") && applicability["csharp"] is JsonObject csharp
+            && csharp["applicable"]?.GetValueKind() == JsonValueKind.True
+            && document?["architecture"] is null)
+        {
+            report.Append(FrameSections.ArchitectureFragment(checks)).Append('\n');
+        }
+
         var missing = checks
             .Where(check => !policy.ContainsKey(check.Id))
             .Where(check => check.Applicability is null ? check.Group != "architecture.sliced-dotnet" || document?["architecture"] is not null : declared.Contains(check.Applicability))

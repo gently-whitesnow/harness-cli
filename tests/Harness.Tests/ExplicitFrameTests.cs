@@ -143,6 +143,65 @@ public sealed class ExplicitFrameTests
         Assert.False(run.OutputContains("typescript"), run.Output);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Adding_csharp_offers_both_architecture_kinds_and_every_init_policy(bool declared)
+    {
+        var frame = MinimalFrame.Replace("docs.policy", "harness.coverage", StringComparison.Ordinal);
+        if (declared)
+        {
+            frame = frame.Replace("\"settings\"", "\"applicability\": { \"csharp\": { \"applicable\": true } }, \"settings\"", StringComparison.Ordinal);
+        }
+
+        using var repository = Fixtures.WithRawFrame(frame).WriteFile("App.cs", "public sealed class App {}\n").Commit();
+        using var initialized = RepositoryFixture.CreateGitRepository().WriteFile("App.cs", "public sealed class App {}\n").Commit();
+        Assert.Equal(0, HarnessCli.Run(initialized.Path, "init", "--kind", "application").ExitCode);
+        using var document = JsonDocument.Parse(File.ReadAllText(initialized.Absolute(".harness.json")));
+        var architectureIds = document.RootElement.GetProperty("policy").EnumerateObject()
+            .Where(entry => entry.Name.StartsWith("architecture.", StringComparison.Ordinal)).Select(entry => entry.Name).ToList();
+        Assert.Equal(8, architectureIds.Count);
+
+        var upgrade = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+        Assert.Equal(0, upgrade.ExitCode);
+        var outputs = new List<string> { upgrade.Output };
+        if (!declared)
+        {
+            var coverage = HarnessCli.RunVerbose(repository.Path, "check", "--only", "harness.coverage");
+            Assert.Equal(1, coverage.ExitCode);
+            outputs.Add(coverage.Output);
+        }
+
+        foreach (var output in outputs)
+        {
+            Assert.Contains("application: \"architecture\": { \"standard\": \"sliced-dotnet/1\" }", output, StringComparison.Ordinal);
+            Assert.Contains("library: \"architecture\": { \"applicable\": false", output, StringComparison.Ordinal);
+            foreach (var id in architectureIds)
+            {
+                Assert.Contains($"\"{id}\": \"required\"", output, StringComparison.Ordinal);
+            }
+        }
+
+        Assert.Equal(frame, File.ReadAllText(repository.Absolute(".harness.json")));
+    }
+
+    [Fact]
+    public void Adding_csharp_keeps_an_existing_architecture_decision()
+    {
+        var frame = MinimalFrame.Replace("docs.policy", "harness.coverage", StringComparison.Ordinal)
+            .Replace("\"settings\"", "\"architecture\": { \"applicable\": false, \"reason\": \"library\" }, \"settings\"", StringComparison.Ordinal);
+        using var repository = Fixtures.WithRawFrame(frame).WriteFile("App.cs", "public sealed class App {}\n").Commit();
+
+        var coverage = HarnessCli.RunVerbose(repository.Path, "check", "--only", "harness.coverage");
+        var upgrade = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+
+        Assert.Equal(1, coverage.ExitCode);
+        Assert.Equal(0, upgrade.ExitCode);
+        Assert.DoesNotContain("Choose the repository kind", coverage.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Choose the repository kind", upgrade.Output, StringComparison.Ordinal);
+        Assert.Equal(frame, File.ReadAllText(repository.Absolute(".harness.json")));
+    }
+
     [Fact]
     public void Coverage_accepts_a_declined_axis_and_a_declared_one()
     {
