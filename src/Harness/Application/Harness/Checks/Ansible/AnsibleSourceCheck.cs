@@ -10,8 +10,6 @@ namespace Harness.Checks.Ansible;
 /// </summary>
 internal abstract class AnsibleSourceCheck(IAnsibleSources sources, string group, string summary) : IRepositoryCheck
 {
-    protected IAnsibleSources Sources => sources;
-
     public string Id => Language.Ansible.Qualify(group);
 
     public string Group => group;

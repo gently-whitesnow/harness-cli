@@ -2,6 +2,8 @@
 
 ## Status
 
+Scope partially superseded by [ADR-0059](0059-focused-ansible-release.md): only suppressions and role cycles ship in 3.2.
+
 Defaults partially superseded by [ADR-0058](0058-required-initial-frame.md): init uses required.
 
 Accepted. Развивает [ADR-0022](0022-language-axis.md) (ось = экземпляр, ридер, строка в

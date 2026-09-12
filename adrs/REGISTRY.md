@@ -1,11 +1,12 @@
 # ADR Registry
 
+- [ADR-0059](0059-focused-ansible-release.md) — первая ось Ansible: только причины noqa и циклы ролей;
+  образы, секреты и раскладка ролей исключены из релиза 3.2.
 - [ADR-0058](0058-required-initial-frame.md) — все проверки init и новых фрагментов — required;
   смягчение обсуждается с владельцем, upgrade сохраняет явную policy. Заменяет defaults ниже.
 - [ADR-0057](0057-ansible-axis.md) — контракт 3.2: ось `ansible` по маркерам поверх `yaml` —
-  `images.ansible` (полный digest), `secrets.ansible` (форма хранения, required из init),
-  `lint-suppressions.ansible` (`# noqa` без причины), `dependencies.ansible` (цикл ролей),
-  `role-shape.ansible` (required из init); правила `ansible-lint`, molecule, `no_log` и DSM для ролей не делаются.
+  `lint-suppressions.ansible` (`# noqa` без причины), `dependencies.ansible` (цикл ролей).
+  Образы, секреты и раскладка исключены ADR-0059; ansible-lint и molecule запускает проект.
 - [ADR-0056](0056-configuration-repository-frame.md) — контракт 3.2: рамка для конфигурационных
   репозиториев — `comments.yaml` не считает блок над ключом любой глубины и trailing-комментарий,
   `init` пишет его `required` (ADR-0058), `harness.coverage` печатает суффиксы файлов
@@ -122,11 +123,9 @@
   trailing-комментарий, директивы — код; `init` пишет `comments.yaml: required` (ADR-0058); `harness.coverage` печатает в details суффиксы tracked-файлов вне осей;
   `ansible-lint`/`yamllint`/molecule — через ответы рамки; `docs.generated` отклонён.
 - [ADR-0057](0057-ansible-axis.md) — Контракт 3.2: ось `ansible` детектируется по `ansible.cfg`,
-  `roles/*/tasks/main.yml`, `playbooks/` или playbook в корне; `images.ansible` — `image:` без
-  полного `@sha256:` digest в YAML и Jinja; `secrets.ansible` — литерал вместо `!vault`/lookup
-  в vars-каталогах (required из init); `lint-suppressions.ansible` — `# noqa` без причины;
-  `dependencies.ansible` — цикл ролей по `meta` и `include_role` тем же ядром `Structure/`;
-  `role-shape.ansible` — словарь каталогов роли (required из init).
+  `roles/*/tasks/main.yml`, `playbooks/` или playbook в корне;
+  `lint-suppressions.ansible` — `# noqa` без причины, `dependencies.ansible` — цикл ролей
+  по `meta` и `include_role` тем же ядром `Structure/`. Остальной состав отменён ADR-0059.
 - [ADR-0018](0018-csharp-applicability-and-one-type-per-file.md) — Все C#-проверки имеют
   общий applicability `csharp`; `types-per-file.csharp` блокирует второй верхнеуровневый
   `class` или `record` в одном authored-файле.

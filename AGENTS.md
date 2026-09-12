@@ -51,9 +51,9 @@ sliced-dotnet, а без зоны — вне tracked тестовых проек
 голый `//nolint` и `//nolint:x` без `// причины`, repo-wide отключения в tracked-конфиге golangci печатает в details.
 `go vet`/`gofmt` — через `answers.lint`/`answers.format`; types-per-file, dependencies, архитектура и editorconfig для Go не делаются. [ADR-0055](adrs/0055-go-language-axis.md)
 
-Ось `ansible` по маркерам: полный digest образов, причины inline `noqa`, циклы ролей; секреты и раскладка ролей
-из `init` — required, как и комментарии. YAML не считает блоки над ключами любой глубины и trailing-комментарии.
-Смягчение агент обсуждает с владельцем. [ADR-0056](adrs/0056-configuration-repository-frame.md), [ADR-0057](adrs/0057-ansible-axis.md)
+Ось `ansible` по маркерам: причины inline `noqa` и циклы ролей. Из `init` — required, как и комментарии.
+YAML не считает блоки над ключами любой глубины и trailing-комментарии; смягчение агент обсуждает с владельцем.
+Состав первого релиза — [ADR-0059](adrs/0059-focused-ansible-release.md); рамка — [ADR-0056](adrs/0056-configuration-repository-frame.md).
 
 .NET-проекты разделяют applicability `dotnet`: общий hardened `Directory.Build.props`,
 central package versions в ближайшем `Directory.Packages.props`, `.slnx` вместо `.sln`,

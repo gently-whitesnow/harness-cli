@@ -350,10 +350,8 @@ internal static class FrameUpgrade
         (new HarnessVersion(3, 2, 0), """
         Release 3.2 additions:
           added    ansible axis detected by ansible.cfg, role entry points and playbooks;
-                   images.ansible requires a full SHA-256 digest; dependencies.ansible finds
+                   dependencies.ansible finds
                    role cycles; lint-suppressions.ansible requires reasons for inline noqa
-          added    secrets.ansible and role-shape.ansible: narrow variable-name
-                   and role-layout checks calibrated on one configuration repository
           changed  comments.yaml excludes blocks above keys or list items at any depth,
                    with blank lines allowed, trailing comments and tool directives;
                    all detected checks, including comments and frame questions, start required;

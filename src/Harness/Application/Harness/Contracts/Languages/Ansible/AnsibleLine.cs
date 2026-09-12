@@ -1,7 +1,7 @@
 namespace Harness.Languages.Ansible;
 
 /// <summary>
-/// One non-empty line of YAML or a Jinja template, read lexically: its physical number, the
+/// One non-empty YAML line, read lexically: its physical number, the
 /// column its key (or content) starts in, whether it opens a sequence item, the mapping key it
 /// carries, the value after the key with its trailing comment removed, and that comment.
 /// </summary>
@@ -25,8 +25,6 @@ internal sealed record AnsibleLine(int Number, int Indent, bool IsItem, string? 
                 : inner;
         }
     }
-
-    public bool IsOpaque => Value.Length > 0 && Value[0] is '&' or '*' or '[' or '{';
 
     public bool IsJinja => Value.Contains("{{", StringComparison.Ordinal);
 }

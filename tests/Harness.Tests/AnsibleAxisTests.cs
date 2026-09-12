@@ -3,24 +3,16 @@ using System.Text.Json;
 namespace Harness.Tests;
 
 /// <summary>
-/// The Ansible axis of contract 3.2 (ADR-0057): detected by markers, five checks over tracked
-/// YAML and Jinja templates, each read through the compiled CLI on a fixture repository.
+/// The Ansible axis of contract 3.2 (ADR-0057): detected by markers, two checks over tracked
+/// YAML files, each read through the compiled CLI on a fixture repository.
 /// </summary>
 public sealed class AnsibleAxisTests
 {
-    private const string Images = "images.ansible";
-
-    private const string Secrets = "secrets.ansible";
-
     private const string LintSuppressions = "lint-suppressions.ansible";
 
     private const string Dependencies = "dependencies.ansible";
 
-    private const string RoleShape = "role-shape.ansible";
-
-    private static readonly string[] Checks = [Images, Secrets, LintSuppressions, Dependencies, RoleShape];
-
-    private const string Digest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    private static readonly string[] Checks = [LintSuppressions, Dependencies];
 
     [Fact]
     public void Yaml_without_an_ansible_marker_is_not_applicable_to_every_ansible_check()
@@ -69,94 +61,6 @@ public sealed class AnsibleAxisTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.Contains("Declared yaml from the tracked sources", run.StandardOutput, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Every_image_form_without_a_full_digest_is_blocking_and_jinja_is_a_detail()
-    {
-        var tasks = "- name: Run\n  community.docker.docker_container:\n"
-            + "    image: nginx:latest\n"
-            + "- name: Tag\n  vars:\n    image: nginx:1.27   # pinned by tag\n"
-            + "- name: Garbage\n  vars:\n    image: \"nginx@sha256:garbage\"\n"
-            + "- name: Short\n  vars:\n    image: nginx@sha256:0123456789abcdef\n"
-            + "- name: Empty\n  vars:\n    image:\n"
-            + $"- name: Good\n  vars:\n    image: \"registry.example/app@sha256:{Digest}\"   # 1.2.3\n";
-        using var repository = Ansible()
-            .WriteFile("roles/web/tasks/main.yml", tasks)
-            .WriteFile("roles/web/templates/compose.yml.j2", "services:\n  web:\n    image: {{ web_image }}\n    ports: []\n")
-            .WriteFile("molecule/default/converge.yml", "- hosts: all\n  tasks:\n    - vars:\n        image: nginx:latest\n")
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Images);
-
-        Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("roles/web/tasks/main.yml:3") && run.OutputContains("`nginx:latest` is named by tag, not by digest"), run.Output);
-        Assert.True(run.OutputContains("roles/web/tasks/main.yml:6"), run.Output);
-        Assert.True(run.OutputContains("roles/web/tasks/main.yml:9: image `nginx@sha256:garbage` carries an incomplete digest"), run.Output);
-        Assert.True(run.OutputContains("roles/web/tasks/main.yml:12: image `nginx@sha256:0123456789abcdef` carries an incomplete digest"), run.Output);
-        Assert.True(run.OutputContains("roles/web/tasks/main.yml:15: image has no value"), run.Output);
-        Assert.False(run.OutputContains("main.yml:18"), run.Output);
-        Assert.True(run.OutputContains("roles/web/templates/compose.yml.j2:3: image `{{ web_image }}` is resolved by Ansible at run time (Inferred)"), run.Output);
-        Assert.False(run.OutputContains("molecule/"), run.Output);
-    }
-
-    [Fact]
-    public void Anchors_aliases_and_flow_collections_do_not_become_literal_findings()
-    {
-        using var repository = Ansible()
-            .WriteFile("group_vars/all/values.yml", "image: *shared_image\ndb_password: *shared_password\n")
-            .WriteFile("roles/web/defaults/main.yml", "image: &shared_image nginx:latest\n")
-            .WriteFile("roles/web/templates/config.yml.j2", "image: {name: nginx}\n")
-            .Commit();
-
-        var images = HarnessCli.RunVerbose(repository.Path, "check", "--only", Images);
-        var secrets = HarnessCli.RunVerbose(repository.Path, "check", "--only", Secrets);
-
-        Assert.Equal(0, images.ExitCode);
-        Assert.Equal(3, Occurrences(images.Output, "anchor, alias or flow collection (Inferred)"));
-        Assert.Equal(0, secrets.ExitCode);
-    }
-
-    [Fact]
-    public void Images_pinned_by_digest_pass()
-    {
-        using var repository = Ansible()
-            .WriteFile("group_vars/all/services.yml", $"services:\n  web:\n    image: \"registry.example/web@sha256:{Digest}\"   # 2.6.2\n")
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Images);
-
-        Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("every literal image is pinned by a full digest"), run.Output);
-    }
-
-    [Fact]
-    public void A_literal_under_a_secret_name_in_a_variables_file_is_the_only_secret_finding()
-    {
-        const string vars = "wg_public_key: \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\"\n"
-            + "token_key: token\n"
-            + "vault_password: !vault |\n  $ANSIBLE_VAULT;1.1;AES256\n  62313365396662343061393464336163383764373764613633653634306231386433626436623361\n"
-            + "api_key: \"{{ lookup('env', 'API_KEY') }}\"\n"
-            + "ssh_key_file: ~/.ssh/id_ed25519\n"
-            + "token_ttl: 15m\n"
-            + "managed_keys: [owner_password]\n"
-            + "env:\n  MASTER_PASSWORD: master_password\n"
-            + "db_password: hunter2\n"
-            + "admin_password: correct-horse-1   # generated once\n"
-            + "client_secret: ~\n";
-        using var repository = Ansible()
-            .WriteFile("group_vars/all/access.yml", vars)
-            .WriteFile("roles/web/defaults/main.yml", "web_api_key: \"{{ vault_web_api_key }}\"\n")
-            .WriteFile("roles/web/tasks/main.yml", "- name: Set\n  ansible.builtin.set_fact:\n    password: literal-outside-scope\n")
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Secrets);
-
-        Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("violation  group_vars/all/access.yml:13: `admin_password` holds a literal value in a variables file"), run.Output);
-        Assert.False(run.OutputContains("access.yml:1:"), run.Output);
-        Assert.Equal(1, Occurrences(run.Output, "holds a literal value"));
-        Assert.False(run.OutputContains("roles/web/tasks/main.yml"), run.Output);
     }
 
     [Fact]
@@ -223,28 +127,6 @@ public sealed class AnsibleAxisTests
     }
 
     [Fact]
-    public void A_role_with_a_stray_file_an_unknown_directory_or_no_tasks_main_is_reported()
-    {
-        using var repository = Ansible()
-            .WriteFile("roles/web/main.yml", "- name: stray\n")
-            .WriteFile("roles/web/scripts/run.sh", "#!/bin/sh\n")
-            .WriteFile("roles/web/tasks/install.yml", "- name: Install\n  ansible.builtin.ping:\n")
-            .WriteFile("roles/web/README.md", "# web\n")
-            .WriteFile("roles/db/tasks/main.yaml", "- name: Ping\n  ansible.builtin.ping:\n")
-            .WriteFile("roles/db/files/schema.sql", "select 1;\n")
-            .Commit();
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", RoleShape);
-
-        Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("roles/web/main.yml: a file directly in the role directory"), run.Output);
-        Assert.True(run.OutputContains("roles/web/scripts: not a directory Ansible reads from a role"), run.Output);
-        Assert.True(run.OutputContains("roles/web/tasks: has no main.yml"), run.Output);
-        Assert.False(run.OutputContains("roles/db"), run.Output);
-        Assert.False(run.OutputContains("README.md:"), run.Output);
-    }
-
-    [Fact]
     public void Init_on_an_ansible_repository_writes_both_axes_the_required_defaults_and_the_toolchain_hint()
     {
         using var repository = RepositoryFixture.CreateGitRepository()
@@ -266,11 +148,8 @@ public sealed class AnsibleAxisTests
         Assert.Equal(["comments.yaml", "commits"], root.GetProperty("settings").EnumerateObject().Select(section => section.Name));
         var policy = root.GetProperty("policy");
         Assert.Equal("required", policy.GetProperty("comments.yaml").GetString());
-        Assert.Equal("required", policy.GetProperty(Images).GetString());
-        Assert.Equal("required", policy.GetProperty(Secrets).GetString());
         Assert.Equal("required", policy.GetProperty(LintSuppressions).GetString());
         Assert.Equal("required", policy.GetProperty(Dependencies).GetString());
-        Assert.Equal("required", policy.GetProperty(RoleShape).GetString());
 
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
         var check = HarnessCli.Run(repository.Path, "check", "--skip", "frame,docs,commits");
@@ -299,9 +178,25 @@ public sealed class AnsibleAxisTests
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("2 tracked Ansible sources (ansible.cfg, roles/common/tasks/main.yml) but no `applicability.ansible` entry"), run.Output);
         Assert.True(run.OutputContains("\"ansible\": { \"applicable\": true }"), run.Output);
-        Assert.True(run.OutputContains("\"images.ansible\": \"required\""), run.Output);
-        Assert.True(run.OutputContains("\"secrets.ansible\": \"required\""), run.Output);
+        Assert.True(run.OutputContains("\"dependencies.ansible\": \"required\""), run.Output);
+        Assert.True(run.OutputContains("\"lint-suppressions.ansible\": \"required\""), run.Output);
         Assert.False(run.OutputContains("\"settings\""), run.Output);
+    }
+
+    [Theory]
+    [InlineData("images.ansible")]
+    [InlineData("secrets.ansible")]
+    [InlineData("role-shape.ansible")]
+    public void Deferred_checks_are_not_advertised_or_initialized(string id)
+    {
+        using var repository = RepositoryFixture.CreateGitRepository()
+            .WriteFile("ansible.cfg", "[defaults]\n").Commit();
+        var help = HarnessCli.Run(repository.Path, "help");
+        Assert.Equal(0, help.ExitCode);
+        Assert.False(help.OutputContains(id), help.Output);
+        Assert.Equal(0, HarnessCli.RunWithInput(repository.Path, string.Empty, "init").ExitCode);
+        using var json = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
+        Assert.False(json.RootElement.GetProperty("policy").TryGetProperty(id, out _));
     }
 
     [Fact]
@@ -309,22 +204,13 @@ public sealed class AnsibleAxisTests
     {
         using var repository = Fixtures.Compliant();
 
-        var images = HarnessCli.Run(repository.Path, "explain", Images);
-        var secrets = HarnessCli.Run(repository.Path, "explain", Secrets);
         var suppressions = HarnessCli.Run(repository.Path, "explain", LintSuppressions);
         var dependencies = HarnessCli.Run(repository.Path, "explain", Dependencies);
-        var shape = HarnessCli.Run(repository.Path, "explain", RoleShape);
 
-        Assert.Equal(0, images.ExitCode);
-        Assert.True(images.OutputContains("64 hexadecimal digits") && images.OutputContains("*.j2"), images.Output);
-        Assert.Equal(0, secrets.ExitCode);
-        Assert.True(secrets.OutputContains("public_key") && secrets.OutputContains("token_key: token"), secrets.Output);
         Assert.Equal(0, suppressions.ExitCode);
         Assert.True(suppressions.OutputContains("skip_list") && suppressions.OutputContains(".ansible-lint"), suppressions.Output);
         Assert.Equal(0, dependencies.ExitCode);
         Assert.True(dependencies.OutputContains("include_role") && dependencies.OutputContains("Playbooks compose roles"), dependencies.Output);
-        Assert.Equal(0, shape.ExitCode);
-        Assert.True(shape.OutputContains("tasks/main.yml") && shape.OutputContains("zone-shape"), shape.Output);
     }
 
     [Fact]
@@ -408,7 +294,6 @@ public sealed class AnsibleAxisTests
         var dry = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
         Assert.Equal(0, dry.ExitCode);
         Assert.True(dry.OutputContains("Release 3.2 additions"), dry.Output);
-        Assert.True(dry.OutputContains("\"secrets.ansible\": \"required\""), dry.Output);
         Assert.Equal(frame, File.ReadAllText(repository.Absolute(".harness.json")));
         var run = HarnessCli.Run(repository.Path, "upgrade");
         Assert.Equal(0, run.ExitCode);

@@ -71,11 +71,8 @@ internal static class CheckRegistry
             new DuplicationCheck(new CSharpNormalizedSources(CSharp)),
             new DuplicationCheck(new GoNormalizedSources(Go)),
             new LintSuppressionsCheck(Go),
-            new ImagesCheck(Ansible),
-            new SecretsCheck(Ansible),
             new AnsibleLintSuppressionsCheck(Ansible),
             new DependenciesCheck(AnsibleAnalyzer),
-            new RoleShapeCheck(Ansible),
 
             new BuildPropertiesCheck(),
             new CentralPackagesCheck(),

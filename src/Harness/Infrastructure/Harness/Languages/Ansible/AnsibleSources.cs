@@ -4,13 +4,13 @@ using Harness.Repository;
 namespace Harness.Infrastructure.Languages.Ansible;
 
 /// <summary>
-/// The tracked YAML and Jinja templates of an Ansible repository, read once for the whole run.
+/// The tracked YAML files of an Ansible repository, read once for the whole run.
 /// Without a marker the repository is not an Ansible one and nothing is read, so a Helm chart
 /// or a workflow directory never gets Ansible findings.
 /// </summary>
 internal sealed class AnsibleSources : IAnsibleSources
 {
-    private static readonly string[] Suffixes = [".yml", ".yaml", ".j2"];
+    private static readonly string[] Suffixes = [".yml", ".yaml"];
 
     private IRepository? read;
     private Reading result = new([], [], [], null);

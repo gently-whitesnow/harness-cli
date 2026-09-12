@@ -26,7 +26,7 @@ internal sealed partial class AnsibleLintSuppressionsCheck(IAnsibleSources sourc
     {
         var findings = new List<Finding>();
         var details = new List<string>();
-        foreach (var file in files.Where(file => !file.IsTemplate))
+        foreach (var file in files)
         {
             foreach (var line in file.Lines.Where(line => line.Comment is not null && !line.IsComment))
             {

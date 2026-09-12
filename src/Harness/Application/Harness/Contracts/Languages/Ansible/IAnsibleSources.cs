@@ -3,7 +3,7 @@ using Harness.Repository;
 namespace Harness.Languages.Ansible;
 
 /// <summary>
-/// What the Ansible axis supplies to its checks: the tracked YAML and Jinja templates read
+/// What the Ansible axis supplies to its checks: the tracked YAML files read
 /// once, the markers that made the repository an Ansible one, and the tracked paths under
 /// `roles/`. Without a marker there is nothing to judge, and every check says so.
 /// </summary>

@@ -3,7 +3,7 @@ using Harness.Languages.Ansible;
 namespace Harness.Infrastructure.Languages.Ansible;
 
 /// <summary>
-/// Reads YAML or a Jinja template into <see cref="AnsibleLine"/>s without a grammar: a key is
+/// Reads YAML into <see cref="AnsibleLine"/>s without a grammar: a key is
 /// the text before the first `: ` outside quotes, a comment is `#` after whitespace outside
 /// quotes, a `- ` opens an item, and the body of a block scalar folds into the value of the
 /// line that opened it. Anchors, merge keys and flow mappings read as plain values.

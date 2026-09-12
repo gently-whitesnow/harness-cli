@@ -61,7 +61,7 @@ internal sealed class AnsibleAnalyzer(IAnsibleSources sources) : ILanguageAnalyz
         var external = roles.Keys.ToDictionary(name => name, _ => 0, StringComparer.Ordinal);
         var resolved = 0;
         var ambiguous = 0;
-        foreach (var file in files.Where(file => file.Role is { } role && roles.ContainsKey(role) && !file.IsTemplate))
+        foreach (var file in files.Where(file => file.Role is { } role && roles.ContainsKey(role)))
         {
             foreach (var (target, line, literal) in References(file))
             {

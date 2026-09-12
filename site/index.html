@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Harness CLI — harness начинается с репозитория</title>
-  <meta name="description" content="Агенту предстоит ещё тысяча итераций. Репозиторий должен оставаться понятным. Мой опыт в 41 проверках: общие правила, проверки языков, Go, Ansible и строгие границы .NET-приложения." />
+  <meta name="description" content="Агенту предстоит ещё тысяча итераций. Репозиторий должен оставаться понятным. Мой опыт в 38 проверках: общие правила, проверки языков, Go, Ansible и строгие границы .NET-приложения." />
   <link rel="canonical" href="https://harness.whitesnow.tech/" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <meta property="og:type" content="website" />
@@ -115,9 +115,9 @@ exit 1</code></pre>
     <section id="checks">
       <div class="container">
         <div class="section-head">
-          <p class="eyebrow">41 проверок · две части</p>
+          <p class="eyebrow">38 проверок · две части</p>
           <h2>Общее для репозитория. Конкретное для его стека.</h2>
-          <p>Сначала — одинаковые вопросы и правила независимо от языка. Затем — проверки исходников и устройства проекта. Самый подробный набор — для C# и .NET; Go получает комментарии, повторы, DSM по пакетам и учёт подавлений линтера. Ansible — контроль образов, секретов, подавлений и графа ролей.</p>
+          <p>Сначала — одинаковые вопросы и правила независимо от языка. Затем — проверки исходников и устройства проекта. Самый подробный набор — для C# и .NET; Go получает комментарии, повторы, DSM по пакетам и учёт подавлений линтера. Ansible — причины подавлений линтера и циклы ролей.</p>
         </div>
         <div class="catalog">
           <div class="catalog-column">
@@ -157,7 +157,7 @@ exit 1</code></pre>
               <ul class="check-list" id="go-checks" aria-label="Проверки Go"></ul>
             </details>
             <details>
-              <summary>Ansible <span>Образы, секреты, подавления, циклы и раскладка ролей · 5 проверок</span></summary>
+              <summary>Ansible <span>Причины подавлений линтера и циклы ролей · 2 проверки</span></summary>
               <p>Ось обнаруживается по ansible.cfg, ролям или плейбукам. YAML-комментарии остаются отдельной проверкой; ansible-lint, syntax-check и molecule запускает verify-скрипт проекта.</p>
               <ul class="check-list" id="ansible-checks" aria-label="Проверки Ansible"></ul>
             </details>
