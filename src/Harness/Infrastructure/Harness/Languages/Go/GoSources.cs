@@ -71,7 +71,7 @@ internal sealed partial class GoSources : IGoSources
                 continue;
             }
 
-            if (header.Any(IsIgnoreConstraint))
+            if (GoBuildConstraints.Ignores(text))
             {
                 ignored.Add(entry.Path);
                 continue;
@@ -83,37 +83,12 @@ internal sealed partial class GoSources : IGoSources
         return new Reading(files, generated, ignored, null);
     }
 
-    // The go tool's own rule for both markers: a line by itself before the package clause.
+    // Generated markers must appear before the package clause.
     private static List<string> Header(string text)
         => text.Split('\n')
             .Select(line => line.TrimEnd('\r'))
             .TakeWhile(line => !line.StartsWith("package ", StringComparison.Ordinal))
             .ToList();
-
-    // A constraint the go tool can never satisfy: an expression holding no tag but `ignore`.
-    // `!ignore`, `linux || ignore` and every other tag are not evaluated.
-    private static bool IsIgnoreConstraint(string line)
-    {
-        string expression;
-        char[] separators;
-        if (line.StartsWith("//go:build ", StringComparison.Ordinal) || line.StartsWith("//go:build\t", StringComparison.Ordinal))
-        {
-            expression = line["//go:build".Length..].Replace("&&", " ", StringComparison.Ordinal).Replace("||", " ", StringComparison.Ordinal);
-            separators = [' ', '\t', '(', ')'];
-        }
-        else if (LegacyBuild().IsMatch(line))
-        {
-            expression = line[(line.IndexOf("+build", StringComparison.Ordinal) + "+build".Length)..];
-            separators = [' ', '\t', ','];
-        }
-        else
-        {
-            return false;
-        }
-
-        var tags = expression.Split(separators, StringSplitOptions.RemoveEmptyEntries);
-        return tags.Length > 0 && tags.All(tag => tag == "ignore");
-    }
 
     private static GoFile Parse(string path, string text)
     {
@@ -298,9 +273,6 @@ internal sealed partial class GoSources : IGoSources
 
     [GeneratedRegex(@"^// Code generated .* DO NOT EDIT\.$")]
     private static partial Regex GeneratedHeader();
-
-    [GeneratedRegex(@"^//[ \t]*\+build[ \t]")]
-    private static partial Regex LegacyBuild();
 
     private sealed record Reading(
         IReadOnlyList<GoFile> Files,

@@ -107,6 +107,8 @@ public sealed class GoLanguageTests
     [Theory]
     [InlineData("//go:build ignore\n")]
     [InlineData("//go:build (ignore)\n")]
+    [InlineData("  //go:build ignore\n")]
+    [InlineData("/* license */\n//go:build ignore\n")]
     [InlineData("//go:build ignore && ignore\n")]
     [InlineData("// +build ignore\n")]
     public void A_file_under_a_build_ignore_constraint_lends_no_edge_and_is_named_in_the_details(string constraint)
@@ -135,6 +137,30 @@ public sealed class GoLanguageTests
 
         Assert.False(run.OutputContains("build constraints:"), run.Output);
         Assert.True(run.OutputContains("largest cyclic group size: 4 packages"), run.Output);
+    }
+
+    [Theory]
+    [InlineData("/*\n//go:build ignore\n*/\n\n")]
+    [InlineData("// +build ignore\n")]
+    [InlineData("//go:build !ignore\n// +build ignore\n\n")]
+    [InlineData("// +build ignore\n//go:build !ignore\n\n")]
+    [InlineData("//go:build linux || ignore\n// +build ignore\n\n")]
+    [InlineData("/* license */\n// +build ignore\n\n")]
+    [InlineData("/* license */ //go:build ignore\n\n")]
+    public void Inactive_ignore_markers_preserve_edges_and_lint_findings(string header)
+    {
+        var source = header + "package p4\n\nimport \"example.com/app/internal/p1\"\n"
+            + "//nolint because legacy\nfunc Tool() int { return p1.One() }\n";
+        using var repository = Packages().WriteFile("internal/p4/tool.go", source).Commit();
+
+        var complexity = HarnessCli.RunVerbose(repository.Path, "check", "--only", Complexity);
+        var lint = HarnessCli.RunVerbose(repository.Path, "check", "--only", LintSuppressions);
+
+        Assert.Equal(1, complexity.ExitCode);
+        Assert.True(complexity.OutputContains("largest cyclic group size: 4 packages"), complexity.Output);
+        Assert.False(complexity.OutputContains("build constraints:"), complexity.Output);
+        Assert.Equal(1, lint.ExitCode);
+        Assert.True(lint.OutputContains("silences every linter"), lint.Output);
     }
 
     [Fact]
