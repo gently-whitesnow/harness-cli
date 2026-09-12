@@ -27,9 +27,11 @@ internal static class ConsoleReport
 
         text.Append('\n');
 
+        // A check outside the frame is not a row: the frame did not ask for it. It is listed
+        // once below, so a reviewer still sees what this repository has not decided about.
         var visibleGates = (focused
             ? report.Gates.Where(gate => gate.Outcome != CheckOutcome.Skipped || gate.OutcomeReason is not null)
-            : report.Gates).ToList();
+            : report.Gates.Where(gate => !gate.OutsideFrame)).ToList();
         var identifierWidth = visibleGates.Count == 0
             ? 0
             : Math.Max("CHECK ID".Length, visibleGates.Max(gate => gate.Id.Length)) + 2;
@@ -50,6 +52,8 @@ internal static class ConsoleReport
             AppendGate(text, gate, verbose, all, identifierWidth);
         }
 
+        AppendOutsideFrame(text, report, verbose, focused);
+
         var untracked = report.UntrackedEvidence ?? [];
         if (verbose)
         {
@@ -69,6 +73,26 @@ internal static class ConsoleReport
         }
 
         return text.ToString();
+    }
+
+    private static void AppendOutsideFrame(StringBuilder text, RunReport report, bool verbose, bool focused)
+    {
+        var outside = report.Gates.Where(gate => gate.OutsideFrame).Select(gate => gate.Id).ToList();
+        if (outside.Count == 0 || focused)
+        {
+            return;
+        }
+
+        text.Append("\n  outside the frame  ")
+            .Append(outside.Count.ToString(CultureInfo.InvariantCulture))
+            .Append(outside.Count == 1 ? " check" : " checks")
+            .Append(" not named in policy");
+        if (verbose)
+        {
+            text.Append(": ").Append(string.Join(", ", outside));
+        }
+
+        text.Append('\n');
     }
 
     private static void AppendGate(

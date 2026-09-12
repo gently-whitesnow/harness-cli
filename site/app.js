@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 2.17.0 · no dependencies. */
+/* Harness CLI landing · contract 3.0.0 · no dependencies. */
 (function () {
   'use strict';
 
@@ -11,7 +11,8 @@
   });
 
   const CHECKS = [
-    { id: 'harness.config', group: 'common', axis: null, summary: 'Полный .harness.json в Git: версия, ответы и правила явно заданы для этого репозитория.', adr: ['0014-frame-answers-are-self-reported.md', '0016-versioned-frame-and-explicit-initialization.md'] },
+    { id: 'harness.config', group: 'common', axis: null, summary: 'Tracked .harness.json: версия, ответы и правила явно заданы для этого репозитория; проверка вне policy — вне рамки.', adr: ['0014-frame-answers-are-self-reported.md', '0016-versioned-frame-and-explicit-initialization.md', '0054-explicit-only-frame.md'] },
+    { id: 'harness.coverage', group: 'common', axis: null, summary: 'Язык или стек с tracked-исходниками должен быть объявлен в applicability или отклонён с причиной; находка печатает готовый фрагмент конфига.', adr: ['0054-explicit-only-frame.md'] },
     { id: 'architecture.sliced-dotnet.zone-shape', group: 'arch', axis: null, summary: 'Канонические зоны, обязательные слои и расположение исходников.', adr: ['0053-explicit-architecture-checks.md'] },
     { id: 'architecture.sliced-dotnet.slice-shape', group: 'arch', axis: null, summary: 'Структура слайсов и групп, обязательные входные зеркала, отсутствие сирот.', adr: ['0053-explicit-architecture-checks.md'] },
     { id: 'architecture.sliced-dotnet.segment-names', group: 'arch', axis: null, summary: 'Явный словарь запрещённых имён слайсов и непосредственных сегментов.', adr: ['0053-explicit-architecture-checks.md'] },

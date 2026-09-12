@@ -12,6 +12,7 @@ public sealed class InitCommandTests
     {
         using var repository = RepositoryFixture.CreateGitRepository()
             .WriteFile("src/App.cs", "sealed class App;")
+            .WriteFile("src/App.csproj", Fixtures.SimpleSdkProject)
             .Commit();
         Directory.CreateDirectory(repository.Absolute("src/Feature"));
 
@@ -24,6 +25,7 @@ public sealed class InitCommandTests
         Assert.Contains("ask the repository owner", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("Track the file", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("harness check --verbose", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("Declared csharp, dotnet from the tracked sources", run.StandardOutput, StringComparison.Ordinal);
 
         var path = repository.Absolute(".harness.json");
         Assert.True(File.Exists(path));
@@ -44,6 +46,8 @@ public sealed class InitCommandTests
             answer => Assert.Empty(answer.Value.EnumerateObject()));
         Assert.True(root.GetProperty("applicability").GetProperty("csharp").GetProperty("applicable").GetBoolean());
         Assert.True(root.GetProperty("applicability").GetProperty("dotnet").GetProperty("applicable").GetBoolean());
+        Assert.False(root.GetProperty("applicability").TryGetProperty("yaml", out _));
+        Assert.False(root.GetProperty("policy").TryGetProperty("comments.yaml", out _));
         AssertDefaultSettings(root.GetProperty("settings"));
         Assert.Contains("harness-hooks", repository.Git("config", "--local", "--get", "core.hooksPath"));
         Assert.All(root.GetProperty("policy").EnumerateObject(), entry =>
@@ -63,13 +67,9 @@ public sealed class InitCommandTests
     private static void AssertDefaultSettings(JsonElement settings)
     {
         Assert.Equal(
-            [
-                "comments.csharp", "comments.yaml", "comments.typescript", "duplication.csharp", "complexity.csharp", "commits",
-            ],
+            ["complexity.csharp", "comments.csharp", "duplication.csharp", "commits"],
             settings.EnumerateObject().Select(section => section.Name));
         AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));
-        AssertSection(settings, "comments.yaml", ("minimumCommentLines", 10), ("percentageLimit", 8));
-        AssertSection(settings, "comments.typescript", ("minimumCommentLines", 10), ("percentageLimit", 8));
         AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));
         Assert.Equal(8.0, settings.GetProperty("complexity.csharp").GetProperty("averageReachableFiles").GetDouble());
         Assert.Equal(0, settings.GetProperty("complexity.csharp").GetProperty("largestCyclicGroupSize").GetInt32());
@@ -109,7 +109,7 @@ public sealed class InitCommandTests
     [Fact]
     public void Library_answer_declares_architecture_not_applicable()
     {
-        using var repository = RepositoryFixture.CreateGitRepository();
+        using var repository = CSharpRepository();
 
         var run = HarnessCli.RunWithInput(repository.Path, "library\n", "init");
 
@@ -129,7 +129,7 @@ public sealed class InitCommandTests
     [Fact]
     public void Kind_option_initializes_without_reading_stdin()
     {
-        using var repository = RepositoryFixture.CreateGitRepository();
+        using var repository = CSharpRepository();
 
         var run = HarnessCli.RunWithInput(repository.Path, string.Empty, "init", "--kind", "library");
 
@@ -142,7 +142,7 @@ public sealed class InitCommandTests
     [Fact]
     public void Closed_stdin_explains_the_non_interactive_kind_option()
     {
-        using var repository = RepositoryFixture.CreateGitRepository();
+        using var repository = CSharpRepository();
 
         var run = HarnessCli.RunWithInput(repository.Path, string.Empty, "init");
 
@@ -229,7 +229,7 @@ public sealed class InitCommandTests
     public void Init_never_overwrites_an_existing_frame(bool tracked)
     {
         const string existing = "keep exactly this\n";
-        using var repository = RepositoryFixture.CreateGitRepository()
+        using var repository = CSharpRepository()
             .WriteFile(".harness.json", existing);
         if (tracked)
         {
@@ -269,7 +269,6 @@ public sealed class InitCommandTests
         var run = HarnessCli.RunWithInput(directory.Path, "application\n", "init");
 
         Assert.Equal(2, run.ExitCode);
-        Assert.Contains("Repository kind", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("not inside a Git repository", run.StandardError, StringComparison.Ordinal);
         Assert.False(File.Exists(directory.Absolute(".harness.json")));
     }
@@ -293,6 +292,12 @@ public sealed class InitCommandTests
         Assert.Contains("harness init [path] [--kind", run.StandardError, StringComparison.Ordinal);
         Assert.False(File.Exists(repository.Absolute(".harness.json")));
     }
+
+    /// <summary>A repository with C# in the index, so init asks the application/library question.</summary>
+    private static RepositoryFixture CSharpRepository()
+        => RepositoryFixture.CreateGitRepository()
+            .WriteFile("src/App.cs", "sealed class App;")
+            .Commit();
 
     private static int Occurrences(string text, string value)
         => text.Split(value, StringSplitOptions.None).Length - 1;

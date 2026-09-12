@@ -6,9 +6,8 @@ namespace Harness.Config;
 
 /// <summary>
 /// Reads the tracked frame into a <see cref="HarnessConfig"/>. The frame is described to this
-/// reader as data — it never reaches for the checks themselves, so reading a repository does
-/// not depend on being able to run one. Kept apart from the model so a check that holds a
-/// config does not also hold every reader of its sections.
+/// reader as data, so reading a repository does not depend on being able to run a check;
+/// policy is read first, and every other section is expected exactly for the checks it names.
 /// </summary>
 internal static class HarnessConfigReader
 {
@@ -100,33 +99,36 @@ internal static class HarnessConfigReader
         HarnessVersion version,
         bool tracksLatest)
     {
-        var (answers, answerFailures, answerFailure) = FrameAnswerReader.Read(
-            root,
-            checks.Where(check => check.AnswerKey is not null).ToList());
-        if (answers is null)
-        {
-            return (null, answerFailure);
-        }
-
-        var (architecture, architectureFailure) = ArchitectureConfigReader.Read(root);
-
-        var (applicability, applicabilityFailure) = PolicyReader.ReadApplicability(root, checks);
-        if (applicability is null)
-        {
-            return (null, applicabilityFailure);
-        }
-
-        var (settings, settingsFailure) = HarnessSettingsReader.Read(root);
-        if (settings is null)
-        {
-            return (null, ConfigJson.Failure(settingsFailure!));
-        }
-
         var (policy, policyFailure) = PolicyReader.ReadPolicy(root, checks);
         if (policy is null)
         {
             return (null, policyFailure);
         }
+
+        var questions = checks.Where(check => check.AnswerKey is not null).ToList();
+        var (answers, answerFailures, answerFailure) = FrameAnswerReader.Read(
+            root,
+            questions,
+            questions.Where(question => policy.ContainsKey(question.Id)).ToList());
+        if (answers is null)
+        {
+            return (null, answerFailure);
+        }
+
+        var (applicability, applicabilityFailure) = PolicyReader.ReadApplicability(root, checks, policy.Keys);
+        if (applicability is null)
+        {
+            return (null, applicabilityFailure);
+        }
+
+        var (settings, settingsFailure) = HarnessSettingsReader.Read(root, checks, policy.Keys);
+        if (settings is null)
+        {
+            return (null, ConfigJson.Failure(settingsFailure!));
+        }
+
+        var architectureInFrame = checks.Any(check => check.Group == "architecture.sliced-dotnet" && policy.ContainsKey(check.Id));
+        var (architecture, architectureFailure) = ArchitectureConfigReader.Read(root, architectureInFrame);
 
         return (new HarnessConfig
         {

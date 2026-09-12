@@ -18,6 +18,7 @@ public sealed class Frame
     private static readonly string[] Checks =
     [
         "harness.config",
+        "harness.coverage",
         "architecture.sliced-dotnet.zone-shape",
         "architecture.sliced-dotnet.slice-shape",
         "architecture.sliced-dotnet.segment-names",

@@ -2,17 +2,37 @@ using Harness.Languages;
 
 namespace Harness.Config;
 
+/// <summary>
+/// Every comparison point the frame declares, keyed by the check that reads it. A check that is
+/// not in the frame has no section here, and a check in the frame always finds its own.
+/// </summary>
 internal sealed record HarnessSettings(
     IReadOnlyDictionary<string, CommentSettings> Comments,
-    DuplicationSettings Duplication,
-    ComplexitySettings Complexity,
+    IReadOnlyDictionary<string, DuplicationSettings> Duplication,
+    IReadOnlyDictionary<string, ComplexitySettings> Complexity,
     CommitSettings Commits)
 {
-    public static HarnessSettings Default { get; } = new(
-        Language.All.ToDictionary(language => language.Key, _ => CommentSettings.Default, StringComparer.Ordinal),
-        DuplicationSettings.Default,
-        ComplexitySettings.Default,
-        CommitSettings.Default);
+    public const string CommentsGroup = "comments";
 
-    public CommentSettings CommentsFor(Language language) => Comments[language.Key];
+    public const string DuplicationGroup = "duplication";
+
+    public const string ComplexityGroup = "complexity";
+
+    public const string CommitsSection = "commits";
+
+    /// <summary>The families whose checks read a settings section named by their check id.</summary>
+    public static readonly IReadOnlyList<string> ConfigurableGroups =
+        [CommentsGroup, DuplicationGroup, ComplexityGroup];
+
+    public static bool HasSection(CheckDescriptor check)
+        => ConfigurableGroups.Contains(check.Group, StringComparer.Ordinal);
+
+    public CommentSettings? CommentsFor(Language language)
+        => Comments.TryGetValue(language.Qualify(CommentsGroup), out var settings) ? settings : null;
+
+    public DuplicationSettings? DuplicationFor(Language language)
+        => Duplication.TryGetValue(language.Qualify(DuplicationGroup), out var settings) ? settings : null;
+
+    public ComplexitySettings? ComplexityFor(Language language)
+        => Complexity.TryGetValue(language.Qualify(ComplexityGroup), out var settings) ? settings : null;
 }

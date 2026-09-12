@@ -30,29 +30,29 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 переживает удаление worktree и не зависит от того, какой бинарь выполнял setup. Не найдя ни одного,
 hook отказывает в коммите и печатает оба просмотренных места. User-каталоги и tracked-файлы не меняются.
 
-`HARNESS_VERSION=2.17.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+`HARNESS_VERSION=3.0.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
 
 ```sh
-harness init /path/to/repository   # выбрать application/library и создать явную рамку
-harness init --kind application    # то же без интерактивного stdin
-harness upgrade                    # поднять pin и получить маршрут миграции
+harness init /path/to/repository   # создать рамку для языков из git-индекса
+harness init --kind application    # ответ application/library без интерактивного stdin
+harness init --languages go,yaml   # объявить оси явно вместо детекции (CI)
+harness upgrade                    # поднять pin и получить маршрут от него
 harness check                      # проверить репозиторий
 harness setup                      # подготовить этот клон
 harness version                    # релиз бинаря и текущий контракт
 ```
 
-`init` задаёт один вопрос — приложение это или standalone-библиотека. Для приложения он
-фиксирует `architecture.standard: sliced-dotnet/1`, для библиотеки — явный
-`architecture.applicable: false`; карту каталогов он не генерирует. Команда создаёт
-`.harness.json` с явными settings, applicability и policy. Неотвеченные frame-вопросы — `off`, кроме обязательного `verify`.
+`init` детектирует языки и .NET по git-индексу и записывает только их applicability, settings
+и policy; для стека, которого в индексе нет, в файле ничего нет. При C# он спрашивает, приложение
+это или standalone-библиотека: для приложения фиксирует `architecture.standard: sliced-dotnet/1`,
+для библиотеки — `architecture.applicable: false`. Неотвеченные frame-вопросы — `off`, кроме обязательного `verify`.
 По умолчанию фиксируется текущий релиз; `--latest` включает rolling-контракт. Существующие
 файлы команда не перезаписывает и в Git не добавляет. Если в корне нет `.editorconfig`,
-`init` записывает эталонный файл харнеса — тот же baseline, который затем требует
-`editorconfig.dotnet`. В скриптах и CI тот же выбор задаётся через `--kind
-application|library`. `init` также активирует шаблон коммита и `commit-msg` hook; после
+`init` записывает эталонный baseline `editorconfig.dotnet` (только при .NET-проектах в индексе).
+В скриптах и CI тот же выбор задаётся через `--kind application|library`. `init` также активирует шаблон коммита и `commit-msg` hook; после
 нового клонирования это делает идемпотентный `harness setup`. Если frame требует setup,
 обычный `check` явно падает в неподготовленном клоне. Для CI сообщения проверяются явным
 диапазоном: `harness commits check <base>..<head>`.
@@ -81,8 +81,8 @@ application|library`. `init` также активирует шаблон ком
 
 Бинарь исполняет ровно один текущий контракт. Пин на другую версию останавливает прогон с
 кодом `2`; единственный путь сменить pin — `harness upgrade`. Команда меняет только pin и
-печатает полный маршрут контракта 2.0: удалённые проверки/секции, новый стандарт, явную
-policy. Ответы владельца она не угадывает. Все правки принимаются одним
+печатает маршрут от него: заметки релизов после pin и фрагменты для обнаруженных языков,
+которых рамка ещё не называет. Ответы владельца она не угадывает. Все правки принимаются одним
 reviewable-коммитом. [ADR-0023](adrs/0023-release-version-as-the-verification-contract.md)
 
 ## В CI
@@ -91,7 +91,7 @@ GitLab:
 
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:2.17.0
+  image: ghcr.io/gently-whitesnow/harness:3.0.0
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"
@@ -110,11 +110,12 @@ GitHub Actions или любой контур без доступа к ghcr.io:
 
 Эталон — рабочий [`.harness.json`](.harness.json) этого репозитория: в нём представлены все
 формы ответа и секции конфигурации. `paths` служит навигацией и не проверяется как
-доказательство. Каждый shipped check обязан иметь явный `policy`: `required` блокирует,
-`advisory` оставляет находки видимыми без провала, `off` отключает. Каждый параметр
-`settings` и каждая ось `applicability` также обязательны: список проверок и их состояние
-читаются прямо из файла, defaults в ридере нет. Для неприменимой оси используется
-`{ "applicable": false, "reason": "..." }`; для применимой — `{ "applicable": true }`.
+доказательство. Рамка явная и только явная, как EditorConfig: проверка, не названная в
+`policy`, — вне рамки и не запускается; названная несёт `required` (блокирует), `advisory`
+(находки видны без провала) или `off`, и полную секцию `settings`, если её читает — defaults
+в ридере нет. Ось объявляется, когда её проверка названа: `{ "applicable": true }` или
+`{ "applicable": false, "reason": "..." }`. Забытый стек ловит `harness.coverage`: язык с
+tracked-исходниками без записи в `applicability` — находка с готовым фрагментом конфига.
 
 Коды возврата: `0` — всё выбранное прошло, `1` — доказано нарушение, `2` — проверить
 достоверно не удалось (сюда же относится отсутствующий или невалидный `.harness.json`).

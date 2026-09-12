@@ -1,5 +1,5 @@
 {
-  "version": "2.17.0",
+  "version": "3.0.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -65,6 +65,7 @@
   },
   "policy": {
     "harness.config": "required",
+    "harness.coverage": "required",
     "architecture.sliced-dotnet.zone-shape": "required",
     "architecture.sliced-dotnet.slice-shape": "required",
     "architecture.sliced-dotnet.segment-names": "required",

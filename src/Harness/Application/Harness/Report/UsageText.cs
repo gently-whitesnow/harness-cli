@@ -10,7 +10,7 @@ internal static class UsageText
 
         Usage
           harness check [path] [--only <ids>] [--skip <ids>] [--verbose] [--all]
-          harness init [path] [--kind <application|library>] [--latest] [--language <en|ru>]
+          harness init [path] [--kind <application|library>] [--languages <keys>] [--latest] [--language <en|ru>]
           harness upgrade [path] [--dry-run]
           harness setup [path]
           harness commit-message check <message-file>
@@ -25,10 +25,16 @@ internal static class UsageText
           --skip <ids>   exclude the given check or group identifiers; they stay visible in the summary
           --verbose      show findings, neutral details, reasons and timings
           --all          show every measured subject instead of top findings; implies --verbose
-          --kind         repository kind for non-interactive initialization
+          --kind         repository kind for non-interactive initialization; asked only when C# is in the index
+          --languages    applicability keys to declare instead of detecting them from the index (comma separated)
           --latest       make an initialized frame follow the installed binary's contract
           --dry-run      describe the contract migration without writing changes
           --language     language for human-written commit subjects and bodies (default: ru)
+
+        Frame
+          A check the policy does not name is outside the frame and does not run; a check it
+          names carries required, advisory or off and its settings section in full.
+          harness.coverage reports a tracked language or stack the frame has not decided about.
 
         Architecture selectors
           architecture and architecture.sliced-dotnet select all eight architecture checks.

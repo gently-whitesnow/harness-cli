@@ -1,4 +1,5 @@
 using Harness.Config;
+using Harness.Languages;
 using Harness.Languages.CSharp;
 
 namespace Harness.Checks.Duplication;
@@ -23,7 +24,7 @@ internal sealed class DuplicationCheck(ICSharpSources sources)
 
     protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
     {
-        var settings = context.Config?.Settings.Duplication ?? DuplicationSettings.Default;
+        var settings = context.Config?.Settings.DuplicationFor(Language.CSharp) ?? DuplicationSettings.Default;
         var report = Report(Repetitions(NormalizedFile.From(
             files.Select(file => file.Source).ToList(), settings)));
         return CheckEvaluation.From(report.Summary, detailedFindings: report.Detailed);

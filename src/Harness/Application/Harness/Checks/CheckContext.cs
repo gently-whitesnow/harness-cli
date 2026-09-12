@@ -12,9 +12,13 @@ internal sealed class CheckContext(
     HarnessConfig? config,
     string? configFailure,
     string checkId,
-    IReadOnlyList<EvidenceFile> declaredEvidence)
+    IReadOnlyList<EvidenceFile> declaredEvidence,
+    IReadOnlyList<CheckDescriptor> checks)
 {
     public IRepository Repository { get; } = repository;
+
+    /// <summary>What this binary ships, for a check that reasons about the frame itself.</summary>
+    public IReadOnlyList<CheckDescriptor> Checks { get; } = checks;
 
     public HarnessConfig? Config { get; } = config;
 

@@ -3,49 +3,54 @@ using System.Text.Json;
 namespace Harness.Config;
 
 /// <summary>
-/// Reads explicit repository applicability and policy. Every shipped axis and check must be
-/// visible in the frame, so adding a check cannot silently inherit a hidden default. The three
-/// policy values apply to every shipped check without exception: what the harness refuses is
-/// the address-level suppression of a single file or finding, not the tracked, reviewable
-/// decision to run a check as advisory or not to run it at all.
+/// Reads explicit repository applicability and policy. A check the policy does not name is
+/// outside the frame, the way an EditorConfig property nobody wrote is not applied; a check it
+/// does name carries one of three values, and every value applies to every shipped check
+/// without exception. What the harness refuses is the address-level suppression of a single
+/// file or finding, not the tracked, reviewable decision to run a check as advisory or not at all.
 /// </summary>
 internal static class PolicyReader
 {
     public static (Dictionary<string, ApplicabilityAnswer>? Applicability, string? Failure) ReadApplicability(
         JsonElement root,
-        IReadOnlyList<CheckDescriptor> checks)
+        IReadOnlyList<CheckDescriptor> checks,
+        IReadOnlyCollection<string> policyIds)
     {
         var answers = new Dictionary<string, ApplicabilityAnswer>(StringComparer.Ordinal);
-        if (!root.TryGetProperty("applicability", out var declared))
-        {
-            return (null, ConfigJson.Failure("'applicability' must explicitly list every shipped axis"));
-        }
-
-        if (declared.ValueKind != JsonValueKind.Object)
-        {
-            return (null, ConfigJson.Failure("'applicability' must be an object"));
-        }
-
         var known = checks.Select(check => check.Applicability)
             .Where(key => key is not null)
             .Cast<string>()
             .ToHashSet(StringComparer.Ordinal);
-        foreach (var property in declared.EnumerateObject())
+        if (root.TryGetProperty("applicability", out var declared))
         {
-            var (answer, failure) = ReadApplicabilityEntry(property, known);
-            if (answer is null)
+            if (declared.ValueKind != JsonValueKind.Object)
             {
-                return (null, failure);
+                return (null, ConfigJson.Failure("'applicability' must be an object"));
             }
 
-            answers[property.Name] = answer;
+            foreach (var property in declared.EnumerateObject())
+            {
+                var (answer, failure) = ReadApplicabilityEntry(property, known);
+                if (answer is null)
+                {
+                    return (null, failure);
+                }
+
+                answers[property.Name] = answer;
+            }
         }
 
-        var missing = known.Except(answers.Keys, StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
-        if (missing.Count > 0)
+        // A check in the policy whose axis the frame never mentions is neither switched on nor
+        // knowingly declined; the frame contradicts itself and says which half to complete.
+        foreach (var check in checks.Where(check => check.Applicability is not null && policyIds.Contains(check.Id)))
         {
-            return (null, ConfigJson.Failure(
-                $"'applicability' is missing explicit entries: {string.Join(", ", missing)}"));
+            if (!answers.ContainsKey(check.Applicability!))
+            {
+                return (null, ConfigJson.Failure(
+                    $"'policy.{check.Id}' is declared, but 'applicability.{check.Applicability}' is not; "
+                    + $"declare {{ \"applicable\": true }} or {{ \"applicable\": false, \"reason\": \"...\" }} "
+                    + "for the axis, or remove the policy entry"));
+            }
         }
 
         return (answers, null);
@@ -103,7 +108,7 @@ internal static class PolicyReader
         var policy = new Dictionary<string, CheckPolicy>(StringComparer.Ordinal);
         if (!root.TryGetProperty("policy", out var declared))
         {
-            return (null, ConfigJson.Failure("'policy' must explicitly list every shipped check"));
+            return (null, ConfigJson.Failure("'policy' must be an object naming the checks this repository runs"));
         }
 
         if (declared.ValueKind != JsonValueKind.Object)
@@ -143,17 +148,6 @@ internal static class PolicyReader
             policy[property.Name] = parsed.Value;
         }
 
-        var missing = checks.Select(check => check.Id)
-            .Except(policy.Keys, StringComparer.Ordinal)
-            .Order(StringComparer.Ordinal)
-            .ToList();
-        if (missing.Count > 0)
-        {
-            return (null, ConfigJson.Failure(
-                $"'policy' is missing explicit checks: {string.Join(", ", missing)}"));
-        }
-
         return (policy, null);
     }
-
 }

@@ -6,10 +6,22 @@ internal static class ArchitectureConfigReader
 {
     public const string SlicedDotNet = "sliced-dotnet/1";
 
-    public static (ArchitectureConfig? Architecture, string? Failure) Read(JsonElement root)
+    /// <summary>
+    /// The section is required once an architecture check is in the policy; without one it is
+    /// optional, and an absent section leaves the DSM without zones rather than failing the frame.
+    /// </summary>
+    public static (ArchitectureConfig? Architecture, string? Failure) Read(JsonElement root, bool required)
     {
-        if (!root.TryGetProperty("architecture", out var declared)
-            || declared.ValueKind != JsonValueKind.Object)
+        if (!root.TryGetProperty("architecture", out var declared))
+        {
+            return required
+                ? (null, ConfigJson.Failure(
+                    $"'policy' names architecture.sliced-dotnet checks, so 'architecture' must select standard '{SlicedDotNet}' "
+                    + "or declare { \"applicable\": false, \"reason\": \"...\" }"))
+                : (null, null);
+        }
+
+        if (declared.ValueKind != JsonValueKind.Object)
         {
             return (null, ConfigJson.Failure(
                 $"'architecture' must be an object selecting standard '{SlicedDotNet}' or declaring applicability false"));

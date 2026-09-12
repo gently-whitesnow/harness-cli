@@ -39,7 +39,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
             context.Repository.TrackedEntries.Where(entry => !entry.IsSymbolicLink).Select(entry => entry.Path).ToList(),
             projects.Select(project => (project.Path, DotNetRepository.IsTestProject(project))).ToList());
         var metric = RepositoryComplexity.Measure(scope.Graph);
-        var limit = context.Config?.Settings.Complexity ?? ComplexitySettings.Default;
+        var limit = context.Config?.Settings.ComplexityFor(Analyzer.Language) ?? ComplexitySettings.Default;
         var details = new List<string>
         {
             $"limits: average reachable files {Files(limit.AverageReachableFiles)} · largest cyclic group size {limit.LargestCyclicGroupSize} files",

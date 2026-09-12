@@ -3,7 +3,9 @@
 ## Status
 
 Superseded for contract 2.0 by the explicit-policy decision in
-[ADR-0032](0032-topology-over-thresholds.md).
+[ADR-0032](0032-topology-over-thresholds.md). Правило полноты раздела «Contract 2.0» —
+Superseded by [ADR-0054](0054-explicit-only-frame.md): с контракта 3.0 не названная в
+`policy` проверка находится вне рамки, а не делает конфиг incomplete.
 
 ## Context
 

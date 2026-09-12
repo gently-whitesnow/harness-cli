@@ -15,6 +15,8 @@ namespace Harness.Engine;
 /// </remarks>
 internal static class GateEngine
 {
+    private const string ConfigCheckId = "harness.config";
+
     public static RunReport Run(
         IRepository repository,
         IReadOnlyList<string> only,
@@ -27,8 +29,9 @@ internal static class GateEngine
             return invalidSelection;
         }
 
-        var (config, configFailure) = HarnessConfigReader.Load(repository, CheckCatalog.Describe(checks));
-        var invalidConfig = InvalidConfigReport(repository, config, configFailure, checks);
+        var descriptors = CheckCatalog.Describe(checks);
+        var (config, configFailure) = HarnessConfigReader.Load(repository, descriptors);
+        var invalidConfig = InvalidConfigReport(repository, config, configFailure, checks, descriptors);
         if (invalidConfig is not null)
         {
             return invalidConfig;
@@ -39,15 +42,14 @@ internal static class GateEngine
         var gates = new List<GateReport>();
         foreach (var check in checks)
         {
+            // The frame itself is always read; every other check is in the frame only when the
+            // policy names it, the way an EditorConfig property nobody wrote is not applied.
             var policy = CheckPolicy.Required;
-            if (config is not null && !config.TryPolicyFor(check.Id, out policy))
+            var declared = config is null || check.Id == ConfigCheckId || config.TryPolicyFor(check.Id, out policy);
+            if (!declared)
             {
-                return new RunReport(
-                    repository.RootPath,
-                    gates,
-                    $"'{HarnessConfig.FileName}' does not declare policy for shipped check '{check.Id}'.",
-                    repository.ReadDuration,
-                    Pin(config));
+                gates.Add(OutsideFrame(check, IsSelected(check, only, skip) && only.Count > 0));
+                continue;
             }
 
             if (!IsSelected(check, only, skip) || policy == CheckPolicy.Off)
@@ -59,7 +61,7 @@ internal static class GateEngine
             var stopwatch = Stopwatch.StartNew();
             var disabled = config?.NotApplicable(check.Applicability);
             var evaluation = disabled is null
-                ? Evaluate(check, new CheckContext(repository, config, configFailure, check.Id, check.Evidence))
+                ? Evaluate(check, new CheckContext(repository, config, configFailure, check.Id, check.Evidence, descriptors))
                 : CheckEvaluation.NotApplicable(
                     $"{HarnessConfig.FileName} answers `{disabled.Key}` not applicable — \"{disabled.Reason}\".");
             stopwatch.Stop();
@@ -101,9 +103,10 @@ internal static class GateEngine
         IRepository repository,
         HarnessConfig? config,
         string? configFailure,
-        IReadOnlyList<IRepositoryCheck> checks)
+        IReadOnlyList<IRepositoryCheck> checks,
+        IReadOnlyList<CheckDescriptor> descriptors)
     {
-        var configCheck = checks.FirstOrDefault(check => check.Id == "harness.config");
+        var configCheck = checks.FirstOrDefault(check => check.Id == ConfigCheckId);
         if (config is not null || configFailure is null || configCheck is null)
         {
             return null;
@@ -112,7 +115,7 @@ internal static class GateEngine
         var stopwatch = Stopwatch.StartNew();
         var evaluation = Evaluate(
             configCheck,
-            new CheckContext(repository, config, configFailure, configCheck.Id, configCheck.Evidence));
+            new CheckContext(repository, config, configFailure, configCheck.Id, configCheck.Evidence, descriptors));
         stopwatch.Stop();
 
         return new RunReport(
@@ -231,6 +234,22 @@ internal static class GateEngine
                 ? $"{HarnessConfig.FileName} turns this check off."
                 : explicitlySkipped ? "excluded by --skip." : null,
             []);
+
+    /// <summary>A row only when asked for by name; otherwise one line of the summary counts it.</summary>
+    private static GateReport OutsideFrame(IRepositoryCheck check, bool named)
+        => new(
+            check.Id,
+            check.Summary,
+            CheckOutcome.Skipped,
+            [],
+            [],
+            TimeSpan.Zero,
+            named
+                ? $"{HarnessConfig.FileName} does not name this check in policy, so it is outside the frame; "
+                    + "add a required, advisory or off entry to bring it in."
+                : null,
+            [],
+            OutsideFrame: true);
 
     private static CheckEvaluation Evaluate(IRepositoryCheck check, CheckContext context)
     {

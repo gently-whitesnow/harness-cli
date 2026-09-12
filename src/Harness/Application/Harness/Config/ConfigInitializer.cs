@@ -1,20 +1,23 @@
-using System.Globalization;
 using System.Text;
 using Harness.Contracts;
-using Harness.Languages;
 using Harness.Repository;
 using Harness.Versioning;
 
 namespace Harness.Config;
 
-/// <summary>Creates the deliberately unanswered frame an author or agent can work through.</summary>
+/// <summary>
+/// Creates the deliberately unanswered frame an author or agent can work through. It names
+/// only what the index shows: an axis without tracked sources gets no entry, so the file
+/// says what this repository runs and nothing about stacks it does not have.
+/// </summary>
 internal static class ConfigInitializer
 {
     public static (string? Path, string? EditorConfigPath, string? Failure) Create(
         IRepository repository,
         bool latest,
         CommitLanguage commitLanguage,
-        RepositoryKind repositoryKind,
+        RepositoryKind? repositoryKind,
+        IReadOnlyList<FrameAxis> axes,
         IReadOnlyList<CheckDescriptor> checks)
     {
         var path = System.IO.Path.Combine(repository.RootPath, HarnessConfig.FileName);
@@ -25,12 +28,14 @@ internal static class ConfigInitializer
         }
 
         // An existing .editorconfig is the repository's own answer and is kept; the reference
-        // file is offered only where there is none at the root, tracked or not.
+        // file is offered only where there is none at the root, tracked or not, and only to a
+        // repository with .NET projects to hold to it.
         var editorConfigPath = System.IO.Path.Combine(repository.RootPath, EditorConfigTemplate.FileName);
-        var writeEditorConfig = !repository.TrackedEntries.Any(entry => entry.Path == EditorConfigTemplate.FileName)
+        var writeEditorConfig = axes.Any(axis => axis.Key == FrameAxis.DotNet.Key)
+            && !repository.TrackedEntries.Any(entry => entry.Path == EditorConfigTemplate.FileName)
             && !RootEntryExists(repository.RootPath, EditorConfigTemplate.FileName);
 
-        var content = Render(latest, commitLanguage, repositoryKind, checks);
+        var content = Render(latest, commitLanguage, repositoryKind, axes, checks);
         var created = new List<string>();
         try
         {
@@ -54,6 +59,10 @@ internal static class ConfigInitializer
 
         return (path, writeEditorConfig ? editorConfigPath : null, null);
     }
+
+    /// <summary>Whether the architecture standard has a subject: sliced-dotnet/1 shapes C# code.</summary>
+    public static bool AsksArchitecture(IReadOnlyList<FrameAxis> axes)
+        => axes.Any(axis => axis.Key == Languages.Language.CSharp.Key);
 
     private static bool RootEntryExists(string rootPath, string fileName)
         => Directory.EnumerateFileSystemEntries(rootPath)
@@ -84,82 +93,61 @@ internal static class ConfigInitializer
         writer.Write(content);
     }
 
+    /// <summary>The checks `init` puts in the frame: axis-free ones, and those of the detected axes.</summary>
+    public static List<CheckDescriptor> InFrame(
+        IReadOnlyList<CheckDescriptor> checks,
+        IReadOnlyList<FrameAxis> axes,
+        bool architecture)
+        => checks
+            .Where(check => check.Applicability is null
+                ? architecture || check.Group != "architecture.sliced-dotnet"
+                : axes.Any(axis => axis.Key == check.Applicability))
+            .ToList();
+
     private static string Render(
         bool latest,
         CommitLanguage commitLanguage,
-        RepositoryKind repositoryKind,
+        RepositoryKind? repositoryKind,
+        IReadOnlyList<FrameAxis> axes,
         IReadOnlyList<CheckDescriptor> checks)
     {
-        var defaults = HarnessSettings.Default;
         var version = latest ? "latest" : HarnessVersion.Current.ToString();
-        var questions = checks
-            .Where(check => check.AnswerKey is not null)
-            .Select(check => check.AnswerKey!)
-            .ToList();
+        var architecture = AsksArchitecture(axes);
+        var inFrame = InFrame(checks, axes, architecture);
+        var questions = inFrame.Where(check => check.AnswerKey is not null).Select(check => check.AnswerKey!).ToList();
 
         var text = new StringBuilder();
-        var architecture = repositoryKind == RepositoryKind.Application
-            ? "{ \"standard\": \"sliced-dotnet/1\" }"
-            : "{ \"applicable\": false, \"reason\": \"standalone library\" }";
-        text.Append("{\n  \"version\": \"").Append(version)
-            .Append("\",\n  \"architecture\": ").Append(architecture).Append(",\n  \"answers\": {\n");
-        for (var index = 0; index < questions.Count; index++)
+        text.Append("{\n  \"version\": \"").Append(version).Append("\",\n");
+        if (architecture)
         {
-            text.Append("    \"").Append(questions[index]).Append("\": {}");
-            text.Append(index == questions.Count - 1 ? '\n' : ",\n");
+            text.Append("  \"architecture\": ")
+                .Append(repositoryKind == RepositoryKind.StandaloneLibrary
+                    ? "{ \"applicable\": false, \"reason\": \"standalone library\" }"
+                    : "{ \"standard\": \"sliced-dotnet/1\" }")
+                .Append(",\n");
         }
 
-        text.Append("  },\n  \"applicability\": {\n");
-        text.Append(string.Join(",\n", checks
-            .Select(check => check.Applicability)
-            .Where(axis => axis is not null)
-            .Distinct(StringComparer.Ordinal)
-            .Select(axis => $"    \"{axis}\": {{ \"applicable\": true }}")));
-        text.Append("\n  },\n  \"settings\": {\n");
-        foreach (var language in Language.All)
-        {
-            var comments = defaults.CommentsFor(language);
-            text.Append(
-                $$"""
-                    "{{language.Qualify("comments")}}": {
-                      "minimumCommentLines": {{comments.MinimumCommentLines}},
-                      "percentageLimit": {{comments.PercentageLimit}}
-                    },
+        text.Append("  \"answers\": {\n");
+        text.Append(string.Join(",\n", questions.Select(question => $"    \"{question}\": {{}}")));
+        text.Append("\n  },\n");
 
-                """);
+        if (axes.Count > 0)
+        {
+            text.Append("  \"applicability\": {\n");
+            text.Append(string.Join(",\n", axes.Select(axis => "    " + FrameSections.ApplicabilityEntry(axis))));
+            text.Append("\n  },\n");
         }
 
-        text.Append(
-            $$"""
-                "duplication.csharp": {
-                  "windowLines": {{defaults.Duplication.WindowLines}},
-                  "minimumTokens": {{defaults.Duplication.MinimumTokens}}
-                },
-                "complexity.csharp": {
-                  "averageReachableFiles": {{defaults.Complexity.AverageReachableFiles.ToString("0.0", CultureInfo.InvariantCulture)}},
-                  "largestCyclicGroupSize": {{defaults.Complexity.LargestCyclicGroupSize}}
-                },
-                "commits": {
-                  "language": "{{new CommitSettings(commitLanguage, defaults.Commits.RequireSetup).Code}}",
-                  "requireSetup": {{defaults.Commits.RequireSetup.ToString().ToLowerInvariant()}}
-                }
-              },
-              "policy": {
-            """);
-        text.Append('\n');
-        for (var index = 0; index < checks.Count; index++)
-        {
-            var check = checks[index];
-            var policy = check.Id == "frame.verify"
-                ? "required"
-                : check.Id.StartsWith("frame.", StringComparison.Ordinal)
-                ? "off"
-                : "required";
-            text.Append("    \"").Append(check.Id).Append("\": \"").Append(policy).Append('"')
-                .Append(index == checks.Count - 1 ? '\n' : ",\n");
-        }
-
-        text.Append("  }\n}\n");
+        var sections = inFrame
+            .Select(check => FrameSections.DefaultSettings(check))
+            .Where(section => section is not null)
+            .Append(FrameSections.CommitsSettings(new CommitSettings(commitLanguage, CommitSettings.Default.RequireSetup)))
+            .ToList();
+        text.Append("  \"settings\": {\n");
+        text.Append(FrameSections.Indent(string.Join(",\n", sections!), "    "));
+        text.Append("\n  },\n  \"policy\": {\n");
+        text.Append(string.Join(",\n", inFrame.Select(check => "    " + FrameSections.PolicyEntry(check))));
+        text.Append("\n  }\n}\n");
         return text.ToString();
     }
 }
