@@ -49,12 +49,14 @@ internal sealed record HarnessConfig
                 : null;
 
     /// <summary>
-    /// The smallest config that answers everything, shown whenever there is none. A reader
-    /// who has never seen this file should not have to find documentation to start.
+    /// The smallest config for a C# application, shown whenever there is none. A reader who has
+    /// never seen this file should not have to find documentation to start; `harness init`
+    /// writes the same shape for the stacks the index actually shows.
     /// </summary>
     public static string Template =>
         $$"""
-        A minimal .harness.json, committed at the repository root:
+        A minimal .harness.json for a C# application, committed at the repository root
+        (`harness init` writes one for the languages the index shows):
 
           {
             "version": "{{HarnessVersion.Current}}",
@@ -65,26 +67,16 @@ internal sealed record HarnessConfig
               "tests.architecture": { "present": false, "reason": "planned" },
               "format": { "paths": [".editorconfig"] },
               "lint": { "present": true, "reason": "analyzers enabled in Directory.Build.props" },
-              "build": { "paths": ["Repository.sln"] },
+              "build": { "paths": ["Repository.slnx"] },
               "typecheck": { "applicable": false, "reason": "no web stack" },
               "verify": { "paths": ["verify.sh"] }
             },
             "applicability": {
               "csharp": { "applicable": true },
-              "dotnet": { "applicable": true },
-              "yaml": { "applicable": true },
-              "typescript": { "applicable": true }
+              "dotnet": { "applicable": true }
             },
             "settings": {
               "comments.csharp": {
-                "minimumCommentLines": 10,
-                "percentageLimit": 8
-              },
-              "comments.yaml": {
-                "minimumCommentLines": 10,
-                "percentageLimit": 8
-              },
-              "comments.typescript": {
                 "minimumCommentLines": 10,
                 "percentageLimit": 8
               },
@@ -103,13 +95,19 @@ internal sealed record HarnessConfig
             },
             "policy": {
               "harness.config": "required",
-              "architecture.sliced-dotnet": "required",
+              "harness.coverage": "required",
+              "architecture.sliced-dotnet.zone-shape": "required",
+              "architecture.sliced-dotnet.slice-shape": "required",
+              "architecture.sliced-dotnet.segment-names": "required",
+              "architecture.sliced-dotnet.layer-assemblies": "required",
+              "architecture.sliced-dotnet.dependency-direction": "required",
+              "architecture.sliced-dotnet.slice-isolation": "required",
+              "architecture.sliced-dotnet.public-api": "required",
+              "architecture.sliced-dotnet.cross-api": "required",
               "complexity.csharp": "required",
               "docs.policy": "required",
               "commits.setup": "required",
               "comments.csharp": "required",
-              "comments.yaml": "required",
-              "comments.typescript": "required",
               "types-per-file.csharp": "required",
               "dependencies.csharp": "required",
               "duplication.csharp": "required",
@@ -129,6 +127,9 @@ internal sealed record HarnessConfig
             }
           }
 
+        A check the policy does not name is outside the frame and does not run; a check it names
+        carries required, advisory or off, and its settings section in full. An axis with tracked
+        sources must be declared applicable or declined with a reason — harness.coverage says which.
         Run `harness explain <check-id>` for what one answer means and how it is reported.
         """;
 }

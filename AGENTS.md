@@ -16,19 +16,19 @@ self-reported: адрес служит навигацией, а не доказ�
 "typecheck":   { "applicable": false, "reason": "нет web-стека" }    // вопрос не про нас
 ```
 
-Каждая shipped-проверка явно перечислена в `policy`: `required` делает находку blocking,
-`advisory` оставляет её видимой, `off` пропускает проверку. Переключатель един для всех
-проверок, включая топологический инвариант и DSM-пределы: запрещено адресное подавление
-файла или находки, а не выключение проверки целиком. `settings`, applicability и policy
-полны — ридер не подставляет скрытые defaults, поэтому состояние всех проверок видно в
-tracked-файле. Харнес валидирует полноту ответов, но не инспектирует их и не ищет
-опровержения. [ADR-0017](adrs/0017-required-by-default.md), [ADR-0027](adrs/0027-required-findings-are-blocking.md),
+Рамка явная и только явная, как EditorConfig: проверка, не названная в `policy`, — вне рамки
+(не запускается, в отчёте одна строка `outside the frame`); названная несёт `required`
+(находка blocking), `advisory` (видима) или `off` и полную секцию `settings.<id>`, если её
+семейство читает настройки: скрытых дефолтов нет, секция не названной проверки и policy без
+`applicability` оси — `Incomplete`. Переключатель един для всех проверок, включая инварианты и
+DSM-пределы: запрещено адресное подавление файла или находки, а не выключение проверки целиком.
+`harness.coverage` находит ось с tracked-источниками без applicability и печатает фрагмент,
+который написал бы `init`; отказ — явный `applicable: false` с причиной. Харнес валидирует форму
+ответов, но не инспектирует их. [ADR-0054](adrs/0054-explicit-only-frame.md), [ADR-0027](adrs/0027-required-findings-are-blocking.md),
 [ADR-0035](adrs/0035-policy-switch-is-uniform.md), [ADR-0049](adrs/0049-test-suite-address-is-the-project.md)
 
-C#-проверки разделяют applicability `csharp`. Если весь этот анализ не относится к
-репозиторию, одна запись `"applicability": { "csharp": { "applicable": false, "reason":
-"..." } }` делает их `NotApplicable`; точечно выключать каждую через policy не нужно.
-[ADR-0018](adrs/0018-csharp-applicability-and-one-type-per-file.md)
+C#-проверки разделяют applicability `csharp`: `"csharp": { "applicable": false, "reason": "..." }`
+делает их `NotApplicable`; отсутствие оси и её проверок в файле — тоже ответ. [ADR-0018](adrs/0018-csharp-applicability-and-one-type-per-file.md)
 
 Граф C# строится по tracked-исходникам средствами BCL. Ребро несёт `Proven` (позиция
 допускает только тип, кандидат по имени один) или `Inferred`. `dependencies.csharp` строит
@@ -56,9 +56,9 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 блокируются; выключение правила для всего репозитория печатается в verbose details. Читается только
 tracked XML и текст, MSBuild evaluation не выполняется. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"2.17.0"`). Бинарь исполняет только этот контракт;
-любой другой pin даёт `Incomplete`, а меняет pin только `harness upgrade`, печатающий весь
-маршрут миграции. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
+`version` — строка текущего контракта (`"3.0.0"`). Бинарь исполняет только его; другой pin даёт
+`Incomplete`, а меняет pin только `harness upgrade`, печатающий маршрут от pin и фрагменты для
+обнаруженных осей. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
 `architecture` называет единственный стандарт топологии `sliced-dotnet/1`: фиксированные
 Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`, `Infrastructure`;
@@ -77,10 +77,10 @@ Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`
 [ADR-0053](adrs/0053-explicit-architecture-checks.md). Standalone-библиотека отвечает `"architecture": { "applicable": false, "reason": "..." }`.
 [ADR-0033](adrs/0033-canonical-standard-over-declarations.md), [ADR-0037](adrs/0037-segments-by-purpose.md)–[ADR-0041](adrs/0041-layer-is-the-assembly.md), [ADR-0050](adrs/0050-domain-is-the-bottom-layer.md), [ADR-0051](adrs/0051-slices-in-the-layer-root.md)
 
-`"latest"` включает rolling-контракт. `harness init` спрашивает только application или
-standalone-library (либо принимает `--kind application|library` без stdin), создаёт
-соответствующую `architecture` и полный явный конфиг. `duplication.csharp` стартует `required` с `30/90`; нерешённые answer-ключи —
-`{}` и `off`, кроме `verify: required`: исследуй и ответь честно. [ADR-0045](adrs/0045-duplication-required-by-default.md)
+`"latest"` включает rolling-контракт. `harness init` детектирует языки и .NET по git-индексу
+(`--languages go,yaml` заменяет детекцию) и пишет только их секции; при C# спрашивает application
+или standalone-library (`--kind` без stdin) и создаёт `architecture`. `duplication.csharp` стартует
+`required` с `30/90`; нерешённые answer-ключи — `{}` и `off`, кроме `verify: required`. [ADR-0045](adrs/0045-duplication-required-by-default.md)
 
 `settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness setup` включает шаблон
 и `commit-msg` hook в общем каталоге клона, поэтому одна подготовка покрывает и все его worktree. Hook не хранит
@@ -120,8 +120,8 @@ standalone-library (либо принимает `--kind application|library` б�
 перед сдачей проверь tracked diff на инфраструктурные имена.
 
 ```sh
-./harness init /path/to/repository                 # создать незавершённую рамку
-./harness upgrade                                  # поднять pin и увидеть миграцию 2.0
+./harness init /path/to/repository                 # создать незавершённую рамку по индексу
+./harness upgrade                                  # поднять pin и увидеть маршрут от него
 ./harness setup                                    # активировать hook и шаблон в этом клоне
 ./harness commit-message template                  # показать шаблон выбранного языка
 ./harness commits check <base>..<head>             # проверить диапазон для CI

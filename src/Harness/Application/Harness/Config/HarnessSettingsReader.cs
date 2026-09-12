@@ -1,27 +1,23 @@
 using System.Text.Json;
-using Harness.Languages;
 
 namespace Harness.Config;
 
 /// <summary>
-/// Reads every comparison point a repository is allowed to move. A setting the harness does
-/// not read is a failure and not a silent no-op: a number nobody applies is worse than none,
-/// because the repository believes it has been configured.
+/// Reads every comparison point a repository is allowed to move. A section is expected for
+/// exactly the checks the policy names: a number nobody applies is worse than none, because
+/// the repository believes it has been configured, and a check in the frame without its
+/// numbers would run on a hidden default the tracked file does not show.
 /// </summary>
 internal static class HarnessSettingsReader
 {
-    private static readonly string[] Comments =
-        [.. Language.All.Select(language => language.Qualify("comments"))];
-    private static readonly string Dependencies = Language.CSharp.Qualify("dependencies");
-    private static readonly string Duplication = Language.CSharp.Qualify("duplication");
-    private static readonly string Complexity = Language.CSharp.Qualify("complexity");
-    private const string Commits = "commits";
-
-    public static (HarnessSettings? Settings, string? Failure) Read(JsonElement root)
+    public static (HarnessSettings? Settings, string? Failure) Read(
+        JsonElement root,
+        IReadOnlyList<CheckDescriptor> checks,
+        IReadOnlyCollection<string> policyIds)
     {
         if (!root.TryGetProperty("settings", out var declared))
         {
-            return (null, "'settings' must explicitly list every configurable section");
+            return (null, "'settings' must be an object holding 'commits' and one section per configurable check in 'policy'");
         }
 
         if (declared.ValueKind != JsonValueKind.Object)
@@ -29,101 +25,134 @@ internal static class HarnessSettingsReader
             return (null, "'settings' must be an object");
         }
 
-        if (declared.TryGetProperty(Dependencies, out _))
+        var configurable = checks.Where(HarnessSettings.HasSection).ToDictionary(check => check.Id, StringComparer.Ordinal);
+        var expected = configurable.Keys.Where(policyIds.Contains).Append(HarnessSettings.CommitsSection).ToList();
+        var retiredFailure = Retired(declared);
+        if (retiredFailure is not null)
         {
-            return (null, $"'settings.{Dependencies}' is not part of the current contract; remove this section. "
-                + "The current check proves module cycles and has no comparison points");
+            return (null, retiredFailure);
+        }
+
+        foreach (var property in declared.EnumerateObject())
+        {
+            if (expected.Contains(property.Name, StringComparer.Ordinal))
+            {
+                continue;
+            }
+
+            return configurable.ContainsKey(property.Name)
+                ? (null, $"'settings.{property.Name}' is declared, but 'policy' does not mention {property.Name}; "
+                    + "add the policy entry or remove the section — a setting nobody applies is not configuration")
+                : (null, $"'settings.{property.Name}' is not configurable "
+                    + $"(expected {string.Join(", ", expected)})");
+        }
+
+        var missing = expected.Where(section => !declared.TryGetProperty(section, out _)).ToList();
+        if (missing.Count > 0)
+        {
+            return (null, $"'settings' is missing explicit sections for checks in 'policy': {string.Join(", ", missing)}");
+        }
+
+        return Assemble(declared, expected.Select(id => configurable.GetValueOrDefault(id)).Where(check => check is not null).ToList()!);
+    }
+
+    private static string? Retired(JsonElement declared)
+    {
+        if (declared.TryGetProperty("dependencies.csharp", out _))
+        {
+            return "'settings.dependencies.csharp' is not part of the current contract; remove this section. "
+                + "The current check proves module cycles and has no comparison points";
         }
 
         foreach (var removed in new[] { "maintainability.csharp", "cohesion.csharp" })
         {
             if (declared.TryGetProperty(removed, out _))
             {
-                return (null, $"'settings.{removed}' was removed in harness 2.0; remove this section");
+                return $"'settings.{removed}' was removed in harness 2.0; remove this section";
             }
         }
 
-        string[] known = [.. Comments, Duplication, Complexity, Commits];
-        foreach (var property in declared.EnumerateObject())
-        {
-            if (!known.Contains(property.Name, StringComparer.Ordinal))
-            {
-                return (null, $"'settings.{property.Name}' is not configurable "
-                    + $"(expected {string.Join(", ", known)})");
-            }
-        }
-
-        var missing = known.Where(section => !declared.TryGetProperty(section, out _)).ToList();
-        if (missing.Count > 0)
-        {
-            return (null, $"'settings' is missing explicit sections: {string.Join(", ", missing)}");
-        }
-
-        return Assemble(declared);
+        return null;
     }
 
-    private static (HarnessSettings? Settings, string? Failure) Assemble(JsonElement declared)
+    private static (HarnessSettings? Settings, string? Failure) Assemble(
+        JsonElement declared,
+        IReadOnlyList<CheckDescriptor> checks)
     {
         var comments = new Dictionary<string, CommentSettings>(StringComparer.Ordinal);
-        foreach (var language in Language.All)
+        var duplication = new Dictionary<string, DuplicationSettings>(StringComparer.Ordinal);
+        var complexity = new Dictionary<string, ComplexitySettings>(StringComparer.Ordinal);
+        foreach (var check in checks)
         {
-            var (values, commentFailure) = ReadSection(
-                declared,
-                language.Qualify("comments"),
-                ["minimumCommentLines", "percentageLimit"],
-                [null, 100]);
-            if (values is null)
+            switch (check.Group)
             {
-                return (null, commentFailure);
+                case HarnessSettings.CommentsGroup:
+                {
+                    var (values, failure) = ReadSection(
+                        declared, check.Id, ["minimumCommentLines", "percentageLimit"], [null, 100]);
+                    if (values is null)
+                    {
+                        return (null, failure);
+                    }
+
+                    comments[check.Id] = new CommentSettings(values[0], values[1]);
+                    break;
+                }
+
+                case HarnessSettings.DuplicationGroup:
+                {
+                    var (values, failure) = ReadSection(declared, check.Id, ["windowLines", "minimumTokens"]);
+                    if (values is null)
+                    {
+                        return (null, failure);
+                    }
+
+                    if (values[0] == 0)
+                    {
+                        return (null, $"'settings.{check.Id}.windowLines' must be a positive integer");
+                    }
+
+                    duplication[check.Id] = new DuplicationSettings(values[0], values[1]);
+                    break;
+                }
+
+                case HarnessSettings.ComplexityGroup:
+                {
+                    var (values, failure) = ReadComplexity(declared, check.Id);
+                    if (values is null)
+                    {
+                        return (null, failure);
+                    }
+
+                    complexity[check.Id] = values;
+                    break;
+                }
+
+                default:
+                    break;
             }
-
-            comments[language.Key] = new CommentSettings(values[0], values[1]);
-        }
-
-        var (duplication, duplicationFailure) = ReadSection(
-            declared,
-            Duplication,
-            ["windowLines", "minimumTokens"]);
-        if (duplication is null)
-        {
-            return (null, duplicationFailure);
-        }
-
-        if (duplication[0] == 0)
-        {
-            return (null, $"'settings.{Duplication}.windowLines' must be a positive integer");
-        }
-
-        var (complexity, complexityFailure) = ReadComplexity(declared);
-        if (complexity is null)
-        {
-            return (null, complexityFailure);
         }
 
         var (commits, commitFailure) = ReadCommits(declared);
         return commits is null
             ? (null, commitFailure)
-            : (new HarnessSettings(
-                comments,
-                new DuplicationSettings(duplication[0], duplication[1]),
-                complexity,
-                commits), null);
+            : (new HarnessSettings(comments, duplication, complexity, commits), null);
     }
 
-    private static (ComplexitySettings? Settings, string? Failure) ReadComplexity(JsonElement settings)
+    private static (ComplexitySettings? Settings, string? Failure) ReadComplexity(JsonElement settings, string section)
     {
-        if (!settings.TryGetProperty(Complexity, out var declared))
+        if (!settings.TryGetProperty(section, out var declared))
         {
-            return (null, $"'settings.{Complexity}' must be present");
+            return (null, $"'settings.{section}' must be present");
         }
 
-        var failure = ValidateObject(declared, Complexity, ["averageReachableFiles", "largestCyclicGroupSize"], null);
+        var failure = ValidateObject(declared, section, ["averageReachableFiles", "largestCyclicGroupSize"]);
         if (failure is not null)
         {
             return (null, failure);
         }
 
-        var at = $"settings.{Complexity}.averageReachableFiles";
+        var at = $"settings.{section}.averageReachableFiles";
         if (!declared.TryGetProperty("averageReachableFiles", out var reach))
         {
             return (null, $"'{at}' must be present");
@@ -137,7 +166,7 @@ internal static class HarnessSettingsReader
             return (null, $"'{at}' must be a number of files not below 1; a file always reaches itself");
         }
 
-        var (largestCyclicGroupSize, cyclicGroupFailure) = ReadInt(declared, Complexity, "largestCyclicGroupSize", null);
+        var (largestCyclicGroupSize, cyclicGroupFailure) = ReadInt(declared, section, "largestCyclicGroupSize", null);
         return cyclicGroupFailure is not null
             ? (null, cyclicGroupFailure)
             : (new ComplexitySettings(averageReachableFiles, largestCyclicGroupSize), null);
@@ -145,12 +174,13 @@ internal static class HarnessSettingsReader
 
     private static (CommitSettings? Settings, string? Failure) ReadCommits(JsonElement settings)
     {
+        const string Commits = HarnessSettings.CommitsSection;
         if (!settings.TryGetProperty(Commits, out var declared))
         {
             return (null, $"'settings.{Commits}' must be present");
         }
 
-        var failure = ValidateObject(declared, Commits, ["language", "requireSetup"], null);
+        var failure = ValidateObject(declared, Commits, ["language", "requireSetup"]);
         if (failure is not null)
         {
             return (null, failure);
@@ -187,15 +217,14 @@ internal static class HarnessSettingsReader
         JsonElement settings,
         string section,
         string[] known,
-        int?[]? maximum = null,
-        IReadOnlyDictionary<string, string>? moved = null)
+        int?[]? maximum = null)
     {
         if (!settings.TryGetProperty(section, out var declared))
         {
             return (null, $"'settings.{section}' must be present");
         }
 
-        var failure = ValidateObject(declared, section, known, moved);
+        var failure = ValidateObject(declared, section, known);
         if (failure is not null)
         {
             return (null, failure);
@@ -225,8 +254,7 @@ internal static class HarnessSettingsReader
     private static string? ValidateObject(
         JsonElement declared,
         string section,
-        IReadOnlyList<string> known,
-        IReadOnlyDictionary<string, string>? moved)
+        IReadOnlyList<string> known)
     {
         if (declared.ValueKind != JsonValueKind.Object)
         {
@@ -235,12 +263,6 @@ internal static class HarnessSettingsReader
 
         foreach (var property in declared.EnumerateObject())
         {
-            if (moved is not null && moved.TryGetValue(property.Name, out var destination))
-            {
-                return $"'settings.{section}.{property.Name}' is now '{destination}'; "
-                    + "the measurement moved together with the check that reads it";
-            }
-
             if (!known.Contains(property.Name, StringComparer.Ordinal))
             {
                 return $"'settings.{section}.{property.Name}' is not a setting this check reads "

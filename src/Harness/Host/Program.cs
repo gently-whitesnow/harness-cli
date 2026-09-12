@@ -36,15 +36,6 @@ switch (invocation.Kind)
 
     case CommandKind.Init:
     {
-        var (repositoryKind, interviewFailure) = invocation.RepositoryKind is { } selected
-            ? (selected, null)
-            : ArchitectureInterview.Ask(Console.In, Console.Out);
-        if (repositoryKind is null)
-        {
-            Console.Error.WriteLine(interviewFailure);
-            return ExitCodes.Incomplete;
-        }
-
         var (initRepository, initOpenFailure) = GitRepository.Open(invocation.RepositoryPath);
         if (initRepository is null)
         {
@@ -52,11 +43,45 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
+        // The frame names only the stacks the index shows, or the ones CI names explicitly.
+        List<FrameAxis> axes;
+        if (invocation.Languages is null)
+        {
+            axes = FrameAxis.Detected(initRepository.TrackedEntries);
+        }
+        else
+        {
+            var unknown = invocation.Languages.Where(key => FrameAxis.Named(key) is null).ToList();
+            if (unknown.Count > 0)
+            {
+                Console.Error.WriteLine($"--languages names no applicability this harness ships: {string.Join(", ", unknown)}. "
+                    + $"Known keys: {string.Join(", ", FrameAxis.All.Select(axis => axis.Key))}.");
+                return ExitCodes.Incomplete;
+            }
+
+            axes = FrameAxis.All.Where(axis => invocation.Languages.Contains(axis.Key, StringComparer.Ordinal)).ToList();
+        }
+
+        // sliced-dotnet/1 shapes C# code, so the kind question has a subject only with C# in the index.
+        var repositoryKind = invocation.RepositoryKind;
+        if (repositoryKind is null && ConfigInitializer.AsksArchitecture(axes))
+        {
+            var (asked, interviewFailure) = ArchitectureInterview.Ask(Console.In, Console.Out);
+            if (asked is null)
+            {
+                Console.Error.WriteLine(interviewFailure);
+                return ExitCodes.Incomplete;
+            }
+
+            repositoryKind = asked;
+        }
+
         var result = ConfigInitializer.Create(
             initRepository,
             invocation.Latest,
             invocation.CommitLanguage,
-            repositoryKind.Value,
+            repositoryKind,
+            axes,
             CheckCatalog.Describe(checks));
         if (result.Failure is not null)
         {
@@ -65,9 +90,16 @@ switch (invocation.Kind)
         }
 
         Console.WriteLine($"Created '{result.Path}'.");
-        Console.WriteLine(result.EditorConfigPath is not null
-            ? $"Created '{result.EditorConfigPath}' with the shared code-style baseline."
-            : "Kept the existing '.editorconfig'; `harness explain editorconfig.dotnet` prints the baseline it must carry.");
+        Console.WriteLine(axes.Count == 0
+            ? "Declared no language or stack: the index shows no tracked sources the harness reads."
+            : $"Declared {string.Join(", ", axes.Select(axis => axis.Key))} from the "
+                + (invocation.Languages is null ? "tracked sources in the index." : "--languages option."));
+        if (axes.Any(axis => axis.Key == FrameAxis.DotNet.Key))
+        {
+            Console.WriteLine(result.EditorConfigPath is not null
+                ? $"Created '{result.EditorConfigPath}' with the shared code-style baseline."
+                : "Kept the existing '.editorconfig'; `harness explain editorconfig.dotnet` prints the baseline it must carry.");
+        }
         var commitSettings = new CommitSettings(invocation.CommitLanguage, RequireSetup: true);
         var (setup, setupFailure) = CheckRegistry.CommitIntegration.Install(
             initRepository,
@@ -99,7 +131,7 @@ switch (invocation.Kind)
             return ExitCodes.Incomplete;
         }
 
-        var (report, upgradeFailure) = FrameUpgrade.Raise(repository, invocation.DryRun);
+        var (report, upgradeFailure) = FrameUpgrade.Raise(repository, invocation.DryRun, CheckCatalog.Describe(checks));
         if (report is null)
         {
             Console.Error.WriteLine(upgradeFailure);

@@ -8,24 +8,31 @@ namespace Harness.Languages;
 /// </summary>
 internal sealed class Language
 {
-    public static readonly Language CSharp = new("csharp", "C#");
+    public static readonly Language CSharp = new("csharp", "C#", [".cs"]);
 
-    public static readonly Language Yaml = new("yaml", "YAML");
+    public static readonly Language Yaml = new("yaml", "YAML", [".yml", ".yaml"]);
 
-    public static readonly Language TypeScript = new("typescript", "TypeScript");
+    public static readonly Language TypeScript = new(
+        "typescript",
+        "TypeScript",
+        [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
 
     /// <summary>Every language the harness ships, in the order the frame lists them.</summary>
     public static readonly IReadOnlyList<Language> All = [CSharp, Yaml, TypeScript];
 
-    private Language(string key, string name)
+    private Language(string key, string name, IReadOnlyList<string> suffixes)
     {
         Key = key;
         Name = name;
+        Suffixes = suffixes;
     }
 
     public string Key { get; }
 
     public string Name { get; }
+
+    /// <summary>The file suffixes that make a tracked file a source of this language.</summary>
+    public IReadOnlyList<string> Suffixes { get; }
 
     public string Qualify(string group) => $"{group}.{Key}";
 }

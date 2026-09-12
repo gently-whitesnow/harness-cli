@@ -1,4 +1,4 @@
-namespace Harness.Checks;
+namespace Harness.Repository;
 
 /// <summary>
 /// A tracked file a check looks up by name and reports as missing: a file name such as

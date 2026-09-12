@@ -92,22 +92,29 @@ public sealed class ArchitecturePolicyTests
         Assert.DoesNotContain("advisory", verbose.Output, StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void Missing_individual_policy_and_aggregate_policy_are_incomplete(bool aggregate)
+    [Fact]
+    public void Aggregate_policy_is_not_a_check()
     {
         using var repository = Application();
         var frame = JsonNode.Parse(File.ReadAllText(repository.Absolute(".harness.json")))!;
         frame["policy"]!.AsObject().Remove(Family + ".public-api");
-        if (aggregate)
-        {
-            frame["policy"]![Family] = "required";
-        }
+        frame["policy"]![Family] = "required";
         repository.WriteFile(".harness.json", frame.ToJsonString());
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Family);
         Assert.Equal(2, run.ExitCode);
-        Assert.Contains(Family, run.Output, StringComparison.Ordinal);
+        Assert.Contains("not a check this harness ships", run.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_individual_check_absent_from_policy_is_outside_the_frame()
+    {
+        using var repository = Application();
+        var frame = JsonNode.Parse(File.ReadAllText(repository.Absolute(".harness.json")))!;
+        frame["policy"]!.AsObject().Remove(Family + ".public-api");
+        repository.WriteFile(".harness.json", frame.ToJsonString());
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Family + ".public-api");
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("outside the frame", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]

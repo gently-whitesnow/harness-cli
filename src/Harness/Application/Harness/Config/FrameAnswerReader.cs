@@ -13,12 +13,17 @@ internal static class FrameAnswerReader
         Dictionary<string, string>? Failures,
         string? Failure) Read(
         JsonElement root,
-        IReadOnlyList<CheckDescriptor> questions)
+        IReadOnlyList<CheckDescriptor> questions,
+        IReadOnlyList<CheckDescriptor> asked)
     {
+        // Answers are navigation for readers, so a question outside the policy may still be
+        // answered; only a question in the policy has to be.
         if (!root.TryGetProperty("answers", out var declared))
         {
-            return (null, null, ConfigJson.Failure(
-                "'answers' must be an object containing every question this harness asks"));
+            return asked.Count == 0
+                ? ([], [], null)
+                : (null, null, ConfigJson.Failure(
+                    "'answers' must be an object containing an answer for every frame question in 'policy'"));
         }
 
         if (declared.ValueKind != JsonValueKind.Object)
@@ -37,7 +42,7 @@ internal static class FrameAnswerReader
             }
         }
 
-        foreach (var question in questions)
+        foreach (var question in asked)
         {
             if (!answers.ContainsKey(question.AnswerKey!) && !failures.ContainsKey(question.AnswerKey!))
             {

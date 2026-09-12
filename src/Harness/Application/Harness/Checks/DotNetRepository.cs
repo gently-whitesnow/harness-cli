@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using Harness.Config;
 using Harness.Repository;
 
 namespace Harness.Checks;
@@ -9,8 +10,7 @@ internal static class DotNetRepository
     /// The project files themselves. Without a tracked one there is nothing to judge, so every
     /// .NET policy reads them and names them as the evidence it needs.
     /// </summary>
-    public static readonly IReadOnlyList<EvidenceFile> ProjectFiles =
-        [new("*.csproj"), new("*.fsproj"), new("*.vbproj")];
+    public static IReadOnlyList<EvidenceFile> ProjectFiles => FrameAxis.DotNet.Sources;
 
     private static readonly HashSet<string> TestPackages = new(StringComparer.OrdinalIgnoreCase)
     {

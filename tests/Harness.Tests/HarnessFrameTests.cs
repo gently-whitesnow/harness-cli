@@ -38,9 +38,11 @@ public sealed class HarnessFrameTests
     [InlineData("""{ "version": 1.5 }""", "'version' must be a harness release")]
     [InlineData("""{ "version": "0.9.0" }""", "upgrade required")]
     [InlineData("""{ "version": "99.0.0" }""", "upgrade required")]
-    [InlineData("""{ "version": "latest", "answers": [] }""", "'answers' must be an object")]
+    [InlineData("""{ "version": "latest" }""", "'policy' must be an object")]
+    [InlineData("""{ "version": "latest", "policy": {}, "answers": [] }""", "'answers' must be an object")]
     [InlineData("""{ "version": "latest", "checks": {} }""", "not a key this harness reads")]
-    [InlineData("""{ "version": "latest", "answers": { "tests": {} } }""", "not a question this harness asks")]
+    [InlineData("""{ "version": "latest", "policy": {}, "answers": { "tests": {} } }""", "not a question this harness asks")]
+    [InlineData("""{ "version": "latest", "policy": {}, "answers": {} }""", "'settings' must be an object holding 'commits'")]
     public void An_unsound_frame_ends_the_run_as_incomplete(string frame, string explanation)
     {
         using var repository = Fixtures.WithRawFrame(frame);
@@ -77,36 +79,6 @@ public sealed class HarnessFrameTests
 
         Assert.Equal(2, run.ExitCode);
         Assert.True(run.OutputContains(explanation), run.Output);
-    }
-
-    [Fact]
-    public void Every_shipped_check_requires_an_explicit_policy_entry()
-    {
-        var frame = Frame.AllPresent().ToString().Replace(
-            "    \"docs.policy\": \"required\",\n",
-            string.Empty,
-            StringComparison.Ordinal);
-        using var repository = Fixtures.WithRawFrame(frame);
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check");
-
-        Assert.Equal(2, run.ExitCode);
-        Assert.Contains("'policy' is missing explicit checks: docs.policy", run.Output, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Every_applicability_axis_requires_an_explicit_entry()
-    {
-        var frame = Frame.AllPresent().ToString().Replace(
-            ",\n    \"dotnet\": { \"applicable\": true }",
-            string.Empty,
-            StringComparison.Ordinal);
-        using var repository = Fixtures.WithRawFrame(frame);
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check");
-
-        Assert.Equal(2, run.ExitCode);
-        Assert.Contains("'applicability' is missing explicit entries: dotnet", run.Output, StringComparison.Ordinal);
     }
 
     [Theory]

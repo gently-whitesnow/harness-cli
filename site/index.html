@@ -33,7 +33,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5V7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17M17 21h2.5a1.5 1.5 0 0 0 1.5-1.5V17M8 12.5l2.5 2.5L16 9.5" />
         </svg>
-        harness <span class="version">2.17.0</span>
+        harness <span class="version">3.0.0</span>
       </a>
       <nav aria-label="Основная навигация">
         <a href="#checks">Проверки</a>
@@ -61,7 +61,7 @@
             <div class="terminal">
 <pre><code>$ harness check
 
-<strong>FAIL</strong> · harness 2.17.0
+<strong>FAIL</strong> · harness 3.0.0
 
 <strong>×</strong> dependencies.csharp
   Orders → Billing → Orders
@@ -96,12 +96,14 @@ exit 1</code></pre>
             <li><code>required</code> нарушение блокирует прогон</li>
             <li><code>advisory</code> нарушение видно, но оно не блокирует</li>
             <li><code>off</code> проверка выключена целиком</li>
+            <li>не названа в <code>policy</code> — вне рамки: не запускается, в отчёте одна строка <code>outside the frame</code></li>
           </ul>
-          <p class="note">Любую проверку можно смягчить или отключить. Спрятать отдельную находку исключением для файла нельзя.</p>
+          <p class="note">Любую проверку можно смягчить или отключить. Спрятать отдельную находку исключением для файла нельзя. Названная проверка несёт свои настройки полностью: скрытых дефолтов нет.</p>
           <details class="read-more">
             <summary>Что включено сразу после init</summary>
             <div>
-              <p>Все проверки кода, структуры и правил репозитория стартуют как <code>required</code>. Для standalone-библиотеки стандарт архитектуры неприменим. Языки, которых в проекте нет, отмечаются как неприменимые с причиной.</p>
+              <p><code>init</code> читает git-индекс и записывает только языки и стеки, у которых есть tracked-исходники (<code>--languages</code> заменяет детекцию для CI). Их проверки стартуют как <code>required</code>; для языков, которых в проекте нет, в файле ничего нет. Вопрос application/library задаётся только при C#; для standalone-библиотеки стандарт архитектуры неприменим.</p>
+              <p><code>harness.coverage</code> защищает от забытого стека: язык с tracked-исходниками без записи в <code>applicability</code> — блокирующая находка с готовым JSON-фрагментом для вставки. Отказ выражается явным <code>applicable: false</code> с причиной; сам файл harness не правит.</p>
               <p>Ответы о тестах, сборке и других инструментах <code>init</code> оставляет пустыми; соответствующие <code>frame.*</code> временно стоят в <code>off</code>. Исключение — <code>frame.verify</code>: путь к общему скрипту нужен сразу. Заполните ответы и включите проверки — это завершение настройки.</p>
               <p>У архитектуры восемь самостоятельных проверок с явной policy. Каждая находка блокирует при <code>required</code>; эвристические рекомендации удалены. Селекторы <code>architecture</code> и <code>architecture.sliced-dotnet</code> выбирают всю группу.</p>
             </div>
@@ -113,7 +115,7 @@ exit 1</code></pre>
     <section id="checks">
       <div class="container">
         <div class="section-head">
-          <p class="eyebrow">24 проверки · две части</p>
+          <p class="eyebrow">25 проверок · две части</p>
           <h2>Общее для репозитория. Конкретное для его стека.</h2>
           <p>Сначала — одинаковые вопросы и правила независимо от языка. Затем — проверки исходников и устройства проекта. Сейчас самый подробный набор — для C# и .NET.</p>
         </div>
@@ -123,7 +125,7 @@ exit 1</code></pre>
             <h3>Порядок в любом репозитории</h3>
             <p>Где агент читает правила, как оформляет изменения и чем проверяет результат.</p>
             <details>
-              <summary>Документация, коммиты, конфигурация <span>Короткая навигация, единая история и явные правила · 3 проверки</span></summary>
+              <summary>Документация, коммиты, конфигурация <span>Короткая навигация, единая история и явные правила · 4 проверки</span></summary>
               <ul class="check-list" id="common-checks" aria-label="Общие правила"></ul>
             </details>
             <details>
@@ -135,7 +137,7 @@ exit 1</code></pre>
           <div class="catalog-column">
             <span class="axis-label">02 / LANGUAGES &amp; STACK</span>
             <h3>Структура кода и границы</h3>
-            <p>Языковые проверки используют ту же рамку. Если языка нет, вся его группа отмечается как неприменимая.</p>
+            <p>Языковые проверки используют ту же рамку. Если языка нет, его группы просто нет в файле; если язык появился, <code>harness.coverage</code> скажет, что дописать.</p>
             <details>
               <summary>C# <span>Циклы, связанность, повторы, один тип на файл, комментарии · 5 проверок</span></summary>
               <ul class="check-list" id="csharp-checks" aria-label="Проверки C#"></ul>

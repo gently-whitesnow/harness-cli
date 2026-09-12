@@ -48,6 +48,9 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
 
     public RepositoryKind? RepositoryKind { get; init; }
 
+    /// <summary>Applicability keys that replace index detection in `init`; null detects.</summary>
+    public IReadOnlyList<string>? Languages { get; init; }
+
     public static Invocation Parse(IReadOnlyList<string> arguments, string currentDirectory)
     {
         if (arguments.Count == 0)
@@ -175,11 +178,28 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
         var language = CommitSettings.Default.Language;
         var languageSeen = false;
         RepositoryKind? repositoryKind = null;
+        List<string>? languages = null;
         string? path = null;
 
         for (var index = 0; index < arguments.Count; index++)
         {
             var argument = arguments[index];
+            if (argument == "--languages")
+            {
+                if (languages is not null || index + 1 >= arguments.Count)
+                {
+                    return Usage(currentDirectory, "--languages requires one comma-separated value and may only be given once.");
+                }
+
+                languages = SplitIdentifiers(arguments[++index]).ToList();
+                if (languages.Count == 0)
+                {
+                    return Usage(currentDirectory, "--languages requires at least one applicability key.");
+                }
+
+                continue;
+            }
+
             if (argument == "--latest")
             {
                 if (latest)
@@ -253,6 +273,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             Latest = latest,
             CommitLanguage = language,
             RepositoryKind = repositoryKind,
+            Languages = languages,
         };
     }
 
