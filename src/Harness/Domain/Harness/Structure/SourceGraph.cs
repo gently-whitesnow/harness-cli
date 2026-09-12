@@ -3,7 +3,8 @@ namespace Harness.Structure;
 /// <summary>
 /// What one language contributed: the types a repository declares and the references between
 /// them that resolve inside it. A framework or package type cannot be resolved from source,
-/// so it is counted as an import and never appears as a node.
+/// so it is counted as an import and never appears as a node. Files a marker took out of the
+/// reading — a generated header, a build constraint that never holds — are named, not read.
 /// </summary>
 internal sealed record SourceGraph(
     IReadOnlyList<string> SourcePaths,
@@ -12,7 +13,8 @@ internal sealed record SourceGraph(
     IReadOnlyList<ExternalImports> Imports,
     int ResolvedReferences,
     int AmbiguousReferences,
-    IReadOnlyList<string> MarkedGenerated)
+    IReadOnlyList<string> MarkedGenerated,
+    IReadOnlyList<string> MarkedIgnored)
 {
     public int CandidateReferences => ResolvedReferences + AmbiguousReferences;
 
@@ -32,5 +34,6 @@ internal sealed record SourceGraph(
             Edges = Edges.Where(edge => keep(edge.From.Path) && keep(edge.To.Path)).ToList(),
             Imports = Imports.Where(import => keep(import.Path)).ToList(),
             MarkedGenerated = MarkedGenerated.Where(keep).ToList(),
+            MarkedIgnored = MarkedIgnored.Where(keep).ToList(),
         };
 }

@@ -139,6 +139,31 @@ internal sealed partial class LintSuppressionsCheck(IGoSources sources) : IRepos
 
         JudgeRules(path, root.Get("issues", "exclude-rules"), "issues.exclude-rules", findings, details);
         JudgeRules(path, root.Get("linters", "exclusions", "rules"), "linters.exclusions.rules", findings, details);
+        JudgePaths(path, root.Get("issues", "exclude-dirs"), "issues.exclude-dirs", findings, details);
+        JudgePaths(path, root.Get("issues", "exclude-files"), "issues.exclude-files", findings, details);
+        JudgePaths(path, root.Get("linters", "exclusions", "paths"), "linters.exclusions.paths", findings, details);
+    }
+
+    // A path list takes whole places out from under every linter: the same private exception
+    // as a rule with a path, written without naming a linter.
+    private static void JudgePaths(string path, ConfigNode? paths, string form, List<Finding> findings, List<string> details)
+    {
+        foreach (var entry in paths?.Items ?? [])
+        {
+            var rulePath = entry.Scalar?.Trim() ?? string.Empty;
+            if (IsRepositoryWide(rulePath))
+            {
+                var where = rulePath.Length == 0 ? "without a path" : $"for path `{rulePath}`";
+                details.Add($"{form} at {At(path, entry)} excludes every linter repository-wide, {where}");
+                continue;
+            }
+
+            findings.Add(new Finding(
+                FindingSeverity.Blocking,
+                At(path, entry),
+                $"silences every linter for path `{rulePath}` via {form} at one address; fix the code, or switch the linter "
+                    + "off for the whole repository in linters.disable"));
+        }
     }
 
     private static void JudgeRules(string path, ConfigNode? rules, string form, List<Finding> findings, List<string> details)

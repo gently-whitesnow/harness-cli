@@ -103,14 +103,15 @@ internal static class GolangciConfig
             }
 
             var value = line[(equals + 1)..].Trim();
-            // An array may continue on the following lines until its bracket closes.
+            var keyLine = index + 1;
+            // An array may continue on the following lines until its bracket closes; the key's line is the address.
             while (value.StartsWith('[') && value.Count(c => c == '[') > value.Count(c => c == ']') && index + 1 < lines.Length)
             {
                 index++;
                 value += " " + StripComment(lines[index].TrimEnd('\r'), '#').Trim();
             }
 
-            var target = Walk(current, line[..equals].Trim(), index + 1);
+            var target = Walk(current, line[..equals].Trim(), keyLine);
             Assign(target, value);
         }
 

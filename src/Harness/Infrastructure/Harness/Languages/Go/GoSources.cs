@@ -7,8 +7,8 @@ namespace Harness.Infrastructure.Languages.Go;
 
 /// <summary>
 /// The tracked Go a repository ships, read once for the whole run. Files the go tool itself
-/// ignores — vendor/, testdata/, directories starting with `_` or `.` — and files carrying the
-/// canonical `Code generated ... DO NOT EDIT.` header are not authored prose and are skipped.
+/// ignores — vendor/, testdata/, directories starting with `_` or `.` — and files marked
+/// generated or constrained to `//go:build ignore` are not the product's source and are skipped.
 /// </summary>
 internal sealed partial class GoSources : IGoSources
 {
@@ -17,22 +17,24 @@ internal sealed partial class GoSources : IGoSources
     private static readonly string[] TopLevel = ["func ", "func(", "type ", "var ", "const ", "import ", "package "];
 
     private IRepository? read;
-    private (IReadOnlyList<GoFile> Files, IReadOnlyList<string> MarkedGenerated, string? Failure) result;
+    private Reading result = new([], [], [], null);
 
     public (IReadOnlyList<GoFile> Files, string? Failure) Read(IRepository repository)
     {
-        var (files, _, failure) = Discover(repository);
-        return (files, failure);
+        var reading = Discover(repository);
+        return (reading.Files, reading.Failure);
     }
 
     public IReadOnlyList<string> MarkedGenerated(IRepository repository) => Discover(repository).MarkedGenerated;
+
+    public IReadOnlyList<string> MarkedIgnored(IRepository repository) => Discover(repository).MarkedIgnored;
 
     /// <summary>Whether the go tool would read this path: vendor, testdata and `_`/`.` directories are outside.</summary>
     public static bool IsAuthoredLocation(string path)
         => !RepositoryLocations.IsGenerated(path)
             && !path.Split('/').SkipLast(1).Any(segment => segment == "testdata" || segment.StartsWith('_') || segment.StartsWith('.'));
 
-    private (IReadOnlyList<GoFile> Files, IReadOnlyList<string> MarkedGenerated, string? Failure) Discover(IRepository repository)
+    private Reading Discover(IRepository repository)
     {
         if (!ReferenceEquals(read, repository))
         {
@@ -43,8 +45,7 @@ internal sealed partial class GoSources : IGoSources
         return result;
     }
 
-    private static (IReadOnlyList<GoFile> Files, IReadOnlyList<string> MarkedGenerated, string? Failure) ReadAll(
-        IRepository repository)
+    private static Reading ReadAll(IRepository repository)
     {
         var candidates = repository.TrackedEntries
             .Where(entry => !entry.IsSymbolicLink)
@@ -53,32 +54,41 @@ internal sealed partial class GoSources : IGoSources
             .OrderBy(entry => entry.Path, StringComparer.Ordinal);
 
         var files = new List<GoFile>();
-        var marked = new List<string>();
+        var generated = new List<string>();
+        var ignored = new List<string>();
         foreach (var entry in candidates)
         {
             var (text, failure) = repository.ReadTrackedText(entry);
             if (text is null)
             {
-                return ([], [], failure ?? $"Could not read '{entry.Path}'.");
+                return new Reading([], [], [], failure ?? $"Could not read '{entry.Path}'.");
             }
 
-            if (IsGeneratedContent(text))
+            var header = Header(text);
+            if (header.Any(line => GeneratedHeader().IsMatch(line)))
             {
-                marked.Add(entry.Path);
+                generated.Add(entry.Path);
+                continue;
+            }
+
+            if (GoBuildConstraints.Ignores(text))
+            {
+                ignored.Add(entry.Path);
                 continue;
             }
 
             files.Add(Parse(entry.Path, text));
         }
 
-        return (files, marked, null);
+        return new Reading(files, generated, ignored, null);
     }
 
-    // The go tool's own rule: the header is a line by itself before the package clause.
-    private static bool IsGeneratedContent(string text)
+    // Generated markers must appear before the package clause.
+    private static List<string> Header(string text)
         => text.Split('\n')
+            .Select(line => line.TrimEnd('\r'))
             .TakeWhile(line => !line.StartsWith("package ", StringComparison.Ordinal))
-            .Any(line => GeneratedHeader().IsMatch(line.TrimEnd('\r')));
+            .ToList();
 
     private static GoFile Parse(string path, string text)
     {
@@ -263,6 +273,12 @@ internal sealed partial class GoSources : IGoSources
 
     [GeneratedRegex(@"^// Code generated .* DO NOT EDIT\.$")]
     private static partial Regex GeneratedHeader();
+
+    private sealed record Reading(
+        IReadOnlyList<GoFile> Files,
+        IReadOnlyList<string> MarkedGenerated,
+        IReadOnlyList<string> MarkedIgnored,
+        string? Failure);
 
     [GeneratedRegex(@"^package[ \t]+([A-Za-z_][A-Za-z0-9_]*)", RegexOptions.Multiline)]
     private static partial Regex PackageClause();

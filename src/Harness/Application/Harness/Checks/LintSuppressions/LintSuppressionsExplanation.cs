@@ -14,7 +14,8 @@ internal static class LintSuppressionsExplanation
         What it reads
           Tracked authored `.go` files, test files included — generated, vendored and
           build-output locations, `vendor/`, `testdata/`, directories starting with `_` or `.`
-          and files with a `// Code generated ... DO NOT EDIT.` header are skipped — and a
+          and files with a `// Code generated ... DO NOT EDIT.` header or a `//go:build
+          ignore` constraint are skipped — and a
           tracked `.golangci.yml`, `.golangci.yaml`, `.golangci.toml` or `.golangci.json`. The
           configuration is read lexically: YAML by indentation and `- ` items, TOML by tables
           and `key = value`, JSON through the BCL. No linter is located, installed or run, and
@@ -31,24 +32,30 @@ internal static class LintSuppressionsExplanation
           In the configuration, an exclusion rule under `issues.exclude-rules` (v1) or
           `linters.exclusions.rules` (v2) whose `path` names one place — a file, a directory,
           a suffix such as `_test\.go` — and that names `linters` or a `text` pattern:
-          the same private exception, written in the config instead of the source.
+          the same private exception, written in the config instead of the source. A path
+          listed under `issues.exclude-dirs` or `issues.exclude-files` (v1) or under
+          `linters.exclusions.paths` (v2) takes that place out from under every linter at
+          once and is blocking the same way.
 
         What is printed instead
           A switch for the whole repository is the tracked, reviewable decision `policy: off`
           is for harness checks and never fails the run; every such switch is listed as a
           neutral detail with --verbose: `linters.disable-all: true` (v1) or `linters.default:
           none` (v2) without a non-empty `linters.enable`; every linter under
-          `linters.disable`; and an exclusion rule whose `path` is absent, `.`, `./` or a
-          mask such as `.*`, or that names neither `linters` nor `text`.
+          `linters.disable`; an exclusion rule whose `path` is absent, `.`, `./` or a
+          mask such as `.*`, or that names neither `linters` nor `text`; and an entry of a
+          path list that is `.`, `./` or such a mask.
 
         Limits
           The readers are lexical and know the shapes golangci-lint documents use; an anchor,
           alias, merge key, flow mapping or multi-document YAML file reads as absent, not as a
           finding. A `path` is compared as text: `internal/.*` is one address, `.*` is the
           repository. `//nolint` with a space after the slashes is not a directive to
-          golangci-lint and is not one here. `linters.exclusions.paths` (v2) and
-          `issues.exclude-dirs`/`exclude-files` (v1) are not read yet. A `//nolint` that a
-          `go:generate`d file carries is skipped with the file.
+          golangci-lint and is not one here. `formatters.exclusions.paths` and
+          `linters.exclusions.paths-except` (v2) are not read: the first silences formatters,
+          not linters, and the second narrows a list rather than adding to it. A `//nolint`
+          that a generated file or a file under `//go:build ignore` carries is skipped with
+          the file.
 
         False positives
           A rule whose `path` names one directory on purpose — a legacy tree the owners are

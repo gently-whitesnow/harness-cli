@@ -28,9 +28,10 @@ internal static class DuplicationExplanation
                 Every Git-tracked `.go` file the go tool would build is analyzed, test files
                 included. Generated, vendored and build-output locations, `vendor/` and `testdata/`
                 directories, directories starting with `_` or `.`, and files carrying the canonical
-                `// Code generated ... DO NOT EDIT.` header before the package clause are excluded.
-                Exclusion is by name and by declared marker only, so a reader can predict it, and
-                no build tag is evaluated. A repository with no remaining Go source is not
+                `// Code generated ... DO NOT EDIT.` header or a `//go:build ignore` constraint
+                before the package clause are excluded. Exclusion is by name and by declared
+                marker only, so a reader can predict it, and no build tag but `ignore` standing
+                alone is evaluated. A repository with no remaining Go source is not
                 applicable, never a pass.
 
 

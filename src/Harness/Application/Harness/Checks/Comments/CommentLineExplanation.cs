@@ -82,7 +82,8 @@ internal static class CommentLineExplanation
               The check reads Git-tracked `.go` files, test files included, outside generated,
               vendored and build-output locations, `vendor/` and `testdata/` directories and
               directories starting with `_` or `.`; a file carrying the canonical
-              `// Code generated ... DO NOT EDIT.` header before its package clause is
+              `// Code generated ... DO NOT EDIT.` header or a `//go:build ignore` (legacy
+              `// +build ignore`) constraint before its package clause is never built and is
               excluded. A `//` or `/* ... */` comment outside a string, raw string or rune
               literal counts. A directive — `//go:build`, `//go:embed`, `//go:generate`,
               `//line`, `//export`, `//extern`, `//nolint`, `//lint:` — is an instruction to

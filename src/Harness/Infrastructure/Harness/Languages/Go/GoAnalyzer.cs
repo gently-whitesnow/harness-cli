@@ -50,7 +50,7 @@ internal sealed partial class GoAnalyzer(IGoSources sources) : ILanguageAnalyzer
         var authored = files.Where(file => !file.IsTest).ToList();
         if (authored.Count == 0)
         {
-            return (new SourceGraph([], [], [], [], 0, 0, sources.MarkedGenerated(repository)), null);
+            return (new SourceGraph([], [], [], [], 0, 0, sources.MarkedGenerated(repository), sources.MarkedIgnored(repository)), null);
         }
 
         var (modules, moduleFailure) = ReadModules(repository);
@@ -128,7 +128,8 @@ internal sealed partial class GoAnalyzer(IGoSources sources) : ILanguageAnalyzer
             imports,
             resolved,
             0,
-            sources.MarkedGenerated(repository)), null);
+            sources.MarkedGenerated(repository),
+            sources.MarkedIgnored(repository)), null);
     }
 
     private static (List<GoModule> Modules, string? Failure) ReadModules(IRepository repository)

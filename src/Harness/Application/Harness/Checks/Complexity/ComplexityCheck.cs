@@ -57,6 +57,11 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
             details.Add(marked);
         }
 
+        if (scope.DescribeMarkedIgnored() is { } ignored)
+        {
+            details.Add(ignored);
+        }
+
         var findings = new List<Finding>();
         if (metric.AverageReachableFiles > limit.AverageReachableFiles)
         {

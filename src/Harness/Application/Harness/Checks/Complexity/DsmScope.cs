@@ -113,6 +113,23 @@ internal sealed record DsmScope(
             + (count > 5 ? $", and {count - 5} more" : "");
     }
 
+    /// <summary>Go files under `//go:build ignore`: the go tool never builds them, so they lend no edge.</summary>
+    public string? DescribeMarkedIgnored()
+    {
+        var count = Graph.MarkedIgnored.Count;
+        if (count == 0)
+        {
+            return null;
+        }
+
+        var files = count == 1
+            ? $"1 tracked {Language.Name} file under a `//go:build ignore` constraint is not read"
+            : $"{count} tracked {Language.Name} files under a `//go:build ignore` constraint are not read";
+        return $"build constraints: {files}: "
+            + string.Join(", ", Graph.MarkedIgnored.Take(5))
+            + (count > 5 ? $", and {count - 5} more" : "");
+    }
+
     private string Outside(string where)
         => OutsideFiles == 1
             ? $"1 authored file {where} is not measured"
