@@ -27,7 +27,7 @@ internal sealed class CheckContext(
     public IReadOnlyList<TrackedEntry> Tracked(EvidenceFile file)
     {
         RequireDeclared(file);
-        return Repository.TrackedEntries.Where(entry => file.Matches(entry.Path)).ToList();
+        return Repository.TrackedEntries.Concat(Repository.AncestorEvidence).Where(entry => file.Matches(entry.Path)).ToList();
     }
 
     /// <summary>The declared evidence in the directory of <paramref name="startPath"/>, else above it.</summary>
@@ -51,7 +51,7 @@ internal sealed class CheckContext(
 
             if (directory.Length == 0)
             {
-                return null;
+                return Repository.AncestorEvidence.FirstOrDefault(entry => file.Matches(entry.Path));
             }
 
             directory = DirectoryOf(directory);

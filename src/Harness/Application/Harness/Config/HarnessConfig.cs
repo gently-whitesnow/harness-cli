@@ -14,6 +14,8 @@ internal sealed record HarnessConfig
 
     public const string RetiredBudgetFileName = ".harness.budget.json";
 
+    public IReadOnlyList<string> Projects { get; init; } = [];
+
     public required HarnessVersion Version { get; init; }
 
     public required bool TracksLatest { get; init; }

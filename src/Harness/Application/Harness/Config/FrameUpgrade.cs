@@ -102,6 +102,55 @@ internal static class FrameUpgrade
     /// </summary>
     private static string Additions(IRepository repository, string text, IReadOnlyList<CheckDescriptor> checks)
     {
+        using var document = JsonDocument.Parse(text, ParseOptions);
+        var (projects, failure) = WorkspaceProjects.Read(document.RootElement);
+        if (projects is null)
+        {
+            return $"Workspace registration needs review: {failure}.\n";
+        }
+
+        if (projects.Count == 0)
+        {
+            return ScopeAdditions(repository, text, checks);
+        }
+
+        var report = new StringBuilder("Workspace root (.harness.json):\n");
+        report.Append(ScopeAdditions(new ScopedRepository(repository, string.Empty, projects), text, checks));
+        var projectChecks = checks.Where(check => check.Id != "commits.setup").ToList();
+        foreach (var project in projects)
+        {
+            report.Append($"Project {project} ({project}/{HarnessConfig.FileName}):\n");
+            var scope = new ScopedRepository(repository, project);
+            var entry = scope.TrackedEntries.FirstOrDefault(candidate => candidate.Path == HarnessConfig.FileName);
+            if (entry is null)
+            {
+                report.Append("  Configuration is not tracked; register a complete project frame.\n");
+                continue;
+            }
+
+            var (local, readFailure) = scope.ReadTrackedText(entry);
+            if (local is null)
+            {
+                report.Append("  ").Append(readFailure).Append('\n');
+                continue;
+            }
+
+            try
+            {
+                report.Append(ScopeAdditions(scope, local, projectChecks));
+            }
+            catch (JsonException exception)
+            {
+                report.Append("  Configuration needs review: ").Append(exception.Message).Append('\n');
+            }
+        }
+
+        report.Append("Project frames keep local answers and policies; only the root pin is upgraded.\n");
+        return report.ToString();
+    }
+
+    private static string ScopeAdditions(IRepository repository, string text, IReadOnlyList<CheckDescriptor> checks)
+    {
         var document = JsonNode.Parse(text, documentOptions: ParseOptions) as JsonObject;
         var policy = document?["policy"] as JsonObject ?? [];
         var applicability = document?["applicability"] as JsonObject ?? [];
@@ -346,6 +395,18 @@ internal static class FrameUpgrade
                    editorconfig.go, types-per-file.go, dependencies.go or Go architecture standard
           added    a repository with tracked .go sources and no applicability.go entry gets the
                    harness.coverage fragment; nothing changes for repositories without Go
+        """),
+        (new HarnessVersion(3, 2, 0), """
+        Release 3.2 additions:
+          added    projects: ["apps/api", "apps/web"] registers disjoint project directories;
+                   each needs its own tracked .harness.json with an explicit local frame
+          shared   version, settings.commits and commits.setup belong only to the root;
+                   project answers, applicability, settings and policy are not inherited
+          changed  tracked nested .harness.json files must be registered; review their ownership
+                   before upgrading, because unregistered configurations now stop verification
+          scope    root checks cover files outside projects; project checks cover their own files;
+                   cross-project duplication and dependency graphs are not measured
+          added    harness check --project <path> reports a partial run after workspace validation
         """),
     ];
 

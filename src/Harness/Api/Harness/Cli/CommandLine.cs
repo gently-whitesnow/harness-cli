@@ -36,6 +36,8 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
 
     public bool DryRun { get; init; }
 
+    public string? Project { get; init; }
+
     public string? CheckId { get; init; }
 
     public string? Error { get; init; }
@@ -119,6 +121,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
         var skip = new List<string>();
         var verbose = false;
         var all = false;
+        string? project = null;
         string? path = null;
 
         for (var index = 0; index < arguments.Count; index++)
@@ -126,6 +129,17 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             var argument = arguments[index];
             switch (argument)
             {
+                case "--project":
+                    if (project is not null || index + 1 >= arguments.Count
+                        || string.IsNullOrWhiteSpace(arguments[index + 1])
+                        || arguments[index + 1].StartsWith('-'))
+                    {
+                        return Usage(currentDirectory, "--project requires one registered project path and may only be given once.");
+                    }
+
+                    project = arguments[++index];
+                    break;
+
                 case "--only":
                 case "--skip":
                     if (index + 1 >= arguments.Count)
@@ -169,6 +183,7 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             Skip = skip,
             Verbose = verbose,
             All = all,
+            Project = project,
         };
     }
 

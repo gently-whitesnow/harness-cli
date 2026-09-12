@@ -29,9 +29,9 @@ switch (invocation.Kind)
             return incomplete.ExitCode;
         }
 
-        var report = GateEngine.Run(repository, invocation.Only, invocation.Skip, checks);
+        var report = WorkspaceEngine.Run(repository, invocation.Only, invocation.Skip, checks, invocation.Project);
         var writer = report.ExitCode == ExitCodes.Incomplete ? Console.Error : Console.Out;
-        writer.Write(ConsoleReport.Render(report, invocation.Verbose, invocation.Only.Count > 0, invocation.All));
+        writer.Write(WorkspaceConsoleReport.Render(report, invocation.Verbose, invocation.Only.Count > 0, invocation.All));
         return report.ExitCode;
     }
 

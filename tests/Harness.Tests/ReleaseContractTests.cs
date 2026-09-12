@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace Harness.Tests;
 
 /// <summary>
@@ -85,8 +87,9 @@ public sealed class ReleaseContractTests
     [Fact]
     public void Upgrade_names_the_dsm_keys_but_preserves_values_until_manual_migration()
     {
-        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("2.15.0")
-            .Settings("""{ "complexity.csharp": { "meanReach": 9, "coreSize": 2 } }"""));
+        var legacy = JsonNode.Parse(Frame.AllPresent().Version("2.15.0").ToString())!.AsObject();
+        legacy["settings"]!["complexity.csharp"] = JsonNode.Parse("""{ "meanReach": 9, "coreSize": 2 }""");
+        using var repository = Fixtures.WithRawFrame(legacy.ToJsonString());
         var before = File.ReadAllText(repository.Absolute(".harness.json"));
 
         var run = HarnessCli.Run(repository.Path, "upgrade");

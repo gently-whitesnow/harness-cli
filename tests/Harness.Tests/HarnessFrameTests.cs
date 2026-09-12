@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace Harness.Tests;
 
 /// <summary>The frame file: complete answers and policy.</summary>
@@ -90,9 +92,9 @@ public sealed class HarnessFrameTests
         string value,
         string explanation)
     {
-        var frame = Frame.AllPresent().ToString();
-        frame = frame[..^2] + $",\n  \"applicability\": {{ \"{key}\": {value} }}\n}}\n";
-        using var repository = Fixtures.WithRawFrame(frame);
+        var frame = JsonNode.Parse(Frame.AllPresent().ToString())!.AsObject();
+        frame["applicability"]![key] = JsonNode.Parse(value);
+        using var repository = Fixtures.WithRawFrame(frame.ToJsonString());
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 

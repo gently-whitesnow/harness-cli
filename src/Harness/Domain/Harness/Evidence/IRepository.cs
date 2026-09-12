@@ -6,6 +6,8 @@ internal interface IRepository
 
     IReadOnlyList<TrackedEntry> TrackedEntries { get; }
 
+    IReadOnlyList<TrackedEntry> AncestorEvidence => [];
+
     TimeSpan ReadDuration { get; }
 
     (IReadOnlyList<(string ObjectId, string Message)>? Commits, string? Failure) ReadCommits(

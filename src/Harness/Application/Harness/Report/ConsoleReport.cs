@@ -7,7 +7,7 @@ namespace Harness.Report;
 /// <summary>Renders a complete scan as compact status rows, with evidence on demand.</summary>
 internal static class ConsoleReport
 {
-    public static string Render(RunReport report, bool verbose, bool focused, bool all = false)
+    public static string Render(RunReport report, bool verbose, bool focused, bool all = false, bool showPolicy = false)
     {
         var text = new StringBuilder();
 
@@ -39,6 +39,10 @@ internal static class ConsoleReport
         if (visibleGates.Count > 0)
         {
             text.Append("   ").Append("CHECK ID".PadRight(identifierWidth)).Append("FINDINGS");
+            if (showPolicy)
+            {
+                text.Append("  POLICY");
+            }
             if (verbose)
             {
                 text.Append("  TIME");
@@ -49,7 +53,7 @@ internal static class ConsoleReport
 
         foreach (var gate in visibleGates)
         {
-            AppendGate(text, gate, verbose, all, identifierWidth);
+            AppendGate(text, gate, verbose, all, identifierWidth, showPolicy);
         }
 
         AppendOutsideFrame(text, report, verbose, focused);
@@ -100,11 +104,17 @@ internal static class ConsoleReport
         GateReport gate,
         bool verbose,
         bool all,
-        int identifierWidth)
+        int identifierWidth,
+        bool showPolicy)
     {
         text.Append(Status(gate)).Append(' ');
         text.Append(gate.Id.PadRight(identifierWidth))
             .Append(IssueCount(gate, all).ToString(CultureInfo.InvariantCulture).PadLeft("FINDINGS".Length));
+
+        if (showPolicy)
+        {
+            text.Append("  ").Append((gate.Policy ?? "outside").PadRight(8));
+        }
 
         if (verbose)
         {

@@ -63,15 +63,25 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
             CollectFromXml(props, sites, repositoryWide: true);
         }
 
-        foreach (var entry in context.Tracked(EditorConfig))
+        var (configs, configFailure) = EditorConfigChain.ReadAll(context, EditorConfig);
+        if (configs is null)
         {
-            var (file, readFailure) = EditorConfigFile.Read(context.Repository, entry);
-            if (file is null)
+            return CheckEvaluation.Incomplete(configFailure!);
+        }
+
+        var sources = context.Tracked(Sources);
+        foreach (var file in configs)
+        {
+            var sections = file.Sections.AsEnumerable();
+            if (file.Path.StartsWith("../", StringComparison.Ordinal))
             {
-                return CheckEvaluation.Incomplete(readFailure!);
+                var covered = sources.Where(source => EditorConfigChain.ChainFor(configs, source.Path).Contains(file))
+                    .Select(source => EditorConfigChain.RelativeTo(context.Repository.RootPath, file.Directory, source.Path))
+                    .ToList();
+                sections = sections.Where(section => covered.Any(path => EditorConfigGlob.Matches(section.Glob, path)));
             }
 
-            CollectFromEditorConfig(file, sites);
+            CollectFromEditorConfig(file with { Sections = sections.ToList() }, sites);
         }
 
         var findings = sites

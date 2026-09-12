@@ -50,7 +50,7 @@ internal sealed class EditorConfigCheck : DotNetCheck
 
     protected override CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects)
     {
-        var (files, failure) = ReadAll(context);
+        var (files, failure) = EditorConfigChain.ReadAll(context, EditorConfig);
         if (files is null)
         {
             return CheckEvaluation.Incomplete(failure!);
@@ -60,7 +60,7 @@ internal sealed class EditorConfigCheck : DotNetCheck
         var reported = new HashSet<string>(StringComparer.Ordinal);
         foreach (var project in projects)
         {
-            var chain = ChainFor(files, project.Path);
+            var chain = EditorConfigChain.ChainFor(files, project.Path);
             if (chain.Count == 0)
             {
                 findings.Add(Block(project.Path, "is not covered by a tracked .editorconfig"));
@@ -68,10 +68,10 @@ internal sealed class EditorConfigCheck : DotNetCheck
             }
 
             var effective = new Dictionary<string, string>(StringComparer.Ordinal);
-            var sample = $"{DirectoryOf(project.Path)}/{SampleFile}".TrimStart('/');
+            var sample = $"{EditorConfigChain.DirectoryOf(project.Path)}/{SampleFile}".TrimStart('/');
             foreach (var file in chain)
             {
-                file.ApplyTo(effective, RelativeTo(file.Directory, sample));
+                file.ApplyTo(effective, EditorConfigChain.RelativeTo(context.Repository.RootPath, file.Directory, sample));
             }
 
             var nearest = chain[^1];
@@ -110,57 +110,4 @@ internal sealed class EditorConfigCheck : DotNetCheck
         return (colon < 0 ? value : value[..colon]).Trim().ToLowerInvariant();
     }
 
-    private static (IReadOnlyList<EditorConfigFile>? Files, string? Failure) ReadAll(CheckContext context)
-    {
-        var files = new List<EditorConfigFile>();
-        foreach (var entry in context.Tracked(EditorConfig).OrderBy(entry => entry.Path.Length))
-        {
-            var (file, failure) = EditorConfigFile.Read(context.Repository, entry);
-            if (file is null)
-            {
-                return (null, failure);
-            }
-
-            files.Add(file);
-        }
-
-        return (files, null);
-    }
-
-    /// <summary>The files above one project, outermost first, cut at the nearest `root = true`.</summary>
-    private static List<EditorConfigFile> ChainFor(IReadOnlyList<EditorConfigFile> files, string projectPath)
-    {
-        var directory = DirectoryOf(projectPath);
-        var chain = new List<EditorConfigFile>();
-        while (true)
-        {
-            var file = files.FirstOrDefault(candidate => candidate.Directory == directory);
-            if (file is not null)
-            {
-                chain.Insert(0, file);
-                if (file.IsRoot)
-                {
-                    break;
-                }
-            }
-
-            if (directory.Length == 0)
-            {
-                break;
-            }
-
-            directory = DirectoryOf(directory);
-        }
-
-        return chain;
-    }
-
-    private static string RelativeTo(string directory, string path)
-        => directory.Length == 0 ? path : path[(directory.Length + 1)..];
-
-    private static string DirectoryOf(string path)
-    {
-        var slash = path.LastIndexOf('/');
-        return slash < 0 ? string.Empty : path[..slash];
-    }
 }
