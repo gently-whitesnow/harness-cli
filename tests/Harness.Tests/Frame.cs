@@ -10,7 +10,7 @@ namespace Harness.Tests;
 public sealed class Frame
 {
     private const string DefaultSettings =
-        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.typescript": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "complexity.csharp": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "commits": { "language": "ru", "requireSetup": false } }""";
+        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.typescript": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "complexity.csharp": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "comments.go": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.go": { "windowLines": 30, "minimumTokens": 90 }, "complexity.go": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "commits": { "language": "ru", "requireSetup": false } }""";
 
     private static readonly string[] Questions =
         ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck", "verify"];
@@ -29,7 +29,8 @@ public sealed class Frame
         "architecture.sliced-dotnet.cross-api", "complexity.csharp", "docs.policy",
         "commits.setup", "comments.csharp", "comments.yaml", "comments.typescript",
         "types-per-file.csharp", "dependencies.csharp",
-        "duplication.csharp", "build-properties.dotnet", "central-packages.dotnet",
+        "duplication.csharp", "comments.go", "duplication.go", "complexity.go", "lint-suppressions.go",
+        "build-properties.dotnet", "central-packages.dotnet",
         "solution-format.dotnet", "editorconfig.dotnet", "warning-suppressions.dotnet", "frame.tests.unit", "frame.tests.integration",
         "frame.tests.architecture", "frame.format", "frame.lint", "frame.build", "frame.typecheck", "frame.verify",
     ];
@@ -54,6 +55,7 @@ public sealed class Frame
         ["dotnet"] = """{ "applicable": true }""",
         ["yaml"] = """{ "applicable": true }""",
         ["typescript"] = """{ "applicable": true }""",
+        ["go"] = """{ "applicable": true }""",
     };
 
     private string version = Quote(Release.Current);

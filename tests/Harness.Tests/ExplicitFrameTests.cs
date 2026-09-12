@@ -31,7 +31,7 @@ public sealed class ExplicitFrameTests
         Assert.False(run.OutputContains("comments.csharp"), run.Output);
         Assert.False(run.OutputContains("frame.verify"), run.Output);
         Assert.True(run.OutputContains("outside the frame"), run.Output);
-        Assert.True(verbose.OutputContains("outside the frame  30 checks not named in policy: harness.coverage"), verbose.Output);
+        Assert.True(verbose.OutputContains("outside the frame  34 checks not named in policy: harness.coverage"), verbose.Output);
     }
 
     [Fact]
@@ -294,7 +294,7 @@ public sealed class ExplicitFrameTests
 
         Assert.Equal(2, run.ExitCode);
         Assert.Contains("rust", run.StandardError, StringComparison.Ordinal);
-        Assert.Contains("Known keys: csharp, yaml, typescript, dotnet", run.StandardError, StringComparison.Ordinal);
+        Assert.Contains("Known keys: csharp, yaml, typescript, go, dotnet", run.StandardError, StringComparison.Ordinal);
         Assert.False(File.Exists(repository.Absolute(".harness.json")));
     }
 

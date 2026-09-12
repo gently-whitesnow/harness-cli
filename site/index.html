@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Harness CLI — harness начинается с репозитория</title>
-  <meta name="description" content="Агенту предстоит ещё тысяча итераций. Репозиторий должен оставаться понятным. Мой опыт в 24 проверках: общие правила, проверки языков и строгие границы .NET-приложения." />
+  <meta name="description" content="Агенту предстоит ещё тысяча итераций. Репозиторий должен оставаться понятным. Мой опыт в 29 проверках: общие правила, проверки языков, Go и строгие границы .NET-приложения." />
   <link rel="canonical" href="https://harness.whitesnow.tech/" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <meta property="og:type" content="website" />
@@ -33,7 +33,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5V7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17M17 21h2.5a1.5 1.5 0 0 0 1.5-1.5V17M8 12.5l2.5 2.5L16 9.5" />
         </svg>
-        harness <span class="version">3.0.0</span>
+        harness <span class="version">3.1.0</span>
       </a>
       <nav aria-label="Основная навигация">
         <a href="#checks">Проверки</a>
@@ -61,7 +61,7 @@
             <div class="terminal">
 <pre><code>$ harness check
 
-<strong>FAIL</strong> · harness 3.0.0
+<strong>FAIL</strong> · harness 3.1.0
 
 <strong>×</strong> dependencies.csharp
   Orders → Billing → Orders
@@ -115,9 +115,9 @@ exit 1</code></pre>
     <section id="checks">
       <div class="container">
         <div class="section-head">
-          <p class="eyebrow">25 проверок · две части</p>
+          <p class="eyebrow">29 проверок · две части</p>
           <h2>Общее для репозитория. Конкретное для его стека.</h2>
-          <p>Сначала — одинаковые вопросы и правила независимо от языка. Затем — проверки исходников и устройства проекта. Сейчас самый подробный набор — для C# и .NET.</p>
+          <p>Сначала — одинаковые вопросы и правила независимо от языка. Затем — проверки исходников и устройства проекта. Самый подробный набор — для C# и .NET; Go получает комментарии, повторы, DSM по пакетам и учёт подавлений линтера.</p>
         </div>
         <div class="catalog">
           <div class="catalog-column">
@@ -150,6 +150,11 @@ exit 1</code></pre>
               <summary>Архитектура .NET-приложения <span>Слои и слайсы sliced-dotnet/1 · 8 проверок</span></summary>
               <ul class="check-list" id="architecture-checks" aria-label="Проверка архитектуры"></ul>
               <p><a href="#architecture">Посмотреть раскладку проекта ↓</a></p>
+            </details>
+            <details>
+              <summary>Go <span>Комментарии, повторы, DSM по пакетам, подавления линтера · 4 проверки</span></summary>
+              <p>Единица DSM — пакет: файлы одного пакета видят друг друга без импортов, а циклы импортов запрещает компилятор. <code>go vet</code> и <code>gofmt</code> не дублируются: рамка спрашивает, где они запускаются.</p>
+              <ul class="check-list" id="go-checks" aria-label="Проверки Go"></ul>
             </details>
             <details>
               <summary>YAML, TypeScript и JavaScript <span>Плотность комментариев · 2 проверки</span></summary>

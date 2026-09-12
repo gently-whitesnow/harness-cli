@@ -17,8 +17,10 @@ internal sealed class Language
         "TypeScript",
         [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
 
+    public static readonly Language Go = new("go", "Go", [".go"]);
+
     /// <summary>Every language the harness ships, in the order the frame lists them.</summary>
-    public static readonly IReadOnlyList<Language> All = [CSharp, Yaml, TypeScript];
+    public static readonly IReadOnlyList<Language> All = [CSharp, Yaml, TypeScript, Go];
 
     private Language(string key, string name, IReadOnlyList<string> suffixes)
     {

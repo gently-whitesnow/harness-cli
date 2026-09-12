@@ -32,13 +32,17 @@ internal static class FrameExplanations
         "format",
         "a mechanically enforceable source format",
         ".editorconfig",
-        "The harness neither runs a formatter nor checks that source obeys it; CI owns execution.");
+        "The harness neither runs a formatter nor checks that source obeys it; CI owns execution. For Go the "
+            + "expected answer names the place `gofmt -l` or `gofmt -d` is checked — the verify script or a "
+            + "workflow — because gofmt has no configuration to point at.");
 
     public static string Lint => For(
         "lint",
         "static analysis rules beyond formatting",
         ".globalconfig",
-        "Rules may live in project files or build configuration, so an address is optional.");
+        "Rules may live in project files or build configuration, so an address is optional. For Go the "
+            + "expected answer names the place `go vet ./...` runs — the verify script or a workflow — and, "
+            + "when golangci-lint is used, its tracked configuration.");
 
     public static string Build => For(
         "build",

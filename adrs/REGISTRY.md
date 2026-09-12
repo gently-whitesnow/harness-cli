@@ -1,5 +1,9 @@
 # ADR Registry
 
+- [ADR-0055](0055-go-language-axis.md) — контракт 3.1: ось `go` — `comments.go` без
+  doc-комментариев и директив, `duplication.go` над общим токенизатором, `complexity.go` по
+  пакетам через `go.mod`, `lint-suppressions.go` против голого `//nolint`; `go vet`/`gofmt`
+  через ответы рамки; types-per-file, dependencies, архитектура и editorconfig для Go не делаются.
 - [ADR-0054](0054-explicit-only-frame.md) — контракт 3.0: проверка вне `policy` — вне рамки,
   названная — полная; `init` пишет только обнаруженные оси, `harness.coverage` печатает
   фрагмент для забытой оси, `upgrade` — маршрут от pin.
@@ -98,6 +102,11 @@
 - [ADR-0043](0043-comment-density-across-languages.md) — Плотность комментариев считается
   и для YAML и TypeScript/JavaScript через лексические ридеры за общим портом; свои
   applicability и `settings.comments.<язык>`, дефолт 10/8; контракт 2.7.
+- [ADR-0055](0055-go-language-axis.md) — Ось Go в контракте 3.1: `comments.go` исключает
+  doc-комментарии по позиции вместо отдельного порога, `duplication.go` и `complexity.go` —
+  экземпляры общих семейств (узел DSM — пакет, `main` — composition root, циклов нет по
+  компилятору), `lint-suppressions.go` — аналог `warning-suppressions.dotnet` с лексическим
+  чтением golangci-конфига; `go vet`/`gofmt` — через `answers.lint`/`answers.format`.
 - [ADR-0018](0018-csharp-applicability-and-one-type-per-file.md) — Все C#-проверки имеют
   общий applicability `csharp`; `types-per-file.csharp` блокирует второй верхнеуровневый
   `class` или `record` в одном authored-файле.

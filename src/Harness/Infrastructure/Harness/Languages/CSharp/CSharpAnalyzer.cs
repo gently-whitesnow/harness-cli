@@ -16,7 +16,11 @@ internal sealed class CSharpAnalyzer(CSharpSources sources) : ILanguageAnalyzer
 
     public Language Language => Language.CSharp;
 
+    public string Unit => "file";
+
     public string NothingToAnalyze => ICSharpSources.NothingToAnalyze;
+
+    public IReadOnlyList<string> NamedEvidence => [];
 
     public (SourceGraph? Graph, string? Failure) ReadGraph(IRepository repository)
     {
