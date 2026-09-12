@@ -56,7 +56,7 @@ internal static class CheckRegistry
             new CommentLineCheck(TypeScript),
             new TypesPerFileCheck(CSharp),
             new DependenciesCheck(csharpAnalyzer),
-            new DuplicationCheck(CSharp),
+            new DuplicationCheck(new CSharpNormalizedSources(CSharp)),
 
             new BuildPropertiesCheck(),
             new CentralPackagesCheck(),

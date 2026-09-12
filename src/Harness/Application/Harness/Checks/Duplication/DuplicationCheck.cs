@@ -1,32 +1,52 @@
 using Harness.Config;
-using Harness.Languages;
-using Harness.Languages.CSharp;
+using Harness.Languages.Duplication;
+using Harness.Repository;
 
 namespace Harness.Checks.Duplication;
 
 /// <summary>
-/// Finds C# that repeats across files after normalization, and reports each repetition once
-/// with every place it occurs. The evidence is lexical: it proves that two regions read the
-/// same once names and literals are removed, which is a reason to look and never a proof
-/// that the two behave alike. The initialized required policy enforces the calibrated window;
+/// Finds source that repeats across files after normalization, and reports each repetition
+/// once with every place it occurs. The evidence is lexical: it proves that two regions read
+/// the same once names and literals are removed, which is a reason to look and never a proof
+/// that the two behave alike. The check sees token lines, never syntax: a language is a
+/// reader behind the port. The initialized required policy enforces the calibrated window;
 /// an explicit advisory policy leaves findings visible while a repository pays them down.
 /// </summary>
-internal sealed class DuplicationCheck(ICSharpSources sources)
-    : CSharpSourceCheck(
-        sources,
-        "duplication",
-        "C# cross-file lexical repetition",
-        DuplicationExplanation.Text)
+internal sealed class DuplicationCheck(INormalizedSources sources) : IRepositoryCheck
 {
+    private const string Family = "duplication";
+
     private const int ShownBlocks = 5;
 
     private const int ShownLocations = 4;
 
-    protected override CheckEvaluation Evaluate(CheckContext context, IReadOnlyList<CSharpFile> files)
+    public string Id => sources.Language.Qualify(Family);
+
+    public string Group => Family;
+
+    public string Applicability => sources.Language.Key;
+
+    public IReadOnlyList<EvidenceFile> Evidence => [];
+
+    public string Summary => $"{sources.Language.Name} cross-file lexical repetition";
+
+    public string Explanation => DuplicationExplanation.For(sources.Language);
+
+    public CheckEvaluation Evaluate(CheckContext context)
     {
-        var settings = context.Config?.Settings.DuplicationFor(Language.CSharp) ?? DuplicationSettings.Default;
-        var report = Report(Repetitions(NormalizedFile.From(
-            files.Select(file => file.Source).ToList(), settings)));
+        var (files, failure) = sources.Read(context.Repository);
+        if (failure is not null)
+        {
+            return CheckEvaluation.Incomplete(failure);
+        }
+
+        if (files.Count == 0)
+        {
+            return CheckEvaluation.NotApplicable(sources.NothingToAnalyze);
+        }
+
+        var settings = context.Config?.Settings.DuplicationFor(sources.Language) ?? DuplicationSettings.Default;
+        var report = Report(Repetitions(NormalizedFile.From(files, settings)));
         return CheckEvaluation.From(report.Summary, detailedFindings: report.Detailed);
     }
 
@@ -204,7 +224,7 @@ internal sealed class DuplicationCheck(ICSharpSources sources)
         public int WindowLines { get; }
 
         public static List<NormalizedFile> From(
-            IReadOnlyList<CSharpSource> sources,
+            IReadOnlyList<NormalizedSource> sources,
             DuplicationSettings settings)
         {
             var identifiers = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -212,7 +232,7 @@ internal sealed class DuplicationCheck(ICSharpSources sources)
 
             foreach (var source in sources)
             {
-                var lines = CSharpNormalizer.Read(source);
+                var lines = source.Lines;
                 var ids = new int[lines.Count];
                 for (var line = 0; line < lines.Count; line++)
                 {
