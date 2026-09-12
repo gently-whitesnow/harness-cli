@@ -1,4 +1,4 @@
-namespace Harness.Languages.CSharp;
+namespace Harness.Languages;
 
 internal enum MaskedContent
 {

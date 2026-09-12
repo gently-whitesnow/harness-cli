@@ -12,6 +12,9 @@ internal interface ILanguageAnalyzer
 {
     Language Language { get; }
 
+    /// <summary>The node of the graph in this language, as the report names it: "file" or "package".</summary>
+    string Unit { get; }
+
     /// <summary>Why the repository has nothing for this language to read.</summary>
     string NothingToAnalyze { get; }
 

@@ -1,4 +1,4 @@
-using Harness.Languages.CSharp;
+using Harness.Languages;
 
 namespace Harness.Infrastructure.Languages.CSharp;
 
