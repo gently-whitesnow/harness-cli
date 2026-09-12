@@ -209,7 +209,9 @@ public sealed class GoLanguageTests
         const string config = "linters:\n  disable-all: true\n  disable: [gosec]\nissues:\n  exclude-rules:\n"
             + "    - path: _test\\.go\n      linters:\n        - gosec\n"
             + "    - linters: [errcheck]\n      text: \"Close\"\n"
-            + "    - path: internal/legacy/\n";
+            + "    - path: internal/legacy/\n"
+            + "  exclude-dirs:\n    - internal/generated\n    - .\n"
+            + "  exclude-files:\n    - \".*_mock\\\\.go$\"\n";
         using var repository = Fixtures.Compliant()
             .WriteFile("internal/sample/run.go", "package sample\n\nfunc Run() {}\n")
             .WriteFile(".golangci.yml", config)
@@ -223,6 +225,9 @@ public sealed class GoLanguageTests
         Assert.True(run.OutputContains(".golangci.yml:6: silences gosec for path `_test\\.go` via issues.exclude-rules at one address"), run.Output);
         Assert.True(run.OutputContains("issues.exclude-rules at .golangci.yml:9 excludes errcheck matching text \"Close\" repository-wide, without a path"), run.Output);
         Assert.True(run.OutputContains("issues.exclude-rules at .golangci.yml:11 excludes every linter repository-wide, for path `internal/legacy/`"), run.Output);
+        Assert.True(run.OutputContains(".golangci.yml:13: silences every linter for path `internal/generated` via issues.exclude-dirs at one address"), run.Output);
+        Assert.True(run.OutputContains("issues.exclude-dirs at .golangci.yml:14 excludes every linter repository-wide, for path `.`"), run.Output);
+        Assert.True(run.OutputContains(".golangci.yml:16: silences every linter for path `.*_mock\\.go$` via issues.exclude-files at one address"), run.Output);
     }
 
     [Fact]
@@ -230,7 +235,10 @@ public sealed class GoLanguageTests
     {
         const string config = "version: \"2\"\nlinters:\n  default: none\n  exclusions:\n    rules:\n"
             + "      - path: internal/legacy/\n        linters: [staticcheck]\n"
-            + "      - path: .*\n        text: \"should have comment\"\n";
+            + "      - path: .*\n        text: \"should have comment\"\n"
+            + "    paths:\n      - third_party$\n      - ./\n"
+            + "    paths-except:\n      - internal/core$\n"
+            + "formatters:\n  exclusions:\n    paths:\n      - examples$\n";
         using var repository = Fixtures.Compliant()
             .WriteFile("internal/sample/run.go", "package sample\n\nfunc Run() {}\n")
             .WriteFile(".golangci.yaml", config)
@@ -242,13 +250,18 @@ public sealed class GoLanguageTests
         Assert.True(run.OutputContains("every linter is switched off repository-wide via linters.default: none without linters.enable at .golangci.yaml:3"), run.Output);
         Assert.True(run.OutputContains(".golangci.yaml:6: silences staticcheck for path `internal/legacy/` via linters.exclusions.rules at one address"), run.Output);
         Assert.True(run.OutputContains("linters.exclusions.rules at .golangci.yaml:8 excludes every linter matching text \"should have comment\" repository-wide, for path `.*`"), run.Output);
+        Assert.True(run.OutputContains(".golangci.yaml:11: silences every linter for path `third_party$` via linters.exclusions.paths at one address"), run.Output);
+        Assert.True(run.OutputContains("linters.exclusions.paths at .golangci.yaml:12 excludes every linter repository-wide, for path `./`"), run.Output);
+        Assert.False(run.OutputContains("internal/core$"), run.Output);
+        Assert.False(run.OutputContains("examples$"), run.Output);
     }
 
     [Fact]
     public void Toml_and_json_configurations_are_read_by_tables_and_by_the_bcl()
     {
-        const string toml = "[linters]\ndisable-all = true\nenable = [\"errcheck\"]\n\n[[issues.exclude-rules]]\npath = \"_test\\\\.go\"\nlinters = [\"gosec\"]\n";
-        const string json = """{ "linters": { "disable-all": true }, "issues": { "exclude-rules": [ { "path": ".", "linters": ["errcheck"] } ] } }""";
+        const string toml = "[linters]\ndisable-all = true\nenable = [\"errcheck\"]\n\n[[issues.exclude-rules]]\npath = \"_test\\\\.go\"\nlinters = [\"gosec\"]\n\n"
+            + "[issues]\nexclude-dirs = [\"internal/generated\", \".\"]\nexclude-files = [\n  \".*_mock\\\\.go$\",\n]\n";
+        const string json = """{ "linters": { "disable-all": true, "exclusions": { "paths": ["third_party$", ".*"] } }, "issues": { "exclude-rules": [ { "path": ".", "linters": ["errcheck"] } ] } }""";
         using var withToml = Fixtures.Compliant()
             .WriteFile("internal/sample/run.go", "package sample\n\nfunc Run() {}\n")
             .WriteFile(".golangci.toml", toml)
@@ -264,9 +277,14 @@ public sealed class GoLanguageTests
         Assert.Equal(1, tomlRun.ExitCode);
         Assert.False(tomlRun.OutputContains("disable-all"), tomlRun.Output);
         Assert.True(tomlRun.OutputContains(".golangci.toml:5: silences gosec for path `_test\\.go` via issues.exclude-rules at one address"), tomlRun.Output);
-        Assert.Equal(0, jsonRun.ExitCode);
+        Assert.True(tomlRun.OutputContains(".golangci.toml:10: silences every linter for path `internal/generated` via issues.exclude-dirs at one address"), tomlRun.Output);
+        Assert.True(tomlRun.OutputContains("issues.exclude-dirs at .golangci.toml:10 excludes every linter repository-wide, for path `.`"), tomlRun.Output);
+        Assert.True(tomlRun.OutputContains(".golangci.toml:11: silences every linter for path `.*_mock\\.go$` via issues.exclude-files at one address"), tomlRun.Output);
+        Assert.Equal(1, jsonRun.ExitCode);
         Assert.True(jsonRun.OutputContains("every linter is switched off repository-wide via linters.disable-all: true without linters.enable at .golangci.json"), jsonRun.Output);
         Assert.True(jsonRun.OutputContains("issues.exclude-rules at .golangci.json excludes errcheck repository-wide, for path `.`"), jsonRun.Output);
+        Assert.True(jsonRun.OutputContains(".golangci.json: silences every linter for path `third_party$` via linters.exclusions.paths at one address"), jsonRun.Output);
+        Assert.True(jsonRun.OutputContains("linters.exclusions.paths at .golangci.json excludes every linter repository-wide, for path `.*`"), jsonRun.Output);
     }
 
     [Fact]

@@ -93,7 +93,9 @@ golangci-lint, `go vet` и `gofmt` в CI). После контракта 3.0 ф�
   разными именами пакетов — один узел по первому файлу. `go.work`, `replace` и `require` не
   читаются: резолвится только путь, начинающийся с module path tracked `go.mod`.
 - Лексические ридеры конфига знают формы документации golangci-lint; якоря, merge keys, flow
-  mappings и многодокументный YAML читаются как отсутствие, не как находка. `exclusions.paths`
-  (v2) и `exclude-dirs`/`exclude-files` (v1) пока не читаются.
+  mappings и многодокументный YAML читаются как отсутствие, не как находка. Списки путей
+  `issues.exclude-dirs`/`exclude-files` (v1) и `linters.exclusions.paths` (v2) читаются по
+  тому же правилу, что `path` в exclude-rule: конкретный путь — blocking, маска на весь
+  репозиторий — verbose-деталь; `formatters.exclusions.paths` и `paths-except` (v2) не читаются.
 - Дефолт 8.0 перенесён из sliced-dotnet без калибровки на нескольких Go-репозиториях;
   пересмотр — отдельным ADR по данным пилотов.
