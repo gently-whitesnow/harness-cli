@@ -7,9 +7,11 @@ using Harness.Checks.Dependencies;
 using Harness.Checks.DotNet;
 using Harness.Checks.Duplication;
 using Harness.Checks.Frame;
+using Harness.Checks.LintSuppressions;
 using Harness.Checks.TypesPerFile;
 using Harness.Git;
 using Harness.Infrastructure.Languages.CSharp;
+using Harness.Infrastructure.Languages.Go;
 using Harness.Infrastructure.Languages.TypeScript;
 using Harness.Infrastructure.Languages.Yaml;
 using Harness.Languages;
@@ -30,10 +32,12 @@ internal static class CheckRegistry
 
     private static readonly TypeScriptSources TypeScript = new();
 
+    private static readonly GoSources Go = new();
+
     public static readonly ICommitIntegration CommitIntegration = new CommitHookSetup();
 
     public static readonly IReadOnlyList<ILanguageAnalyzer> LanguageAnalyzers =
-        [new CSharpAnalyzer(CSharp)];
+        [new CSharpAnalyzer(CSharp), new GoAnalyzer(Go)];
 
     public static readonly IReadOnlyList<IRepositoryCheck> All = Shipped();
 
@@ -54,9 +58,12 @@ internal static class CheckRegistry
             new CommentLineCheck(new CSharpCommentedSources(CSharp)),
             new CommentLineCheck(Yaml),
             new CommentLineCheck(TypeScript),
+            new CommentLineCheck(new GoCommentedSources(Go)),
             new TypesPerFileCheck(CSharp),
             new DependenciesCheck(csharpAnalyzer),
             new DuplicationCheck(new CSharpNormalizedSources(CSharp)),
+            new DuplicationCheck(new GoNormalizedSources(Go)),
+            new LintSuppressionsCheck(Go),
 
             new BuildPropertiesCheck(),
             new CentralPackagesCheck(),

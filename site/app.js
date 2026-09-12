@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 3.0.0 · no dependencies. */
+/* Harness CLI landing · contract 3.1.0 · no dependencies. */
 (function () {
   'use strict';
 
@@ -27,9 +27,13 @@
     { id: 'comments.csharp', group: 'csharp', axis: 'csharp', summary: 'Ограничивает плотность комментариев: по умолчанию находка от 10 строк комментариев, если их больше 8% авторских строк.', adr: ['0028-recalibrated-csharp-defaults.md', '0043-comment-density-across-languages.md'] },
     { id: 'comments.yaml', group: 'langs', axis: 'yaml', summary: 'Та же проверка плотности комментариев для YAML: от 10 строк и больше 8%.', adr: ['0043-comment-density-across-languages.md'] },
     { id: 'comments.typescript', group: 'langs', axis: 'typescript', summary: 'Та же проверка для TypeScript и JavaScript: от 10 строк и больше 8%.', adr: ['0043-comment-density-across-languages.md'] },
+    { id: 'comments.go', group: 'go', axis: 'go', summary: 'Плотность комментариев в Go: от 10 строк и больше 8%. Doc-комментарии top-level деклараций и директивы //go: не считаются; generated, vendor и testdata исключены.', adr: ['0055-go-language-axis.md', '0043-comment-density-across-languages.md'] },
     { id: 'types-per-file.csharp', group: 'csharp', axis: 'csharp', summary: 'Не больше одного верхнеуровневого class или record в файле. Имя файла указывает на одно понятие.', adr: ['0018-csharp-applicability-and-one-type-per-file.md'] },
     { id: 'dependencies.csharp', group: 'csharp', axis: 'csharp', summary: 'Находит доказанные циклы между модулями и показывает строки, замыкающие кольцо.', adr: ['0021-coupling-evidence-grades.md', '0029-dependency-counts-removed.md'] },
     { id: 'duplication.csharp', group: 'csharp', axis: 'csharp', summary: 'Находит повторяющиеся блоки в разных файлах, даже с другими именами и литералами. Дефолтное окно — 30 нормализованных строк и минимум 90 токенов.', adr: ['0045-duplication-required-by-default.md', '0007-one-finding-one-report.md'] },
+    { id: 'duplication.go', group: 'go', axis: 'go', summary: 'Повторяющиеся блоки в разных Go-файлах после нормализации: имена → n, литералы → токен, ключевые слова и предопределённые идентификаторы остаются. Окно 30 строк и 90 токенов.', adr: ['0055-go-language-axis.md', '0007-one-finding-one-report.md'] },
+    { id: 'complexity.go', group: 'go', axis: 'go', summary: 'DSM по графу пакетов через tracked go.mod: средняя достижимость пакетов ≤ 8, циклическая группа — 0 (компилятор запрещает циклы). main-пакеты — composition root.', adr: ['0055-go-language-axis.md', '0052-dsm-ceiling-is-a-declared-setting.md'] },
+    { id: 'lint-suppressions.go', group: 'go', axis: 'go', summary: 'Голый //nolint и //nolint:linter без «// причины» блокируются. Repo-wide отключения в .golangci.yml/.toml/.json печатаются в отчёте; сам линтер не запускается.', adr: ['0055-go-language-axis.md', '0044-editorconfig-baseline-and-warning-suppressions.md'] },
     { id: 'build-properties.dotnet', group: 'dotnet', axis: 'dotnet', summary: 'Единые настройки сборки: nullable, анализаторы, warnings как errors и воспроизводимость в Directory.Build.props.', adr: ['0019-dotnet-repository-policy.md'] },
     { id: 'central-packages.dotnet', group: 'dotnet', axis: 'dotnet', summary: 'Версии пакетов в Directory.Packages.props, без локальных переопределений в проектах.', adr: ['0019-dotnet-repository-policy.md'] },
     { id: 'solution-format.dotnet', group: 'dotnet', axis: 'dotnet', summary: 'Формат решения .slnx; каждый SDK-style проект включён в решение.', adr: ['0019-dotnet-repository-policy.md'] },
@@ -52,6 +56,7 @@
     { key: 'dotnet', target: 'dotnet-checks', title: '.NET' },
     { key: 'arch', target: 'architecture-checks', title: 'Архитектура .NET-приложения' },
     { key: 'langs', target: 'language-checks', title: 'YAML, TypeScript и JavaScript' },
+    { key: 'go', target: 'go-checks', title: 'Go' },
   ];
 
   for (const group of GROUPS) {

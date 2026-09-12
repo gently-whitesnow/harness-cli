@@ -77,6 +77,20 @@ internal static class CommentLineExplanation
               and build-output locations. A `#` at the start of a line or after whitespace
               counts; a `#` inside a quoted scalar or a `|`/`>` block scalar is content.
             """
+                : language == Language.Go
+                ? """
+              The check reads Git-tracked `.go` files, test files included, outside generated,
+              vendored and build-output locations, `vendor/` and `testdata/` directories and
+              directories starting with `_` or `.`; a file carrying the canonical
+              `// Code generated ... DO NOT EDIT.` header before its package clause is
+              excluded. A `//` or `/* ... */` comment outside a string, raw string or rune
+              literal counts. A directive — `//go:build`, `//go:embed`, `//go:generate`,
+              `//line`, `//export`, `//extern`, `//nolint`, `//lint:` — is an instruction to
+              a tool and counts as code. The doc comment of a top-level declaration — the
+              comment lines directly above a line starting in column 0 with `func`, `type`,
+              `var`, `const`, `import` or `package` — is the language's own convention for
+              exported identifiers and leaves both counts.
+            """
                 : """
               The check reads Git-tracked `.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs`
               and `.cjs` files outside generated, vendored and build-output locations.
@@ -107,6 +121,16 @@ internal static class CommentLineExplanation
               Block scalar content is recognised by indentation deeper than the line that
               opened it; a plain multi-line scalar that happens to contain ` #` reads as a
               comment, which is also how YAML reads it.
+            """
+                : language == Language.Go
+                ? """
+              Doc comments are told by position, not by the exported name they describe: a
+              comment block directly above any top-level declaration leaves the count, and a
+              comment inside a function body or beside a field counts. So the limit measures
+              prose inside the code, not the documentation the language asks for, and the
+              default 10/8 profile stays; `golint`-style one-line doc stubs are outside it.
+              Build constraints are not evaluated, and a raw string spanning lines carries
+              content on every line, so text inside one never counts.
             """
                 : """
               A regular expression literal is told from division by the token before it, so an

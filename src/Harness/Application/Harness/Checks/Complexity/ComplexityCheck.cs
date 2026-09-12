@@ -11,9 +11,14 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
 {
     private const int NamedHubs = 5;
 
-    public override IReadOnlyList<EvidenceFile> Evidence => DotNetRepository.ProjectFiles;
+    // C# draws the product boundary from project files; Go resolves imports through go.mod.
+    public override IReadOnlyList<EvidenceFile> Evidence =>
+    [
+        .. Analyzer.NamedEvidence.Select(name => new EvidenceFile(name)),
+        .. Analyzer.Language == Language.CSharp ? DotNetRepository.ProjectFiles : Array.Empty<EvidenceFile>(),
+    ];
 
-    public override string Explanation => ComplexityExplanation.Text;
+    public override string Explanation => ComplexityExplanation.For(Analyzer.Language);
 
     public override CheckEvaluation Evaluate(CheckContext context)
     {
@@ -28,27 +33,23 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
             return CheckEvaluation.NotApplicable(Analyzer.NothingToAnalyze);
         }
 
-        var (projects, projectFailure) = DotNetRepository.ReadProjects(context);
-        if (projectFailure is not null)
+        var (scope, scopeFailure) = Scope(context, graph);
+        if (scope is null)
         {
-            return CheckEvaluation.Incomplete(projectFailure);
+            return CheckEvaluation.Incomplete(scopeFailure!);
         }
 
-        var scope = DsmScope.Of(
-            graph,
-            context.Config?.Architecture is { IsApplicable: true },
-            context.Repository.TrackedEntries.Where(entry => !entry.IsSymbolicLink).Select(entry => entry.Path).ToList(),
-            projects.Select(project => (project.Path, DotNetRepository.IsTestProject(project))).ToList());
+        var unit = Analyzer.Unit;
         var metric = RepositoryComplexity.Measure(scope.Graph);
         var limit = context.Config?.Settings.ComplexityFor(Analyzer.Language) ?? ComplexitySettings.Default;
         var details = new List<string>
         {
-            $"limits: average reachable files {Files(limit.AverageReachableFiles)} · largest cyclic group size {limit.LargestCyclicGroupSize} files",
-            $"average reachable files: {Files(metric.AverageReachableFiles)} "
-                + $"({metric.ReachablePairs} reachable file pairs / {metric.AuthoredFiles} files; "
+            $"limits: average reachable {unit}s {Units(limit.AverageReachableFiles, unit)} · largest cyclic group size {limit.LargestCyclicGroupSize} {unit}s",
+            $"average reachable {unit}s: {Units(metric.AverageReachableFiles, unit)} "
+                + $"({metric.ReachablePairs} reachable {unit} pairs / {metric.AuthoredFiles} {unit}s; "
                 + $"propagation cost {Percent(metric.PropagationCostPercentage)})",
-            $"largest cyclic group size: {metric.LargestCyclicGroupSize} files "
-                + $"({Percent(metric.LargestCyclicGroupPercentage)} of {metric.AuthoredFiles} files)",
+            $"largest cyclic group size: {metric.LargestCyclicGroupSize} {unit}s "
+                + $"({Percent(metric.LargestCyclicGroupPercentage)} of {metric.AuthoredFiles} {unit}s)",
             scope.Describe(),
         };
         if (scope.DescribeMarkedGenerated() is { } marked)
@@ -62,9 +63,9 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
             findings.Add(new Finding(
                 FindingSeverity.Blocking,
                 scope.Location,
-                $"average reachable files {Files(metric.AverageReachableFiles)} exceeds the {Files(limit.AverageReachableFiles)} the "
+                $"average reachable {unit}s {Units(metric.AverageReachableFiles, unit)} exceeds the {Units(limit.AverageReachableFiles, unit)} the "
                     + "standard allows; cut edges from the hubs named below or change the tracked policy knowingly."));
-            findings.AddRange(Hubs(scope));
+            findings.AddRange(Hubs(scope, unit));
         }
 
         if (metric.LargestCyclicGroupSize > limit.LargestCyclicGroupSize)
@@ -72,18 +73,39 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
             findings.AddRange(RepositoryComplexity.LargestCyclicGroup(scope.Graph).Select(path => new Finding(
                 FindingSeverity.Blocking,
                 path,
-                $"This file belongs to the largest SCC ({metric.LargestCyclicGroupSize} files); the standard allows "
+                $"This {unit} belongs to the largest SCC ({metric.LargestCyclicGroupSize} {unit}s); the standard allows "
                     + $"{limit.LargestCyclicGroupSize} — break the cycle.")));
         }
 
         return CheckEvaluation.From(findings, details: details);
     }
 
+    private (DsmScope? Scope, string? Failure) Scope(CheckContext context, SourceGraph graph)
+    {
+        if (Analyzer.Language == Language.Go)
+        {
+            return (DsmScope.OfPackages(graph), null);
+        }
+
+        var (projects, projectFailure) = DotNetRepository.ReadProjects(context);
+        if (projectFailure is not null)
+        {
+            return (null, projectFailure);
+        }
+
+        return (DsmScope.Of(
+            graph,
+            context.Config?.Architecture is { IsApplicable: true },
+            context.Repository.TrackedEntries.Where(entry => !entry.IsSymbolicLink).Select(entry => entry.Path).ToList(),
+            projects.Select(project => (project.Path, DotNetRepository.IsTestProject(project))).ToList()), null);
+    }
+
     /// <summary>
-    /// The files whose own reach is largest, outside the composition root: Host is expected to
-    /// see the whole product, so naming it would tell the reader nothing they can act on.
+    /// The nodes whose own reach is largest, outside the composition root: Host, or a Go `main`
+    /// package, is expected to see the whole product, so naming it would tell the reader
+    /// nothing they can act on.
     /// </summary>
-    private static IEnumerable<Finding> Hubs(DsmScope scope)
+    private static IEnumerable<Finding> Hubs(DsmScope scope, string unit)
     {
         var total = scope.Graph.SourcePaths.Count;
         return RepositoryComplexity.FileReaches(scope.Graph)
@@ -92,11 +114,11 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
             .Select(file => new Finding(
                 FindingSeverity.Blocking,
                 file.Path,
-                $"Dependencies from here reach {file.Files} of {total} files."));
+                $"Dependencies from here reach {file.Files} of {total} {unit}s."));
     }
 
-    private static string Files(double value)
-        => value.ToString("F2", CultureInfo.InvariantCulture) + " files";
+    private static string Units(double value, string unit)
+        => value.ToString("F2", CultureInfo.InvariantCulture) + " " + unit + "s";
 
     private static string Percent(double value)
         => value.ToString("F2", CultureInfo.InvariantCulture) + "%";

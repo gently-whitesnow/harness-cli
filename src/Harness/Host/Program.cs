@@ -5,6 +5,7 @@ using Harness.Config;
 using Harness.Engine;
 using Harness.Git;
 using Harness.Host;
+using Harness.Languages;
 using Harness.Report;
 using Harness.Repository;
 using Harness.Versioning;
@@ -99,6 +100,11 @@ switch (invocation.Kind)
             Console.WriteLine(result.EditorConfigPath is not null
                 ? $"Created '{result.EditorConfigPath}' with the shared code-style baseline."
                 : "Kept the existing '.editorconfig'; `harness explain editorconfig.dotnet` prints the baseline it must carry.");
+        }
+        if (axes.Any(axis => axis.Key == Language.Go.Key))
+        {
+            Console.WriteLine("Go: answer `lint` with the place `go vet ./...` runs and `format` with the place "
+                + "`gofmt -l` is checked (the verify script or a workflow); gofmt has no configuration to point at.");
         }
         var commitSettings = new CommitSettings(invocation.CommitLanguage, RequireSetup: true);
         var (setup, setupFailure) = CheckRegistry.CommitIntegration.Install(

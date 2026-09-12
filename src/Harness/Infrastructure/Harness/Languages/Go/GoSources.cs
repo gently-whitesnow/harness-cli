@@ -105,7 +105,7 @@ internal sealed partial class GoSources : IGoSources
                 var body = text[region.Start..region.End];
                 if (body.StartsWith("//", StringComparison.Ordinal))
                 {
-                    comments.Add(new GoComment(first + 1, body[2..].Trim()));
+                    comments.Add(new GoComment(first + 1, body[2..].TrimEnd()));
                 }
 
                 // A directive is an instruction to a tool, not prose about the code.
@@ -220,7 +220,8 @@ internal sealed partial class GoSources : IGoSources
         var strings = regions.Where(region => region.Content == MaskedContent.StringLiteral).ToList();
         foreach (Match clause in ImportClause().Matches(masked))
         {
-            var from = clause.Index + clause.Length;
+            // The literal itself is spaces in the masked text, so the clause ends at the keyword.
+            var from = clause.Index + "import".Length;
             var to = clause.Groups[1].Success ? masked.IndexOf(')', from) : masked.IndexOf('\n', from);
             if (to < 0)
             {

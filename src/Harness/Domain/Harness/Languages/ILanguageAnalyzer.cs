@@ -18,5 +18,8 @@ internal interface ILanguageAnalyzer
     /// <summary>Why the repository has nothing for this language to read.</summary>
     string NothingToAnalyze { get; }
 
+    /// <summary>Tracked files read by name to resolve references (`go.mod`), declared as evidence by the checks.</summary>
+    IReadOnlyList<string> NamedEvidence { get; }
+
     (SourceGraph? Graph, string? Failure) ReadGraph(IRepository repository);
 }

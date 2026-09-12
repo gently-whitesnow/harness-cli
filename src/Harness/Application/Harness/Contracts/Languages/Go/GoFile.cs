@@ -26,9 +26,3 @@ internal sealed record GoFile(
         }
     }
 }
-
-/// <summary>One import path and the line that names it.</summary>
-internal sealed record GoImport(string ImportPath, int Line);
-
-/// <summary>A `//` comment: the text after the slashes, trimmed, and its physical line.</summary>
-internal sealed record GoComment(int Line, string Text);

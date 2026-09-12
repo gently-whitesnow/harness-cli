@@ -324,6 +324,22 @@ internal static class FrameUpgrade
           kept     a complete 2.17 frame is a valid 3.0 frame: nothing has to be removed, and
                    entries for stacks the repository does not have may now be deleted knowingly
         """),
+        (new HarnessVersion(3, 1, 0), """
+        Release 3.1 additions:
+          added    the go axis: comments.go (settings comments.go, 10/8; doc comments of top-level
+                   declarations and tool directives are not prose), duplication.go (settings
+                   duplication.go, 30/90, over the shared tokenizer with Go keywords),
+                   complexity.go (settings complexity.go, the same keys and 8.0 / 0; the node is
+                   the package, resolved through tracked go.mod, main packages are the
+                   composition root) and lint-suppressions.go (a bare //nolint or one without
+                   linters and a reason is blocking; repository-wide switches in a tracked
+                   golangci-lint configuration are printed with --verbose)
+          kept     go vet and gofmt are answered through the frame: answers.lint names where
+                   `go vet ./...` runs, answers.format where `gofmt -l` is checked; there is no
+                   editorconfig.go, types-per-file.go, dependencies.go or Go architecture standard
+          added    a repository with tracked .go sources and no applicability.go entry gets the
+                   harness.coverage fragment; nothing changes for repositories without Go
+        """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)

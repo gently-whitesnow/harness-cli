@@ -25,6 +25,8 @@ internal sealed class GoAnalyzer(IGoSources sources) : ILanguageAnalyzer
 
     public string NothingToAnalyze => IGoSources.NothingToAnalyze;
 
+    public IReadOnlyList<string> NamedEvidence => [ModuleFile];
+
     public (SourceGraph? Graph, string? Failure) ReadGraph(IRepository repository)
     {
         if (!ReferenceEquals(read, repository))

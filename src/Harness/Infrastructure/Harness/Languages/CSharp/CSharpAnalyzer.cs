@@ -20,6 +20,8 @@ internal sealed class CSharpAnalyzer(CSharpSources sources) : ILanguageAnalyzer
 
     public string NothingToAnalyze => ICSharpSources.NothingToAnalyze;
 
+    public IReadOnlyList<string> NamedEvidence => [];
+
     public (SourceGraph? Graph, string? Failure) ReadGraph(IRepository repository)
     {
         // Like CSharpSources, cache one immutable repository snapshot shared by this run.
