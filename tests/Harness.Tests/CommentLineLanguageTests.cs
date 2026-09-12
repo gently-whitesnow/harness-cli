@@ -77,7 +77,7 @@ public sealed class CommentLineLanguageTests
     }
 
     [Fact]
-    public void Init_writes_comments_yaml_as_advisory_only_without_an_application_language()
+    public void Init_writes_comments_yaml_as_required_with_or_without_an_application_language()
     {
         using var configuration = RepositoryFixture.CreateGitRepository().WriteFile("deploy/values.yml", "key: value\n").Commit();
         using var application = RepositoryFixture.CreateGitRepository()
@@ -89,7 +89,7 @@ public sealed class CommentLineLanguageTests
         Assert.Equal(0, HarnessCli.RunWithInput(configuration.Path, string.Empty, "init").ExitCode);
         Assert.Equal(0, HarnessCli.RunWithInput(application.Path, string.Empty, "init").ExitCode);
 
-        Assert.Contains("\"comments.yaml\": \"advisory\"", File.ReadAllText(configuration.Absolute(".harness.json")), StringComparison.Ordinal);
+        Assert.Contains("\"comments.yaml\": \"required\"", File.ReadAllText(configuration.Absolute(".harness.json")), StringComparison.Ordinal);
         Assert.Contains("\"comments.yaml\": \"required\"", File.ReadAllText(application.Absolute(".harness.json")), StringComparison.Ordinal);
     }
 

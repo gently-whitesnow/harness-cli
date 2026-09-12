@@ -113,7 +113,6 @@ internal static class ConfigInitializer
     {
         var version = latest ? "latest" : HarnessVersion.Current.ToString();
         var architecture = AsksArchitecture(axes);
-        var applicationLanguage = FrameSections.HasApplicationLanguage(axes.Select(axis => axis.Key));
         var inFrame = InFrame(checks, axes, architecture);
         var questions = inFrame.Where(check => check.AnswerKey is not null).Select(check => check.AnswerKey!).ToList();
 
@@ -147,7 +146,7 @@ internal static class ConfigInitializer
         text.Append("  \"settings\": {\n");
         text.Append(FrameSections.Indent(string.Join(",\n", sections!), "    "));
         text.Append("\n  },\n  \"policy\": {\n");
-        text.Append(string.Join(",\n", inFrame.Select(check => "    " + FrameSections.PolicyEntry(check, applicationLanguage))));
+        text.Append(string.Join(",\n", inFrame.Select(check => "    " + FrameSections.PolicyEntry(check))));
         text.Append("\n  }\n}\n");
         return text.ToString();
     }

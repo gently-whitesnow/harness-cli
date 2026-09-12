@@ -2,6 +2,8 @@
 
 ## Status
 
+Defaults partially superseded by [ADR-0058](0058-required-initial-frame.md): init uses required.
+
 Accepted. Развивает [ADR-0022](0022-language-axis.md) (ось = экземпляр, ридер, строка в
 реестре) и [ADR-0054](0054-explicit-only-frame.md) (`FrameAxis`, детекция по индексу);
 опирается на [ADR-0056](0056-configuration-repository-frame.md) для `comments.yaml` и

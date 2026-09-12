@@ -139,7 +139,7 @@ public sealed class ExplicitFrameTests
         Assert.True(run.OutputContains("\"yaml\": { \"applicable\": true }"), run.Output);
         Assert.True(run.OutputContains("\"comments.yaml\": {"), run.Output);
         Assert.True(run.OutputContains("\"minimumCommentLines\": 10"), run.Output);
-        Assert.True(run.OutputContains("\"comments.yaml\": \"advisory\""), run.Output);
+        Assert.True(run.OutputContains("\"comments.yaml\": \"required\""), run.Output);
         Assert.False(run.OutputContains("typescript"), run.Output);
     }
 

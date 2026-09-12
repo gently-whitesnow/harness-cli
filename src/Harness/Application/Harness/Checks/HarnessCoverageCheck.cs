@@ -71,8 +71,6 @@ internal sealed class HarnessCoverageCheck(Func<IReadOnlyList<CheckDescriptor>> 
             .Select(axis => (Axis: axis, Sources: axis.Detect(context.Repository, axis.Sources.SelectMany(context.Tracked))))
             .Where(entry => entry.Sources.Count > 0)
             .ToList();
-        var applicationLanguage = FrameSections.HasApplicationLanguage(detected.Select(entry => entry.Axis.Key)
-            .Concat(context.Config.Applicability.Where(entry => entry.Value.IsApplicable).Select(entry => entry.Key)));
         foreach (var (axis, sources) in detected)
         {
             if (context.Config.Applicability.TryGetValue(axis.Key, out var answer))
@@ -91,7 +89,7 @@ internal sealed class HarnessCoverageCheck(Func<IReadOnlyList<CheckDescriptor>> 
                     + $"({shown}{(remaining > 0 ? $" and {remaining} more" : "")}) but no `applicability.{axis.Key}` entry; "
                     + $"add these sections to {HarnessConfig.FileName}, or declare "
                     + $"\"{axis.Key}\": {{ \"applicable\": false, \"reason\": \"...\" }}:\n"
-                    + FrameSections.Indent(FrameSections.AxisFragment(axis, checks, context.Config.Architecture is null, applicationLanguage), "      ")));
+                    + FrameSections.Indent(FrameSections.AxisFragment(axis, checks, context.Config.Architecture is null), "      ")));
         }
 
         if (SourcesOfNoAxis(context) is { } outside)

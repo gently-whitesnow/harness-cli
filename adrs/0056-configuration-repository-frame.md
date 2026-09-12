@@ -2,6 +2,8 @@
 
 ## Status
 
+Defaults partially superseded by [ADR-0058](0058-required-initial-frame.md): init uses required.
+
 Accepted. Развивает [ADR-0043](0043-comment-density-across-languages.md) (плотность
 комментариев в YAML), [ADR-0054](0054-explicit-only-frame.md) (`harness.coverage`, детекция
 осей) и [ADR-0055](0055-go-language-axis.md) (исключение doc-комментариев по позиции,

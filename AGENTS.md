@@ -52,8 +52,8 @@ sliced-dotnet, а без зоны — вне tracked тестовых проек
 `go vet`/`gofmt` — через `answers.lint`/`answers.format`; types-per-file, dependencies, архитектура и editorconfig для Go не делаются. [ADR-0055](adrs/0055-go-language-axis.md)
 
 Ось `ansible` по маркерам: полный digest образов, причины inline `noqa`, циклы ролей; секреты и раскладка ролей
-из `init` — advisory. YAML не считает блоки над ключами любой глубины и trailing-комментарии; без прикладной
-оси `comments.yaml` — advisory. [ADR-0056](adrs/0056-configuration-repository-frame.md), [ADR-0057](adrs/0057-ansible-axis.md)
+из `init` — required, как и комментарии. YAML не считает блоки над ключами любой глубины и trailing-комментарии.
+Смягчение агент обсуждает с владельцем. [ADR-0056](adrs/0056-configuration-repository-frame.md), [ADR-0057](adrs/0057-ansible-axis.md)
 
 .NET-проекты разделяют applicability `dotnet`: общий hardened `Directory.Build.props`,
 central package versions в ближайшем `Directory.Packages.props`, `.slnx` вместо `.sln`,
@@ -85,8 +85,8 @@ Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`
 
 `"latest"` включает rolling-контракт. `harness init` детектирует языки и .NET по git-индексу (`--languages go,yaml`
 заменяет детекцию) и пишет только их секции; при C# спрашивает application или standalone-library (`--kind` без
-stdin) и создаёт `architecture`. `duplication.*` стартует `required` с `30/90`; нерешённые answer-ключи — `{}` и `off`,
-кроме `verify: required`. [ADR-0045](adrs/0045-duplication-required-by-default.md)
+stdin) и создаёт `architecture`. Все записанные проверки — `required`; нерешённые answer-ключи — `{}` и дают
+`Incomplete` до ответа. [ADR-0058](adrs/0058-required-initial-frame.md); `duplication.*` — `30/90`.
 
 `settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness setup` включает шаблон
 и `commit-msg` hook в общем каталоге клона, поэтому одна подготовка покрывает и все его worktree. Hook не хранит

@@ -39,7 +39,7 @@ internal static class SecretsExplanation
           Encrypt the value with `ansible-vault encrypt_string` and paste the `!vault` block, or
           replace the literal with a lookup against the secret store. A test value in
           `defaults/` is vaulted or left empty the same way. `harness init` writes this check as
-          advisory until it has been calibrated on more repositories; make it required knowingly.
+          required. Discuss a policy change to advisory or off with the repository owner.
 
         Applicability
           Disable every Ansible check together only when Ansible does not apply:

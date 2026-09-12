@@ -25,15 +25,15 @@ internal static class RoleShapeExplanation
 
         Limits
           Nested role layouts of a collection (`roles/<group>/<name>/`) read as one role named
-          by the first segment and report its directories as unknown; that false positive is
-          why `harness init` writes this check as advisory. Directory names are compared
+          by the first segment and report its directories as unknown. `harness init` starts this
+          check as required despite this known limitation. Directory names are compared
           exactly. Whether `main.yml` is valid YAML belongs to `ansible-playbook --syntax-check`
           through `answers.build`.
 
         Remediation
           Move a stray file under the directory Ansible reads it from, or out of the role. Add
           `tasks/main.yml` as the entry point of a role that has tasks. A repository with a
-          deliberate non-standard layout sets `policy.role-shape.ansible` to advisory or off.
+          deliberate non-standard layout discusses advisory or off with the repository owner.
 
         Applicability
           Disable every Ansible check together only when Ansible does not apply:

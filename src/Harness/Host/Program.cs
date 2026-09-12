@@ -130,6 +130,7 @@ switch (invocation.Kind)
             : $"Configured the commit template and commit-msg hook, but {setup.Description}.");
         Console.WriteLine(
             "Review every answer; ask the repository owner when intent is unclear rather than guessing.");
+        Console.WriteLine("All initialized checks are required. Discuss each finding with the repository owner before changing policy to advisory or off.");
         Console.WriteLine("Track the file, then run `harness check --verbose`.");
         return ExitCodes.Success;
     }
