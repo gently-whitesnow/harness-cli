@@ -25,7 +25,7 @@ internal static class HarnessSettingsReader
             return (null, "'settings' must be an object");
         }
 
-        var configurable = checks.Where(HarnessSettings.HasSection).ToDictionary(check => check.Id, StringComparer.Ordinal);
+        var configurable = checks.Where(check => HarnessSettings.HasSection(check.Group)).ToDictionary(check => check.Id, StringComparer.Ordinal);
         var expected = configurable.Keys.Where(policyIds.Contains).Append(HarnessSettings.CommitsSection).ToList();
         var retiredFailure = Retired(declared);
         if (retiredFailure is not null)

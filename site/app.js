@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 3.1.0 · no dependencies. */
+/* Harness CLI landing · contract 3.2.0 · no dependencies. */
 (function () {
   'use strict';
 
@@ -12,7 +12,7 @@
 
   const CHECKS = [
     { id: 'harness.config', group: 'common', axis: null, summary: 'Tracked .harness.json: версия, ответы и правила явно заданы для этого репозитория; проверка вне policy — вне рамки.', adr: ['0014-frame-answers-are-self-reported.md', '0016-versioned-frame-and-explicit-initialization.md', '0054-explicit-only-frame.md'] },
-    { id: 'harness.coverage', group: 'common', axis: null, summary: 'Язык или стек с tracked-исходниками должен быть объявлен в applicability или отклонён с причиной; находка печатает готовый фрагмент конфига.', adr: ['0054-explicit-only-frame.md'] },
+    { id: 'harness.coverage', group: 'common', axis: null, summary: 'Язык или стек с tracked-исходниками должен быть объявлен в applicability или отклонён с причиной; находка печатает готовый фрагмент конфига. Суффиксы вне осей видны в verbose details без новой находки.', adr: ['0054-explicit-only-frame.md'] },
     { id: 'architecture.sliced-dotnet.zone-shape', group: 'arch', axis: null, summary: 'Канонические зоны, обязательные слои и расположение исходников.', adr: ['0053-explicit-architecture-checks.md'] },
     { id: 'architecture.sliced-dotnet.slice-shape', group: 'arch', axis: null, summary: 'Структура слайсов и групп, обязательные входные зеркала, отсутствие сирот.', adr: ['0053-explicit-architecture-checks.md'] },
     { id: 'architecture.sliced-dotnet.segment-names', group: 'arch', axis: null, summary: 'Явный словарь запрещённых имён слайсов и непосредственных сегментов.', adr: ['0053-explicit-architecture-checks.md'] },
@@ -25,7 +25,7 @@
     { id: 'docs.policy', group: 'common', axis: null, summary: 'Короткие AGENTS.md и README.md — до 150 строк. CLAUDE.md ссылается на соседний AGENTS.md; решения живут в adrs/, навыки — в SKILL.md. Прочий Markdown запрещён.', adr: ['0010-documentation-policy.md', '0025-nested-agent-documents.md'] },
     { id: 'commits.setup', group: 'common', axis: null, summary: 'Проверяет установку шаблона коммитов и commit-msg hook на весь клон. Подготовка: harness setup.', adr: ['0020-commit-message-contract-and-clone-setup.md', '0052-hook-resolves-the-harness-at-commit-time.md'] },
     { id: 'comments.csharp', group: 'csharp', axis: 'csharp', summary: 'Ограничивает плотность комментариев: по умолчанию находка от 10 строк комментариев, если их больше 8% авторских строк.', adr: ['0028-recalibrated-csharp-defaults.md', '0043-comment-density-across-languages.md'] },
-    { id: 'comments.yaml', group: 'langs', axis: 'yaml', summary: 'Та же проверка плотности комментариев для YAML: от 10 строк и больше 8%.', adr: ['0043-comment-density-across-languages.md'] },
+    { id: 'comments.yaml', group: 'langs', axis: 'yaml', summary: 'Плотность прозы YAML: от 10 строк и больше 8%. Блоки над ключами любой глубины, trailing-комментарии и директивы исключены; init всегда ставит required; смягчение обсуждается с владельцем.', adr: ['0043-comment-density-across-languages.md', '0056-configuration-repository-frame.md'] },
     { id: 'comments.typescript', group: 'langs', axis: 'typescript', summary: 'Та же проверка для TypeScript и JavaScript: от 10 строк и больше 8%.', adr: ['0043-comment-density-across-languages.md'] },
     { id: 'comments.go', group: 'go', axis: 'go', summary: 'Плотность комментариев в Go: от 10 строк и больше 8%. Doc-комментарии top-level деклараций и директивы //go: не считаются; generated, vendor и testdata исключены.', adr: ['0055-go-language-axis.md', '0043-comment-density-across-languages.md'] },
     { id: 'types-per-file.csharp', group: 'csharp', axis: 'csharp', summary: 'Не больше одного верхнеуровневого class или record в файле. Имя файла указывает на одно понятие.', adr: ['0018-csharp-applicability-and-one-type-per-file.md'] },
@@ -34,6 +34,8 @@
     { id: 'duplication.go', group: 'go', axis: 'go', summary: 'Повторяющиеся блоки в разных Go-файлах после нормализации: имена → n, литералы → токен, ключевые слова и предопределённые идентификаторы остаются. Окно 30 строк и 90 токенов.', adr: ['0055-go-language-axis.md', '0007-one-finding-one-report.md'] },
     { id: 'complexity.go', group: 'go', axis: 'go', summary: 'DSM по графу пакетов через tracked go.mod: средняя достижимость пакетов ≤ 8, циклическая группа — 0 (компилятор запрещает циклы). main-пакеты — composition root.', adr: ['0055-go-language-axis.md', '0052-dsm-ceiling-is-a-declared-setting.md'] },
     { id: 'lint-suppressions.go', group: 'go', axis: 'go', summary: 'Голый //nolint и //nolint:linter без «// причины» блокируются. Repo-wide отключения в .golangci.yml/.toml/.json печатаются в отчёте; сам линтер не запускается.', adr: ['0055-go-language-axis.md', '0044-editorconfig-baseline-and-warning-suppressions.md'] },
+    { id: 'lint-suppressions.ansible', group: 'ansible', axis: 'ansible', summary: 'Голый inline # noqa и подавление без причины блокируются; skip_list и warn_list показываются как решения всего репозитория.', adr: ['0057-ansible-axis.md'] },
+    { id: 'dependencies.ansible', group: 'ansible', axis: 'ansible', summary: 'Циклы ролей по meta dependencies, include_role и import_role. Литеральные имена доказаны; Jinja-имена не входят в граф.', adr: ['0057-ansible-axis.md'] },
     { id: 'build-properties.dotnet', group: 'dotnet', axis: 'dotnet', summary: 'Единые настройки сборки: nullable, анализаторы, warnings как errors и воспроизводимость в Directory.Build.props.', adr: ['0019-dotnet-repository-policy.md'] },
     { id: 'central-packages.dotnet', group: 'dotnet', axis: 'dotnet', summary: 'Версии пакетов в Directory.Packages.props, без локальных переопределений в проектах.', adr: ['0019-dotnet-repository-policy.md'] },
     { id: 'solution-format.dotnet', group: 'dotnet', axis: 'dotnet', summary: 'Формат решения .slnx; каждый SDK-style проект включён в решение.', adr: ['0019-dotnet-repository-policy.md'] },
@@ -56,6 +58,7 @@
     { key: 'dotnet', target: 'dotnet-checks', title: '.NET' },
     { key: 'arch', target: 'architecture-checks', title: 'Архитектура .NET-приложения' },
     { key: 'langs', target: 'language-checks', title: 'YAML, TypeScript и JavaScript' },
+    { key: 'ansible', target: 'ansible-checks', title: 'Ansible' },
     { key: 'go', target: 'go-checks', title: 'Go' },
   ];
 

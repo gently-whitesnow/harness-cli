@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 переживает удаление worktree и не зависит от того, какой бинарь выполнял setup. Не найдя ни одного,
 hook отказывает в коммите и печатает оба просмотренных места. User-каталоги и tracked-файлы не меняются.
 
-`HARNESS_VERSION=3.1.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+`HARNESS_VERSION=3.2.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
@@ -48,7 +48,7 @@ harness version                    # релиз бинаря и текущий �
 `init` детектирует языки и .NET по git-индексу и записывает только их applicability, settings
 и policy; для стека, которого в индексе нет, в файле ничего нет. При C# он спрашивает, приложение
 это или standalone-библиотека: для приложения фиксирует `architecture.standard: sliced-dotnet/1`,
-для библиотеки — `architecture.applicable: false`. Неотвеченные frame-вопросы — `off`, кроме обязательного `verify`.
+для библиотеки — `architecture.applicable: false`. Все проверки — `required`; смягчение обсуждается с владельцем.
 По умолчанию фиксируется текущий релиз; `--latest` включает rolling-контракт. Существующие
 файлы команда не перезаписывает и в Git не добавляет. Если в корне нет `.editorconfig`,
 `init` записывает эталонный baseline `editorconfig.dotnet` (только при .NET-проектах в индексе).
@@ -91,7 +91,7 @@ GitLab:
 
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:3.1.0
+  image: ghcr.io/gently-whitesnow/harness:3.2.0
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"
@@ -123,7 +123,6 @@ tracked-исходниками без записи в `applicability` — нах
 ## Собственные проверки
 
 То, что не воспроизводит чужой пайплайн и что в каждом репозитории расходится:
-
 - связанность: граф зависимостей между модулями и типами; доказанный цикл модулей blocking;
 - sliced-dotnet: восемь самостоятельных правил формы зон и слайсов, имён сегментов,
   сборок, направлений Proven-зависимостей, изоляции, публичного API и адресности X;
@@ -132,6 +131,7 @@ tracked-исходниками без записи в `applicability` — нах
 - DSM-сложность: средняя достижимость файлов и размер циклической группы файлового графа продукта, propagation cost как справка;
 - не больше одного верхнеуровневого C# `class` или `record` в authored-файле;
 - нормализованные межфайловые повторы C# и Go;
+- Ansible: причины inline `noqa` и циклы ролей; обе проверки стартуют required;
 - Go: комментарии без doc-блоков и директив, DSM по пакетам через `go.mod`, запрет `//nolint` без линтеров и причины;
 - документационная политика: один корневой навигационный документ и симлинки на него;
 - .NET-рамка: hardened `Directory.Build.props`, central packages, `.slnx`, эталонный

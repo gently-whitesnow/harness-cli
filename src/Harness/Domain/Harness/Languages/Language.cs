@@ -19,8 +19,11 @@ internal sealed class Language
 
     public static readonly Language Go = new("go", "Go", [".go"]);
 
+    /// <summary>An axis over YAML with no suffix of its own: the frame detects it by marker files.</summary>
+    public static readonly Language Ansible = new("ansible", "Ansible", []);
+
     /// <summary>Every language the harness ships, in the order the frame lists them.</summary>
-    public static readonly IReadOnlyList<Language> All = [CSharp, Yaml, TypeScript, Go];
+    public static readonly IReadOnlyList<Language> All = [CSharp, Yaml, TypeScript, Go, Ansible];
 
     private Language(string key, string name, IReadOnlyList<string> suffixes)
     {
@@ -33,7 +36,7 @@ internal sealed class Language
 
     public string Name { get; }
 
-    /// <summary>The file suffixes that make a tracked file a source of this language.</summary>
+    /// <summary>The file suffixes that make a tracked file a source of this language; empty for a marker-detected axis.</summary>
     public IReadOnlyList<string> Suffixes { get; }
 
     public string Qualify(string group) => $"{group}.{Key}";

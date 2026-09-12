@@ -20,7 +20,9 @@ internal static class FrameExplanations
         "tests/Integration",
         "The repository defines the boundary between integration and other test types. The address is the "
             + "test project — its directory or project file — never the test files inside it; a project that "
-            + "mixes integration tests with others is described with `present` and a reason.");
+            + "mixes integration tests with others is described with `present` and a reason. For Ansible the "
+            + "expected answer names the molecule scenarios, or `present: false` with a reason; the harness "
+            + "never runs molecule.");
 
     public static string Architecture => For(
         "tests.architecture",
@@ -42,13 +44,17 @@ internal static class FrameExplanations
         ".globalconfig",
         "Rules may live in project files or build configuration, so an address is optional. For Go the "
             + "expected answer names the place `go vet ./...` runs — the verify script or a workflow — and, "
-            + "when golangci-lint is used, its tracked configuration.");
+            + "when golangci-lint is used, its tracked configuration. For Ansible it names the place "
+            + "`ansible-lint` and `yamllint` run — a Makefile target, the verify script or a workflow — and "
+            + "the tracked `.ansible-lint`; the harness runs neither.");
 
     public static string Build => For(
         "build",
         "the entry point a reader should use to build this repository",
         "Repository.sln",
-        "The harness records the repository's answer and leaves running the build to CI.");
+        "The harness records the repository's answer and leaves running the build to CI. For Ansible the "
+            + "expected answer names the place `ansible-playbook --syntax-check` runs — a Makefile target, the "
+            + "verify script or a workflow.");
 
     public static string Typecheck => For(
         "typecheck",

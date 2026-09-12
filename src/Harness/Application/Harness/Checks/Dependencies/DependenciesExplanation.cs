@@ -1,8 +1,65 @@
+using Harness.Languages;
+
 namespace Harness.Checks.Dependencies;
 
-/// <summary>Long-form content for `harness explain dependencies.csharp`.</summary>
+/// <summary>Long-form content for `harness explain dependencies.csharp` and `dependencies.ansible`.</summary>
 internal static class DependenciesExplanation
 {
+    public static string For(Language language) => language == Language.Ansible ? Ansible : Text;
+
+    private const string Ansible =
+        """
+        Rationale
+          Roles that include each other cannot be applied, moved or reused in one direction:
+          neither is complete without the other, and a change in one reaches both. That is a
+          structural defect the harness can prove from tracked YAML, with the same core that
+          proves module cycles in C#. ansible-playbook-grapher draws this graph; nothing judges it.
+
+        Discovery
+          Every tracked path under `roles/<name>/` names a role — the node. Tracked `.yml` and
+          `.yaml` files outside generated, vendored and build-output locations, directories
+          starting with `.` and `molecule/` are read lexically once the repository carries an
+          Ansible marker. Playbooks compose roles and are not nodes.
+
+        Evidence
+          An edge is Proven when a role names another local role by a literal: an item of
+          `dependencies:` in `meta/main.yml` (`- role: x` or `- x`), or the `name:` under
+          `include_role` / `import_role` in `tasks/**` or `handlers/**`. A `name:` written in
+          Jinja (`{{ role_to_apply }}`) is resolved at run time, graded Inferred, and cannot
+          close a cycle. A role outside `roles/` — a collection or galaxy role — is external
+          and never a node.
+
+        Formula
+          A role dependency cycle is a set of roles that all reach each other through Proven
+          edges. The report names the shortest ring inside the group and the file and line of
+          each edge that closes it; one finding per cycle.
+
+        Why a cycle is blocking
+          Every reported edge is a literal role name at a place Ansible reads it. The cycle
+          has no valid application order, so required policy treats it as a violation.
+
+        Limits
+          The reader is lexical: an anchor, a merge key, `- { role: x }` in flow form and an
+          include reached through `include_tasks` of another file read as absence. `roles:` in
+          a playbook is not an edge, because the playbook is not a node.
+
+        Remediation
+          Read each edge in the reported ring and choose the intended direction. Usually the
+          shared tasks belong in a third role that both may depend on, or one side declares
+          the other in `meta/main.yml` `dependencies:` and drops its include.
+
+        Applicability
+          Disable every Ansible check together only when Ansible does not apply:
+
+          "applicability": {
+            "ansible": { "applicable": false, "reason": "why Ansible checks do not apply" }
+          }
+
+        Decisions
+          adrs/0021-coupling-evidence-grades.md
+          adrs/0057-ansible-axis.md
+        """;
+
     public const string Text =
         """
         Rationale
