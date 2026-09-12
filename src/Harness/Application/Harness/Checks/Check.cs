@@ -1,3 +1,5 @@
+using Harness.Repository;
+
 namespace Harness.Checks;
 
 internal interface IRepositoryCheck

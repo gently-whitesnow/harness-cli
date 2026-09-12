@@ -1,6 +1,7 @@
 using System.Globalization;
 using Harness.Config;
 using Harness.Languages.Comments;
+using Harness.Repository;
 
 namespace Harness.Checks.Comments;
 

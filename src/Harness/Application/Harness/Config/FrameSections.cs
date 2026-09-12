@@ -4,10 +4,9 @@ using System.Text;
 namespace Harness.Config;
 
 /// <summary>
-/// Renders the sections of the frame for a set of checks: the applicability entries, the
-/// settings sections with the contract defaults, and the policy entries `init` chooses. One
-/// renderer serves `init`, `harness.coverage`, `upgrade` and the template, so the fragment a
-/// report prints is exactly what `init` would have written.
+/// Renders the applicability, settings and policy sections of the frame for a set of checks;
+/// one renderer serves `init`, `harness.coverage` and `upgrade`, so a printed fragment is
+/// exactly what `init` would have written.
 /// </summary>
 internal static class FrameSections
 {
@@ -71,10 +70,7 @@ internal static class FrameSections
     public static string PolicyEntry(CheckDescriptor check)
         => $"\"{check.Id}\": \"{DefaultPolicy(check.Id)}\"";
 
-    /// <summary>
-    /// The fragment that adds one axis to a frame: its applicability entry, the settings sections
-    /// of its checks and their policy entries, indented for pasting into the three objects.
-    /// </summary>
+    /// <summary>The fragment that adds one axis to a frame, indented for pasting into the three objects.</summary>
     public static string AxisFragment(FrameAxis axis, IReadOnlyList<CheckDescriptor> checks)
     {
         var members = checks.Where(check => check.Applicability == axis.Key).ToList();

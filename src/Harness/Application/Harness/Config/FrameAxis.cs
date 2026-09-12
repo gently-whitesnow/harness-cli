@@ -1,4 +1,3 @@
-using Harness.Checks;
 using Harness.Languages;
 using Harness.Repository;
 
@@ -12,7 +11,7 @@ namespace Harness.Config;
 /// </summary>
 internal sealed record FrameAxis(string Key, string Name, IReadOnlyList<EvidenceFile> Sources)
 {
-    public static readonly FrameAxis DotNet = new("dotnet", ".NET", DotNetRepository.ProjectFiles);
+    public static readonly FrameAxis DotNet = new("dotnet", ".NET", [new("*.csproj"), new("*.fsproj"), new("*.vbproj")]);
 
     /// <summary>Every axis the harness ships, in the order the frame lists them.</summary>
     public static readonly IReadOnlyList<FrameAxis> All =

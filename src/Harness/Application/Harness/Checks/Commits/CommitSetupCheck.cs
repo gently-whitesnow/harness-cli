@@ -1,4 +1,5 @@
 using Harness.Commits;
+using Harness.Repository;
 
 namespace Harness.Checks.Commits;
 

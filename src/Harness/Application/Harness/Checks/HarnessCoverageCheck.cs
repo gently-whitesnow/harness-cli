@@ -1,4 +1,5 @@
 using Harness.Config;
+using Harness.Repository;
 
 namespace Harness.Checks;
 
