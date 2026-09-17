@@ -23,7 +23,17 @@ internal static class DocumentationPolicyExplanation
           README.md    optional overview at any depth, at most {LineLimit} physical lines.
           SKILL.md     allowed at any depth and not measured: an agent skill is a payload
                        loaded on demand for one task, not navigation carried in every context.
+          DESIGN.md    allowed at any depth and not measured: a design document is opened
+                       for a UI task, and its size is set by the design system it records.
           adrs/**.md   allowed as durable architectural decisions.
+          forge files  allowed and not measured, only where a forge reads them by itself:
+                       {string.Join(", ", ForgeDocuments.CommunityNames.Take(3))},
+                       {string.Join(", ", ForgeDocuments.CommunityNames.Skip(3))},
+                       pull_request_template.md and issue_template.md in the root, .github/
+                       or docs/; *.md in .github/ISSUE_TEMPLATE/, in PULL_REQUEST_TEMPLATE/
+                       under those three locations, and in .gitlab/issue_templates/ or
+                       .gitlab/merge_request_templates/. Names match without regard to case;
+                       the same name anywhere else is ordinary Markdown.
           other *.md   blocking violation by default.
 
         Evidence

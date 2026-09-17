@@ -11,6 +11,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
     private const string ReadmeDocument = "README.md";
     private const string AgentEntryPoint = "CLAUDE.md";
     private const string SkillDocument = "SKILL.md";
+    private const string DesignDocument = "DESIGN.md";
     private const string AdrDirectory = "adrs/";
 
     public string Id => "docs.policy";
@@ -130,11 +131,20 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
                 case SkillDocument:
                     return;
 
+                // A design document is the same kind of payload: token tables and component
+                // rules opened for a UI task, whose size the design system decides.
+                case DesignDocument:
+                    return;
+
+                // A forge dictates the name, place and shape of what it renders by itself.
+                case var _ when ForgeDocuments.Recognizes(entry.Path):
+                    return;
+
                 default:
                     Violation(
                         entry.Path,
                         "unexpected tracked Markdown; remove it, fold navigation into AGENTS.md, "
-                            + "or move durable rationale to adrs/");
+                            + "or move durable rationale to adrs/ (`harness explain docs.policy` lists the allowed pool)");
                     return;
             }
         }

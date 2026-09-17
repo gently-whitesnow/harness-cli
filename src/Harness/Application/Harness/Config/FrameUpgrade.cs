@@ -434,6 +434,17 @@ internal static class FrameUpgrade
           changed  a property repeated at any depth of a frame is refused as ambiguous; the
                    last value used to win silently, and upgrade now names the duplicate first
         """),
+        (new HarnessVersion(3, 4, 0), """
+        Release 3.4 additions:
+          relaxed  docs.policy allows DESIGN.md at any depth and the files a forge reads by
+                   itself: CHANGELOG, CODE_OF_CONDUCT, CONTRIBUTING, GOVERNANCE, SECURITY and
+                   SUPPORT .md plus issue and pull-request templates, only in the root, .github/
+                   or docs/ (and .gitlab/ template directories); none of them is measured
+          kept     every other tracked Markdown is still a finding; no frame edit is needed,
+                   and a policy softened only for these names can return to required
+          added    harness guide prints the agent working loop; a consumer AGENTS.md can point
+                   to it in one line instead of restating the harness
+        """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)

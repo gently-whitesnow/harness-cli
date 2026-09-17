@@ -64,7 +64,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
 блокируются; выключение правила для всего репозитория печатается в verbose details. Читается tracked XML и текст без MSBuild evaluation. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"3.3.0"`). Бинарь исполняет только его; другой pin даёт
+`version` — строка текущего контракта (`"3.4.0"`). Бинарь исполняет только его; другой pin даёт
 `Incomplete`, а меняет pin только `harness upgrade`, печатающий маршрут от pin и фрагменты для
 обнаруженных осей. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -145,6 +145,6 @@ dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
 строк. `CLAUDE.md` — прямой относительный симлинк на соседний `AGENTS.md`. `README.md` —
 краткий обзор. Документ судится по имени, а не по каталогу: эти три имени действуют на любой
 глубине по тем же правилам, что в корне, где `AGENTS.md` и `CLAUDE.md` обязательны.
-`SKILL.md` разрешён везде и не измеряется. Долговременные решения живут в корневом `adrs/`.
-Прочий tracked Markdown — нарушение; проверку можно смягчить через `policy`.
-[ADR-0010](adrs/0010-documentation-policy.md), [ADR-0025](adrs/0025-nested-agent-documents.md)
+`SKILL.md` и `DESIGN.md` разрешены везде и не измеряются, как и файлы форджа (community health, шаблоны issue/PR) в корне, `.github/`, `docs/`. Решения — в корневом `adrs/`.
+Прочий tracked Markdown — нарушение; смягчение — через `policy`. `harness guide` печатает агенту потребителя цикл работы.
+[ADR-0010](adrs/0010-documentation-policy.md), [ADR-0025](adrs/0025-nested-agent-documents.md), [ADR-0061](adrs/0061-forge-and-design-documents.md), [ADR-0062](adrs/0062-agent-guide-command.md)
