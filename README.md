@@ -30,7 +30,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 переживает удаление worktree и не зависит от того, какой бинарь выполнял setup. Не найдя ни одного,
 hook отказывает в коммите и печатает оба просмотренных места. User-каталоги и tracked-файлы не меняются.
 
-`HARNESS_VERSION=3.3.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
+`HARNESS_VERSION=3.4.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
 обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
 
 ## Запуск
@@ -107,7 +107,7 @@ rolling-контракт. Существующие файлы не переза�
 GitLab:
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:3.3.0
+  image: ghcr.io/gently-whitesnow/harness:3.4.0
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"
@@ -141,7 +141,7 @@ tracked-исходниками без записи в `applicability` — нах
 Общий стандарт включает графы зависимостей, восемь правил sliced-dotnet, DSM-сложность,
 дублирование C# и Go, комментарии, документационную политику и .NET baseline;
 Ansible — причины inline `noqa` и циклы ролей (обе проверки стартуют `required`).
-Каждая проверка объясняет формулу, ограничения и исправление через `harness explain`.
+Каждая проверка объясняет себя через `harness explain`; `harness guide` печатает агенту цикл работы — в `AGENTS.md` потребителя хватит одной строки.
 DSM сравнивает среднюю достижимость и размер циклической группы с явными потолками
 `settings."complexity.csharp"` / `settings."complexity.go"` (стартовые значения 8.0 / 0).
 

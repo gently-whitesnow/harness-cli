@@ -13,6 +13,7 @@ internal enum CommandKind
     CommitTemplate,
     CommitsCheck,
     Explain,
+    Guide,
     Version,
     Help,
     Usage,
@@ -72,6 +73,9 @@ internal sealed record Invocation(CommandKind Kind, string RepositoryPath)
             "commit-message" => ParseCommitMessage(rest, currentDirectory),
             "commits" => ParseCommits(rest, currentDirectory),
             "explain" => ParseExplain(rest, currentDirectory),
+            "guide" => rest.Count == 0
+                ? new Invocation(CommandKind.Guide, currentDirectory)
+                : Usage(currentDirectory, "guide accepts no arguments."),
             "version" or "--version" or "-v" => new Invocation(CommandKind.Version, currentDirectory),
             "help" or "--help" or "-h" => new Invocation(CommandKind.Help, currentDirectory),
             _ => Usage(currentDirectory, $"Unknown command '{command}'."),

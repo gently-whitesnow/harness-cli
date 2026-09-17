@@ -17,6 +17,7 @@ internal static class UsageText
           harness commit-message template
           harness commits check <base>..<head>
           harness explain <check-id>
+          harness guide                  how an agent works with the harness in a repository
           harness version
           harness help
 

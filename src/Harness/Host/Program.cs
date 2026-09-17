@@ -302,6 +302,10 @@ switch (invocation.Kind)
         return ExitCodes.Success;
     }
 
+    case CommandKind.Guide:
+        Console.Write(GuideText.For(HarnessVersion.Current.ToString()));
+        return ExitCodes.Success;
+
     case CommandKind.Version:
         Console.WriteLine($"harness {HarnessVersion.Current}");
         Console.WriteLine(

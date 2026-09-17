@@ -33,7 +33,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5V7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17M17 21h2.5a1.5 1.5 0 0 0 1.5-1.5V17M8 12.5l2.5 2.5L16 9.5" />
         </svg>
-        harness <span class="version">3.3.0</span>
+        harness <span class="version">3.4.0</span>
       </a>
       <nav aria-label="Основная навигация">
         <a href="#checks">Проверки</a>
@@ -61,7 +61,7 @@
             <div class="terminal">
 <pre><code>$ harness check
 
-<strong>FAIL</strong> · harness 3.3.0
+<strong>FAIL</strong> · harness 3.4.0
 
 <strong>×</strong> dependencies.csharp
   Orders → Billing → Orders
@@ -344,7 +344,7 @@ harness check</code></pre>
               <p>Включите <code>harness check</code> в свой <code>verify</code>-скрипт вместе с тестами, сборкой и линтерами. Запускайте этот скрипт в CI и возвращайте отчёт агенту для исправления.</p>
               <p>Harness видит только файлы в индексе Git. Сам тесты и сборку не запускает.</p>
               <p><code>0</code> — блокирующие проверки прошли; замечания и пробелы в готовности ещё возможны.<br /><code>1</code> — доказано нарушение.<br /><code>2</code> — проверка не завершилась достоверно.</p>
-              <p class="note">Объяснение правила: <code>harness explain &lt;check-id&gt;</code>.<br />Обновление контракта репозитория: <code>harness upgrade</code>.</p>
+              <p class="note">Объяснение правила: <code>harness explain &lt;check-id&gt;</code>.<br />Обновление контракта репозитория: <code>harness upgrade</code>.<br />Руководство для агента одной командой: <code>harness guide</code>.</p>
             </div>
           </div>
         </details>
