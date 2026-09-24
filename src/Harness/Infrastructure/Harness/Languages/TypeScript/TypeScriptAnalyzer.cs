@@ -153,7 +153,7 @@ internal sealed class TypeScriptAnalyzer(TypeScriptSources sources) : ILanguageA
 
         var (masked, _) = TypeScriptMask.Apply(file.Text);
         var skeleton = Regex.Replace(masked,
-            @"(?m)^\s*(?:import\b(?:\{[^}]*\}|[^;\n])*|export\s+(?:\*|\{[^}]*\})\s+from\b[^;\n]*)(?:;|$)",
+            @"(?m)^\s*(?:import\b(?:\{[^}]*\}|[^;\n])*|export\s+(?:type\s+)?(?:\*|\{[^}]*\})\s+from\b[^;\n]*)(?:;|$)",
             "", RegexOptions.CultureInvariant);
         foreach (Match export in LocalReexport.Matches(masked))
         {
@@ -171,7 +171,7 @@ internal sealed class TypeScriptAnalyzer(TypeScriptSources sources) : ILanguageA
         return string.IsNullOrWhiteSpace(skeleton);
     }
 
-    private static readonly Regex LocalReexport = new(@"(?m)^\s*export\s*\{\s*(?<local>[$\w]+)(?:\s+as\s+(?<alias>[$\w]+))?\s*\}\s*;?", RegexOptions.CultureInvariant);
+    private static readonly Regex LocalReexport = new(@"(?m)^\s*export(?:\s+type)?\s*\{\s*(?:type\s+)?(?<local>[$\w]+)(?:\s+as\s+(?<alias>[$\w]+))?\s*\}\s*;?", RegexOptions.CultureInvariant);
 
     private static string Module(string path)
     {
