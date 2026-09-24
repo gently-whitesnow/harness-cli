@@ -286,6 +286,21 @@ public sealed class TypeScriptLanguageTests
     }
 
     [Fact]
+    public void Upgrade_from_380_names_the_type_only_barrel_fix()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("3.8.0"))
+            .WriteFile("src/app.ts", "export const app = 1;\n")
+            .Commit();
+
+        var run = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("Release 3.8.1 fixes"), run.Output);
+        Assert.True(run.OutputContains("export type * from"), run.Output);
+        Assert.False(run.OutputContains("Release 3.8 additions"), run.Output);
+    }
+
+    [Fact]
     public void Workspace_package_exports_and_conditional_imports_resolve()
     {
         using var repository = Fixtures.Compliant()

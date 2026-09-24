@@ -63,7 +63,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
 блокируются; выключение правила для всего репозитория печатается в verbose details. Читается tracked XML и текст без MSBuild evaluation. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"3.8.0"`). Бинарь исполняет только его; другой pin даёт
+`version` — строка текущего контракта (`"3.8.1"`). Бинарь исполняет только его; другой pin даёт
 `Incomplete`, а меняет pin только `harness upgrade`, печатающий маршрут от pin и фрагменты для
 обнаруженных осей. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 

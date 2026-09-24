@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 3.8.0 · no dependencies. */
+/* Harness CLI landing · contract 3.8.1 · no dependencies. */
 (function () {
   'use strict';
 

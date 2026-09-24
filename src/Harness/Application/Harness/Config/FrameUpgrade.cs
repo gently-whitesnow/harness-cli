@@ -606,6 +606,12 @@ internal static class FrameUpgrade
           changed  inline nolint/noqa always blocks, including directives with a reason
           review   the generated and repositoryWide fragments printed below, then run check
         """),
+        (new HarnessVersion(3, 8, 1), """
+        Release 3.8.1 fixes:
+          changed  complexity.typescript and dependencies.typescript treat an index made only
+                   of `export type { ... } from`, `export type * from` or local `export type`
+                   reexports as a transparent barrel; average reachable files can drop
+        """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)
