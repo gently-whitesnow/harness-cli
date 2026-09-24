@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 3.6.0 · no dependencies. */
+/* Harness CLI landing · contract 3.7.0 · no dependencies. */
 (function () {
   'use strict';
 
@@ -22,8 +22,9 @@
     { id: 'architecture.sliced-dotnet.public-api', group: 'arch', axis: null, summary: 'Вход в Application-слайс через Contracts; у слоя общего API нет.', adr: ['0053-explicit-architecture-checks.md'] },
     { id: 'architecture.sliced-dotnet.cross-api', group: 'arch', axis: null, summary: 'X-контракт импортирует только адресованный потребитель или Host.', adr: ['0053-explicit-architecture-checks.md'] },
     { id: 'complexity.csharp', group: 'csharp', axis: 'csharp', summary: 'Ограничивает связанность файлов: средняя достижимость файлов ≤ 8, размер циклической группы — 0 по умолчанию.', adr: ['0032-topology-over-thresholds.md', '0042-dsm-over-the-product-in-files.md', '0048-dsm-product-boundary-without-a-zone.md', '0052-dsm-ceiling-is-a-declared-setting.md'] },
+    { id: 'adrs.shape', group: 'common', axis: null, summary: 'ADR как запись решения: четыре цифры и непрерывные уникальные номера, статус, дата и разделы; пределы 1000 слов, 10 строк кода и 12 строк таблицы задаёт settings.adrs.shape.', adr: ['0066-adr-shape-as-decision-record.md'] },
     { id: 'docs.policy', group: 'common', axis: null, summary: 'Короткие AGENTS.md и README.md — до 150 строк. CLAUDE.md ссылается на соседний AGENTS.md; решения живут в adrs/, навыки — в SKILL.md. DESIGN.md и файлы форджа (community health, шаблоны issue/PR в корне, .github/, docs/) разрешены без лимита. Прочий Markdown запрещён.', adr: ['0010-documentation-policy.md', '0025-nested-agent-documents.md', '0061-forge-and-design-documents.md'] },
-    { id: 'commits.setup', group: 'common', axis: null, summary: 'Проверяет установку шаблона коммитов и commit-msg hook на весь клон. Подготовка: harness setup.', adr: ['0020-commit-message-contract-and-clone-setup.md', '0052-hook-resolves-the-harness-at-commit-time.md'] },
+    { id: 'commits.setup', group: 'common', axis: null, summary: 'Проверяет установку шаблона коммитов и commit-msg hook на весь клон. Подготовка: harness setup.', adr: ['0020-commit-message-contract-and-clone-setup.md', '0065-hook-resolves-the-harness-at-commit-time.md'] },
     { id: 'comments.csharp', group: 'csharp', axis: 'csharp', summary: 'Ограничивает плотность комментариев: по умолчанию находка от 10 строк комментариев, если их больше 8% авторских строк.', adr: ['0028-recalibrated-csharp-defaults.md', '0043-comment-density-across-languages.md'] },
     { id: 'comments.yaml', group: 'langs', axis: 'yaml', summary: 'Плотность прозы YAML: от 10 строк и больше 8%. Блоки над ключами любой глубины, trailing-комментарии и директивы исключены; init всегда ставит required; смягчение обсуждается с владельцем.', adr: ['0043-comment-density-across-languages.md', '0056-configuration-repository-frame.md'] },
     { id: 'comments.typescript', group: 'langs', axis: 'typescript', summary: 'Та же проверка для TypeScript и JavaScript: от 10 строк и больше 8%.', adr: ['0043-comment-density-across-languages.md'] },

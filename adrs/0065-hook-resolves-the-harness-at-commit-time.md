@@ -1,7 +1,8 @@
-# ADR-0052: Hook разрешает бинарь в момент коммита
+# ADR-0065: Hook разрешает бинарь в момент коммита
 
 ## Status
 
+Date: 2026-09-05
 Accepted. Уточняет [ADR-0020](0020-commit-message-contract-and-clone-setup.md): контракт
 сообщений и роль `setup` не меняются, меняется содержимое managed hook и то, что доказывает
 `commits.setup`.

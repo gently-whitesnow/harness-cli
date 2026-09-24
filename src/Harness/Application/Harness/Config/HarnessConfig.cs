@@ -78,6 +78,11 @@ internal sealed record HarnessConfig
               "dotnet": { "applicable": true }
             },
             "settings": {
+              "adrs.shape": {
+                "wordLimit": 1000,
+                "fencedLineLimit": 10,
+                "tableRowLimit": 12
+              },
               "comments.csharp": {
                 "minimumCommentLines": 10,
                 "percentageLimit": 8
@@ -108,6 +113,7 @@ internal sealed record HarnessConfig
               "architecture.sliced-dotnet.cross-api": "required",
               "complexity.csharp": "required",
               "docs.policy": "required",
+              "adrs.shape": "required",
               "commits.setup": "required",
               "comments.csharp": "required",
               "types-per-file.csharp": "required",
@@ -146,10 +152,17 @@ internal sealed record HarnessConfig
               "verify": { "present": false, "reason": "verified by the root verify script" }
             },
             "applicability": {},
-            "settings": {},
+            "settings": {
+              "adrs.shape": {
+                "wordLimit": 1000,
+                "fencedLineLimit": 10,
+                "tableRowLimit": 12
+              }
+            },
             "policy": {
               "harness.coverage": "required",
               "docs.policy": "required",
+              "adrs.shape": "required",
               "frame.verify": "required"
             }
           }

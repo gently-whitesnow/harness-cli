@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-16
 Superseded by [ADR-0028](0028-recalibrated-csharp-defaults.md).
 
 ## Context

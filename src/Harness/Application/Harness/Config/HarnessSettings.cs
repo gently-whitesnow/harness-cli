@@ -11,6 +11,7 @@ internal sealed record HarnessSettings(
     IReadOnlyDictionary<string, DuplicationSettings> Duplication,
     IReadOnlyDictionary<string, ComplexitySettings> Complexity,
     IReadOnlyDictionary<string, FunctionSettings> Functions,
+    AdrShapeSettings? AdrShape,
     CommitSettings Commits)
 {
     public const string CommentsGroup = "comments";
@@ -19,12 +20,13 @@ internal sealed record HarnessSettings(
 
     public const string ComplexityGroup = "complexity";
     public const string FunctionsGroup = "functions";
+    public const string AdrShapeGroup = "adrs";
 
     public const string CommitsSection = "commits";
 
     /// <summary>The families whose checks read a settings section named by their check id.</summary>
     public static readonly IReadOnlyList<string> ConfigurableGroups =
-        [CommentsGroup, DuplicationGroup, ComplexityGroup, FunctionsGroup];
+        [CommentsGroup, DuplicationGroup, ComplexityGroup, FunctionsGroup, AdrShapeGroup];
 
     public static bool HasSection(string group)
         => ConfigurableGroups.Contains(group, StringComparer.Ordinal);

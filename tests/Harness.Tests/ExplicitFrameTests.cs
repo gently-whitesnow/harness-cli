@@ -31,7 +31,7 @@ public sealed class ExplicitFrameTests
         Assert.False(run.OutputContains("comments.csharp"), run.Output);
         Assert.False(run.OutputContains("frame.verify"), run.Output);
         Assert.True(run.OutputContains("outside the frame"), run.Output);
-        Assert.True(verbose.OutputContains("outside the frame  41 checks not named in policy: harness.coverage"), verbose.Output);
+        Assert.True(verbose.OutputContains("outside the frame  42 checks not named in policy: harness.coverage"), verbose.Output);
     }
 
     [Fact]
@@ -277,9 +277,9 @@ public sealed class ExplicitFrameTests
         var root = document.RootElement;
         Assert.False(root.TryGetProperty("architecture", out _));
         Assert.Equal(["yaml"], root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
-        Assert.Equal(["comments.yaml", "commits"], root.GetProperty("settings").EnumerateObject().Select(section => section.Name));
+        Assert.Equal(["adrs.shape", "comments.yaml", "commits"], root.GetProperty("settings").EnumerateObject().Select(section => section.Name));
         Assert.Equal(
-            ["harness.config", "harness.coverage", "docs.policy", "commits.setup", "comments.yaml"],
+            ["harness.config", "harness.coverage", "docs.policy", "adrs.shape", "commits.setup", "comments.yaml"],
             root.GetProperty("policy").EnumerateObject().Select(entry => entry.Name).Where(id => !id.StartsWith("frame.", StringComparison.Ordinal)));
 
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");

@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-26
 Accepted. Рекомендации про `suppress` superseded by
 [ADR-0032](0032-topology-over-thresholds.md); там же удалено воспроизведение legacy counts.
 Развивает

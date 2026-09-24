@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-31
 Accepted. Ужесточает инварианты `sliced-dotnet/1` из
 [ADR-0033](0033-canonical-standard-over-declarations.md). Слой `Shared` в таблице рёбер
 убран [ADR-0050](0050-domain-is-the-bottom-layer.md).

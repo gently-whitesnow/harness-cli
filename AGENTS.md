@@ -64,7 +64,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
 блокируются; выключение правила для всего репозитория печатается в verbose details. Читается tracked XML и текст без MSBuild evaluation. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"3.6.0"`). Бинарь исполняет только его; другой pin даёт
+`version` — строка текущего контракта (`"3.7.0"`). Бинарь исполняет только его; другой pin даёт
 `Incomplete`, а меняет pin только `harness upgrade`, печатающий маршрут от pin и фрагменты для
 обнаруженных осей. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -95,7 +95,7 @@ stdin) и создаёт `architecture`. Все записанные прове�
 путь бинаря: он разрешает харнес в момент коммита — clone-local `<git-common-dir>/harness/bin/harness`, затем
 `harness` в `PATH` — и fail-closed отказывает, не найдя ни одного; `commits.setup` называет мёртвый путь, чужой
 файл, просмотренные места и релиз, отличный от pin. Для CI передавай явный диапазон в `harness commits check
-<base>..<head>`: hook допускает временный autosquash, публикуемый диапазон — нет. [ADR-0020](adrs/0020-commit-message-contract-and-clone-setup.md), [ADR-0052](adrs/0052-hook-resolves-the-harness-at-commit-time.md)
+<base>..<head>`: hook допускает временный autosquash, публикуемый диапазон — нет. [ADR-0020](adrs/0020-commit-message-contract-and-clone-setup.md), [ADR-0065](adrs/0065-hook-resolves-the-harness-at-commit-time.md)
 
 Доказательство — только tracked-файл: созданный, но не добавленный в индекс файл харнес не видит, и
 вердикт от этого не меняется. Проверка обязана назвать в `Evidence` файлы, которые читает по имени, и
@@ -145,6 +145,6 @@ dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
 строк. `CLAUDE.md` — прямой относительный симлинк на соседний `AGENTS.md`. `README.md` —
 краткий обзор. Документ судится по имени, а не по каталогу: эти три имени действуют на любой
 глубине по тем же правилам, что в корне, где `AGENTS.md` и `CLAUDE.md` обязательны.
-`SKILL.md` и `DESIGN.md` разрешены везде и не измеряются, как и файлы форджа (community health, шаблоны issue/PR) в корне, `.github/`, `docs/`. Решения — в корневом `adrs/`.
+`SKILL.md` и `DESIGN.md` разрешены везде и не измеряются, как и файлы форджа (community health, шаблоны issue/PR) в корне, `.github/`, `docs/`. Решения — в корневом `adrs/`; `adrs.shape` требует номер без дыр, дату, статус, разделы и лимиты 1000 слов / 10 строк кода / 12 строк таблицы.
 Прочий tracked Markdown — нарушение; смягчение — через `policy`. `harness guide` печатает агенту потребителя цикл работы.
-[ADR-0010](adrs/0010-documentation-policy.md), [ADR-0025](adrs/0025-nested-agent-documents.md), [ADR-0061](adrs/0061-forge-and-design-documents.md), [ADR-0062](adrs/0062-agent-guide-command.md)
+[ADR-0010](adrs/0010-documentation-policy.md), [ADR-0025](adrs/0025-nested-agent-documents.md), [ADR-0061](adrs/0061-forge-and-design-documents.md), [ADR-0062](adrs/0062-agent-guide-command.md), [ADR-0066](adrs/0066-adr-shape-as-decision-record.md)

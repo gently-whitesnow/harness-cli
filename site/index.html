@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Harness CLI — harness начинается с репозитория</title>
-  <meta name="description" content="Агенту предстоит ещё тысяча итераций. Репозиторий должен оставаться понятным. Мой опыт в 38 проверках: общие правила, проверки языков, Go, Ansible и строгие границы .NET-приложения." />
+  <meta name="description" content="Агенту предстоит ещё тысяча итераций. Репозиторий должен оставаться понятным. Мой опыт в 39 проверках: общие правила, проверки языков, Go, Ansible и строгие границы .NET-приложения." />
   <link rel="canonical" href="https://harness.whitesnow.tech/" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <meta property="og:type" content="website" />
@@ -33,7 +33,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5V7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17M17 21h2.5a1.5 1.5 0 0 0 1.5-1.5V17M8 12.5l2.5 2.5L16 9.5" />
         </svg>
-        harness <span class="version">3.6.0</span>
+        harness <span class="version">3.7.0</span>
       </a>
       <nav aria-label="Основная навигация">
         <a href="#checks">Проверки</a>
@@ -61,7 +61,7 @@
             <div class="terminal">
 <pre><code>$ harness check
 
-<strong>FAIL</strong> · harness 3.6.0
+<strong>FAIL</strong> · harness 3.7.0
 
 <strong>×</strong> dependencies.csharp
   Orders → Billing → Orders
@@ -99,6 +99,7 @@ exit 1</code></pre>
             <li>не названа в <code>policy</code> — вне рамки: не запускается, в отчёте одна строка <code>outside the frame</code></li>
           </ul>
           <p class="note">Любую проверку можно смягчить или отключить. Спрятать отдельную находку исключением для файла нельзя. Названная проверка несёт свои настройки полностью: скрытых дефолтов нет.</p>
+          <p class="note"><code>adrs.shape</code> удерживает ADR в форме записи решения: непрерывные номера, дата, статус и разделы; дефолты — 1000 слов, 10 строк кода и 12 строк таблицы. <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0066-adr-shape-as-decision-record.md">Почему эта форма →</a></p>
           <details class="read-more">
             <summary>Несколько проектов в одном Git-репозитории</summary>
             <div>
@@ -124,7 +125,7 @@ exit 1</code></pre>
     <section id="checks">
       <div class="container">
         <div class="section-head">
-          <p class="eyebrow">38 проверок · две части</p>
+          <p class="eyebrow">39 проверок · две части</p>
           <h2>Общее для репозитория. Конкретное для его стека.</h2>
           <p>Сначала — одинаковые вопросы и правила независимо от языка. Затем — проверки исходников и устройства проекта. Самый подробный набор — для C# и .NET; Go получает комментарии, повторы, DSM по пакетам и учёт подавлений линтера. Ansible — причины подавлений линтера и циклы ролей.</p>
         </div>

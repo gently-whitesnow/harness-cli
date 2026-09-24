@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-16
 Accepted; enforcement superseded by [ADR-0027](0027-required-findings-are-blocking.md),
 dependency counts removed by [ADR-0029](0029-dependency-counts-removed.md), threshold
 scores replaced by topology and DSM budgets in [ADR-0032](0032-topology-over-thresholds.md).

@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-25
 Accepted. Заменяет порог из
 [ADR-0015](0015-comment-density-is-a-blocking-source-policy.md), развивает
 [ADR-0006](0006-heuristics-are-advisory.md) и следует release-контракту

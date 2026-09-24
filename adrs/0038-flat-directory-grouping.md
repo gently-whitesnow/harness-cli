@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-30
 Accepted. Дополняет конвенции `sliced-dotnet/1` из
 [ADR-0033](0033-canonical-standard-over-declarations.md) неблокирующим сигналом.
 

@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-12
 Accepted. Частично заменяет defaults ADR-0046, ADR-0054, ADR-0056 и ADR-0057 в контракте 3.2.
 
 ## Context

@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-03
 Accepted. Пересматривает advisory-default для `duplication.csharp` из ADR-0032; калибровку
 `30/90` из ADR-0028 не меняет.
 

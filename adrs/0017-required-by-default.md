@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-17
 Superseded for contract 2.0 by the explicit-policy decision in
 [ADR-0032](0032-topology-over-thresholds.md). Правило полноты раздела «Contract 2.0» —
 Superseded by [ADR-0054](0054-explicit-only-frame.md): с контракта 3.0 не названная в
@@ -33,7 +34,7 @@ Superseded by [ADR-0054](0054-explicit-only-frame.md): с контракта 3.0
 - Осознанные послабления видны непосредственно в `policy`.
 - Конфиги версии 2 требуют явного перехода на version 3.
 
-## Contract 2.0
+### Contract 2.0
 
 Скрытого default больше нет: `.harness.json` обязан перечислить каждый shipped check с
 `required`, `advisory` или `off`. Инварианты `architecture.sliced-dotnet` и

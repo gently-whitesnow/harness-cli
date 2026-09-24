@@ -144,7 +144,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
                     Violation(
                         entry.Path,
                         "unexpected tracked Markdown; remove it, fold navigation into AGENTS.md, "
-                            + "or move durable rationale to adrs/ (`harness explain docs.policy` lists the allowed pool)");
+                            + "or record a concise decision in adrs/ (`harness explain adrs.shape` describes its form)");
                     return;
             }
         }

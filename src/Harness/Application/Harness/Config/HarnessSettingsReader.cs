@@ -83,6 +83,7 @@ internal static class HarnessSettingsReader
         var duplication = new Dictionary<string, DuplicationSettings>(StringComparer.Ordinal);
         var complexity = new Dictionary<string, ComplexitySettings>(StringComparer.Ordinal);
         var functions = new Dictionary<string, FunctionSettings>(StringComparer.Ordinal);
+        AdrShapeSettings? adrShape = null;
         foreach (var check in checks)
         {
             switch (check.Group)
@@ -146,15 +147,38 @@ internal static class HarnessSettingsReader
                     break;
                 }
 
-                default:
+                case HarnessSettings.AdrShapeGroup:
+                {
+                    var (shape, failure) = ReadAdrShape(declared, check.Id);
+                    if (shape is null)
+                    {
+                        return (null, failure);
+                    }
+
+                    adrShape = shape;
                     break;
+                }
+
             }
         }
 
         var (commits, commitFailure) = ReadCommits(declared);
         return commits is null
             ? (null, commitFailure)
-            : (new HarnessSettings(comments, duplication, complexity, functions, commits), null);
+            : (new HarnessSettings(comments, duplication, complexity, functions, adrShape, commits), null);
+    }
+
+    private static (AdrShapeSettings? Settings, string? Failure) ReadAdrShape(JsonElement declared, string section)
+    {
+        var (values, failure) = ReadSection(declared, section, ["wordLimit", "fencedLineLimit", "tableRowLimit"]);
+        if (values is null)
+        {
+            return (null, failure);
+        }
+
+        return values.Any(value => value == 0)
+            ? (null, $"'settings.{section}' limits must be positive integers")
+            : (new AdrShapeSettings(values[0], values[1], values[2]), null);
     }
 
     private static (ComplexitySettings? Settings, string? Failure) ReadComplexity(JsonElement settings, string section)

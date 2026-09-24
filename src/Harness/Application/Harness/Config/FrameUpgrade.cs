@@ -461,6 +461,13 @@ internal static class FrameUpgrade
           kept     unresolved imports visible in details; a broken tsconfig plus unresolved
                    bare imports makes graph checks Incomplete
         """),
+        (new HarnessVersion(3, 7, 0), """
+        Release 3.7 additions:
+          added    adrs.shape checks decision-record names, numbering, status, date,
+                   sections, words, fenced code and tables in the tracked ADR catalogue
+          declare  policy.adrs.shape as required and settings.adrs.shape with
+                   wordLimit 1000, fencedLineLimit 10 and tableRowLimit 12
+        """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)

@@ -145,7 +145,7 @@ public sealed class AnsibleAxisTests
         using var document = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
         var root = document.RootElement;
         Assert.Equal(["yaml", "ansible"], root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
-        Assert.Equal(["comments.yaml", "commits"], root.GetProperty("settings").EnumerateObject().Select(section => section.Name));
+        Assert.Equal(["adrs.shape", "comments.yaml", "commits"], root.GetProperty("settings").EnumerateObject().Select(section => section.Name));
         var policy = root.GetProperty("policy");
         Assert.Equal("required", policy.GetProperty("comments.yaml").GetString());
         Assert.Equal("required", policy.GetProperty(LintSuppressions).GetString());

@@ -10,7 +10,7 @@ public sealed class MarkdownInventoryTests
             .WriteFile("adrs/0001-use-a-harness.md", "# Decision\n")
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check");
+        var run = HarnessCli.Run(repository.Path, "check", "--only", "docs.policy");
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("0001-use-a-harness.md"), run.Output);

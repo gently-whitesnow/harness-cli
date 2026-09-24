@@ -62,6 +62,7 @@ internal static class CheckRegistry
             .. LanguageAnalyzers.Select(analyzer => new ComplexityCheck(analyzer)),
 
             new DocumentationPolicyCheck(),
+            new AdrShapeCheck(),
             new CommitSetupCheck(CommitIntegration),
             new CommentLineCheck(new CSharpCommentedSources(CSharp)),
             new CommentLineCheck(Yaml),

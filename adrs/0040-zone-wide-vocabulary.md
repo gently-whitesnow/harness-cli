@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-30
 Accepted. Расширяет [ADR-0037](0037-segments-by-purpose.md), не меняя его вердиктов.
 
 Эвристические advisories отменены [ADR-0053](0053-explicit-architecture-checks.md)

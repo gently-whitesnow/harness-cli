@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-24
 Accepted. Уточняет [ADR-0022](0022-language-axis.md): семейство `comments` перестаёт быть
 лексически привязанным к C#.
 

@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-17
 Accepted. Релиз 3.4.0.
 
 ## Context
