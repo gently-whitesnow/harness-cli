@@ -41,8 +41,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
 
         var unit = Analyzer.Unit;
         var metric = RepositoryComplexity.Measure(scope.Graph);
-        var limit = context.Config?.Settings.ComplexityFor(Analyzer.Language)
-            ?? (Analyzer.Language == Language.TypeScript ? new ComplexitySettings(12.0, 0) : ComplexitySettings.Default);
+        var limit = context.Config?.Settings.ComplexityFor(Analyzer.Language) ?? ComplexitySettings.Default;
         var details = new List<string>
         {
             $"limits: average reachable {unit}s {Units(limit.AverageReachableFiles, unit)} · largest cyclic group size {limit.LargestCyclicGroupSize} {unit}s",

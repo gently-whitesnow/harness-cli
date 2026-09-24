@@ -55,7 +55,7 @@
       "minimumTokens": 90
     },
     "complexity.typescript": {
-      "averageReachableFiles": 12.0,
+      "averageReachableFiles": 8.0,
       "largestCyclicGroupSize": 0
     },
     "duplication.csharp": {

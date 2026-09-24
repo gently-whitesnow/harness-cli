@@ -10,7 +10,7 @@ The TS/JS axis previously measured only comment density. Frontend repositories c
 
 ## Decision
 
-Add `dependencies.typescript`, `duplication.typescript`, and `complexity.typescript` to contract 3.6. Literal imports and reexports resolve against tracked source, tsconfig and package manifests without Node or tsc. Unresolved imports are reported without inventing graph edges. Tests and stories are excluded from the graph but included in duplication. Reexport-only barrels are transparent in the DSM. Directory modules define dependency cycles; a file is the DSM node. The initial duplication window is 30 lines / 90 tokens. The initial DSM ceiling is 12.0 average reachable files and zero cyclic group.
+Add `dependencies.typescript`, `duplication.typescript`, and `complexity.typescript` to contract 3.6. Literal imports and reexports resolve against tracked source, tsconfig and package manifests without Node or tsc. Unresolved imports are reported without inventing graph edges. Tests and stories are excluded from the graph but included in duplication. Reexport-only barrels are transparent in the DSM. Directory modules define dependency cycles; a file is the DSM node. The initial duplication window is 30 lines / 90 tokens. The initial DSM ceiling is 8.0 average reachable files and zero cyclic group.
 
 ## Consequences
 

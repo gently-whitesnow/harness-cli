@@ -457,7 +457,7 @@ internal static class FrameUpgrade
         Release 3.6 additions:
           added    dependencies.typescript, duplication.typescript and complexity.typescript
           declare  policy for these checks as required; settings.duplication.typescript is
-                   30/90, settings.complexity.typescript is 12.0 / 0
+                   30/90, settings.complexity.typescript is 8.0 / 0
           kept     unresolved imports visible in details; a broken tsconfig plus unresolved
                    bare imports makes graph checks Incomplete
         """),

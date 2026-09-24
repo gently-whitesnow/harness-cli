@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Harness.Tests;
 
 public sealed class TypeScriptLanguageTests
@@ -111,7 +113,9 @@ public sealed class TypeScriptLanguageTests
         Assert.Contains("dependencies.typescript", frame, StringComparison.Ordinal);
         Assert.Contains("duplication.typescript", frame, StringComparison.Ordinal);
         Assert.Contains("complexity.typescript", frame, StringComparison.Ordinal);
-        Assert.Contains("12.0", frame, StringComparison.Ordinal);
+        using var document = JsonDocument.Parse(frame);
+        Assert.Equal(8.0, document.RootElement.GetProperty("settings")
+            .GetProperty("complexity.typescript").GetProperty("averageReachableFiles").GetDouble());
     }
 
     [Fact]
@@ -240,7 +244,7 @@ public sealed class TypeScriptLanguageTests
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("Release 3.6 additions"), run.Output);
         Assert.True(run.OutputContains("dependencies.typescript"), run.Output);
-        Assert.True(run.OutputContains("12.0 / 0"), run.Output);
+        Assert.True(run.OutputContains("8.0 / 0"), run.Output);
     }
 
     [Fact]

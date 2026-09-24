@@ -143,7 +143,7 @@ tracked-исходниками без записи в `applicability` — нах
 Ansible — причины inline `noqa` и циклы ролей (обе проверки стартуют `required`).
 Каждая проверка объясняет себя через `harness explain`; `harness guide` печатает агенту цикл работы — в `AGENTS.md` потребителя хватит одной строки.
 DSM сравнивает среднюю достижимость и размер циклической группы с явными потолками
-`settings."complexity.csharp"` / `settings."complexity.go"` (8.0 / 0) и `settings."complexity.typescript"` (12.0 / 0).
+`settings."complexity.csharp"` / `settings."complexity.go"` / `settings."complexity.typescript"` (8.0 / 0).
 
 ## Сайт
 

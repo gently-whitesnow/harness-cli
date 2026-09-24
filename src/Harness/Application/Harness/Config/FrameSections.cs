@@ -37,9 +37,7 @@ internal static class FrameSections
 
         if (check.Group == HarnessSettings.ComplexityGroup)
         {
-            var complexity = check.Id == "complexity.typescript"
-                ? new ComplexitySettings(12.0, 0)
-                : ComplexitySettings.Default;
+            var complexity = ComplexitySettings.Default;
             return $$"""
                 "{{check.Id}}": {
                   "averageReachableFiles": {{complexity.AverageReachableFiles.ToString("0.0", CultureInfo.InvariantCulture)}},

@@ -52,7 +52,7 @@ sliced-dotnet, а без зоны — вне tracked тестовых проек
 (`main` — composition root, `largestCyclicGroupSize` всегда 0), те же ключи и 8.0 / 0; `lint-suppressions.go` блокирует
 голый `//nolint` и `//nolint:x` без `// причины`, repo-wide отключения в tracked-конфиге golangci печатает в details.
 `go vet`/`gofmt` — через `answers.lint`/`answers.format`; types-per-file, dependencies, архитектура и editorconfig для Go не делаются. [ADR-0055](adrs/0055-go-language-axis.md)
-Ось `typescript` (контракт 3.6): `dependencies.typescript` доказывает циклы каталогов по литеральным импортам, включая type-only; `duplication.typescript` — 30/90; `complexity.typescript` — файловый DSM с прозрачными barrels и потолком 12.0 / 0. Неразрешённые импорты видны в details; node/tsc не нужен. [ADR-0064](adrs/0064-typescript-language-axis.md)
+Ось `typescript` (контракт 3.6): `dependencies.typescript` доказывает циклы каталогов по литеральным импортам, включая type-only; `duplication.typescript` — 30/90; `complexity.typescript` — файловый DSM с прозрачными barrels и потолком 8.0 / 0. Неразрешённые импорты видны в details; node/tsc не нужен. [ADR-0064](adrs/0064-typescript-language-axis.md)
 Ось `ansible` по маркерам: причины inline `noqa` и циклы ролей. Из `init` — required, как и комментарии.
 YAML не считает блоки над ключами любой глубины и trailing-комментарии; смягчение агент обсуждает с владельцем.
 Состав первого релиза — [ADR-0059](adrs/0059-focused-ansible-release.md); рамка — [ADR-0056](adrs/0056-configuration-repository-frame.md).

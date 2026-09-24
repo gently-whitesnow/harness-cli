@@ -18,7 +18,7 @@ internal static class ComplexityExplanation
 
         Measurement
           Average reachable files includes each file itself and every transitively
-          reachable file. The initialized ceiling is 12.0. Largest cyclic group size
+          reachable file. The initialized ceiling is 8.0. Largest cyclic group size
           is the largest mutually reachable set of files; its ceiling is zero. Both are
           declared in settings.complexity.typescript. Unresolved imports can understate
           reach and are named in details.
