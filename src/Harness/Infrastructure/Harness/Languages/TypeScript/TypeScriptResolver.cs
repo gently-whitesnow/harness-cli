@@ -40,84 +40,121 @@ internal sealed class TypeScriptResolver
     {
         external = false;
         var clean = specifier.Split('?')[0];
-        if (clean != specifier || clean.EndsWith(".css", StringComparison.OrdinalIgnoreCase)
-            || clean.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)
-            || clean.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
-            || Assets
-                .Any(extension => clean.EndsWith(extension, StringComparison.OrdinalIgnoreCase))) { external = true; return null; }
-        if (clean.StartsWith("node:", StringComparison.Ordinal) || Builtins.Any(name => clean == name || clean.StartsWith(name + "/", StringComparison.Ordinal))) { external = true; return null; }
-        var directory = DirectoryOf(from);
-        var owner = packageDirectories.Where(candidate => candidate.Length == 0 || from.StartsWith(candidate + "/", StringComparison.Ordinal))
-            .OrderByDescending(candidate => candidate.Length).FirstOrDefault();
-        if (clean.StartsWith("./", StringComparison.Ordinal) || clean.StartsWith("../", StringComparison.Ordinal))
+        if (IsAsset(specifier, clean) || IsBuiltin(clean))
         {
-            return Probe(Join(directory, clean));
-        }
-
-        if (clean.StartsWith('#'))
-        {
-            if (owner is null || !imports.TryGetValue(owner, out var aliases))
-            {
-                return null;
-            }
-
-            if (aliases.TryGetValue(clean, out var target))
-            {
-                return Probe(target);
-            }
-
-            foreach (var (pattern, alias) in aliases)
-            {
-                var star = pattern.IndexOf('*');
-                if (star >= 0 && clean.StartsWith(pattern[..star], StringComparison.Ordinal)
-                    && clean.EndsWith(pattern[(star + 1)..], StringComparison.Ordinal))
-                {
-                    var captured = clean[star..(clean.Length - (pattern.Length - star - 1))];
-                    return Probe(alias.Replace("*", captured, StringComparison.Ordinal));
-                }
-            }
-
+            external = true;
             return null;
         }
-        var config = SelectConfig(from);
-        if (config is not null)
+
+        if (clean.StartsWith("./", StringComparison.Ordinal) || clean.StartsWith("../", StringComparison.Ordinal))
         {
-            foreach (var (pattern, targets) in config.Paths.OrderByDescending(item => item.Key.Length))
-            {
-                var star = pattern.IndexOf('*');
-                if (star < 0 && pattern != clean)
-                {
-                    continue;
-                }
+            return Probe(Join(DirectoryOf(from), clean));
+        }
 
-                if (star >= 0 && (!clean.StartsWith(pattern[..star], StringComparison.Ordinal)
-                    || !clean.EndsWith(pattern[(star + 1)..], StringComparison.Ordinal)))
-                {
-                    continue;
-                }
+        var owner = packageDirectories
+            .Where(candidate => candidate.Length == 0 || from.StartsWith(candidate + "/", StringComparison.Ordinal))
+            .OrderByDescending(candidate => candidate.Length).FirstOrDefault();
+        if (clean.StartsWith('#'))
+        {
+            return ResolvePackageAlias(owner, clean);
+        }
 
-                var captured = star < 0 ? "" : clean[star..(clean.Length - (pattern.Length - star - 1))];
-                foreach (var target in targets)
-                {
-                    if (Probe(Join(config.BaseUrl, target.Replace("*", captured, StringComparison.Ordinal))) is { } path)
-                    {
-                        return path;
-                    }
-                }
-            }
-            if (config.HasBaseUrl && Probe(Join(config.BaseUrl, clean)) is { } basePath)
+        if (ResolveConfig(from, clean) is { } configured)
+        {
+            return configured;
+        }
+
+        if (ResolveWorkspacePackage(clean) is { } workspace)
+        {
+            return workspace;
+        }
+
+        external = owner is not null && dependencies.TryGetValue(owner, out var declared)
+            && declared.Any(name => clean == name || clean.StartsWith(name + "/", StringComparison.Ordinal));
+        return null;
+    }
+
+    private static bool IsAsset(string specifier, string clean)
+        => clean != specifier || clean.EndsWith(".css", StringComparison.OrdinalIgnoreCase)
+            || clean.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)
+            || clean.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+            || Assets.Any(extension => clean.EndsWith(extension, StringComparison.OrdinalIgnoreCase));
+
+    private static bool IsBuiltin(string specifier)
+        => specifier.StartsWith("node:", StringComparison.Ordinal)
+            || Builtins.Any(name => specifier == name || specifier.StartsWith(name + "/", StringComparison.Ordinal));
+
+    private string? ResolvePackageAlias(string? owner, string specifier)
+    {
+        if (owner is null || !imports.TryGetValue(owner, out var aliases))
+        {
+            return null;
+        }
+
+        if (aliases.TryGetValue(specifier, out var target))
+        {
+            return Probe(target);
+        }
+
+        foreach (var (pattern, alias) in aliases)
+        {
+            var star = pattern.IndexOf('*');
+            if (star >= 0 && specifier.StartsWith(pattern[..star], StringComparison.Ordinal)
+                && specifier.EndsWith(pattern[(star + 1)..], StringComparison.Ordinal))
             {
-                return basePath;
+                var captured = specifier[star..(specifier.Length - (pattern.Length - star - 1))];
+                return Probe(alias.Replace("*", captured, StringComparison.Ordinal));
             }
         }
-        foreach (var (name, root) in packages.OrderByDescending(pair => pair.Key.Length))
+
+        return null;
+    }
+
+    private string? ResolveConfig(string from, string specifier)
+    {
+        var config = SelectConfig(from);
+        if (config is null)
         {
-            if (clean != name && !clean.StartsWith(name + "/", StringComparison.Ordinal))
+            return null;
+        }
+
+        foreach (var (pattern, targets) in config.Paths.OrderByDescending(item => item.Key.Length))
+        {
+            var star = pattern.IndexOf('*');
+            if (star < 0 && pattern != specifier)
             {
                 continue;
             }
 
-            var subpath = clean == name ? "." : "./" + clean[(name.Length + 1)..];
+            if (star >= 0 && (!specifier.StartsWith(pattern[..star], StringComparison.Ordinal)
+                || !specifier.EndsWith(pattern[(star + 1)..], StringComparison.Ordinal)))
+            {
+                continue;
+            }
+
+            var captured = star < 0 ? "" : specifier[star..(specifier.Length - (pattern.Length - star - 1))];
+            foreach (var target in targets)
+            {
+                if (Probe(Join(config.BaseUrl, target.Replace("*", captured, StringComparison.Ordinal))) is { } path)
+                {
+                    return path;
+                }
+            }
+        }
+
+        return config.HasBaseUrl ? Probe(Join(config.BaseUrl, specifier)) : null;
+    }
+
+    private string? ResolveWorkspacePackage(string specifier)
+    {
+        foreach (var (name, root) in packages.OrderByDescending(pair => pair.Key.Length))
+        {
+            if (specifier != name && !specifier.StartsWith(name + "/", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var subpath = specifier == name ? "." : "./" + specifier[(name.Length + 1)..];
             if (packageExports.TryGetValue(name, out var exports))
             {
                 foreach (var (pattern, target) in exports)
@@ -142,16 +179,10 @@ internal sealed class TypeScriptResolver
                 }
             }
 
-            if (Probe(Join(root, clean == name ? "" : clean[(name.Length + 1)..])) is { } packagePath)
+            if (Probe(Join(root, specifier == name ? "" : specifier[(name.Length + 1)..])) is { } packagePath)
             {
                 return packagePath;
             }
-        }
-
-        if (owner is not null && dependencies.TryGetValue(owner, out var declared)
-            && declared.Any(name => clean == name || clean.StartsWith(name + "/", StringComparison.Ordinal)))
-        {
-            external = true;
         }
 
         return null;

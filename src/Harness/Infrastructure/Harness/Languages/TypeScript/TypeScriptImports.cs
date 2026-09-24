@@ -3,9 +3,6 @@ using Harness.Languages;
 
 namespace Harness.Infrastructure.Languages.TypeScript;
 
-internal sealed record TypeScriptImport(string Specifier, int Line, bool TypeOnly, string? ImportedName, bool Reexport, bool Dynamic,
-    string? SourceName = null, string? LocalName = null);
-
 /// <summary>Reads literal module specifiers; comments and string contents cannot introduce syntax.</summary>
 internal static partial class TypeScriptImports
 {
