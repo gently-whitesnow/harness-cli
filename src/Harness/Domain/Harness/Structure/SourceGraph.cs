@@ -16,6 +16,7 @@ internal sealed record SourceGraph(
     IReadOnlyList<string> MarkedGenerated,
     IReadOnlyList<string> MarkedIgnored)
 {
+    public IReadOnlyList<string> Details { get; init; } = [];
     public int CandidateReferences => ResolvedReferences + AmbiguousReferences;
 
     /// <summary>A graph with nothing to resolve is complete, not empty.</summary>

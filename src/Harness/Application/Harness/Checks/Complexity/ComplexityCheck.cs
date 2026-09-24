@@ -41,7 +41,8 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
 
         var unit = Analyzer.Unit;
         var metric = RepositoryComplexity.Measure(scope.Graph);
-        var limit = context.Config?.Settings.ComplexityFor(Analyzer.Language) ?? ComplexitySettings.Default;
+        var limit = context.Config?.Settings.ComplexityFor(Analyzer.Language)
+            ?? (Analyzer.Language == Language.TypeScript ? new ComplexitySettings(12.0, 0) : ComplexitySettings.Default);
         var details = new List<string>
         {
             $"limits: average reachable {unit}s {Units(limit.AverageReachableFiles, unit)} · largest cyclic group size {limit.LargestCyclicGroupSize} {unit}s",
@@ -52,6 +53,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
                 + $"({Percent(metric.LargestCyclicGroupPercentage)} of {metric.AuthoredFiles} {unit}s)",
             scope.Describe(),
         };
+        details.AddRange(graph.Details);
         if (scope.DescribeMarkedGenerated() is { } marked)
         {
             details.Add(marked);
@@ -87,6 +89,11 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
 
     private (DsmScope? Scope, string? Failure) Scope(CheckContext context, SourceGraph graph)
     {
+        if (Analyzer.Language == Language.TypeScript)
+        {
+            return (DsmScope.OfTypeScript(graph), null);
+        }
+
         if (Analyzer.Language == Language.Go)
         {
             return (DsmScope.OfPackages(graph), null);

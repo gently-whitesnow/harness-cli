@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 3.5.0 · no dependencies. */
+/* Harness CLI landing · contract 3.6.0 · no dependencies. */
 (function () {
   'use strict';
 
@@ -27,6 +27,9 @@
     { id: 'comments.csharp', group: 'csharp', axis: 'csharp', summary: 'Ограничивает плотность комментариев: по умолчанию находка от 10 строк комментариев, если их больше 8% авторских строк.', adr: ['0028-recalibrated-csharp-defaults.md', '0043-comment-density-across-languages.md'] },
     { id: 'comments.yaml', group: 'langs', axis: 'yaml', summary: 'Плотность прозы YAML: от 10 строк и больше 8%. Блоки над ключами любой глубины, trailing-комментарии и директивы исключены; init всегда ставит required; смягчение обсуждается с владельцем.', adr: ['0043-comment-density-across-languages.md', '0056-configuration-repository-frame.md'] },
     { id: 'comments.typescript', group: 'langs', axis: 'typescript', summary: 'Та же проверка для TypeScript и JavaScript: от 10 строк и больше 8%.', adr: ['0043-comment-density-across-languages.md'] },
+    { id: 'complexity.typescript', group: 'langs', axis: 'typescript', summary: 'DSM по файлам TS/JS с прозрачными barrels; стартовые пределы: средняя достижимость 12, циклическая группа 0.', adr: ['0064-typescript-language-axis.md'] },
+    { id: 'dependencies.typescript', group: 'langs', axis: 'typescript', summary: 'Доказанные циклы каталогов по литеральным import, export from, require и import(), включая import type; неразрешённые импорты видны в деталях.', adr: ['0064-typescript-language-axis.md'] },
+    { id: 'duplication.typescript', group: 'langs', axis: 'typescript', summary: 'Межфайловые дубли TS/JS после нормализации; окно 30 строк и 90 токенов.', adr: ['0064-typescript-language-axis.md', '0045-duplication-required-by-default.md'] },
     { id: 'comments.go', group: 'go', axis: 'go', summary: 'Плотность комментариев в Go: от 10 строк и больше 8%. Doc-комментарии top-level деклараций и директивы //go: не считаются; generated, vendor и testdata исключены.', adr: ['0055-go-language-axis.md', '0043-comment-density-across-languages.md'] },
     { id: 'types-per-file.csharp', group: 'csharp', axis: 'csharp', summary: 'Не больше одного верхнеуровневого class или record в файле. Имя файла указывает на одно понятие.', adr: ['0018-csharp-applicability-and-one-type-per-file.md'] },
     { id: 'dependencies.csharp', group: 'csharp', axis: 'csharp', summary: 'Находит доказанные циклы между модулями и показывает строки, замыкающие кольцо.', adr: ['0021-coupling-evidence-grades.md', '0029-dependency-counts-removed.md'] },

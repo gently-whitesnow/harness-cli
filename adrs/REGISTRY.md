@@ -1,5 +1,7 @@
 # ADR Registry
 
+- [ADR-0064](0064-typescript-language-axis.md) — контракт 3.6: TS/JS импорты, дубли и DSM с прозрачными barrels; 12.0 / 0.
+
 - [ADR-0063](0063-function-own-lines.md) — контракт 3.5: собственные строки C# и Go
   функций, включая вложенные единицы и top-level; общий порог 80 без исключений.
 - [ADR-0062](0062-agent-guide-command.md) — `harness guide`: бинарь печатает агенту цикл работы,
