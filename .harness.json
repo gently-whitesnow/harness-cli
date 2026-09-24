@@ -68,7 +68,7 @@
       "minimumTokens": 90
     },
     "complexity.csharp": {
-      "averageReachableFiles": 8.2,
+      "averageReachableFiles": 8.0,
       "largestCyclicGroupSize": 0
     },
     "functions.csharp": {

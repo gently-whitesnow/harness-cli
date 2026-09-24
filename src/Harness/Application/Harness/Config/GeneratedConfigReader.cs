@@ -4,7 +4,7 @@ namespace Harness.Config;
 
 internal static class GeneratedConfigReader
 {
-    public static (IReadOnlyList<GeneratedDeclaration>? Generated, string? Failure) Read(JsonElement root)
+    public static (IReadOnlyList<(IReadOnlyList<string> Paths, string Reason)>? Generated, string? Failure) Read(JsonElement root)
     {
         if (!root.TryGetProperty("generated", out var entries))
         {
@@ -16,7 +16,7 @@ internal static class GeneratedConfigReader
             return (null, "'generated' must be an array of { paths, reason } entries");
         }
 
-        var result = new List<GeneratedDeclaration>();
+        var result = new List<(IReadOnlyList<string> Paths, string Reason)>();
         foreach (var entry in entries.EnumerateArray())
         {
             if (entry.ValueKind != JsonValueKind.Object
@@ -48,7 +48,7 @@ internal static class GeneratedConfigReader
                 return (null, "'generated.paths' must contain unique paths");
             }
 
-            result.Add(new GeneratedDeclaration(names, reason.GetString()!.Trim()));
+            result.Add((names, reason.GetString()!.Trim()));
         }
 
         var allPaths = result.SelectMany(entry => entry.Paths).ToList();

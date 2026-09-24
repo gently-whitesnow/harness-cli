@@ -16,7 +16,7 @@ internal sealed record HarnessConfig
 
     public IReadOnlyList<string> Projects { get; init; } = [];
 
-    public IReadOnlyList<GeneratedDeclaration> Generated { get; init; } = [];
+    public IReadOnlyList<(IReadOnlyList<string> Paths, string Reason)> Generated { get; init; } = [];
 
     public required HarnessVersion Version { get; init; }
 
