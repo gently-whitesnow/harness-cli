@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-05
 Accepted. Заменяет ярус 2 [ADR-0032](0032-topology-over-thresholds.md) (монотонный
 ratchet-бюджет) и бюджетную часть [ADR-0042](0042-dsm-over-the-product-in-files.md) и
 [ADR-0048](0048-dsm-product-boundary-without-a-zone.md); область измерения из этих двух ADR —

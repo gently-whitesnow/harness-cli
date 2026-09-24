@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-16
 Accepted. Заменяет [ADR-0012](0012-declaration-with-an-address-of-proof.md). Правило о
 неявной мягкой policy заменено [ADR-0017](0017-required-by-default.md).
 

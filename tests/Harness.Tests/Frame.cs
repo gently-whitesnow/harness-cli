@@ -10,7 +10,7 @@ namespace Harness.Tests;
 public sealed class Frame
 {
     private const string DefaultSettings =
-        """{ "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.typescript": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.typescript": { "windowLines": 30, "minimumTokens": 90 }, "complexity.typescript": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "complexity.csharp": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "functions.csharp": { "ownLines": 80 }, "comments.go": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.go": { "windowLines": 30, "minimumTokens": 90 }, "complexity.go": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "functions.go": { "ownLines": 80 }, "commits": { "language": "ru", "requireSetup": false } }""";
+        """{ "adrs.shape": { "wordLimit": 1000, "fencedLineLimit": 10, "tableRowLimit": 12 }, "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.typescript": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.typescript": { "windowLines": 30, "minimumTokens": 90 }, "complexity.typescript": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "complexity.csharp": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "functions.csharp": { "ownLines": 80 }, "comments.go": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.go": { "windowLines": 30, "minimumTokens": 90 }, "complexity.go": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "functions.go": { "ownLines": 80 }, "commits": { "language": "ru", "requireSetup": false } }""";
 
     private static readonly string[] Questions =
         ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck", "verify"];
@@ -26,7 +26,7 @@ public sealed class Frame
         "architecture.sliced-dotnet.dependency-direction",
         "architecture.sliced-dotnet.slice-isolation",
         "architecture.sliced-dotnet.public-api",
-        "architecture.sliced-dotnet.cross-api", "complexity.csharp", "docs.policy",
+        "architecture.sliced-dotnet.cross-api", "complexity.csharp", "docs.policy", "adrs.shape",
         "commits.setup", "comments.csharp", "comments.yaml", "comments.typescript",
         "types-per-file.csharp", "dependencies.csharp", "dependencies.typescript", "complexity.typescript", "duplication.typescript",
         "duplication.csharp", "functions.csharp", "comments.go", "duplication.go", "complexity.go", "functions.go", "lint-suppressions.go",

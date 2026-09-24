@@ -55,6 +55,18 @@ internal static class FrameSections
                 """;
         }
 
+        if (check.Group == HarnessSettings.AdrShapeGroup)
+        {
+            var shape = AdrShapeSettings.Default;
+            return $$"""
+                "{{check.Id}}": {
+                  "wordLimit": {{shape.WordLimit}},
+                  "fencedLineLimit": {{shape.FencedLineLimit}},
+                  "tableRowLimit": {{shape.TableRowLimit}}
+                }
+                """;
+        }
+
         return null;
     }
 

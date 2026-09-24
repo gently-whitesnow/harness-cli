@@ -100,7 +100,7 @@ public sealed class CliContractTests
             repository.Path,
             "check",
             "--skip",
-            "harness,docs,commits,csharp,dotnet,frame");
+            "harness,docs,adrs,commits,csharp,dotnet,frame");
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("PASS"), run.Output);

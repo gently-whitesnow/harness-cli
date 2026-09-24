@@ -64,7 +64,7 @@ public sealed class InitCommandTests
     private static void AssertDefaultSettings(JsonElement settings)
     {
         Assert.Equal(
-            ["complexity.csharp", "comments.csharp", "duplication.csharp", "functions.csharp", "commits"],
+            ["complexity.csharp", "adrs.shape", "comments.csharp", "duplication.csharp", "functions.csharp", "commits"],
             settings.EnumerateObject().Select(section => section.Name));
         AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));
         AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));

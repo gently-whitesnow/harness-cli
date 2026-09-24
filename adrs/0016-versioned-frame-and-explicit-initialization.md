@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-17
 Accepted. Версионированные снимки вопросов и `suppress` superseded by ADR-0023 и ADR-0032;
 локальные ошибки ответов и явный `init` остаются действующими. Уточняет
 [ADR-0014](0014-frame-answers-are-self-reported.md) и заменяет часть

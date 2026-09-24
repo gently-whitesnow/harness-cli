@@ -2,11 +2,12 @@
 
 ## Status
 
-Scope partially superseded by [ADR-0059](0059-focused-ansible-release.md): only suppressions and role cycles ship in 3.2.
+Date: 2026-09-12
+Accepted. Scope partially superseded by [ADR-0059](0059-focused-ansible-release.md): only suppressions and role cycles ship in 3.2.
 
 Defaults partially superseded by [ADR-0058](0058-required-initial-frame.md): init uses required.
 
-Accepted. Развивает [ADR-0022](0022-language-axis.md) (ось = экземпляр, ридер, строка в
+Развивает [ADR-0022](0022-language-axis.md) (ось = экземпляр, ридер, строка в
 реестре) и [ADR-0054](0054-explicit-only-frame.md) (`FrameAxis`, детекция по индексу);
 опирается на [ADR-0056](0056-configuration-repository-frame.md) для `comments.yaml` и
 подсказок init. Контракт 3.2.
@@ -19,25 +20,15 @@ Accepted. Развивает [ADR-0022](0022-language-axis.md) (ось = экз�
 После ADR-0056 рамка проходит, но об Ansible харнес не говорит ничего: ось `yaml` видит
 только плотность комментариев.
 
-Исследование того, что проверяют в Ansible/IaC-репозиториях, дало три группы. Линтер:
-`ansible-lint` с профилями и правилами `fqcn`, `name[...]`, `no-changed-when`,
-`risky-file-permissions`, `no-log-password`, `package-latest`, `var-naming`, `yaml[...]`
-через yamllint; подавления — адресное `# noqa: rule` в строке задачи и repo-wide
-`skip_list`/`warn_list` в `.ansible-lint`. Запуск: `--syntax-check`, `--check`, molecule с
-идемпотентностью вторым прогоном. Инварианты, которые ни один инструмент не считает одинаково:
-образы по immutable digest (compose-lint/checkov проверяют compose, но не Jinja-шаблоны),
-секреты в `!vault`/lookup вместо литерала (gitleaks ищет содержимое, не форму хранения),
-граф зависимостей ролей (`ansible-playbook-grapher` рисует, не судит), раскладка роли.
+`ansible-lint` судит имена, FQCN, небезопасные задачи и YAML; адресные `# noqa` и
+repo-wide `skip_list`/`warn_list` меняют его поведение. `--syntax-check`, `--check` и
+molecule выполняют код. Отдельные кандидаты для харнеса: digest образов в Jinja-шаблонах,
+форма хранения секретов, циклы ролей и раскладка роли.
 
-Принципы: харнес не запускает toolchain (ADR-0011) и не дублирует линтер — считает то, чего
-линтер не даёт; blocking только при пяти условиях ADR-0002; ребро графа несёт `Proven` или
-`Inferred`, blocking — только из `Proven` (ADR-0021); policy — `required/advisory/off`
-без адресного подавления (ADR-0035). Обсуждались альтернативы: детекция оси по суффиксу
-(`.yml` уже занят осью `yaml`); отдельная ось `compose`; чтение отчёта `ansible-lint`;
-`duplication.ansible` и DSM для ролей. Рецензент проекта внёс две поправки: (P1) правило
-«любой `*_key` — секрет» блокировало бы корректный конфиг — публичный ключ VPN-пира
-(`public_key`) и имя поля хранилища (`token_key: token`); (P2) проверка образов должна
-требовать полный digest, а не подстроку `@sha256:` — `nginx@sha256:garbage` не образ.
+Харнес не запускает toolchain и не дублирует линтер (ADR-0011); blocking требует условий
+ADR-0002 и доказанного ребра (ADR-0021). Суффикс `.yml` уже занят осью `yaml`, поэтому
+обсуждалась детекция по маркерам. Рецензент отметил, что `public_key` не секрет, а
+`nginx@sha256:garbage` не является образом с полным digest.
 
 ## Decision
 
@@ -109,10 +100,8 @@ Accepted. Развивает [ADR-0022](0022-language-axis.md) (ось = экз�
 
 ### Positive
 
-- На копии пилота `init` пишет оси `yaml` + `ansible`; `dependencies.ansible` и
-  `images.ansible` проходят (граф ролей ациклический, литеральные образы по digest; образ в
-  Jinja-шаблоне — `Inferred` в details), `lint-suppressions.ansible` печатает `skip_list`
-  как деталь, `role-shape.ansible` проходит.
+- На копии пилота `init` пишет оси `yaml` + `ansible`; граф ролей ациклический, литеральные
+  образы по digest, Jinja-образ — `Inferred`, `skip_list` виден в details.
 - Харнес считает четыре инварианта, которых нет в `ansible-lint`, и ни одно его правило не
   копирует; граф ролей — тем же ядром `Structure/`, что модули C# и пакеты Go.
 - Маркер-детекция — прецедент для осей без собственного суффикса; таблица `FrameAxis`
@@ -120,21 +109,13 @@ Accepted. Развивает [ADR-0022](0022-language-axis.md) (ось = экз�
 
 ### Negative / Risks
 
-- Лексический ридер YAML без грамматики: якоря, merge keys и flow-mapping читаются как
-  отсутствие; block scalar складывается в значение ключа, поэтому `image:` внутри inline
-  compose в `content: |` не судится; `include_role` в `block:`/`rescue:` читается по
-  отступам, ошибка — `Inferred`, не blocking.
-- Словари имён секретов и каталогов роли — таблицы в коде; ключ вне словаря (`db_pw`) не
-  проверяется, и это принято: проверка не ищет секреты, а требует формы для очевидных имён.
-  Snake_case-значение читается как ссылка на имя поля — пароль из одних строчных букв и
-  подчёркиваний пройдёт.
+- Лексический ридер YAML не раскрывает якоря, merge keys и flow-mapping; `image:` внутри
+  block scalar не судится, неопределённое ребро остаётся `Inferred`.
+- Словарь секретов не ловит неизвестные ключи (`db_pw`); snake_case-значение может быть
+  принято за имя поля хранилища.
 - `images.ansible` не прослеживает переменную: образ из `set_fact` или inventory — `Inferred`
   в details, не находка.
-- Дефолты policy (`required` для трёх проверок, `advisory` для двух) выбраны по одному
-  пилоту; пересмотр — отдельным ADR по данным следующих.
+- Дефолты policy выбраны по одному пилоту и требуют новой калибровки.
 
-Проверка продолжения реализации на актуальной копии пилота: девять ролей без циклов,
-все литеральные образы имеют полный digest; Jinja-образ остаётся Inferred.
-`secrets.ansible` даёт advisory на `secret_path`: это адрес внешнего хранилища,
-который словарь принимает за секрет. Это известный FP первой калибровки,
-не основание шифровать адрес; дефолт advisory сохраняется.
+Продолжение пилота выявило FP `secrets.ansible` на `secret_path`, адресе внешнего
+хранилища; это не основание шифровать адрес.

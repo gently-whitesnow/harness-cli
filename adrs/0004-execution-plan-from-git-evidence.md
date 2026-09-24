@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-16
 Partially superseded by [ADR-0011](0011-the-harness-does-not-run-the-repository-toolchain.md).
 Исполнения больше нет, поэтому выведение плана исполнения потеряло предмет. Утверждение о
 том, что факты берутся только из Git-tracked evidence и что окружение вызывающего не

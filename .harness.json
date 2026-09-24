@@ -1,5 +1,5 @@
 {
-  "version": "3.6.0",
+  "version": "3.7.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -38,6 +38,11 @@
     "typescript": { "applicable": true }
   },
   "settings": {
+    "adrs.shape": {
+      "wordLimit": 1000,
+      "fencedLineLimit": 10,
+      "tableRowLimit": 12
+    },
     "comments.csharp": {
       "minimumCommentLines": 10,
       "percentageLimit": 8
@@ -87,6 +92,7 @@
     "architecture.sliced-dotnet.cross-api": "required",
     "complexity.csharp": "required",
     "docs.policy": "required",
+    "adrs.shape": "required",
     "commits.setup": "required",
     "comments.csharp": "required",
     "comments.yaml": "required",

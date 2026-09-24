@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-04
 Accepted. Уточняет форму `paths` из [ADR-0014](0014-frame-answers-are-self-reported.md);
 принцип «paths не инспектируются» не меняется.
 

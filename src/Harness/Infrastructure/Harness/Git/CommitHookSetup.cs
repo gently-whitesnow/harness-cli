@@ -6,7 +6,7 @@ namespace Harness.Git;
 
 /// <summary>
 /// Installs and inspects the clone-local commit integration. The managed hook is the same text
-/// everywhere and resolves the harness when it runs, so no binary path decides it (ADR-0052).
+/// everywhere and resolves the harness when it runs, so no binary path decides it (ADR-0065).
 /// </summary>
 internal sealed class CommitHookSetup : ICommitIntegration
 {

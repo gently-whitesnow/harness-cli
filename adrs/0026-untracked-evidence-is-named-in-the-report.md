@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-25
 Accepted. Уточняет [ADR-0004](0004-execution-plan-from-git-evidence.md) и
 [ADR-0014](0014-frame-answers-are-self-reported.md): инвентарь репозитория остаётся
 git-индексом, меняется только то, что отчёт умеет об этом сказать.

@@ -25,7 +25,7 @@ internal static class DocumentationPolicyExplanation
                        loaded on demand for one task, not navigation carried in every context.
           DESIGN.md    allowed at any depth and not measured: a design document is opened
                        for a UI task, and its size is set by the design system it records.
-          adrs/**.md   allowed as durable architectural decisions.
+          adrs/**.md   allowed as durable architectural decisions; adrs.shape checks the form.
           forge files  allowed and not measured, only where a forge reads them by itself:
                        {string.Join(", ", ForgeDocuments.CommunityNames.Take(3))},
                        {string.Join(", ", ForgeDocuments.CommunityNames.Skip(3))},
@@ -54,7 +54,7 @@ internal static class DocumentationPolicyExplanation
           link, for example `ln -sf AGENTS.md CLAUDE.md && git add CLAUDE.md`.
           Unexpected Markdown: remove the document, rename it to the name an agent already
           opens in that directory, fold its navigation into AGENTS.md, move durable rationale
-          into an ADR under adrs/, or set `policy.docs.policy` to `advisory` or `off`. The
+          into a concise decision record under adrs/, or set `policy.docs.policy` to `advisory` or `off`. The
           harness never edits documentation.
         """;
 }

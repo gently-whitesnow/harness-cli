@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-05
 Accepted. Уточняет [ADR-0033](0033-canonical-standard-over-declarations.md),
 [ADR-0034](0034-language-axis-in-sliced-dotnet.md) (раскладку харнеса),
 [ADR-0037](0037-segments-by-purpose.md) и [ADR-0050](0050-domain-is-the-bottom-layer.md);
@@ -31,13 +32,8 @@ FSD кладёт слайсы прямо в корень слоя: `src/<сло�
 сообщает ни одному слайсу ничего (ни харнес, ни Steiger такое не ловят); сегмент, названный
 как свой слайс (`Graph/Graph`), не говорит о назначении.
 
-ADR-0033 обещал другое: пересмотр словаря — новым ADR и версией `sliced-dotnet/2` в имени
-стандарта, чтобы переход никогда не был тихим. Обещание не исполняется здесь и не
-исполнялось дважды до этого; почему — в пункте 7 Decision. Коротко: механизм явного
-перехода в контракте уже есть, это pin `version`, а второе имя обслуживало бы легаси,
-которого нет. Ни один репозиторий не стоит на прежней форме: пилотные приложения и сам
-харнес переходят в этом же релизе, инструментом за его пределами ещё никто не пользуется.
-Владелец решил не нести легаси-форму ради симметрии имён.
+ADR-0033 обещал версию `sliced-dotnet/2` при смене формы. Владелец оставил имя `/1`:
+переход уже обозначает pin `version`; все известные потребители переходят в этом релизе.
 
 Обсуждались альтернативы формы:
 
@@ -63,31 +59,23 @@ ADR-0033 обещал другое: пересмотр словаря — нов
    `no-segments-on-sliced-layers` на корень слоя. В зеркальном слое (`Api`, `Consumers`,
    `Infrastructure`, `Domain`) каталог корня, не являющийся слайсом `Application` и не
    зарезервированный, даёт blocking-находку: с essence-именем по словарю ADR-0037
-   (`Services`, `Validators`, `Common`…) — `no-segments-on-sliced-layers: layer 'Api' holds
-   segment 'Services' at its root; a sliced layer holds only slices — move it into Host or
-   into a slice`; с любым другим именем — существующую `orphan-slice-mirror` с дополненным
-   remediation: `a directory in the root of a sliced layer is a slice mirror — move
-   cross-cutting code into Host or into a slice`. Файл непосредственно в корне слайсового
+   (`Services`, `Validators`, `Common`…) — `no-segments-on-sliced-layers`; с иным именем —
+   `orphan-slice-mirror`. Обе находки предлагают перенести код в `Host` или слайс.
+   Файл непосредственно в корне слайсового
    слоя (`Api/Endpoint.cs`) — существующая blocking-находка `outside-slice`, прежде
    действовавшая только внутри `Features/`.
 4. **`no-layer-public-api`** (порт правила Steiger): каталог `Contracts` непосредственно под
    корнем слайсового слоя — `Application/Contracts`, `Api/Contracts`, `Domain/Contracts`,
-   `Infrastructure/Contracts`, `Consumers/Contracts` — blocking-находка `no-layer-public-api:
-   layer 'Application' publishes Contracts/ at its root; a slice publishes its own Contracts/
-   — move them into Application/<Slice>/Contracts/`. Такой каталог не считается слайсом,
+   `Infrastructure/Contracts`, `Consumers/Contracts` — blocking-находка `no-layer-public-api`:
+   API переносится в `<Слой>/<Слайс>/Contracts`. Такой каталог не считается слайсом,
    группой или зеркалом и второй находки не порождает. Blocking по ADR-0002:
    детерминировано, actionable, негативная фикстура из пилота.
 5. **`repetitive-naming`** — advisory-observation (строка `advisory …`, не `Finding`, код
-   возврата не меняет ни при какой policy, как `insignificant-slice`): если в зоне ровно одна
-   группа и все слайсы лежат в ней — `advisory <zone>/Application/<Group>:
-   repetitive-naming: every slice of dimension 'Application' sits in the single group
-   '<Group>'; the group name repeats on every slice and carries no information — flatten the
-   group or split slices into two or more groups`.
+   возврата не меняет ни при какой policy): если в зоне ровно одна группа и все слайсы
+   лежат в ней, название группы не несёт информации; предложить убрать группу.
 6. **`ambiguous-slice-names`** — advisory-observation: непосредственный сегмент слайса в
    любом слайсовом измерении, чьё имя совпадает с leaf-именем слайса без учёта регистра —
-   `advisory <zone>/<Layer>/<slice>/<Segment>: ambiguous-slice-names: segment '<Segment>' of
-   slice '<slice>', dimension '<Layer>', repeats the slice name; name the segment after its
-   purpose`.
+   observation с советом назвать сегмент по назначению.
 7. **Контракт `2.13.0`; имя стандарта остаётся `sliced-dotnet/1`, версия в имени как
    механизм отменяется.** Форму называет pin `version`
    ([ADR-0023](0023-release-version-as-the-verification-contract.md),

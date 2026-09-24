@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-16
 Superseded by [ADR-0014](0014-frame-answers-are-self-reported.md). Ранее заменил
 [ADR-0005](0005-capability-evidence-vocabulary.md).
 

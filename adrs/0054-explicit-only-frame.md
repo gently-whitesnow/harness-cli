@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-12
 Accepted. Уточняет [ADR-0017](0017-required-by-default.md) (раздел «Contract 2.0») и
 [ADR-0035](0035-policy-switch-is-uniform.md): правило «каждая shipped-проверка перечислена
 в `policy`, каждая ось — в `applicability`, каждая секция — в `settings`» заменено правилом

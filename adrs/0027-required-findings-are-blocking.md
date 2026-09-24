@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-25
 Accepted. Части про `suppress` superseded by [ADR-0032](0032-topology-over-thresholds.md).
 
 ## Context

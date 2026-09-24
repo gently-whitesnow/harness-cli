@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-12
 Accepted. Развивает [ADR-0022](0022-language-axis.md) и [ADR-0043](0043-comment-density-across-languages.md):
 семейства `comments`, `duplication` и `complexity` получают язык Go; действует в рамке
 [ADR-0054](0054-explicit-only-frame.md), где ось появляется в файле только там, где есть её

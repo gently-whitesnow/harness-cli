@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-04
 Accepted. Дополняет границу исполнения ADR-0011 и self-reported форму ADR-0014.
 
 ## Context

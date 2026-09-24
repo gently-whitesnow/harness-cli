@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-17
 Accepted. Точечно уточняет [ADR-0008](0008-the-harness-only-observes.md) и
 [ADR-0011](0011-the-harness-does-not-run-the-repository-toolchain.md): `check` остаётся
 наблюдающим, а явные `init` и `setup` могут менять только локальную Git-конфигурацию и

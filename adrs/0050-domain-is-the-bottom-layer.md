@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-04
 Accepted. Уточняет таблицу слоёв `sliced-dotnet/1` из
 [ADR-0033](0033-canonical-standard-over-declarations.md) и
 [ADR-0041](0041-layer-is-the-assembly.md); имя стандарта не меняется.

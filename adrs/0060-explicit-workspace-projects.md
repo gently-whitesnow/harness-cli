@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-24
 Accepted. Контракт 3.3.0. Уточняет область policy из
 [ADR-0035](0035-policy-switch-is-uniform.md), сохраняет запрет адресного подавления
 внутри проверки и явность рамки [ADR-0054](0054-explicit-only-frame.md).

@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-02
 Accepted. Уточняет ярус 2 из [ADR-0032](0032-topology-over-thresholds.md); формулы
 ядра и источники не меняются. Границу без зоны уточняет
 [ADR-0048](0048-dsm-product-boundary-without-a-zone.md). Пункты 3 и 5 (бюджет-потолок,

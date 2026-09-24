@@ -368,7 +368,7 @@ public sealed class GoLanguageTests
         Assert.False(root.TryGetProperty("architecture", out _));
         Assert.Equal(["go"], root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
         Assert.Equal(
-            ["complexity.go", "comments.go", "duplication.go", "functions.go", "commits"],
+            ["complexity.go", "adrs.shape", "comments.go", "duplication.go", "functions.go", "commits"],
             root.GetProperty("settings").EnumerateObject().Select(section => section.Name));
         Assert.Equal(8.0, root.GetProperty("settings").GetProperty("complexity.go").GetProperty("averageReachableFiles").GetDouble());
         Assert.Equal(30, root.GetProperty("settings").GetProperty("duplication.go").GetProperty("windowLines").GetInt32());

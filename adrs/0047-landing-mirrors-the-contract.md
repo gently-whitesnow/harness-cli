@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-09-04
 Accepted. Дополняет документационную политику [ADR-0010](0010-documentation-policy.md) и
 [ADR-0025](0025-nested-agent-documents.md); контракт проверок не меняет.
 

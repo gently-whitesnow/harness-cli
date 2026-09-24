@@ -2,6 +2,7 @@
 
 ## Status
 
+Date: 2026-08-28
 Accepted. Уточняет и заменяет строки допустимых рёбер `Api` и `Consumers` в
 [ADR-0033](0033-canonical-standard-over-declarations.md), не меняя имя стандарта
 `sliced-dotnet/1`.
