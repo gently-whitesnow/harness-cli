@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Harness.Languages.CSharp;
 using Harness.Repository;
 
@@ -66,6 +67,14 @@ internal sealed class CSharpSources : ICSharpSources
             }
 
             var (masked, regions) = CSharpMask.Apply(text);
+            if (Regex.IsMatch(masked, @"\bclass\s+[A-Za-z_]\w*\s*:\s*Migration\b")
+                && (masked.Contains("using Microsoft.EntityFrameworkCore.Migrations;", StringComparison.Ordinal)
+                    || Regex.IsMatch(masked, @"\[Migration\s*\(")))
+            {
+                marked.Add(entry.Path);
+                continue;
+            }
+
             var source = CSharpSource.Create(entry.Path, masked, regions);
             files.Add(new CSharpFile(source, () => CSharpStructureReader.Read(source)));
         }

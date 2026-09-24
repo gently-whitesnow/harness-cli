@@ -64,10 +64,11 @@ public sealed class InitCommandTests
     private static void AssertDefaultSettings(JsonElement settings)
     {
         Assert.Equal(
-            ["complexity.csharp", "comments.csharp", "duplication.csharp", "commits"],
+            ["complexity.csharp", "comments.csharp", "duplication.csharp", "functions.csharp", "commits"],
             settings.EnumerateObject().Select(section => section.Name));
         AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));
         AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));
+        AssertSection(settings, "functions.csharp", ("ownLines", 80));
         Assert.Equal(8.0, settings.GetProperty("complexity.csharp").GetProperty("averageReachableFiles").GetDouble());
         Assert.Equal(0, settings.GetProperty("complexity.csharp").GetProperty("largestCyclicGroupSize").GetInt32());
         Assert.Equal("ru", settings

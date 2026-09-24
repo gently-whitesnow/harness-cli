@@ -65,29 +65,7 @@ internal sealed partial class GoAnalyzer(IGoSources sources) : ILanguageAnalyzer
                 + $"track the {ModuleFile} of every module");
         }
 
-        var nodes = new Dictionary<string, TypeNode>(StringComparer.Ordinal);
-        var byDirectory = new Dictionary<string, TypeNode>(StringComparer.Ordinal);
-        foreach (var package in authored.GroupBy(file => file.Directory, StringComparer.Ordinal).OrderBy(group => group.Key, StringComparer.Ordinal))
-        {
-            var module = modules
-                .Where(candidate => package.Key == candidate.Directory
-                    || candidate.Directory.Length == 0
-                    || package.Key.StartsWith(candidate.Directory + "/", StringComparison.Ordinal))
-                .OrderByDescending(candidate => candidate.Directory.Length)
-                .FirstOrDefault();
-            if (module is null)
-            {
-                continue;
-            }
-
-            var relative = package.Key == module.Directory
-                ? string.Empty
-                : module.Directory.Length == 0 ? package.Key : package.Key[(module.Directory.Length + 1)..];
-            var importPath = relative.Length == 0 ? module.Path : $"{module.Path}/{relative}";
-            var node = new TypeNode(importPath, package.First().Package, module.Path, package.Key.Length == 0 ? "." : package.Key, 1);
-            nodes[importPath] = node;
-            byDirectory[package.Key] = node;
-        }
+        var (nodes, byDirectory) = BuildNodes(authored, modules);
 
         var edges = new Dictionary<(string, string), ReferenceEdge>();
         var imports = new List<ExternalImports>();
@@ -130,6 +108,36 @@ internal sealed partial class GoAnalyzer(IGoSources sources) : ILanguageAnalyzer
             0,
             sources.MarkedGenerated(repository),
             sources.MarkedIgnored(repository)), null);
+    }
+
+    private static (Dictionary<string, TypeNode> Nodes, Dictionary<string, TypeNode> ByDirectory) BuildNodes(
+        IReadOnlyList<GoFile> authored, IReadOnlyList<GoModule> modules)
+    {
+        var nodes = new Dictionary<string, TypeNode>(StringComparer.Ordinal);
+        var byDirectory = new Dictionary<string, TypeNode>(StringComparer.Ordinal);
+        foreach (var package in authored.GroupBy(file => file.Directory, StringComparer.Ordinal).OrderBy(group => group.Key, StringComparer.Ordinal))
+        {
+            var module = modules
+                .Where(candidate => package.Key == candidate.Directory
+                    || candidate.Directory.Length == 0
+                    || package.Key.StartsWith(candidate.Directory + "/", StringComparison.Ordinal))
+                .OrderByDescending(candidate => candidate.Directory.Length)
+                .FirstOrDefault();
+            if (module is null)
+            {
+                continue;
+            }
+
+            var relative = package.Key == module.Directory
+                ? string.Empty
+                : module.Directory.Length == 0 ? package.Key : package.Key[(module.Directory.Length + 1)..];
+            var importPath = relative.Length == 0 ? module.Path : $"{module.Path}/{relative}";
+            var node = new TypeNode(importPath, package.First().Package, module.Path, package.Key.Length == 0 ? "." : package.Key, 1);
+            nodes[importPath] = node;
+            byDirectory[package.Key] = node;
+        }
+
+        return (nodes, byDirectory);
     }
 
     private static (List<GoModule> Modules, string? Failure) ReadModules(IRepository repository)

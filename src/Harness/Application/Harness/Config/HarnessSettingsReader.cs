@@ -82,6 +82,7 @@ internal static class HarnessSettingsReader
         var comments = new Dictionary<string, CommentSettings>(StringComparer.Ordinal);
         var duplication = new Dictionary<string, DuplicationSettings>(StringComparer.Ordinal);
         var complexity = new Dictionary<string, ComplexitySettings>(StringComparer.Ordinal);
+        var functions = new Dictionary<string, FunctionSettings>(StringComparer.Ordinal);
         foreach (var check in checks)
         {
             switch (check.Group)
@@ -128,6 +129,23 @@ internal static class HarnessSettingsReader
                     break;
                 }
 
+                case HarnessSettings.FunctionsGroup:
+                {
+                    var (values, failure) = ReadSection(declared, check.Id, ["ownLines"]);
+                    if (values is null)
+                    {
+                        return (null, failure);
+                    }
+
+                    if (values[0] == 0)
+                    {
+                        return (null, $"'settings.{check.Id}.ownLines' must be a positive integer");
+                    }
+
+                    functions[check.Id] = new FunctionSettings(values[0]);
+                    break;
+                }
+
                 default:
                     break;
             }
@@ -136,7 +154,7 @@ internal static class HarnessSettingsReader
         var (commits, commitFailure) = ReadCommits(declared);
         return commits is null
             ? (null, commitFailure)
-            : (new HarnessSettings(comments, duplication, complexity, commits), null);
+            : (new HarnessSettings(comments, duplication, complexity, functions, commits), null);
     }
 
     private static (ComplexitySettings? Settings, string? Failure) ReadComplexity(JsonElement settings, string section)

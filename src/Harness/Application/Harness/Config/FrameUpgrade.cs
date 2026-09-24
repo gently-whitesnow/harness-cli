@@ -445,6 +445,14 @@ internal static class FrameUpgrade
           added    harness guide prints the agent working loop; a consumer AGENTS.md can point
                    to it in one line instead of restating the harness
         """),
+        (new HarnessVersion(3, 5, 0), """
+        Release 3.5 additions:
+          added    functions.csharp and functions.go measure each method, local function,
+                   lambda and Go function independently; C# top-level statements count
+          declare  policy functions.<language> as required and
+                   settings.functions.<language>.ownLines as 80 for each applicable axis
+          kept     tests under the same limit; generated source remains excluded
+        """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)

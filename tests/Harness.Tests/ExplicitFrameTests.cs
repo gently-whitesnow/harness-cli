@@ -31,7 +31,7 @@ public sealed class ExplicitFrameTests
         Assert.False(run.OutputContains("comments.csharp"), run.Output);
         Assert.False(run.OutputContains("frame.verify"), run.Output);
         Assert.True(run.OutputContains("outside the frame"), run.Output);
-        Assert.True(verbose.OutputContains("outside the frame  36 checks not named in policy: harness.coverage"), verbose.Output);
+        Assert.True(verbose.OutputContains("outside the frame  38 checks not named in policy: harness.coverage"), verbose.Output);
     }
 
     [Fact]

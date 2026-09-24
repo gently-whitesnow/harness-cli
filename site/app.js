@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 3.4.0 · no dependencies. */
+/* Harness CLI landing · contract 3.5.0 · no dependencies. */
 (function () {
   'use strict';
 
@@ -31,7 +31,9 @@
     { id: 'types-per-file.csharp', group: 'csharp', axis: 'csharp', summary: 'Не больше одного верхнеуровневого class или record в файле. Имя файла указывает на одно понятие.', adr: ['0018-csharp-applicability-and-one-type-per-file.md'] },
     { id: 'dependencies.csharp', group: 'csharp', axis: 'csharp', summary: 'Находит доказанные циклы между модулями и показывает строки, замыкающие кольцо.', adr: ['0021-coupling-evidence-grades.md', '0029-dependency-counts-removed.md'] },
     { id: 'duplication.csharp', group: 'csharp', axis: 'csharp', summary: 'Находит повторяющиеся блоки в разных файлах, даже с другими именами и литералами. Дефолтное окно — 30 нормализованных строк и минимум 90 токенов.', adr: ['0045-duplication-required-by-default.md', '0007-one-finding-one-report.md'] },
+    { id: 'functions.csharp', group: 'csharp', axis: 'csharp', summary: 'Методы, локальные функции, лямбды и top-level код: не более 80 собственных непустых строк; вложенные единицы и литералы не входят.', adr: ['0063-function-own-lines.md'] },
     { id: 'duplication.go', group: 'go', axis: 'go', summary: 'Повторяющиеся блоки в разных Go-файлах после нормализации: имена → n, литералы → токен, ключевые слова и предопределённые идентификаторы остаются. Окно 30 строк и 90 токенов.', adr: ['0055-go-language-axis.md', '0007-one-finding-one-report.md'] },
+    { id: 'functions.go', group: 'go', axis: 'go', summary: 'Go-функции и func-литералы: не более 80 собственных непустых строк; вложенные функции и composite literals не входят.', adr: ['0063-function-own-lines.md'] },
     { id: 'complexity.go', group: 'go', axis: 'go', summary: 'DSM по графу пакетов через tracked go.mod: средняя достижимость пакетов ≤ 8, циклическая группа — 0 (компилятор запрещает циклы). main-пакеты — composition root.', adr: ['0055-go-language-axis.md', '0052-dsm-ceiling-is-a-declared-setting.md'] },
     { id: 'lint-suppressions.go', group: 'go', axis: 'go', summary: 'Голый //nolint и //nolint:linter без «// причины» блокируются. Repo-wide отключения в .golangci.yml/.toml/.json печатаются в отчёте; сам линтер не запускается.', adr: ['0055-go-language-axis.md', '0044-editorconfig-baseline-and-warning-suppressions.md'] },
     { id: 'lint-suppressions.ansible', group: 'ansible', axis: 'ansible', summary: 'Голый inline # noqa и подавление без причины блокируются; skip_list и warn_list показываются как решения всего репозитория.', adr: ['0057-ansible-axis.md'] },
