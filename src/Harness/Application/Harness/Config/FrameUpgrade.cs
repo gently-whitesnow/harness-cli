@@ -606,6 +606,13 @@ internal static class FrameUpgrade
           changed  inline nolint/noqa always blocks, including directives with a reason
           review   the generated and repositoryWide fragments printed below, then run check
         """),
+        (new HarnessVersion(3, 9, 0), """
+        Release 3.9 additions:
+          relaxed  docs.policy allows a README translation named by a BCP 47 tag, such as
+                   README.ru.md or README.zh-CN.md, beside a tracked README.md in the same
+                   directory; it carries the same 150-line limit as README.md
+          kept     every other tracked Markdown is still a finding; no frame edit is needed
+        """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)
