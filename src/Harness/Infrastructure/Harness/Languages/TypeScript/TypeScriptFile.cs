@@ -1,15 +1,10 @@
-using Harness.Repository;
-
 namespace Harness.Infrastructure.Languages.TypeScript;
 
 internal static class TypeScriptFile
 {
     private static readonly string[] Extensions = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"];
-    private static readonly string[] Generated = [".d.ts", ".d.mts", ".d.cts", ".min.js", ".min.mjs", ".generated.ts", ".g.ts"];
-
-    public static bool IsSource(string path) => !RepositoryLocations.IsGenerated(path)
-        && Extensions.Any(extension => path.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
-        && !Generated.Any(suffix => path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+    public static bool IsSource(string path)
+        => Extensions.Any(extension => path.EndsWith(extension, StringComparison.OrdinalIgnoreCase));
 
     public static bool IsTest(string path)
     {

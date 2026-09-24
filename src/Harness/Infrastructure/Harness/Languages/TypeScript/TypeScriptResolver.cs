@@ -355,7 +355,9 @@ internal sealed class TypeScriptResolver
             foreach (var extension in Extensions) { candidates.Add(path + extension); candidates.Add(Join(path, "index" + extension)); }
         }
 
-        return candidates.FirstOrDefault(candidate => tracked.ContainsKey(candidate) && TypeScriptFile.IsSource(candidate));
+        return candidates.FirstOrDefault(candidate => tracked.TryGetValue(candidate, out var entry)
+            && TypeScriptFile.IsSource(candidate)
+            && repository.Classify(entry) is not (EvidenceKind.DeclaredGenerated or EvidenceKind.ToolchainIgnored));
     }
 
     private static JsonElement? GetObject(JsonElement? root, string name)

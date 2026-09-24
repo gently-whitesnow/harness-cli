@@ -64,7 +64,8 @@ public sealed class WarningSuppressionsTests
     [Fact]
     public void Repository_wide_switches_pass_and_are_printed_on_every_run()
     {
-        using var repository = Fixtures.Compliant()
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Settings(
+                """{ "warning-suppressions.dotnet": { "repositoryWide": [ { "id": "CA1707", "reason": "test names" }, { "id": "CA1716", "reason": "legacy naming" }, { "id": "CS1591", "reason": "internal API" } ] } }"""))
             .WriteFile("Directory.Build.props", Fixtures.HardenedBuildProps.Replace(
                 "    <Deterministic>true</Deterministic>",
                 "    <Deterministic>true</Deterministic>\n    <NoWarn>$(NoWarn);CS1591</NoWarn>",
@@ -86,7 +87,8 @@ public sealed class WarningSuppressionsTests
     [Fact]
     public void Generated_sources_and_generated_code_sections_are_not_judged()
     {
-        using var repository = Fixtures.Compliant()
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Generated(
+                """[{"paths":["src/App/Client.g.cs","src/App/Marked.cs"],"reason":"generator output"}]"""))
             .WriteFile("Directory.Build.props", Fixtures.HardenedBuildProps)
             .WriteFile(".editorconfig", "root = true\n[*.g.cs]\ngenerated_code = true\ndotnet_diagnostic.IDE0130.severity = none\n")
             .WriteFile("src/App/App.csproj", Fixtures.SimpleSdkProject)
@@ -97,7 +99,7 @@ public sealed class WarningSuppressionsTests
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
-        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.ExitCode == 0, run.Output);
     }
 
     [Fact]

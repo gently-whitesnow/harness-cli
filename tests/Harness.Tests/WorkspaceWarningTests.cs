@@ -45,6 +45,10 @@ public sealed class WorkspaceWarningTests
     public void Shared_repository_wide_suppression_remains_visible()
     {
         using var repository = Workspace()
+            .WriteFile("apps/one/.harness.json", """
+                {"settings":{"warning-suppressions.dotnet":{"repositoryWide":[{"id":"CS0168","reason":"fixture"}]}},
+                 "applicability":{"dotnet":{"applicable":true}},"policy":{"warning-suppressions.dotnet":"required"}}
+                """)
             .WriteFile(".editorconfig", "root = true\n[*.cs]\ndotnet_diagnostic.CS0168.severity = none\n")
             .Commit();
 

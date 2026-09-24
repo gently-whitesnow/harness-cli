@@ -204,6 +204,7 @@
   evaluation, репозиторий без SDK-style проектов не судится.
 
 ## Сборка и документация
+- [ADR-0067](0067-reviewed-weakening-in-the-frame.md) — tracked-файлы измеряются независимо от имени каталога; generated и repository-wide исключения объявляются в рамке.
 <!-- Инварианты, которые ограничивают код и тексты репозитория -->
 
 - [ADR-0042](0042-dsm-over-the-product-in-files.md) — `complexity.csharp` измеряет файлы

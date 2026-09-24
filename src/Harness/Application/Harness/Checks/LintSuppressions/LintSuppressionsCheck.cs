@@ -49,6 +49,8 @@ internal sealed partial class LintSuppressionsCheck(IGoSources sources) : IRepos
 
         var findings = new List<Finding>();
         var details = new List<string>();
+        var declared = context.Config!.Settings.RepositoryWideFor(Id);
+        var actual = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in files)
         {
             foreach (var comment in file.Comments)
@@ -71,8 +73,12 @@ internal sealed partial class LintSuppressionsCheck(IGoSources sources) : IRepos
                 return CheckEvaluation.Incomplete(parseFailure!);
             }
 
-            JudgeConfig(entry.Path, root, findings, details);
+            JudgeConfig(entry.Path, root, declared, actual, findings, details);
         }
+
+        findings.AddRange(declared.Keys.Where(id => !actual.Contains(id))
+            .Select(id => new Finding(FindingSeverity.Blocking, ".harness.json",
+                $"stale settings.{Id}.repositoryWide entry for {id}")));
 
         return CheckEvaluation.From(
             findings,
@@ -106,34 +112,43 @@ internal sealed partial class LintSuppressionsCheck(IGoSources sources) : IRepos
             return;
         }
 
-        if (reason.Length == 0)
-        {
-            findings.Add(new Finding(
-                FindingSeverity.Blocking,
-                location,
-                $"silences {string.Join(", ", linters)} via //nolint:{string.Join(",", linters)} without a reason; "
-                    + "add `// <reason>` after the directive on the same line, or fix the code"));
-        }
+        findings.Add(new Finding(FindingSeverity.Blocking, location,
+            $"silences {string.Join(", ", linters)} at one address via //nolint; "
+                + (reason.Length == 0 ? "a reason does not authorize this exception; fix the code" : "fix the code")));
     }
 
-    private static void JudgeConfig(string path, ConfigNode root, List<Finding> findings, List<string> details)
+    private static void JudgeConfig(string path, ConfigNode root,
+        IReadOnlyDictionary<string, string> declared, HashSet<string> actual,
+        List<Finding> findings, List<string> details)
     {
         var enabled = root.Get("linters", "enable") is { } enable && !enable.IsEmpty;
-        if (root.Get("linters", "disable-all") is { IsTrue: true } disableAll && !enabled)
+        if (root.Get("linters", "disable-all") is { IsTrue: true } disableAll)
         {
             details.Add($"every linter is switched off repository-wide via linters.disable-all: true without linters.enable at {At(path, disableAll)}");
+            findings.Add(new Finding(FindingSeverity.Blocking, At(path, disableAll), "linters.disable-all switches off every linter"));
         }
 
-        if (root.Get("linters", "default") is { Scalar: "none" } none && !enabled)
+        if (root.Get("linters", "default") is { Scalar: "none" } none)
         {
             details.Add($"every linter is switched off repository-wide via linters.default: none without linters.enable at {At(path, none)}");
+            findings.Add(new Finding(FindingSeverity.Blocking, At(path, none), "linters.default: none switches off every linter"));
         }
 
         if (root.Get("linters", "disable") is { } disable)
         {
             foreach (var linter in disable.Values)
             {
-                details.Add($"{linter} is switched off repository-wide via linters.disable at {At(path, disable)}");
+                actual.Add(linter);
+                if (declared.TryGetValue(linter, out var reason))
+                {
+                    details.Add($"{linter} is switched off repository-wide via linters.disable at {At(path, disable)}; declared reason: {reason}");
+                }
+                else
+                {
+                    details.Add($"{linter} is switched off repository-wide via linters.disable at {At(path, disable)}; undeclared");
+                    findings.Add(new Finding(FindingSeverity.Blocking, At(path, disable),
+                        $"{linter} is switched off repository-wide without settings.lint-suppressions.go.repositoryWide declaration"));
+                }
             }
         }
 
@@ -142,6 +157,44 @@ internal sealed partial class LintSuppressionsCheck(IGoSources sources) : IRepos
         JudgePaths(path, root.Get("issues", "exclude-dirs"), "issues.exclude-dirs", findings, details);
         JudgePaths(path, root.Get("issues", "exclude-files"), "issues.exclude-files", findings, details);
         JudgePaths(path, root.Get("linters", "exclusions", "paths"), "linters.exclusions.paths", findings, details);
+        foreach (var key in new[] { "exclude", "exclude-use-default" })
+        {
+            if (root.Get("issues", key) is { } node && !node.IsEmpty && node.Scalar != "false")
+            {
+                findings.Add(new Finding(FindingSeverity.Blocking, At(path, node),
+                    $"issues.{key} excludes linter evidence outside the reviewed frame"));
+            }
+        }
+
+        foreach (var key in new[] { "presets", "generated" })
+        {
+            if (root.Get("linters", "exclusions", key) is { } node && !node.IsEmpty && node.Scalar != "false")
+            {
+                findings.Add(new Finding(FindingSeverity.Blocking, At(path, node),
+                    $"linters.exclusions.{key} excludes linter evidence outside the reviewed frame"));
+            }
+        }
+
+        foreach (var member in root.Get("issues")?.Members ?? [])
+        {
+            if (member.Key.StartsWith("exclude", StringComparison.Ordinal)
+                && member.Key is not ("exclude" or "exclude-use-default" or "exclude-rules" or "exclude-dirs" or "exclude-files")
+                && !member.Value.IsEmpty && member.Value.Scalar != "false")
+            {
+                findings.Add(new Finding(FindingSeverity.Blocking, At(path, member.Value),
+                    $"unrecognized golangci exclusion key issues.{member.Key}"));
+            }
+        }
+
+        foreach (var member in root.Get("linters", "exclusions")?.Members ?? [])
+        {
+            if (member.Key is not ("rules" or "paths" or "paths-except" or "presets" or "generated")
+                && !member.Value.IsEmpty)
+            {
+                findings.Add(new Finding(FindingSeverity.Blocking, At(path, member.Value),
+                    $"unrecognized golangci exclusion key linters.exclusions.{member.Key}"));
+            }
+        }
     }
 
     // A path list takes whole places out from under every linter: the same private exception
@@ -155,6 +208,8 @@ internal sealed partial class LintSuppressionsCheck(IGoSources sources) : IRepos
             {
                 var where = rulePath.Length == 0 ? "without a path" : $"for path `{rulePath}`";
                 details.Add($"{form} at {At(path, entry)} excludes every linter repository-wide, {where}");
+                findings.Add(new Finding(FindingSeverity.Blocking, At(path, entry),
+                    $"{form} excludes every linter via a wildcard path"));
                 continue;
             }
 
@@ -179,9 +234,7 @@ internal sealed partial class LintSuppressionsCheck(IGoSources sources) : IRepos
             {
                 var where = rulePath.Length == 0 ? "without a path" : $"for path `{rulePath}`";
                 details.Add($"{form} at {At(path, rule)} excludes {subject} repository-wide, {where}");
-                continue;
             }
-
             findings.Add(new Finding(
                 FindingSeverity.Blocking,
                 At(path, rule),

@@ -37,7 +37,8 @@ internal sealed record FrameAxis(
     public List<string> Detect(IRepository repository, IEnumerable<TrackedEntry> entries)
     {
         var sources = entries
-            .Where(entry => !entry.IsSymbolicLink && !RepositoryLocations.IsGenerated(entry.Path))
+            .Where(entry => !entry.IsSymbolicLink)
+            .Where(entry => repository.Classify(entry) is not (EvidenceKind.DeclaredGenerated or EvidenceKind.ToolchainIgnored))
             .Where(entry => Sources.Any(source => source.Matches(entry.Path)))
             .DistinctBy(entry => entry.Path, StringComparer.Ordinal)
             .ToList();

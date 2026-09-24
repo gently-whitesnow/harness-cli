@@ -31,7 +31,7 @@ internal sealed partial class GoSources : IGoSources
 
     /// <summary>Whether the go tool would read this path: vendor, testdata and `_`/`.` directories are outside.</summary>
     public static bool IsAuthoredLocation(string path)
-        => !RepositoryLocations.IsGenerated(path)
+        => !path.Split('/').SkipLast(1).Contains("vendor", StringComparer.Ordinal)
             && !path.Split('/').SkipLast(1).Any(segment => segment == "testdata" || segment.StartsWith('_') || segment.StartsWith('.'));
 
     private Reading Discover(IRepository repository)
@@ -64,8 +64,7 @@ internal sealed partial class GoSources : IGoSources
                 return new Reading([], [], [], failure ?? $"Could not read '{entry.Path}'.");
             }
 
-            var header = Header(text);
-            if (header.Any(line => GeneratedHeader().IsMatch(line)))
+            if (repository.Classify(entry) == EvidenceKind.DeclaredGenerated)
             {
                 generated.Add(entry.Path);
                 continue;
@@ -83,12 +82,6 @@ internal sealed partial class GoSources : IGoSources
         return new Reading(files, generated, ignored, null);
     }
 
-    // Generated markers must appear before the package clause.
-    private static List<string> Header(string text)
-        => text.Split('\n')
-            .Select(line => line.TrimEnd('\r'))
-            .TakeWhile(line => !line.StartsWith("package ", StringComparison.Ordinal))
-            .ToList();
 
     private static GoFile Parse(string path, string text)
     {
@@ -271,8 +264,6 @@ internal sealed partial class GoSources : IGoSources
         return found >= 0 ? found : ~found - 1;
     }
 
-    [GeneratedRegex(@"^// Code generated .* DO NOT EDIT\.$")]
-    private static partial Regex GeneratedHeader();
 
     private sealed record Reading(
         IReadOnlyList<GoFile> Files,

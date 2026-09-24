@@ -114,7 +114,7 @@ public sealed class UntrackedEvidenceTests
     [Fact]
     public void An_unstaged_project_is_named_although_nothing_was_applicable()
     {
-        using var repository = Fixtures.Compliant()
+        using var repository = Fixtures.WithRawFrame(Frame.AllPresent().ToString())
             .WriteFile("src/App/App.csproj", Fixtures.SimpleSdkProject);
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "build-properties.dotnet");

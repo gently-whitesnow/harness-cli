@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Harness.Config;
 
@@ -26,7 +27,9 @@ internal static class HarnessSettingsReader
         }
 
         var configurable = checks.Where(check => HarnessSettings.HasSection(check.Group)).ToDictionary(check => check.Id, StringComparer.Ordinal);
+        var suppressions = new[] { "warning-suppressions.dotnet", "lint-suppressions.go", "lint-suppressions.ansible" };
         var expected = configurable.Keys.Where(policyIds.Contains).Append(HarnessSettings.CommitsSection).ToList();
+        expected.AddRange(suppressions.Where(policyIds.Contains).Where(id => declared.TryGetProperty(id, out _)));
         var retiredFailure = Retired(declared);
         if (retiredFailure is not null)
         {
@@ -40,7 +43,7 @@ internal static class HarnessSettingsReader
                 continue;
             }
 
-            return configurable.ContainsKey(property.Name)
+            return (configurable.ContainsKey(property.Name) || suppressions.Contains(property.Name, StringComparer.Ordinal))
                 ? (null, $"'settings.{property.Name}' is declared, but 'policy' does not mention {property.Name}; "
                     + "add the policy entry or remove the section — a setting nobody applies is not configuration")
                 : (null, $"'settings.{property.Name}' is not configurable "
@@ -162,10 +165,73 @@ internal static class HarnessSettingsReader
             }
         }
 
+        return Complete(declared, comments, duplication, complexity, functions, adrShape);
+    }
+
+    private static (HarnessSettings? Settings, string? Failure) Complete(
+        JsonElement declared,
+        Dictionary<string, CommentSettings> comments,
+        Dictionary<string, DuplicationSettings> duplication,
+        Dictionary<string, ComplexitySettings> complexity,
+        Dictionary<string, FunctionSettings> functions,
+        AdrShapeSettings? adrShape)
+    {
         var (commits, commitFailure) = ReadCommits(declared);
-        return commits is null
-            ? (null, commitFailure)
-            : (new HarnessSettings(comments, duplication, complexity, functions, adrShape, commits), null);
+        if (commits is null)
+        {
+            return (null, commitFailure);
+        }
+
+        var (repositoryWide, suppressionFailure) = ReadRepositoryWide(declared);
+        return repositoryWide is null
+            ? (null, suppressionFailure)
+            : (new HarnessSettings(comments, duplication, complexity, functions, adrShape, commits, repositoryWide), null);
+    }
+
+    private static (IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? Entries, string? Failure)
+        ReadRepositoryWide(JsonElement settings)
+    {
+        var result = new Dictionary<string, IReadOnlyDictionary<string, string>>(StringComparer.Ordinal);
+        foreach (var id in new[] { "warning-suppressions.dotnet", "lint-suppressions.go", "lint-suppressions.ansible" })
+        {
+            if (!settings.TryGetProperty(id, out var section))
+            {
+                continue;
+            }
+
+            if (section.ValueKind != JsonValueKind.Object
+                || section.EnumerateObject().Any(property => property.Name != "repositoryWide")
+                || !section.TryGetProperty("repositoryWide", out var entries)
+                || entries.ValueKind != JsonValueKind.Array)
+            {
+                return (null, $"'settings.{id}' must contain only a repositoryWide array");
+            }
+
+            var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in entries.EnumerateArray())
+            {
+                if (entry.ValueKind != JsonValueKind.Object
+                    || entry.EnumerateObject().Any(property => property.Name is not ("id" or "reason"))
+                    || !entry.TryGetProperty("id", out var key)
+                    || key.ValueKind != JsonValueKind.String
+                    || !entry.TryGetProperty("reason", out var reason)
+                    || reason.ValueKind != JsonValueKind.String
+                    || string.IsNullOrWhiteSpace(key.GetString())
+                    || string.IsNullOrWhiteSpace(reason.GetString())
+                    || key.GetString() == "*"
+                    || string.Equals(key.GetString(), "all", StringComparison.OrdinalIgnoreCase)
+                    || key.GetString()!.StartsWith("category-", StringComparison.OrdinalIgnoreCase)
+                    || id == "warning-suppressions.dotnet" && !Regex.IsMatch(key.GetString()!, @"^[A-Za-z]+\d+$")
+                    || !values.TryAdd(key.GetString()!, reason.GetString()!.Trim()))
+                {
+                    return (null, $"'settings.{id}.repositoryWide' requires unique nonempty id/reason entries");
+                }
+            }
+
+            result[id] = values;
+        }
+
+        return (result, null);
     }
 
     private static (AdrShapeSettings? Settings, string? Failure) ReadAdrShape(JsonElement declared, string section)

@@ -13,7 +13,7 @@ namespace Harness.Config;
 internal static class HarnessConfigReader
 {
     private static readonly string[] TopLevelKeys =
-        ["version", "architecture", "answers", "applicability", "settings", "policy", "projects"];
+        ["version", "architecture", "answers", "applicability", "settings", "policy", "projects", "generated"];
 
     /// <summary>
     /// Reads the tracked config and validates its envelope before preserving per-answer results.
@@ -159,6 +159,12 @@ internal static class HarnessConfigReader
             return (null, ConfigJson.Failure(projectsFailure!));
         }
 
+        var (generated, generatedFailure) = GeneratedConfigReader.Read(root);
+        if (generated is null)
+        {
+            return (null, ConfigJson.Failure(generatedFailure!));
+        }
+
         var (policy, policyFailure) = PolicyReader.ReadPolicy(root, checks);
         if (policy is null)
         {
@@ -193,6 +199,7 @@ internal static class HarnessConfigReader
         return (new HarnessConfig
         {
             Projects = projects,
+            Generated = generated,
             Version = version,
             TracksLatest = tracksLatest,
             Architecture = architecture,

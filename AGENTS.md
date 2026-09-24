@@ -49,11 +49,10 @@ sliced-dotnet, а без зоны — вне tracked тестовых проек
 
 Ось `go` (контракт 3.1): `comments.go` не считает doc-комментарии top-level деклараций и директивы `//go:`;
 `duplication.go` — общий токенизатор с ключевыми словами Go; `complexity.go` — DSM по пакетам через tracked `go.mod`
-(`main` — composition root, `largestCyclicGroupSize` всегда 0), те же ключи и 8.0 / 0; `lint-suppressions.go` блокирует
-голый `//nolint` и `//nolint:x` без `// причины`, repo-wide отключения в tracked-конфиге golangci печатает в details.
+(`main` — composition root, `largestCyclicGroupSize` всегда 0), те же ключи и 8.0 / 0; `lint-suppressions.go` блокирует любой адресный `//nolint`; глобальные отключения требуют id и причины в `settings.lint-suppressions.go.repositoryWide`.
 `go vet`/`gofmt` — через `answers.lint`/`answers.format`; types-per-file, dependencies, архитектура и editorconfig для Go не делаются. [ADR-0055](adrs/0055-go-language-axis.md)
 Ось `typescript` (контракт 3.6): `dependencies.typescript` доказывает циклы каталогов по литеральным импортам, включая type-only; `duplication.typescript` — 30/90; `complexity.typescript` — файловый DSM с прозрачными barrels и потолком 8.0 / 0. Неразрешённые импорты видны в details; node/tsc не нужен. [ADR-0064](adrs/0064-typescript-language-axis.md)
-Ось `ansible` по маркерам: причины inline `noqa` и циклы ролей. Из `init` — required, как и комментарии.
+Ось `ansible` по маркерам: inline `noqa` блокирует, циклы ролей проверяются. Из `init` — required, как и комментарии.
 YAML не считает блоки над ключами любой глубины и trailing-комментарии; смягчение агент обсуждает с владельцем.
 Состав первого релиза — [ADR-0059](adrs/0059-focused-ansible-release.md); рамка — [ADR-0056](adrs/0056-configuration-repository-frame.md).
 
@@ -64,7 +63,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
 блокируются; выключение правила для всего репозитория печатается в verbose details. Читается tracked XML и текст без MSBuild evaluation. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"3.7.0"`). Бинарь исполняет только его; другой pin даёт
+`version` — строка текущего контракта (`"3.8.0"`). Бинарь исполняет только его; другой pin даёт
 `Incomplete`, а меняет pin только `harness upgrade`, печатающий маршрут от pin и фрагменты для
 обнаруженных осей. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -145,6 +144,6 @@ dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
 строк. `CLAUDE.md` — прямой относительный симлинк на соседний `AGENTS.md`. `README.md` —
 краткий обзор. Документ судится по имени, а не по каталогу: эти три имени действуют на любой
 глубине по тем же правилам, что в корне, где `AGENTS.md` и `CLAUDE.md` обязательны.
-`SKILL.md` и `DESIGN.md` разрешены везде и не измеряются, как и файлы форджа (community health, шаблоны issue/PR) в корне, `.github/`, `docs/`. Решения — в корневом `adrs/`; `adrs.shape` требует номер без дыр, дату, статус, разделы и лимиты 1000 слов / 10 строк кода / 12 строк таблицы.
+`SKILL.md` разрешён в `skills/<name>/` и зеркалах `.agents/skills/`, `.claude/skills/`; `DESIGN.md` разрешён везде, как и файлы форджа (community health, шаблоны issue/PR) в корне, `.github/`, `docs/`. Решения — в корневом `adrs/`; `adrs.shape` требует номер без дыр, дату, статус, разделы и лимиты 1000 слов / 10 строк кода / 12 строк таблицы.
 Прочий tracked Markdown — нарушение; смягчение — через `policy`. `harness guide` печатает агенту потребителя цикл работы.
 [ADR-0010](adrs/0010-documentation-policy.md), [ADR-0025](adrs/0025-nested-agent-documents.md), [ADR-0061](adrs/0061-forge-and-design-documents.md), [ADR-0062](adrs/0062-agent-guide-command.md), [ADR-0066](adrs/0066-adr-shape-as-decision-record.md)

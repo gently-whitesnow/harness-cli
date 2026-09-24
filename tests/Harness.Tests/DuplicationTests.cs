@@ -203,7 +203,7 @@ public sealed class DuplicationTests
     }
 
     [Fact]
-    public void Generated_and_build_output_sources_are_excluded()
+    public void Tracked_output_named_paths_are_measured_until_declared()
     {
         using var repository = Fixtures.Compliant()
             .WriteFile("src/App/obj/Debug/First.cs", DuplicationSources.Block("First", "seed", "first"))
@@ -215,8 +215,8 @@ public sealed class DuplicationTests
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
-        Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("not applicable"), run.Output);
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("src/App/obj/Debug/First.cs", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]

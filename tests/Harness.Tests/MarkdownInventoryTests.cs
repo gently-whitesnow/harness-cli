@@ -90,7 +90,7 @@ public sealed class MarkdownInventoryTests
     }
 
     [Fact]
-    public void Vendored_and_build_output_markdown_is_ignored()
+    public void Tracked_markdown_is_judged_even_in_build_named_directories()
     {
         using var repository = Fixtures.Compliant()
             .WriteFile("node_modules/left-pad/README.md", "# left-pad\n")
@@ -100,10 +100,9 @@ public sealed class MarkdownInventoryTests
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
-        Assert.Equal(0, run.ExitCode);
-        Assert.False(run.OutputContains("left-pad"), run.Output);
-        Assert.False(run.OutputContains("web/dist/report.md"), run.Output);
-        Assert.False(run.OutputContains("src/Service/obj/notes.md"), run.Output);
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("web/dist/report.md", run.Output, StringComparison.Ordinal);
+        Assert.Contains("src/Service/obj/notes.md", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]

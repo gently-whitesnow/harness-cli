@@ -10,7 +10,6 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer, string 
     private const int ShownDependencyGroups = 5;
 
     // Mirrors the generated-suffix judgement of the C# source reader.
-    private static readonly string[] GeneratedSourceSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
 
     private static readonly string[] Layers = ArchitectureZones.Layers;
 
@@ -242,6 +241,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer, string 
 
         var paths = context.Repository.TrackedEntries
             .Where(entry => !entry.IsSymbolicLink)
+            .Where(entry => context.Repository.Classify(entry) is not (EvidenceKind.DeclaredGenerated or EvidenceKind.ToolchainIgnored))
             .Select(entry => entry.Path)
             .ToList();
         var zones = ArchitectureZones.Discover(paths);
@@ -386,8 +386,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer, string 
     private static (IReadOnlyList<DotNetFile> Projects, string? Failure) ReadProjects(CheckContext context)
     {
         var projects = new List<DotNetFile>();
-        foreach (var entry in context.Tracked(ProjectEvidence)
-            .Where(entry => !RepositoryLocations.IsGenerated(entry.Path)))
+        foreach (var entry in context.Tracked(ProjectEvidence))
         {
             var (file, failure) = DotNetRepository.Read(context.Repository, entry);
             if (failure is not null)
@@ -549,9 +548,7 @@ internal sealed class SlicedDotNetShapeCheck(ILanguageAnalyzer analyzer, string 
             .Where(value => !value.Contains("$(", StringComparison.Ordinal));
 
     private static bool IsAuthoredSource(string path)
-        => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
-            && !GeneratedSourceSuffixes.Any(suffix =>
-                path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+        => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsEssenceBasedSegmentName(string name)
         => SteigerBadNamesGeneric.Contains(name)

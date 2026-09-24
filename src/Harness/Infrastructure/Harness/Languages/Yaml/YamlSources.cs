@@ -14,7 +14,7 @@ internal sealed class YamlSources : ICommentedSources
 
     public Language Language => Language.Yaml;
 
-    public string NothingToAnalyze => "no tracked YAML outside generated and build-output locations";
+    public string NothingToAnalyze => "no tracked authored YAML outside toolchain-ignored paths";
 
     public (IReadOnlyList<CommentedSource> Files, string? Failure) Read(IRepository repository)
     {
@@ -30,9 +30,9 @@ internal sealed class YamlSources : ICommentedSources
     private static (IReadOnlyList<CommentedSource> Files, string? Failure) Discover(IRepository repository)
     {
         var candidates = repository.TrackedEntries
+            .Where(entry => repository.Classify(entry) is not (EvidenceKind.DeclaredGenerated or EvidenceKind.ToolchainIgnored))
             .Where(entry => Extensions.Any(extension =>
                 entry.Path.EndsWith(extension, StringComparison.OrdinalIgnoreCase)))
-            .Where(entry => !RepositoryLocations.IsGenerated(entry.Path))
             .OrderBy(entry => entry.Path, StringComparer.Ordinal);
 
         var files = new List<CommentedSource>();

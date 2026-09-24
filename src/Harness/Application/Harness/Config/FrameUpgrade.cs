@@ -1,7 +1,9 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Harness.Checks.Architecture;
+using Harness.Checks.LintSuppressions;
 using Harness.Repository;
 using Harness.Versioning;
 
@@ -208,7 +210,133 @@ internal static class FrameUpgrade
                 .Append("\n  }\n");
         }
 
+        report.Append(WeakeningMigration(repository, document));
+
         return report.ToString();
+    }
+
+    private static string WeakeningMigration(IRepository repository, JsonObject? document)
+    {
+        var report = new StringBuilder();
+        var declared = document?["generated"] as JsonArray;
+        var named = declared?.OfType<JsonObject>()
+            .SelectMany(entry => (entry["paths"] as JsonArray)?.OfType<JsonValue>()
+                .Select(value => value.GetValue<string>()) ?? [])
+            .ToHashSet(StringComparer.Ordinal) ?? [];
+        var generated = repository.TrackedEntries
+            .Where(entry => repository.Classify(entry) == EvidenceKind.UndeclaredMarker)
+            .Select(entry => entry.Path)
+            .Where(path => !named.Any(prefix => path == prefix || path.StartsWith(prefix + "/", StringComparison.Ordinal)))
+            .Select(path => path.LastIndexOf('/') is var slash && slash > 0 ? path[..slash] : path)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (generated.Count > 0)
+        {
+            report.Append("Generated sources needing reviewed declarations (paths may be grouped by directory):\n")
+                .Append("  \"generated\": [\n");
+            for (var index = 0; index < generated.Count; index++)
+            {
+                report.Append("    { \"paths\": [\"").Append(generated[index])
+                    .Append("\"], \"reason\": \"identify the generator and why output is tracked\" }")
+                    .Append(index + 1 < generated.Count ? ",\n" : "\n");
+            }
+
+            report.Append("  ]\n");
+        }
+
+        var wide = CollectWideSuggestions(repository);
+
+        foreach (var (section, ids) in wide)
+        {
+            var existing = (document?["settings"]?[section]?["repositoryWide"] as JsonArray)?
+                .OfType<JsonObject>().Select(entry => entry["id"]?.GetValue<string>())
+                .OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
+            var missing = ids.Where(id => !existing.Contains(id)).Order(StringComparer.Ordinal).ToList();
+            if (missing.Count == 0)
+            {
+                continue;
+            }
+
+            report.Append($"Review repository-wide switches; only genuinely global entries belong in settings.{section}:\n")
+                .Append($"  \"{section}\": {{ \"repositoryWide\": [\n");
+            for (var index = 0; index < missing.Count; index++)
+            {
+                report.Append($"    {{ \"id\": \"{missing[index]}\", \"reason\": \"explain why this rule is disabled\" }}")
+                    .Append(index + 1 < missing.Count ? ",\n" : "\n");
+            }
+
+            report.Append("  ] }\n");
+        }
+
+        return report.ToString();
+    }
+
+    private static Dictionary<string, HashSet<string>> CollectWideSuggestions(IRepository repository)
+    {
+        var wide = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        foreach (var entry in repository.TrackedEntries.Where(entry => entry.Path.EndsWith(".editorconfig", StringComparison.Ordinal)
+            || entry.Path.EndsWith("Directory.Build.props", StringComparison.Ordinal)
+            || entry.Path.EndsWith(".ansible-lint", StringComparison.Ordinal)
+            || entry.Path.EndsWith(".ansible-lint.yml", StringComparison.Ordinal)
+            || entry.Path.EndsWith(".ansible-lint.yaml", StringComparison.Ordinal)
+            || GolangciConfig.FileNames.Any(name => entry.Path.EndsWith(name, StringComparison.Ordinal))))
+        {
+            var (text, _) = repository.ReadTrackedText(entry);
+            if (text is null)
+            {
+                continue;
+            }
+
+            if (entry.Path.EndsWith(".editorconfig", StringComparison.Ordinal))
+            {
+                foreach (Match match in Regex.Matches(text,
+                    @"dotnet_diagnostic\.([A-Za-z]+\d+)\.severity\s*=\s*(?:none|silent|suggestion)", RegexOptions.IgnoreCase))
+                {
+                    Add("warning-suppressions.dotnet", match.Groups[1].Value.ToUpperInvariant());
+                }
+            }
+            else if (entry.Path.EndsWith("Directory.Build.props", StringComparison.Ordinal))
+            {
+                foreach (Match match in Regex.Matches(text, @"<NoWarn>(.*?)</NoWarn>", RegexOptions.Singleline))
+                {
+                    foreach (var id in Regex.Matches(match.Groups[1].Value, @"[A-Za-z]+\d+").Select(found => found.Value.ToUpperInvariant()))
+                    {
+                        Add("warning-suppressions.dotnet", id);
+                    }
+                }
+            }
+            else if (entry.Path.Contains(".ansible-lint", StringComparison.Ordinal))
+            {
+                var root = YamlConfig.Parse(text);
+                foreach (var name in new[] { "skip_list", "warn_list" })
+                {
+                    foreach (var id in root.Member(name)?.Values ?? [])
+                    {
+                        Add("lint-suppressions.ansible", id);
+                    }
+                }
+            }
+            else
+            {
+                var (root, _) = GolangciConfig.Parse(entry.Path, text);
+                foreach (var id in root?.Get("linters", "disable")?.Values ?? [])
+                {
+                    Add("lint-suppressions.go", id);
+                }
+            }
+
+            void Add(string section, string id)
+            {
+                if (!wide.TryGetValue(section, out var ids))
+                {
+                    wide[section] = ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                }
+
+                ids.Add(id);
+            }
+        }
+
+        return wide;
     }
 
     private static readonly IReadOnlyList<(HarnessVersion Since, string Note)> ReleaseNotes =
@@ -467,6 +595,16 @@ internal static class FrameUpgrade
                    sections, words, fenced code and tables in the tracked ADR catalogue
           declare  policy.adrs.shape as required and settings.adrs.shape with
                    wordLimit 1000, fencedLineLimit 10 and tableRowLimit 12
+        """),
+        (new HarnessVersion(3, 8, 0), """
+        Release 3.8 additions:
+          changed  tracked source directories are measured regardless of their names;
+                   generated evidence needs both a toolchain marker and a reviewed
+                   generated paths/reason declaration in each scope's .harness.json
+          changed  repository-wide diagnostic and linter switches require matching
+                   settings.<check>.repositoryWide id/reason entries; stale entries fail
+          changed  inline nolint/noqa always blocks, including directives with a reason
+          review   the generated and repositoryWide fragments printed below, then run check
         """),
     ];
 

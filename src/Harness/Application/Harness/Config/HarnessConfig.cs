@@ -16,6 +16,8 @@ internal sealed record HarnessConfig
 
     public IReadOnlyList<string> Projects { get; init; } = [];
 
+    public IReadOnlyList<GeneratedDeclaration> Generated { get; init; } = [];
+
     public required HarnessVersion Version { get; init; }
 
     public required bool TracksLatest { get; init; }
@@ -138,6 +140,9 @@ internal sealed record HarnessConfig
         A check the policy does not name is outside the frame and does not run; a check it names
         carries required, advisory or off, and its settings section in full. An axis with tracked
         sources must be declared applicable or declined with a reason — harness.coverage says which.
+        Generated tracked sources need a top-level `generated` array of paths and reasons; only
+        files under those paths with a toolchain marker are excluded. Repository-wide diagnostic
+        switches need id/reason entries in settings.<check>.repositoryWide.
         Run `harness explain <check-id>` for what one answer means and how it is reported.
         """;
 

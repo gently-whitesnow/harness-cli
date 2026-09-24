@@ -61,7 +61,7 @@ internal static class DotNetRepository
         IEnumerable<TrackedEntry> entries)
     {
         var projects = new List<DotNetFile>();
-        foreach (var entry in entries.Where(entry => !RepositoryLocations.IsGenerated(entry.Path)))
+        foreach (var entry in entries.Where(entry => repository.Classify(entry) is not (EvidenceKind.DeclaredGenerated or EvidenceKind.ToolchainIgnored)))
         {
             var (file, failure) = ReadXml(repository, entry);
             if (failure is not null)

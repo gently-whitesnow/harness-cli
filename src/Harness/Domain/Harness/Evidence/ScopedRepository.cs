@@ -45,6 +45,9 @@ internal sealed class ScopedRepository : IRepository
 
     public IReadOnlyList<TrackedEntry> TrackedEntries { get; }
 
+    public EvidenceKind Classify(TrackedEntry entry)
+        => EvidenceClassifier.Classify(entry, [], ReadTrackedText);
+
     public TimeSpan ReadDuration => repository.ReadDuration;
 
     public IReadOnlyList<TrackedEntry> Ancestors(string fileName)

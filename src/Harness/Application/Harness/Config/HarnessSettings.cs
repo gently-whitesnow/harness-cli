@@ -12,7 +12,8 @@ internal sealed record HarnessSettings(
     IReadOnlyDictionary<string, ComplexitySettings> Complexity,
     IReadOnlyDictionary<string, FunctionSettings> Functions,
     AdrShapeSettings? AdrShape,
-    CommitSettings Commits)
+    CommitSettings Commits,
+    IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> RepositoryWide)
 {
     public const string CommentsGroup = "comments";
 
@@ -42,4 +43,7 @@ internal sealed record HarnessSettings(
 
     public FunctionSettings? FunctionsFor(Language language)
         => Functions.TryGetValue(language.Qualify(FunctionsGroup), out var settings) ? settings : null;
+
+    public IReadOnlyDictionary<string, string> RepositoryWideFor(string checkId)
+        => RepositoryWide.TryGetValue(checkId, out var entries) ? entries : new Dictionary<string, string>();
 }

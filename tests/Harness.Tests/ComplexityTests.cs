@@ -184,7 +184,7 @@ public sealed class ComplexityTests
     [Fact]
     public void Without_a_zone_files_under_a_test_project_are_not_measured()
     {
-        using var repository = Fixtures.Compliant(Frame.AllPresent())
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Located("tests.unit", "tests/Lib.Tests"))
             .WriteFile("src/Lib/Lib.csproj", Fixtures.SimpleSdkProject)
             .WriteFile("src/Lib/Core.cs", "namespace Lib;\n\npublic sealed class Core;\n")
             .WriteFile("src/Lib/Facade.cs", Reference("Lib", "Facade", "Lib", ["Core"]))
@@ -207,7 +207,7 @@ public sealed class ComplexityTests
     [InlineData("<ItemGroup><PackageReference Include=\"MSTest\" /></ItemGroup>")]
     public void A_test_project_is_recognised_from_its_own_xml(string marker)
     {
-        using var repository = Fixtures.Compliant(Frame.AllPresent())
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Located("tests.unit", "tests/Lib.Tests"))
             .WriteFile("src/Lib/Lib.csproj", Fixtures.SimpleSdkProject)
             .WriteFile("src/Lib/Core.cs", "namespace Lib;\n\npublic sealed class Core;\n")
             .WriteFile("tests/Lib.Tests/Lib.Tests.csproj", $"<Project Sdk=\"Microsoft.NET.Sdk\">{marker}</Project>\n")
@@ -240,6 +240,8 @@ public sealed class ComplexityTests
     public void A_tracked_file_with_a_generated_marker_is_named_but_not_read()
     {
         using var repository = Graph(("A", ["B"]), ("B", []))
+            .WriteFile(".harness.json", Frame.AllPresent().Generated(
+                """[{"paths":["src/Graph/Hub.cs"],"reason":"generator output"}]""").ToString())
             .WriteFile(
                 "src/Graph/Hub.cs",
                 """

@@ -46,7 +46,7 @@ internal sealed class EditorConfigCheck : DotNetCheck
 
     public override string Explanation => EditorConfigExplanation.Text;
 
-    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [EditorConfig];
+    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [EditorConfig, new EvidenceFile("*.cs")];
 
     protected override CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects)
     {
@@ -81,6 +81,32 @@ internal sealed class EditorConfigCheck : DotNetCheck
                 if (message is not null && reported.Add($"{nearest.Path}|{message}"))
                 {
                     findings.Add(Block(nearest.Path, message));
+                }
+            }
+        }
+
+        foreach (var source in context.Tracked(new EvidenceFile("*.cs"))
+            .Where(entry => context.Repository.Classify(entry) is not (EvidenceKind.DeclaredGenerated or EvidenceKind.ToolchainIgnored)))
+        {
+            var chain = EditorConfigChain.ChainFor(files, source.Path);
+            if (chain.Count == 0)
+            {
+                findings.Add(Block(source.Path, "tracked C# source is not covered by a tracked .editorconfig"));
+                continue;
+            }
+
+            var effective = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var file in chain)
+            {
+                file.ApplyTo(effective, EditorConfigChain.RelativeTo(context.Repository.RootPath, file.Directory, source.Path));
+            }
+
+            foreach (var expected in Required)
+            {
+                var message = Judge(effective, expected);
+                if (message is not null && reported.Add($"{source.Path}|{message}"))
+                {
+                    findings.Add(Block(source.Path, message));
                 }
             }
         }
