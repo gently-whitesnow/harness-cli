@@ -41,11 +41,13 @@ internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer)
         }
 
         var cycles = Cycles(graph);
-        return CheckEvaluation.From(cycles.Summary, Coverage(graph), cycles.Detailed);
+        return CheckEvaluation.From(cycles.Summary, Coverage(graph), cycles.Detailed, graph.Details);
     }
 
     private string Coverage(SourceGraph graph)
-        => Analyzer.Language == Language.Ansible
+        => Analyzer.Language == Language.TypeScript
+            ? $"{graph.CoveragePercentage}% of {graph.CandidateReferences} literal TypeScript/JavaScript imports resolved; unresolved imports are listed in details."
+            : Analyzer.Language == Language.Ansible
             ? $"{graph.CoveragePercentage}% of the {graph.CandidateReferences} role names in meta dependencies and includes "
                 + "are literals; a name written in Jinja is Inferred and not in the graph."
             : $"{graph.CoveragePercentage}% of the {graph.CandidateReferences} names that match a declared type "
@@ -53,7 +55,10 @@ internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer)
 
     private FindingSet Cycles(SourceGraph graph)
     {
-        var cycles = ModuleGraph.Cycles(graph.Proven, collapseNestedModules: Analyzer.Language != Language.Ansible);
+        var edges = Analyzer.Language == Language.TypeScript
+            ? graph.Proven.Where(edge => edge.From.Module != edge.To.Module)
+            : graph.Proven;
+        var cycles = ModuleGraph.Cycles(edges, collapseNestedModules: Analyzer.Language != Language.Ansible && Analyzer.Language != Language.TypeScript);
         var detailed = cycles
             .Select(cycle => new Finding(FindingSeverity.Blocking, cycle.Location, Describe(cycle)))
             .ToList();
@@ -74,7 +79,7 @@ internal sealed class DependenciesCheck(ILanguageAnalyzer analyzer)
     {
         var evidence = cycle.Path
             .Take(ShownEdges)
-            .Select(edge => $"{edge.From.Subject} names {edge.To.Subject} at {edge.Location}");
+            .Select(edge => $"{edge.From.Subject} names {edge.To.Subject} at {edge.Location}{(edge.TypeOnly ? " (type-only)" : "")}");
         var remaining = cycle.Path.Count - Math.Min(cycle.Path.Count, ShownEdges);
         var wider = cycle.Modules.Count > cycle.Path.Count
             ? $" It is the shortest ring inside a group of {cycle.Modules.Count} {Module}s that all reach "

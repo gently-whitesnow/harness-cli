@@ -6,7 +6,27 @@ namespace Harness.Checks.Duplication;
 internal static class DuplicationExplanation
 {
     public static string For(Language language)
-        => Rationale + Discovery(language) + Normalization(language) + Unit + Names + Limits(language) + Tail(language);
+        => language == Language.TypeScript ? TypeScript : Rationale + Discovery(language) + Normalization(language) + Unit + Names + Limits(language) + Tail(language);
+
+    private const string TypeScript =
+        """
+        Rationale
+          Repeated TS/JS source across files can indicate a copied rule. The shared
+          tokenizer masks comments and literals, preserves keywords and operators, and
+          replaces identifiers with one token. Tests and stories are included. Generated
+          and build-output locations are excluded.
+
+        Measurement
+          A match needs 30 normalized lines and 90 tokens by default, declared in
+          settings.duplication.typescript. A lexical match is a place to inspect, not
+          proof that the two blocks have identical behavior.
+
+        Remediation
+          Read both blocks and extract a shared rule only when they must change together.
+
+        Decision
+          adrs/0064-typescript-language-axis.md
+        """;
 
     private const string Rationale =
         """

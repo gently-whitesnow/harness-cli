@@ -57,6 +57,9 @@ internal sealed record DsmScope(
             graph.Types.Where(package => package.Name == "main").Select(package => package.Path).Order(StringComparer.Ordinal).ToList(),
             0);
 
+    public static DsmScope OfTypeScript(SourceGraph graph)
+        => new(graph, Language.TypeScript, "file", [], [], [], 0);
+
     public string Location
         => Zones.Count == 0 ? "." : string.Join(", ", Zones.Select(ArchitectureZones.Display));
 
@@ -76,6 +79,11 @@ internal sealed record DsmScope(
                 _ => $"{CompositionRoots.Count} main packages [{string.Join(", ", CompositionRoots)}] are the composition root",
             };
             return $"scope: {measured} authored packages of the tracked go.mod modules (test files are not read; {roots})";
+        }
+
+        if (Language == Language.TypeScript)
+        {
+            return $"scope: {measured} authored TypeScript/JavaScript files (tests and transparent barrels excluded)";
         }
 
         if (Zones.Count > 0)

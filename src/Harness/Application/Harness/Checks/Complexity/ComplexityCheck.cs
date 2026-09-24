@@ -52,6 +52,7 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
                 + $"({Percent(metric.LargestCyclicGroupPercentage)} of {metric.AuthoredFiles} {unit}s)",
             scope.Describe(),
         };
+        details.AddRange(graph.Details);
         if (scope.DescribeMarkedGenerated() is { } marked)
         {
             details.Add(marked);
@@ -87,6 +88,11 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
 
     private (DsmScope? Scope, string? Failure) Scope(CheckContext context, SourceGraph graph)
     {
+        if (Analyzer.Language == Language.TypeScript)
+        {
+            return (DsmScope.OfTypeScript(graph), null);
+        }
+
         if (Analyzer.Language == Language.Go)
         {
             return (DsmScope.OfPackages(graph), null);

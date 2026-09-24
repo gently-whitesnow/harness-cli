@@ -5,7 +5,38 @@ namespace Harness.Checks.Dependencies;
 /// <summary>Long-form content for `harness explain dependencies.csharp` and `dependencies.ansible`.</summary>
 internal static class DependenciesExplanation
 {
-    public static string For(Language language) => language == Language.Ansible ? Ansible : Text;
+    public static string For(Language language) => language == Language.Ansible ? Ansible
+        : language == Language.TypeScript ? TypeScript : Text;
+
+    private const string TypeScript =
+        """
+        Rationale
+          TypeScript and JavaScript allow import cycles. A cycle across directories couples
+          modules that should have one dependency direction.
+
+        Discovery
+          Tracked .ts, .tsx, .mts, .cts, .js, .jsx, .mjs and .cjs source is read without
+          Node or tsc. Tests and stories do not contribute graph edges.
+
+        Resolution
+          Literal import, export from, require and import() specifiers resolve through
+          relative extension probing, tracked tsconfig paths/baseUrl and package manifests.
+          Type-only imports still contribute edges. External dependencies and assets are
+          not nodes. Unresolved imports are printed in details without inventing edges.
+          Unreadable tsconfig plus unresolved bare imports makes the check Incomplete.
+
+        Graph
+          A file is a node. A directory is a module for cycle detection. Reexport-only
+          barrels are transparent: named imports follow matching exports, while namespace
+          imports reach all reexports. The report names the lines proving each cycle.
+
+        Remediation
+          Remove or reverse one import in the reported ring, or move the shared concept
+          to a lower directory that both modules can depend on.
+
+        Decision
+          adrs/0064-typescript-language-axis.md
+        """;
 
     private const string Ansible =
         """

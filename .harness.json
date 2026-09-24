@@ -1,5 +1,5 @@
 {
-  "version": "3.5.0",
+  "version": "3.6.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -50,6 +50,14 @@
       "minimumCommentLines": 10,
       "percentageLimit": 8
     },
+    "duplication.typescript": {
+      "windowLines": 30,
+      "minimumTokens": 90
+    },
+    "complexity.typescript": {
+      "averageReachableFiles": 8.0,
+      "largestCyclicGroupSize": 0
+    },
     "duplication.csharp": {
       "windowLines": 30,
       "minimumTokens": 90
@@ -83,6 +91,9 @@
     "comments.csharp": "required",
     "comments.yaml": "required",
     "comments.typescript": "required",
+    "dependencies.typescript": "required",
+    "duplication.typescript": "required",
+    "complexity.typescript": "required",
     "types-per-file.csharp": "required",
     "dependencies.csharp": "required",
     "duplication.csharp": "required",

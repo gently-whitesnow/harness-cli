@@ -453,6 +453,14 @@ internal static class FrameUpgrade
                    settings.functions.<language>.ownLines as 80 for each applicable axis
           kept     tests under the same limit; generated source remains excluded
         """),
+        (new HarnessVersion(3, 6, 0), """
+        Release 3.6 additions:
+          added    dependencies.typescript, duplication.typescript and complexity.typescript
+          declare  policy for these checks as required; settings.duplication.typescript is
+                   30/90, settings.complexity.typescript is 8.0 / 0
+          kept     unresolved imports visible in details; a broken tsconfig plus unresolved
+                   bare imports makes graph checks Incomplete
+        """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)

@@ -43,7 +43,7 @@ internal static class CheckRegistry
 
     /// <summary>The analyzers whose graph is measured as a DSM; the Ansible role graph is judged for cycles only.</summary>
     public static readonly IReadOnlyList<ILanguageAnalyzer> LanguageAnalyzers =
-        [new CSharpAnalyzer(CSharp), new GoAnalyzer(Go)];
+        [new CSharpAnalyzer(CSharp), new TypeScriptAnalyzer(TypeScript), new GoAnalyzer(Go)];
 
     private static readonly ILanguageAnalyzer AnsibleAnalyzer = new AnsibleAnalyzer(Ansible);
 
@@ -69,7 +69,9 @@ internal static class CheckRegistry
             new CommentLineCheck(new GoCommentedSources(Go)),
             new TypesPerFileCheck(CSharp),
             new DependenciesCheck(csharpAnalyzer),
+            new DependenciesCheck(LanguageAnalyzers.Single(analyzer => analyzer.Language == Language.TypeScript)),
             new DuplicationCheck(new CSharpNormalizedSources(CSharp)),
+            new DuplicationCheck(new TypeScriptNormalizedSources()),
             new DuplicationCheck(new GoNormalizedSources(Go)),
             new FunctionLinesCheck(new CSharpFunctionSources(CSharp)),
             new FunctionLinesCheck(new GoFunctionSources(Go)),

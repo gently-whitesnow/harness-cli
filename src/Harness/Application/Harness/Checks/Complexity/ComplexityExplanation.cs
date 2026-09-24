@@ -6,7 +6,30 @@ namespace Harness.Checks.Complexity;
 
 internal static class ComplexityExplanation
 {
-    public static string For(Language language) => language == Language.Go ? Go : CSharp;
+    public static string For(Language language) => language == Language.Go ? Go
+        : language == Language.TypeScript ? TypeScript : CSharp;
+
+    private const string TypeScript =
+        """
+        Rationale
+          A file graph of literal TS/JS imports measures how far changes can propagate.
+          Reexport-only barrels are transparent so the metric follows definitions, not
+          index-file layout. Tests and stories are excluded from the DSM.
+
+        Measurement
+          Average reachable files includes each file itself and every transitively
+          reachable file. The initialized ceiling is 8.0. Largest cyclic group size
+          is the largest mutually reachable set of files; its ceiling is zero. Both are
+          declared in settings.complexity.typescript. Unresolved imports can understate
+          reach and are named in details.
+
+        Remediation
+          Break cycles and reduce imports from the files with the widest reach. Changing
+          the ceiling or policy is an explicit change to the tracked frame.
+
+        Decision
+          adrs/0064-typescript-language-axis.md
+        """;
 
     private static readonly string Go =
         $"""
