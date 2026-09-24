@@ -8,6 +8,7 @@ using Harness.Checks.Dependencies;
 using Harness.Checks.DotNet;
 using Harness.Checks.Duplication;
 using Harness.Checks.Frame;
+using Harness.Checks.Functions;
 using Harness.Checks.LintSuppressions;
 using Harness.Checks.TypesPerFile;
 using Harness.Git;
@@ -70,6 +71,8 @@ internal static class CheckRegistry
             new DependenciesCheck(csharpAnalyzer),
             new DuplicationCheck(new CSharpNormalizedSources(CSharp)),
             new DuplicationCheck(new GoNormalizedSources(Go)),
+            new FunctionLinesCheck(new CSharpFunctionSources(CSharp)),
+            new FunctionLinesCheck(new GoFunctionSources(Go)),
             new LintSuppressionsCheck(Go),
             new AnsibleLintSuppressionsCheck(Ansible),
             new DependenciesCheck(AnsibleAnalyzer),

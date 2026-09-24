@@ -1,5 +1,5 @@
 {
-  "version": "3.4.0",
+  "version": "3.5.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -58,6 +58,9 @@
       "averageReachableFiles": 8.0,
       "largestCyclicGroupSize": 0
     },
+    "functions.csharp": {
+      "ownLines": 80
+    },
     "commits": {
       "language": "ru",
       "requireSetup": true
@@ -83,6 +86,7 @@
     "types-per-file.csharp": "required",
     "dependencies.csharp": "required",
     "duplication.csharp": "required",
+    "functions.csharp": "required",
     "build-properties.dotnet": "required",
     "central-packages.dotnet": "required",
     "solution-format.dotnet": "required",

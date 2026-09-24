@@ -1,5 +1,7 @@
 # ADR Registry
 
+- [ADR-0063](0063-function-own-lines.md) — контракт 3.5: собственные строки C# и Go
+  функций, включая вложенные единицы и top-level; общий порог 80 без исключений.
 - [ADR-0062](0062-agent-guide-command.md) — `harness guide`: бинарь печатает агенту цикл работы,
   чтобы `AGENTS.md` потребителя ссылался на команду одной строкой.
 - [ADR-0061](0061-forge-and-design-documents.md) — контракт 3.4: `docs.policy` разрешает без лимита

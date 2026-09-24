@@ -46,6 +46,15 @@ internal static class FrameSections
                 """;
         }
 
+        if (check.Group == HarnessSettings.FunctionsGroup)
+        {
+            return $$"""
+                "{{check.Id}}": {
+                  "ownLines": {{FunctionSettings.Default.OwnLines}}
+                }
+                """;
+        }
+
         return null;
     }
 

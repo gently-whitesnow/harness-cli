@@ -54,20 +54,7 @@ internal static class WorkspaceEngine
         errors.AddRange(WorkspaceScope.Unregistered(repository, root.Projects)
             .Select(path => $"'{path}' is an unregistered project config; register its directory in root 'projects' or remove it"));
 
-        var projects = new List<(string Path, IRepository Repository, HarnessConfig Config)>();
-        foreach (var path in root.Projects)
-        {
-            var scoped = new ScopedRepository(repository, path);
-            var (config, configFailure) = HarnessConfigReader.Load(scoped, descriptors, root);
-            if (config is null)
-            {
-                errors.Add($"{WorkspaceScope.ConfigPath(path)}: {configFailure}{Unstaged(scoped)}");
-                continue;
-            }
-
-            AddFrameFailures(config, WorkspaceScope.ConfigPath(path), errors);
-            projects.Add((path, scoped, config));
-        }
+        var projects = LoadProjects(repository, root, descriptors, errors);
 
         if (errors.Count > 0)
         {
@@ -107,6 +94,30 @@ internal static class WorkspaceEngine
                 ? new[] { $"Partial run: root checks and project '{project}' only; other projects were not measured." }
                 : [$"Project '{project}' was not run: every selected check belongs to the root frame."];
         return new WorkspaceReport(runs, isWorkspace, project is not null, partialNotes);
+    }
+
+    private static List<(string Path, IRepository Repository, HarnessConfig Config)> LoadProjects(
+        IRepository repository,
+        HarnessConfig root,
+        IReadOnlyList<CheckDescriptor> descriptors,
+        List<string> errors)
+    {
+        var projects = new List<(string Path, IRepository Repository, HarnessConfig Config)>();
+        foreach (var path in root.Projects)
+        {
+            var scoped = new ScopedRepository(repository, path);
+            var (config, configFailure) = HarnessConfigReader.Load(scoped, descriptors, root);
+            if (config is null)
+            {
+                errors.Add($"{WorkspaceScope.ConfigPath(path)}: {configFailure}{Unstaged(scoped)}");
+                continue;
+            }
+
+            AddFrameFailures(config, WorkspaceScope.ConfigPath(path), errors);
+            projects.Add((path, scoped, config));
+        }
+
+        return projects;
     }
 
     // "Not in the index" is reserved for a file Git can see in the working tree (ADR-0026); a
