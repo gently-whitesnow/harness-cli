@@ -17,7 +17,7 @@ internal sealed class TypeScriptSources : ICommentedSources
     public Language Language => Language.TypeScript;
 
     public string NothingToAnalyze =>
-        "no tracked TypeScript or JavaScript source outside generated and build-output locations";
+        "no tracked authored TypeScript or JavaScript source outside toolchain-ignored paths";
 
     public (IReadOnlyList<CommentedSource> Files, string? Failure) Read(IRepository repository)
     {

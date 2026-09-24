@@ -16,7 +16,7 @@ internal sealed class TypeScriptNormalizedSources : INormalizedSources
     };
 
     public Language Language => Language.TypeScript;
-    public string NothingToAnalyze => "no tracked TypeScript or JavaScript source outside generated and build-output locations";
+    public string NothingToAnalyze => "no tracked authored TypeScript or JavaScript source outside toolchain-ignored paths";
 
     public (IReadOnlyList<NormalizedSource> Files, string? Failure) Read(IRepository repository)
     {
