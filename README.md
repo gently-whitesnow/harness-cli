@@ -1,119 +1,137 @@
+**English** · [Русский](README.ru.md)
+
 # Harness CLI
 
-Standalone CLI с единой рамкой качества для разных репозиториев. Он читает self-reported
-ответы из tracked `.harness.json` и измеряет то, что можно одинаково проверить в любом репозитории.
-Тесты, сборку и линтеры проекта харнес не запускает — за них отвечает CI самого проекта.
+A standalone CLI that holds one quality frame over many repositories. It is a deterministic
+boundary between AI coding agents and a repository: the rules live in a tracked
+`.harness.json`, every run reads only Git-tracked files, and the same input gives the same
+verdict. Harness does not run the repository's tests, build or linters — the project's own
+CI does, through a `verify` script the frame names.
 
-## Установка
+Site: [harness.whitesnow.tech](https://harness.whitesnow.tech/) · Decisions: [`adrs/`](adrs/REGISTRY.md) · License: MIT
+
+## Why
+
+An agent will make another thousand changes to a repository, and the repository has to stay
+readable and safe to change after all of them. A good agent loop is not enough: the rules
+must outlive a change of agent, context window and project. Harness turns rules that are
+usually re-explained by hand into checks that run after every change:
+
+- module dependency cycles and file reachability (DSM) with explicit ceilings;
+- cross-file duplication, comment density and function length;
+- one short `AGENTS.md`, `CLAUDE.md` as a symlink to it, decisions in `adrs/`;
+- commit message shape, checked by a `commit-msg` hook and in CI;
+- a hardened .NET baseline and the `sliced-dotnet/1` architecture (layers × slices);
+- self-reported answers: where the tests, lint, build and `verify` script are, or why not.
+
+It is for maintainers who let agents change their code and want the same rules everywhere.
+Languages: C#/.NET (the fullest set), Go, TypeScript/JavaScript, YAML and Ansible — 44 checks;
+`harness help` lists them, `harness explain <check-id>` explains one.
+
+## Install
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh | sh
 ```
 
-Скрипт определяет платформу, сверяет sha256 и кладёт бинарь в `~/.local/bin/harness` без
-sudo. Никакого .NET runtime для запуска не нужно. Той же командой харнес обновляется: пинить
-при установке нечего, потому что поведение задаёт проверяемый репозиторий, а не бинарь.
-Внутри репозитория с `.harness.json` скрипт заодно выполняет `harness setup`, который
-активирует commit-шаблон и `commit-msg` hook этого клона.
+The script picks the build for macOS arm64 or Linux x64/arm64 (glibc or musl), verifies its
+sha256 and puts it in `~/.local/bin/harness` without sudo. It is a NativeAOT binary: no .NET
+runtime, only Git. The same command updates it and, inside a framed repository, runs `harness setup`.
 
-Для disposable-контейнера или installer-задачи бинарь можно оставить внутри клона:
+`HARNESS_VERSION=3.9.0` installs a given release, `HARNESS_INSTALL_DIR` changes the directory,
+`HARNESS_NO_SETUP=1` skips clone setup. `sh -s -- --scope clone` installs into the clone's
+`<git-common-dir>/harness/bin/`, where the `commit-msg` hook looks before `PATH`.
 
-```sh
-curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh \
-  | sh -s -- --scope clone
-```
-
-`--scope clone` атомарно устанавливает его в `$(git rev-parse --git-common-dir)/harness/bin/harness`,
-под lock-файлом защищает две параллельные установки и обязательно выполняет `harness setup`.
-Именно там `commit-msg` hook ищет харнес первым делом, а вторым — `harness` в `PATH`: путь
-бинаря в hook не запекается, поэтому файл одинаков для всего клона и его linked worktree,
-переживает удаление worktree и не зависит от того, какой бинарь выполнял setup. Не найдя ни одного,
-hook отказывает в коммите и печатает оба просмотренных места. User-каталоги и tracked-файлы не меняются.
-
-`HARNESS_VERSION=3.8.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог
-обычной user-установки, а `HARNESS_NO_SETUP=1` отключает подготовку клона.
-
-## Запуск
+## Quick start
 
 ```sh
-harness init /path/to/repository   # создать рамку для языков из git-индекса
-harness init --kind application    # ответ application/library без интерактивного stdin
-harness init --languages go,yaml   # объявить оси явно вместо детекции (CI)
-harness upgrade                    # поднять pin и получить маршрут от него
-harness check                      # проверить весь workspace
-harness check --project apps/api    # корень и выбранный проект (частичный прогон)
-harness setup                      # подготовить этот клон
-harness version                    # релиз бинаря и текущий контракт
+cd /path/to/repository
+harness init --kind application   # or --kind library; asked only when C# is in the index
+git add .harness.json            # and .editorconfig, which init writes for .NET
+harness check                     # fill in the answers until the run is complete
+harness check --only <check-id> --verbose
+harness explain <check-id>
 ```
 
-`init` записывает applicability, settings и policy только обнаруженных стеков. При C# выбор
-`--kind application|library` задаёт sliced-dotnet или неприменимость архитектуры. Все проверки —
-`required`; смягчение обсуждается с владельцем. Pin — текущий релиз; `--latest` включает
-rolling-контракт. Существующие файлы не перезаписываются, новые не добавляются в Git.
-Для .NET создаётся отсутствующий `.editorconfig` с baseline. `init` также активирует hook;
-после клонирования его готовит `harness setup`. Требуемый, но отсутствующий setup ломает `check`.
-В CI сообщения проверяются диапазоном: `harness commits check <base>..<head>`.
+`init` detects languages from the Git index (`--languages go,yaml` replaces detection) and
+writes only their sections. Every written check starts as `required`. Answers about tests,
+lint, format, build, typecheck and `verify` start empty and keep the run `Incomplete`
+(exit `2`) until you answer them. `init` also activates the commit hook; after a fresh clone
+run `harness setup`. `harness guide` prints the agent's working loop for a consumer `AGENTS.md`.
 
-`answers.verify.paths` называет tracked скрипт всех проверок, включая `harness check`; харнес
-его не запускает и не инспектирует. Здесь это `./verify.sh`; commit range задаёт отдельно CI.
+## Example output
 
-`harness help` перечисляет команды. `--verbose` раскрывает причины, `--all` — измеренные
-субъекты, `--only <check-id>` выбирает проверку. Evidence берётся только из tracked-инвентаря:
-не добавленный через `git add` файл отчёт обозначает `not in the index`.
+A C# repository where `Orders` and `Billing` use each other and a stray `NOTES.md` is tracked
+(abridged, long lines wrapped):
 
-## Монорепозитории
-
-Корневой `.harness.json` может регистрировать проекты полем `projects`:
-
-```json
-"projects": ["apps/api", "apps/web", "agent-profile"]
+```text
+$ harness check --only dependencies.csharp,docs.policy --verbose
+FAIL  /work/shop
+  harness 3.9.0 · repository pins 3.9.0
+   CHECK ID             FINDINGS
+❌ docs.policy                 1
+    violation  NOTES.md: unexpected tracked Markdown; remove it, fold navigation into
+               AGENTS.md, or record a concise decision in adrs/
+❌ dependencies.csharp         1
+    violation  src/Shop/Billing/Invoice.cs:7: module dependency cycle
+               Shop.Billing -> Shop.Orders -> Shop.Billing: Shop.Billing.Invoice names
+               Shop.Orders.Order at src/Shop/Billing/Invoice.cs:7; Shop.Orders.Order names
+               Shop.Billing.Invoice at src/Shop/Orders/Order.cs:7.
 ```
 
-Каждый проект содержит tracked `.harness.json` с `answers`, `applicability`, `policy`,
-`settings` и при необходимости `architecture`. Пути — относительные каталоги без glob, `..`,
-пересечений и вложенных проектов. Незарегистрированный tracked `.harness.json` — ошибка,
-`harness upgrade` перечисляет такие файлы; повторяющийся ключ в конфиге отклоняется.
+Exit codes: `0` — every selected applicable blocking check passed (advisory findings may
+remain); `1` — a blocking check proved a violation; `2` — verification could not be completed
+reliably, including a missing or invalid `.harness.json`.
 
-Версия контракта одна, в корне. Только корень задаёт `settings.commits` и `commits.setup`;
-дочерние конфиги не содержат `version`, `projects` или настройки commit-интеграции, а
-`settings` обязательна даже пустая: `"settings": {}`. Наследования нет: у каждого проекта
-явная рамка. Например, проект с Markdown-данными может задать `"docs.policy": "off"` или
-`"advisory"` в своей `policy`, сохранив `required` у других проектов. Исключения для
-отдельных файлов и находок не поддерживаются.
+## The frame
 
-Корень проверяет файлы вне проектов; каждый проект — свой каталог, ответы и локальные пути
-читаются относительно него. Общие tracked `.editorconfig` и `Directory.*` выше проекта доступны
-как настройки, не расширяя измерение на соседний код; секция `.editorconfig` судится в рамке,
-чьи исходники она адресует. Корневые документы не заменяют обязательные документы проекта.
+The frame is explicit, like EditorConfig. [`.harness.json`](.harness.json) of this repository
+is the reference and shows every form:
 
-`harness check` из любого каталога репозитория проверяет весь workspace. `harness check
---project apps/api` — частичный прогон: сначала валидирует все конфиги workspace, затем
-проверяет корневую область и выбранный проект; соседние проекты не измеряются. `--verbose`
-раскрывает область измерений. В CI используйте полный прогон.
+```jsonc
+"tests.unit":        { "paths": ["tests/Unit"] }  // present; the address is the test project
+"lint":              { "present": true,  "reason": "analyzers in Directory.Build.props" }
+"tests.integration": { "present": false, "reason": "planned in ISSUE-142" }
+"typecheck":         { "applicable": false, "reason": "no web stack" }
+```
 
-Дублирование и графы измеряются внутри каждого компонента: межпроектные повторы, циклы
-и достижимость этим прогоном не доказаны и не исключены. Изменение границ меняет область
-измерения и требует ревью; affected-прогонов и presets нет. [ADR-0060](adrs/0060-explicit-workspace-projects.md)
+A check the `policy` does not name is outside the frame: it does not run, and the report
+counts it in one line. A named check is `required` (a finding blocks), `advisory` (visible,
+never blocks) or `off`, and carries its `settings` section in full — there are no hidden
+defaults and no per-file or per-finding suppression. `harness.coverage` reports a language
+with tracked sources that `applicability` does not mention and prints the fragment to add;
+decline it with `{ "applicable": false, "reason": "..." }`. Answers are self-reported:
+Harness validates their form, `paths` are navigation, and the `verify` script runs the rest.
 
-## Версия
+## Monorepos
 
-Корневой `version` фиксирует единственный контракт всего workspace. Бинарь исполняет только
-текущий контракт; другой pin даёт код `2`. `harness upgrade` меняет корневой pin и печатает
-маршрут миграции с фрагментами для обнаруженных осей. Ответы владельца не угадываются;
-правки принимаются одним reviewable-коммитом. [ADR-0023](adrs/0023-release-version-as-the-verification-contract.md)
+The root `.harness.json` registers disjoint directories: `"projects": ["apps/api", "apps/web"]`.
+Each has its own tracked `.harness.json` with `answers`, `applicability`, `settings` and
+`policy`; nothing is inherited, and only the root holds `version` and commit settings.
+`harness check` covers the whole workspace from any directory; `harness check --project
+apps/api` validates every frame and reports a partial run. Duplication and graphs are
+measured inside each project, not across projects. [ADR-0060](adrs/0060-explicit-workspace-projects.md)
 
-## В CI
+## Contract version
+
+`version` pins one contract for the workspace (`"3.9.0"`); `"latest"` follows the installed
+binary. A binary runs only its own contract, and any other pin exits with `2`.
+`harness upgrade` raises the pin and prints the migration route with fragments for the
+detected axes; it never guesses the owner's answers. [ADR-0023](adrs/0023-release-version-as-the-verification-contract.md)
+
+## CI
 
 GitLab:
+
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:3.8.0
+  image: ghcr.io/gently-whitesnow/harness:3.9.0
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"
 ```
 
-GitHub Actions или любой контур без доступа к ghcr.io:
+GitHub Actions, or any runner without access to ghcr.io:
 
 ```yaml
 - name: Repository harness
@@ -122,29 +140,11 @@ GitHub Actions или любой контур без доступа к ghcr.io:
     ~/.local/bin/harness check
 ```
 
-## Как это работает
+Put `harness check` into the `verify` script next to tests, build and linters. The commit
+hook tolerates a temporary autosquash; the range given to `harness commits check` does not.
 
-Эталон — рабочий [`.harness.json`](.harness.json) этого репозитория: в нём представлены все
-формы ответа и секции конфигурации. `paths` служит навигацией и не проверяется как
-доказательство. Рамка явная и только явная, как EditorConfig: проверка, не названная в
-`policy`, — вне рамки и не запускается; названная несёт `required` (блокирует), `advisory`
-(находки видны без провала) или `off`, и полную секцию `settings`, если её читает — defaults
-в ридере нет. Ось объявляется, когда её проверка названа: `{ "applicable": true }` или
-`{ "applicable": false, "reason": "..." }`. Забытый стек ловит `harness.coverage`: язык с
-tracked-исходниками без записи в `applicability` — находка с готовым фрагментом конфига.
+## Repository
 
-Коды возврата: `0` — всё выбранное прошло, `1` — доказано нарушение, `2` — проверить
-достоверно не удалось (сюда же относится отсутствующий или невалидный `.harness.json`).
-
-## Собственные проверки
-
-Общий стандарт включает графы зависимостей, восемь правил sliced-dotnet, DSM-сложность,
-дублирование C#, Go и TypeScript/JavaScript, комментарии, документационную политику и .NET baseline;
-Ansible — запрет inline `noqa` и циклы ролей (обе проверки стартуют `required`).
-Каждая проверка объясняет себя через `harness explain`; `harness guide` печатает агенту цикл работы — в `AGENTS.md` потребителя хватит одной строки.
-DSM сравнивает среднюю достижимость и размер циклической группы с явными потолками
-`settings."complexity.csharp"` / `settings."complexity.go"` / `settings."complexity.typescript"` (8.0 / 0).
-
-## Сайт
-
-Лендинг — статика в [`site/`](site/): все проверки, формулы циклов, DSM и дупликации, области workspace. Реестр и версия зеркалят бинарь и сверяются тестом; что обновлять — [`site/AGENTS.md`](site/AGENTS.md), почему — [ADR-0047](adrs/0047-landing-mirrors-the-contract.md).
+`src/Harness` follows its own `sliced-dotnet/1` standard, `tests/Harness.Tests` runs the
+compiled binary, and `./verify.sh` runs the harness, format, tests and a NativeAOT publish.
+`site/` mirrors the check registry and version under test ([ADR-0047](adrs/0047-landing-mirrors-the-contract.md)).

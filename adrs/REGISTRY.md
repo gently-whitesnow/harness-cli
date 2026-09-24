@@ -6,6 +6,8 @@
   функций, включая вложенные единицы и top-level; общий порог 80 без исключений.
 - [ADR-0062](0062-agent-guide-command.md) — `harness guide`: бинарь печатает агенту цикл работы,
   чтобы `AGENTS.md` потребителя ссылался на команду одной строкой.
+- [ADR-0068](0068-readme-translations.md) — контракт 3.9: `docs.policy` разрешает перевод
+  `README.<язык>.md` (тег BCP 47) рядом с tracked `README.md` и с тем же лимитом 150 строк.
 - [ADR-0061](0061-forge-and-design-documents.md) — контракт 3.4: `docs.policy` разрешает без лимита
   `DESIGN.md` на любой глубине и файлы форджа (community health, шаблоны) в корне, `.github/`, `docs/`.
 - [ADR-0060](0060-explicit-workspace-projects.md) — контракт 3.3: явные непересекающиеся
