@@ -138,11 +138,13 @@ pre code { overflow-wrap: normal; }
 .version, nav { font-size: .875rem; }
 .version { font-weight: 400; color: var(--color-text-muted); }
 nav a { color: var(--color-text-muted); text-decoration: none; }
+nav .lang-switch { color: var(--color-text); font-weight: 600; }
 .theme-toggle { border: 1px solid var(--color-border); border-radius: var(--rounded-sm); padding: .35rem .7rem; background: var(--color-surface); color: var(--color-text); }
 section { padding-block: 5rem; border-bottom: 1px solid var(--color-border); }
 .hero { padding-block: 6rem 4rem; }
 .eyebrow { font-size: .875rem; color: var(--color-primary); font-weight: 600; margin-bottom: 1.2rem; }
 .hero-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 3rem; align-items: center; }
+.hero-grid > * { min-width: 0; }
 .lead { margin-top: 1.5rem; font-size: 1.2rem; color: var(--color-text-muted); max-width: 65ch; }
 .actions { margin-top: 2rem; gap: .75rem; }
 .button { display: inline-block; padding: .7rem 1rem; border: 1px solid var(--color-border); border-radius: var(--rounded-sm); text-decoration: none; color: var(--color-text); font-weight: 600; }
@@ -176,6 +178,7 @@ summary span { display: block; padding-left: 1rem; font-weight: 400; color: var(
 .explainer-head { max-width: 75ch; margin-bottom: 1.5rem; }
 .explainer-head h3 { font-size: 1.6rem; margin-bottom: 1rem; }
 .example-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+.example-grid > * { min-width: 0; }
 .panel { padding: 1.5rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--rounded-md); min-width: 0; }
 .panel h4 { margin: 0 0 1rem; font-size: 1rem; }
 .flow { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; margin-bottom: 1rem; }
@@ -213,6 +216,7 @@ th { font-weight: 600; }
   .header-inner { gap: .8rem; }
   nav { gap: .85rem; }
   .panel, .terminal { padding: 1rem; }
+  .terminal code { font-size: .75rem; }
   th, td { padding: .6rem; }
   .actions { align-items: stretch; flex-direction: column; }
   .button { text-align: center; }

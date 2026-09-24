@@ -29,6 +29,7 @@ public sealed class SiteContractTests
 
     [Theory]
     [InlineData("index.html")]
+    [InlineData("ru/index.html")]
     [InlineData("app.js")]
     public void Site_names_the_current_release(string file)
     {
