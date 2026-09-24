@@ -35,14 +35,14 @@ internal sealed class HarnessCoverageCheck(Func<IReadOnlyList<CheckDescriptor>> 
         What it reads
           The Git index, through the source shapes of every axis the harness ships:
           {{string.Join(", ", FrameAxis.All.Select(axis => $"{axis.Key} ({string.Join(" ", axis.Sources.Select(source => source.Name))})"))}}.
-          Generated, vendored and build-output locations are not counted. Root YAML file
+          Declared generated sources and toolchain-ignored paths are not counted. Root YAML file
           contents are read to detect Ansible plays with `hosts:`. Verbose details count
           suffixes outside the axes, excluding Markdown and dot-files; this is not a finding.
 
         Rule
           For each axis with at least one tracked source, `applicability.<axis>` must exist —
           `{ "applicable": true }` or `{ "applicable": false, "reason": "..." }`. An axis
-          without tracked sources needs no entry. A declined axis passes: the decision is
+          without tracked sources needs no entry and cannot claim applicability. A declined axis passes: the decision is
           tracked and reviewed, which is what the check asks for.
 
         Remediation
@@ -67,12 +67,39 @@ internal sealed class HarnessCoverageCheck(Func<IReadOnlyList<CheckDescriptor>> 
         var checks = shipped();
         var findings = new List<Finding>();
         var details = new List<string>();
+        foreach (var entry in context.Repository.TrackedEntries)
+        {
+            var classification = context.Repository.Classify(entry);
+            if (classification == EvidenceKind.UndeclaredMarker)
+            {
+                findings.Add(new Finding(FindingSeverity.Blocking, entry.Path,
+                    $"generated marker marks source outside 'generated'; declare its path and reason in .harness.json, or remove the marker"));
+            }
+        }
+
+        foreach (var declaration in context.Config.Generated)
+        {
+            foreach (var path in declaration.Paths.Where(path => !context.Repository.TrackedEntries.Any(entry =>
+                entry.Path == path || entry.Path.StartsWith(path + "/", StringComparison.Ordinal))))
+            {
+                findings.Add(new Finding(FindingSeverity.Blocking, HarnessConfig.FileName,
+                    $"generated path '{path}' has no tracked files; remove this stale declaration"));
+            }
+        }
         var detected = FrameAxis.All
             .Select(axis => (Axis: axis, Sources: axis.Detect(context.Repository, axis.Sources.SelectMany(context.Tracked))))
-            .Where(entry => entry.Sources.Count > 0)
             .ToList();
         foreach (var (axis, sources) in detected)
         {
+            if (sources.Count == 0)
+            {
+                if (context.Config.Applicability.TryGetValue(axis.Key, out var asserted) && asserted.IsApplicable)
+                {
+                    findings.Add(new Finding(FindingSeverity.Blocking, HarnessConfig.FileName,
+                        $"applicability.{axis.Key} is true, but no tracked authored sources establish that stack"));
+                }
+                continue;
+            }
             if (context.Config.Applicability.TryGetValue(axis.Key, out var answer))
             {
                 details.Add($"{axis.Key}: {sources.Count} tracked source{(sources.Count == 1 ? "" : "s")}, "
@@ -107,7 +134,7 @@ internal sealed class HarnessCoverageCheck(Func<IReadOnlyList<CheckDescriptor>> 
     private static string? SourcesOfNoAxis(CheckContext context)
     {
         var counts = context.Repository.TrackedEntries
-            .Where(entry => !entry.IsSymbolicLink && !RepositoryLocations.IsGenerated(entry.Path))
+            .Where(entry => !entry.IsSymbolicLink)
             .Where(entry => !FrameAxis.All.Any(axis => axis.Sources.Any(source => source.Matches(entry.Path))))
             .Select(entry => entry.Path[(entry.Path.LastIndexOf('/') + 1)..])
             .Where(name => !name.StartsWith('.') && !name.EndsWith(".md", StringComparison.OrdinalIgnoreCase))

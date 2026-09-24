@@ -35,7 +35,7 @@ internal static class ConfigInitializer
             && !repository.TrackedEntries.Any(entry => entry.Path == EditorConfigTemplate.FileName)
             && !RootEntryExists(repository.RootPath, EditorConfigTemplate.FileName);
 
-        var content = Render(latest, commitLanguage, repositoryKind, axes, checks);
+        var content = Render(latest, commitLanguage, repositoryKind, axes, checks, writeEditorConfig);
         var created = new List<string>();
         try
         {
@@ -109,7 +109,8 @@ internal static class ConfigInitializer
         CommitLanguage commitLanguage,
         RepositoryKind? repositoryKind,
         IReadOnlyList<FrameAxis> axes,
-        IReadOnlyList<CheckDescriptor> checks)
+        IReadOnlyList<CheckDescriptor> checks,
+        bool writesReferenceEditorConfig)
     {
         var version = latest ? "latest" : HarnessVersion.Current.ToString();
         var architecture = AsksArchitecture(axes);
@@ -141,6 +142,9 @@ internal static class ConfigInitializer
         var sections = inFrame
             .Select(check => FrameSections.DefaultSettings(check))
             .Where(section => section is not null)
+            .Concat(writesReferenceEditorConfig
+                ? ["\"warning-suppressions.dotnet\": { \"repositoryWide\": [ { \"id\": \"CA1707\", \"reason\": \"sentence-style test names use underscores\" } ] }"]
+                : [])
             .Append(FrameSections.CommitsSettings(new CommitSettings(commitLanguage, CommitSettings.Default.RequireSetup)))
             .ToList();
         text.Append("  \"settings\": {\n");

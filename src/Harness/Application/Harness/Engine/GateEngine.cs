@@ -40,6 +40,11 @@ internal static class GateEngine
             return invalidConfig;
         }
 
+        if (config is not null)
+        {
+            repository = new FrameRepository(repository, config);
+        }
+
         var unexplained = new HashSet<EvidenceFile>();
 
         var gates = new List<GateReport>();
@@ -84,7 +89,11 @@ internal static class GateEngine
             ToolError: null,
             repository.ReadDuration,
             Pin(config),
-            UntrackedEvidence(repository, unexplained));
+            UntrackedEvidence(repository, unexplained),
+            repository.TrackedEntries.Select(entry => (entry.Path, Kind: repository.Classify(entry)))
+                .Where(item => item.Kind is EvidenceKind.DeclaredGenerated or EvidenceKind.ToolchainIgnored)
+                .Select(item => $"{item.Kind}: {item.Path}")
+                .Order(StringComparer.Ordinal).ToList());
     }
 
     /// <summary>A run stopped at the frame, so a workspace the engine refuses reads like a frame the reader refuses.</summary>
@@ -308,4 +317,34 @@ internal static class GateEngine
             .Where(selector => !checks.Any(check => Matches(check, selector)))
             .Distinct(StringComparer.Ordinal)
             .ToList();
+    /// <summary>Attaches the reviewed authorship declarations to one scoped repository run.</summary>
+    internal sealed class FrameRepository(IRepository repository, HarnessConfig config) : IRepository
+    {
+        private readonly Dictionary<string, EvidenceKind> classifications = new(StringComparer.Ordinal);
+
+        public string RootPath => repository.RootPath;
+        public IReadOnlyList<TrackedEntry> TrackedEntries => repository.TrackedEntries;
+        public TimeSpan ReadDuration => repository.ReadDuration;
+        public IReadOnlyList<string> DeclaredGeneratedPaths => config.Generated.SelectMany(entry => entry.Paths).ToList();
+
+        public EvidenceKind Classify(TrackedEntry entry)
+        {
+            if (!classifications.TryGetValue(entry.Path, out var result))
+            {
+                result = EvidenceClassifier.Classify(entry, DeclaredGeneratedPaths, ReadTrackedText);
+                classifications[entry.Path] = result;
+            }
+
+            return result;
+        }
+
+        public IReadOnlyList<TrackedEntry> Ancestors(string fileName) => repository.Ancestors(fileName);
+        public (IReadOnlyList<(string ObjectId, string Message)>? Commits, string? Failure) ReadCommits(string revisionRange)
+            => repository.ReadCommits(revisionRange);
+        public (IReadOnlyList<string>? Paths, string? Failure) ReadUntrackedPaths() => repository.ReadUntrackedPaths();
+        public (string? Target, string? Failure) ReadSymbolicLinkTarget(TrackedEntry entry)
+            => repository.ReadSymbolicLinkTarget(entry);
+        public (string? Text, string? Failure) ReadTrackedText(TrackedEntry entry)
+            => repository.ReadTrackedText(entry);
+    }
 }

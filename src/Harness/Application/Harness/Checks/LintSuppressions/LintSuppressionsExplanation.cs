@@ -9,25 +9,19 @@ internal static class LintSuppressionsExplanation
           time. Suppressions accumulate quietly and each looks reasonable in its own diff. The
           harness applies its own policy rule (ADR-0035) to the linter's findings: a linter is
           either on for the repository or off for it, and no file, line or path gets a private
-          exception without a named linter and a written reason.
+          exception.
 
         What it reads
-          Tracked authored `.go` files, test files included — generated, vendored and
-          build-output locations, `vendor/`, `testdata/`, directories starting with `_` or `.`
-          and files with a `// Code generated ... DO NOT EDIT.` header or a `//go:build
-          ignore` constraint are skipped — and a
+          Tracked `.go` files, test files included. Go toolchain ignored `vendor/`,
+          `testdata/`, `_` and `.` directories and `//go:build ignore` are skipped. Generated
+          files are skipped only with both a declared path and toolchain marker. A
           tracked `.golangci.yml`, `.golangci.yaml`, `.golangci.toml` or `.golangci.json`. The
           configuration is read lexically: YAML by indentation and `- ` items, TOML by tables
           and `key = value`, JSON through the BCL. No linter is located, installed or run, and
           a repository without a golangci-lint configuration has nothing to report here.
 
         What fails
-          In source, a `//nolint` directive in the golangci-lint form (no space after the
-          slashes) that does not name what it silences and why: a bare `//nolint` or
-          `//nolint:all`, with or without a reason, silences every linter and is always
-          blocking; `//nolint:errcheck,gosec` without a reason on the same line is blocking.
-          `//nolint:errcheck // reason` — named linters and a reason after a second `//` —
-          passes: that is the shape golangci-lint's own nolintlint asks for.
+          Every `//nolint` directive blocks, including one with named linters and a reason.
 
           In the configuration, an exclusion rule under `issues.exclude-rules` (v1) or
           `linters.exclusions.rules` (v2) whose `path` names one place — a file, a directory,
@@ -38,13 +32,9 @@ internal static class LintSuppressionsExplanation
           once and is blocking the same way.
 
         What is printed instead
-          A switch for the whole repository is the tracked, reviewable decision `policy: off`
-          is for harness checks and never fails the run; every such switch is listed as a
-          neutral detail with --verbose: `linters.disable-all: true` (v1) or `linters.default:
-          none` (v2) without a non-empty `linters.enable`; every linter under
-          `linters.disable`; an exclusion rule whose `path` is absent, `.`, `./` or a
-          mask such as `.*`, or that names neither `linters` nor `text`; and an entry of a
-          path list that is `.`, `./` or such a mask.
+          A named linter in `linters.disable` is printed in the ordinary report when its id
+          and reason appear in settings.lint-suppressions.go.repositoryWide. Blanket disables
+          and exclusion rules block.
 
         Limits
           The readers are lexical and know the shapes golangci-lint documents use; an anchor,
@@ -63,10 +53,9 @@ internal static class LintSuppressionsExplanation
           in the source with a reason, or to switch the linter off repository-wide knowingly.
 
         Remediation
-          Fix the code the linter points at. When a finding is wrong at one place, keep the
-          directive but make it say what and why: `//nolint:errcheck // closing a read-only
-          file`. When the rule is wrong for this repository as a whole, disable the linter
-          under `linters.disable` and say why in the same file. If the repository rejects this
+          Fix the code the linter points at. When the rule is wrong for this repository as a
+          whole, disable it under `linters.disable` and declare its id and reason in
+          `.harness.json`. If the repository rejects this
           check entirely, record that through `policy.lint-suppressions.go`.
 
         Applicability

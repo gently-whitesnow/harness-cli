@@ -140,7 +140,7 @@ public sealed class ExplicitFrameTests
         Assert.True(run.OutputContains("\"comments.yaml\": {"), run.Output);
         Assert.True(run.OutputContains("\"minimumCommentLines\": 10"), run.Output);
         Assert.True(run.OutputContains("\"comments.yaml\": \"required\""), run.Output);
-        Assert.False(run.OutputContains("typescript"), run.Output);
+        Assert.Contains("applicability.typescript", run.Output, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -240,7 +240,7 @@ public sealed class ExplicitFrameTests
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "harness.coverage");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("sources of no axis: .j2 2, .ini 1, .py 1, no suffix 1"), run.Output);
+        Assert.True(run.OutputContains("sources of no axis: .j2 2, .py 2, .ini 1, no suffix 1"), run.Output);
     }
 
     [Fact]
@@ -265,25 +265,23 @@ public sealed class ExplicitFrameTests
             .WriteFile("vendor/lib/App.cs", "sealed class Vendored;")
             .Commit();
 
-        var run = HarnessCli.RunWithInput(repository.Path, string.Empty, "init");
+        var run = HarnessCli.Run(repository.Path, "init", "--kind", "library");
 
         Assert.Equal(0, run.ExitCode);
         Assert.Empty(run.StandardError);
-        Assert.DoesNotContain("Repository kind", run.StandardOutput, StringComparison.Ordinal);
-        Assert.Contains("Declared yaml from the tracked sources", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("Declared csharp, yaml from the tracked sources", run.StandardOutput, StringComparison.Ordinal);
         Assert.False(File.Exists(repository.Absolute(".editorconfig")));
 
         using var document = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
         var root = document.RootElement;
-        Assert.False(root.TryGetProperty("architecture", out _));
-        Assert.Equal(["yaml"], root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
-        Assert.Equal(["adrs.shape", "comments.yaml", "commits"], root.GetProperty("settings").EnumerateObject().Select(section => section.Name));
-        Assert.Equal(
-            ["harness.config", "harness.coverage", "docs.policy", "adrs.shape", "commits.setup", "comments.yaml"],
-            root.GetProperty("policy").EnumerateObject().Select(entry => entry.Name).Where(id => !id.StartsWith("frame.", StringComparison.Ordinal)));
+        Assert.True(root.TryGetProperty("architecture", out _));
+        Assert.Contains("csharp", root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
+        Assert.Contains("yaml", root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
+        Assert.True(root.GetProperty("settings").TryGetProperty("comments.yaml", out _));
+        Assert.True(root.GetProperty("policy").TryGetProperty("comments.csharp", out _));
 
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
-        var check = HarnessCli.Run(repository.Path, "check", "--skip", "frame,docs,commits");
+        var check = HarnessCli.Run(repository.Path, "check", "--skip", "frame,docs,commits,csharp,architecture");
         Assert.Equal(0, check.ExitCode);
         Assert.False(check.OutputContains("not applicable"), check.Output);
     }

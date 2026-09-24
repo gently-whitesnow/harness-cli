@@ -1029,6 +1029,10 @@ public sealed class ArchitectureShapeTests
     public void Generated_csharp_at_the_zone_root_is_not_part_of_the_architecture_graph()
     {
         using var repository = ArchitectureRepository()
+            .WriteFile(".harness.json", Frame.AllPresent()
+                .Architecture("""{ "standard": "sliced-dotnet/1" }""")
+                .Generated("""[{"paths":["src/Orders/Generated.g.cs"],"reason":"fixture generator"}]""")
+                .ToString())
             .WriteFile("src/Orders/Generated.g.cs", EmptyType("Fixture", "Generated"))
             .WriteFile("src/Orders/Host/Program.cs", EmptyType("Fixture.Host", "Program"))
             .WriteFile("src/Orders/Api/Sales/Endpoint.cs", EmptyType("Fixture.Api", "Endpoint"))

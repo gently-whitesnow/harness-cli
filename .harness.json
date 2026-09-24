@@ -1,5 +1,5 @@
 {
-  "version": "3.7.0",
+  "version": "3.8.0",
   "architecture": { "standard": "sliced-dotnet/1" },
   "answers": {
     "tests.unit": {
@@ -73,6 +73,12 @@
     },
     "functions.csharp": {
       "ownLines": 80
+    },
+    "warning-suppressions.dotnet": {
+      "repositoryWide": [
+        { "id": "CA1707", "reason": "xUnit test names use underscores" },
+        { "id": "CS1591", "reason": "internal CLI has no public API documentation contract" }
+      ]
     },
     "commits": {
       "language": "ru",

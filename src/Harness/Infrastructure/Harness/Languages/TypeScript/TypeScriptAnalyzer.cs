@@ -24,17 +24,13 @@ internal sealed class TypeScriptAnalyzer(TypeScriptSources sources) : ILanguageA
     private static (SourceGraph? Graph, string? Failure) Build(IRepository repository)
     {
         var files = new Dictionary<string, File>(StringComparer.Ordinal);
-        foreach (var entry in repository.TrackedEntries.Where(entry => TypeScriptFile.IsSource(entry.Path)))
+        foreach (var entry in repository.TrackedEntries.Where(entry => TypeScriptFile.IsSource(entry.Path)
+            && repository.Classify(entry) is not (EvidenceKind.DeclaredGenerated or EvidenceKind.ToolchainIgnored)))
         {
             var (text, failure) = repository.ReadTrackedText(entry);
             if (text is null)
             {
                 return (null, failure ?? $"Could not read '{entry.Path}'.");
-            }
-
-            if (TypeScriptSources.IsGeneratedContent(text))
-            {
-                continue;
             }
 
             files[entry.Path] = new File(entry.Path, text, TypeScriptImports.Read(text), TypeScriptFile.IsTest(entry.Path));

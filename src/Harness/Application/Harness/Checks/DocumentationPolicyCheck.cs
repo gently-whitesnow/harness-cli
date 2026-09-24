@@ -101,7 +101,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
                 if (!IsMarkdown(entry.Path)
                     || entry.Path is RootDocument or AgentEntryPoint
                     || entry.Path.StartsWith(AdrDirectory, StringComparison.Ordinal)
-                    || RepositoryLocations.IsGenerated(entry.Path))
+)
                 {
                     continue;
                 }
@@ -128,7 +128,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
 
                 // An agent skill is a payload loaded on demand for one task, not navigation
                 // carried in every context, so the navigation line limit does not apply.
-                case SkillDocument:
+                case SkillDocument when IsSkillPath(entry.Path):
                     return;
 
                 // A design document is the same kind of payload: token tables and component
@@ -147,6 +147,14 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
                             + "or record a concise decision in adrs/ (`harness explain adrs.shape` describes its form)");
                     return;
             }
+        }
+
+        private static bool IsSkillPath(string path)
+        {
+            var parts = path.Split('/');
+            return parts.Length == 3 && parts[0] == "skills" && parts[1].Length > 0
+                || parts.Length == 4 && (parts[0] is ".agents" or ".claude")
+                    && parts[1] == "skills" && parts[2].Length > 0;
         }
 
         private void ReviewInstructionDocument(TrackedEntry entry)

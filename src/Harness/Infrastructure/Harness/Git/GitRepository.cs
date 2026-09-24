@@ -23,6 +23,9 @@ internal sealed class GitRepository : IRepository
 
     public IReadOnlyList<TrackedEntry> TrackedEntries { get; }
 
+    public EvidenceKind Classify(TrackedEntry entry)
+        => EvidenceClassifier.Classify(entry, [], ReadTrackedText);
+
     /// <summary>Reads commit messages in oldest-first order from an explicit revision range.</summary>
     public (IReadOnlyList<(string ObjectId, string Message)>? Commits, string? Failure) ReadCommits(
         string revisionRange)

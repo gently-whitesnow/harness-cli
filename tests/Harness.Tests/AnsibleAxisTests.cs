@@ -72,7 +72,8 @@ public sealed class AnsibleAxisTests
             + "- name: Reasoned\n  ansible.builtin.shell: echo # noqa: no-changed-when -- read-only query\n"
             + "- name: Second hash\n  ansible.builtin.shell: echo # noqa command-instead-of-shell # pipes\n"
             + "# noqa is discussed in prose here\n";
-        using var repository = Ansible()
+        using var repository = Ansible(Frame.AllPresent().Settings(
+                """{ "lint-suppressions.ansible": { "repositoryWide": [ { "id": "name[play]", "reason": "fixture" }, { "id": "yaml[line-length]", "reason": "fixture" } ] } }"""))
             .WriteFile("roles/web/tasks/main.yml", tasks)
             .WriteFile(".ansible-lint", "---\nskip_list:\n  - name[play]   # import_playbook has no name\nwarn_list:\n  - yaml[line-length]\nexclude_paths:\n  - .venv/\n")
             .Commit();
@@ -81,14 +82,14 @@ public sealed class AnsibleAxisTests
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("roles/web/tasks/main.yml:2: silences every ansible-lint rule via a bare `# noqa`"), run.Output);
-        Assert.True(run.OutputContains("roles/web/tasks/main.yml:4: silences fqcn[action], command-instead-of-shell via `# noqa: fqcn[action] command-instead-of-shell` without a reason"), run.Output);
-        Assert.True(run.OutputContains("roles/web/tasks/main.yml:6: silences no-changed-when via"), run.Output);
-        Assert.False(run.OutputContains("main.yml:8"), run.Output);
-        Assert.False(run.OutputContains("main.yml:10"), run.Output);
+        Assert.True(run.OutputContains("roles/web/tasks/main.yml:4: silences fqcn[action], command-instead-of-shell at one address via `# noqa`"), run.Output);
+        Assert.True(run.OutputContains("roles/web/tasks/main.yml:6: silences no-changed-when at one address via"), run.Output);
+        Assert.True(run.OutputContains("main.yml:8"), run.Output);
+        Assert.True(run.OutputContains("main.yml:10"), run.Output);
         Assert.False(run.OutputContains("main.yml:11"), run.Output);
         Assert.True(run.OutputContains("name[play] is skipped repository-wide via skip_list at .ansible-lint:2"), run.Output);
         Assert.True(run.OutputContains("yaml[line-length] is downgraded to a warning repository-wide via warn_list at .ansible-lint:4"), run.Output);
-        Assert.False(run.OutputContains(".venv/"), run.Output);
+        Assert.True(run.OutputContains(".venv/"), run.Output);
     }
 
     [Fact]

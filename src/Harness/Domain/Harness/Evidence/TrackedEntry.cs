@@ -8,3 +8,11 @@ internal sealed record TrackedEntry(string Path, string Mode, string ObjectId)
 {
     public bool IsSymbolicLink => Mode == "120000";
 }
+
+internal enum EvidenceKind
+{
+    Authored,
+    DeclaredGenerated,
+    ToolchainIgnored,
+    UndeclaredMarker,
+}

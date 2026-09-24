@@ -24,8 +24,7 @@ internal static class AnsibleMarkers
 
     /// <summary>Generated locations, directories starting with `.` (`.venv*`, `.github/`) and molecule are not read.</summary>
     public static bool IsRead(string path)
-        => !RepositoryLocations.IsGenerated(path)
-            && !path.Split('/').SkipLast(1).Any(segment => segment.StartsWith('.') || segment == "molecule");
+        => !path.Split('/').SkipLast(1).Any(segment => segment.StartsWith('.') || segment == "molecule");
 
     public static List<string> Detect(IRepository repository, IEnumerable<TrackedEntry> candidates)
     {

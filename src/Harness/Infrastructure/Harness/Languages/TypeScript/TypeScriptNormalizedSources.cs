@@ -16,22 +16,18 @@ internal sealed class TypeScriptNormalizedSources : INormalizedSources
     };
 
     public Language Language => Language.TypeScript;
-    public string NothingToAnalyze => "no tracked TypeScript or JavaScript source outside generated and build-output locations";
+    public string NothingToAnalyze => "no tracked authored TypeScript or JavaScript source outside toolchain-ignored paths";
 
     public (IReadOnlyList<NormalizedSource> Files, string? Failure) Read(IRepository repository)
     {
         var files = new List<NormalizedSource>();
-        foreach (var entry in repository.TrackedEntries.Where(entry => TypeScriptFile.IsSource(entry.Path)))
+        foreach (var entry in repository.TrackedEntries.Where(entry => TypeScriptFile.IsSource(entry.Path)
+            && repository.Classify(entry) is not (EvidenceKind.DeclaredGenerated or EvidenceKind.ToolchainIgnored)))
         {
             var (text, failure) = repository.ReadTrackedText(entry);
             if (text is null)
             {
                 return ([], failure ?? $"Could not read '{entry.Path}'.");
-            }
-
-            if (TypeScriptSources.IsGeneratedContent(text))
-            {
-                continue;
             }
 
             var (masked, regions) = TypeScriptMask.Apply(text);

@@ -57,11 +57,10 @@ internal static class ComplexityExplanation
           The whole module graph is measured: every package under a tracked `go.mod`, resolved
           by import path against the module path that file declares, nested modules included
           by their own `go.mod`. Test files (`_test.go`) are not read, so a test-only import
-          lends no reachability. Generated, vendored and build-output locations, `vendor/`
-          and `testdata/`, directories starting with `_` or `.`, files carrying the
-          canonical `// Code generated ... DO NOT EDIT.` header and files under a
-          `//go:build ignore` constraint (or the legacy `// +build ignore`), which the go
-          tool never builds, are excluded by the Go reader; both kinds are named in the
+          lends no reachability. Go `vendor/` and `testdata/`, directories starting with `_`
+          or `.`, and files under a `//go:build ignore` constraint (or legacy `// +build ignore`)
+          are ignored by Go semantics. A generated header excludes a file only under a
+          declared `generated` path; both kinds are named in the
           details.
           There is no architecture zone and no test project to draw a boundary from; the
           `scope:` line names the `main` packages, which are the composition root.
@@ -154,9 +153,9 @@ internal static class ComplexityExplanation
           When `architecture` names sliced-dotnet/1, the DSM measures the files inside the
           architecture zones the shape check discovers: a directory holding Application/
           and the canonical layers below it. Tests, tooling and samples outside a zone are
-          not nodes, and an edge into them lends no reachability. This is the same line
-          the shape check draws, read from the tree, so no frame answer and no list of
-          exclusions can move a file across it. Without a zone — a standalone library or a
+          not nodes, and an edge into them lends no reachability. The shape check validates
+          this boundary. Test projects excluded from the DSM must be named in
+          `answers.tests.*.paths`. Without a zone — a standalone library or a
           repository that does not follow sliced-dotnet — the product is every authored file
           whose nearest tracked project file is not a test project. A project is a test
           project when its own XML references Microsoft.NET.Test.Sdk, xunit, NUnit, MSTest or
@@ -164,8 +163,8 @@ internal static class ComplexityExplanation
           it left out. Only a repository without any test project is measured whole.
 
         Discovery
-          Every authored, Git-tracked `.cs` file in scope is one node. Generated, vendored
-          and build-output files are excluded by the C# source reader. Multiple type
+          Every authored, Git-tracked `.cs` file in scope is one node. A generated marker
+          excludes a file only under a declared `generated` path. Multiple type
           references between the same two files collapse to one directed file edge.
           Intra-file references do not create an edge.
 

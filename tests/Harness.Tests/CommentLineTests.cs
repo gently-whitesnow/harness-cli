@@ -117,7 +117,7 @@ public sealed class CommentLineTests
     }
 
     [Fact]
-    public void Generated_and_untracked_sources_are_excluded()
+    public void Tracked_sources_are_measured_without_generated_declarations()
     {
         using var repository = Fixtures.Compliant()
             .WriteFile("src/App/Loud.g.cs", Source(commentLines: 10, codeLines: 1))
@@ -128,8 +128,9 @@ public sealed class CommentLineTests
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
 
-        Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("not applicable"), run.Output);
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("src/App/obj/Loud.cs", run.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Untracked.cs:", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]

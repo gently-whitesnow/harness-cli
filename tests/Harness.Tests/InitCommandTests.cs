@@ -64,7 +64,7 @@ public sealed class InitCommandTests
     private static void AssertDefaultSettings(JsonElement settings)
     {
         Assert.Equal(
-            ["complexity.csharp", "adrs.shape", "comments.csharp", "duplication.csharp", "functions.csharp", "commits"],
+            ["complexity.csharp", "adrs.shape", "comments.csharp", "duplication.csharp", "functions.csharp", "warning-suppressions.dotnet", "commits"],
             settings.EnumerateObject().Select(section => section.Name));
         AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));
         AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));
@@ -119,7 +119,7 @@ public sealed class InitCommandTests
 
         repository.CommitAs("chore(harness): инициализировать рамку библиотеки");
         var check = HarnessCli.RunVerbose(repository.Path, "check", "--only", "architecture.sliced-dotnet");
-        Assert.Equal(0, check.ExitCode);
+        Assert.True(check.ExitCode == 0, check.Output);
         Assert.Contains("not applicable", check.Output, StringComparison.Ordinal);
         Assert.Contains("architecture map: not applicable", check.Output, StringComparison.Ordinal);
     }
@@ -207,7 +207,7 @@ public sealed class InitCommandTests
 
         var check = HarnessCli.RunVerbose(repository.Path, "check");
 
-        Assert.Equal(0, check.ExitCode);
+        Assert.True(check.ExitCode == 0, check.Output);
         Assert.Contains("architecture map: zone src/App", check.Output, StringComparison.Ordinal);
         Assert.Contains("limits: average reachable files 8.00 files", check.Output, StringComparison.Ordinal);
     }

@@ -32,6 +32,26 @@ internal abstract class DotNetCheck : IRepositoryCheck
             return CheckEvaluation.Incomplete(failure);
         }
 
+        var nonSdk = new List<Finding>();
+        foreach (var entry in DotNetRepository.ProjectFiles.SelectMany(context.Tracked))
+        {
+            var (file, readFailure) = DotNetRepository.Read(context.Repository, entry);
+            if (readFailure is not null)
+            {
+                return CheckEvaluation.Incomplete(readFailure);
+            }
+
+            if (file is not null && !DotNetRepository.IsSdkStyle(file))
+            {
+                nonSdk.Add(Block(entry.Path, "non-SDK-style project cannot be measured by the .NET frame"));
+            }
+        }
+
+        if (nonSdk.Count > 0)
+        {
+            return CheckEvaluation.From(nonSdk);
+        }
+
         return projects.Count == 0
             ? CheckEvaluation.NotApplicable("no tracked SDK-style .NET projects were found")
             : Inspect(context, projects);

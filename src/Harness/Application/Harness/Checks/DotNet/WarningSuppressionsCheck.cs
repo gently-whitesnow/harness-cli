@@ -19,10 +19,13 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
         [Sources, new("*.vb"), new("*.fs"), new("*.fsi")];
 
     private static readonly EvidenceFile BuildProps = new("Directory.Build.props", Inherited: true);
+    private static readonly EvidenceFile BuildTargets = new("Directory.Build.targets", Inherited: true);
 
     private static readonly EvidenceFile EditorConfig = new(".editorconfig", Inherited: true);
 
-    private static readonly string[] GeneratedSuffixes = [".g.cs", ".generated.cs", ".designer.cs"];
+    private static readonly EvidenceFile GlobalConfig = new("*.globalconfig");
+    private static readonly EvidenceFile RuleSet = new("*.ruleset");
+
 
     private static readonly string[] ProjectProperties = ["NoWarn", "WarningsNotAsErrors"];
 
@@ -39,11 +42,13 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
 
     public override string Explanation => WarningSuppressionsExplanation.Text;
 
-    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [.. EditorConfigSources, BuildProps, EditorConfig];
+    protected override IReadOnlyList<EvidenceFile> PolicyFiles => [.. EditorConfigSources, BuildProps, BuildTargets,
+        new EvidenceFile("*.props"), new EvidenceFile("*.targets"), EditorConfig, GlobalConfig, RuleSet];
 
     protected override CheckEvaluation Inspect(CheckContext context, IReadOnlyList<DotNetFile> projects)
     {
         var sites = new List<Site>();
+        var importFindings = new List<Finding>();
 
         var failure = CollectFromSources(context, sites);
         if (failure is not null)
@@ -51,9 +56,66 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
             return CheckEvaluation.Incomplete(failure);
         }
 
+        var buildFailure = CollectFromBuildFiles(context, projects, sites, importFindings);
+        if (buildFailure is not null)
+        {
+            return CheckEvaluation.Incomplete(buildFailure);
+        }
+
+        var (generatedSections, analyzerFailure) = CollectFromAnalyzerConfigs(context, sites);
+        if (analyzerFailure is not null)
+        {
+            return CheckEvaluation.Incomplete(analyzerFailure);
+        }
+
+        var declared = context.Config!.Settings.RepositoryWideFor(Id);
+        var actual = sites.Where(site => site.RepositoryWide && site.Code is not null)
+            .Select(site => site.Code!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var findings = sites
+            .Where(site => !site.RepositoryWide)
+            .Select(site => Block(site.Location, site.Code is null
+                ? $"silences every warning via {site.Form}; a rule is switched off by name, for the whole repository"
+                : $"silences {site.Code} via {site.Form} at one address; fix the code, or switch {site.Code} off "
+                    + "for the whole repository in .editorconfig [*.cs] or Directory.Build.props"))
+            .ToList();
+        findings.AddRange(importFindings);
+        findings.AddRange(generatedSections);
+        findings.AddRange(sites.Where(site => site.RepositoryWide
+                && (site.Code is null || !declared.ContainsKey(site.Code)))
+            .Select(site => Block(site.Location,
+                site.Code is null
+                    ? $"{site.Form} silences a wildcard or diagnostic category; name individual diagnostics instead"
+                    : $"{site.Code} is switched off repository-wide via {site.Form} without an id/reason entry in settings.{Id}.repositoryWide")));
+        findings.AddRange(declared.Keys.Where(id => !actual.Contains(id))
+            .Select(id => Block(Harness.Config.HarnessConfig.FileName,
+                $"stale settings.{Id}.repositoryWide entry for {id}: diagnostic is not switched off")));
+
+        var details = sites
+            .Where(site => site.RepositoryWide)
+            .OrderBy(site => site.Code, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(site => site.Location, StringComparer.Ordinal)
+            .Select(site => $"{site.Code} is switched off repository-wide via {site.Form} at {site.Location}; "
+                + $"declared reason: {(site.Code is not null && declared.TryGetValue(site.Code, out var reason) ? reason : "undeclared")}")
+            .ToList();
+
+        return CheckEvaluation.From(
+            findings,
+            findings.Count == 0 ? "no diagnostic is silenced at an address" : null,
+            details: details);
+    }
+
+    private static string? CollectFromBuildFiles(
+        CheckContext context, IReadOnlyList<DotNetFile> projects, List<Site> sites, List<Finding> importFindings)
+    {
         foreach (var project in projects)
         {
             CollectFromXml(project, sites, repositoryWide: false);
+            CollectUnresolvedConfigReferences(project, sites);
+            foreach (var imported in BuildPropertiesCheck.ReadLocalImports(context, project, importFindings))
+            {
+                CollectFromXml(imported, sites, repositoryWide: false);
+                CollectUnresolvedConfigReferences(imported, sites);
+            }
         }
 
         // MSBuild imports only the nearest Directory.Build.props above a project.
@@ -67,19 +129,68 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
             var (props, readFailure) = DotNetRepository.Read(context.Repository, entry);
             if (props is null)
             {
-                return CheckEvaluation.Incomplete(readFailure!);
+                return readFailure;
             }
 
-            CollectFromXml(props, sites, repositoryWide: true);
+            CollectFromXml(props, sites, repositoryWide: projects.All(project =>
+                context.Nearest(BuildProps, project.Path)?.Path == entry.Path));
+            CollectUnresolvedConfigReferences(props, sites);
+            foreach (var imported in BuildPropertiesCheck.ReadLocalImports(context, props, importFindings))
+            {
+                CollectFromXml(imported, sites, repositoryWide: false);
+                CollectUnresolvedConfigReferences(imported, sites);
+            }
         }
 
+        var targets = projects.Select(project => context.Nearest(BuildTargets, project.Path))
+            .OfType<TrackedEntry>().DistinctBy(entry => entry.Path);
+        foreach (var entry in targets)
+        {
+            var (file, readFailure) = DotNetRepository.Read(context.Repository, entry);
+            if (file is null)
+            {
+                return readFailure;
+            }
+
+            CollectFromXml(file, sites, repositoryWide: projects.All(project =>
+                context.Nearest(BuildTargets, project.Path)?.Path == entry.Path));
+            CollectUnresolvedConfigReferences(file, sites);
+            foreach (var imported in BuildPropertiesCheck.ReadLocalImports(context, file, importFindings))
+            {
+                CollectFromXml(imported, sites, repositoryWide: false);
+                CollectUnresolvedConfigReferences(imported, sites);
+            }
+        }
+
+        return null;
+    }
+
+    private static (List<Finding> GeneratedSections, string? Failure) CollectFromAnalyzerConfigs(
+        CheckContext context, List<Site> sites)
+    {
         var (configs, configFailure) = EditorConfigChain.ReadAll(context, EditorConfig);
         if (configs is null)
         {
-            return CheckEvaluation.Incomplete(configFailure!);
+            return ([], configFailure);
         }
 
         var covered = CoveredSources(context, configs);
+        var generatedSections = new List<Finding>();
+        foreach (var source in EditorConfigSources.SelectMany(context.Tracked).DistinctBy(entry => entry.Path, StringComparer.Ordinal))
+        {
+            foreach (var file in EditorConfigChain.ChainFor(configs, source.Path))
+            {
+                var relative = EditorConfigChain.RelativeTo(context.Repository.RootPath, file.Directory, source.Path);
+                if (file.Sections.Any(section => section.IsGeneratedCode && EditorConfigGlob.Matches(section.Glob, relative))
+                    && context.Repository.Classify(source) != EvidenceKind.DeclaredGenerated)
+                {
+                    generatedSections.Add(Block(source.Path,
+                        "generated_code = true applies to source outside a declared generated path with a toolchain marker"));
+                }
+            }
+        }
+        var sourceCount = EditorConfigSources.SelectMany(context.Tracked)
+            .DistinctBy(entry => entry.Path, StringComparer.Ordinal).Count();
         foreach (var file in configs)
         {
             var paths = covered.TryGetValue(file, out var addressed) ? addressed : [];
@@ -87,28 +198,45 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
                 .Where(section => section.Entries.Any(entry => SilencingSeverities.Contains(Severity(entry.Value))))
                 .Where(section => paths.Any(path => EditorConfigGlob.Matches(section.Glob, path)))
                 .ToList();
-            CollectFromEditorConfig(file with { Sections = sections }, sites);
+            CollectFromEditorConfig(file with { Sections = sections }, sites,
+                sourceCount > 0 && paths.Count == sourceCount);
         }
 
-        var findings = sites
-            .Where(site => !site.RepositoryWide)
-            .Select(site => Block(site.Location, site.Code is null
-                ? $"silences every warning via {site.Form}; a rule is switched off by name, for the whole repository"
-                : $"silences {site.Code} via {site.Form} at one address; fix the code, or switch {site.Code} off "
-                    + "for the whole repository in .editorconfig [*.cs] or Directory.Build.props"))
-            .ToList();
+        foreach (var entry in context.Tracked(GlobalConfig))
+        {
+            var (text, readFailure) = context.Repository.ReadTrackedText(entry);
+            if (text is null)
+            {
+                return ([], readFailure ?? $"Could not read '{entry.Path}'.");
+            }
 
-        var details = sites
-            .Where(site => site.RepositoryWide)
-            .OrderBy(site => site.Code, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(site => site.Location, StringComparer.Ordinal)
-            .Select(site => $"{site.Code} is switched off repository-wide via {site.Form} at {site.Location}")
-            .ToList();
+            var lines = text.Split('\n');
+            for (var index = 0; index < lines.Length; index++)
+            {
+                var match = GlobalSeverity().Match(lines[index]);
+                if (match.Success)
+                {
+                    sites.Add(new Site($"{entry.Path}:{index + 1}", Normalize(match.Groups[1].Value),
+                        ".globalconfig severity = " + match.Groups[2].Value, false));
+                }
+            }
+        }
 
-        return CheckEvaluation.From(
-            findings,
-            findings.Count == 0 ? "no diagnostic is silenced at an address" : null,
-            details: details);
+        foreach (var entry in context.Tracked(RuleSet))
+        {
+            var (text, readFailure) = context.Repository.ReadTrackedText(entry);
+            if (text is null)
+            {
+                return ([], readFailure ?? $"Could not read '{entry.Path}'.");
+            }
+
+            if (text.Contains("Action=\"None\"", StringComparison.OrdinalIgnoreCase))
+            {
+                sites.Add(new Site(entry.Path, null, "ruleset Action=None", false));
+            }
+        }
+
+        return (generatedSections, null);
     }
 
     /// <summary>
@@ -148,9 +276,7 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
     private static string? CollectFromSources(CheckContext context, List<Site> sites)
     {
         var entries = context.Tracked(Sources)
-            .Where(entry => !RepositoryLocations.IsGenerated(entry.Path))
-            .Where(entry => !GeneratedSuffixes.Any(suffix =>
-                entry.Path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)));
+            .Where(entry => context.Repository.Classify(entry) is not (EvidenceKind.DeclaredGenerated or EvidenceKind.ToolchainIgnored));
         foreach (var entry in entries)
         {
             var (text, failure) = context.Repository.ReadTrackedText(entry);
@@ -159,13 +285,9 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
                 return failure ?? $"Could not read '{entry.Path}'.";
             }
 
-            if (IsGeneratedContent(text))
-            {
-                continue;
-            }
-
             CollectPragmas(entry.Path, text, sites);
             CollectAttributes(entry.Path, text, sites);
+            CollectNullableDisables(entry.Path, text, sites);
         }
 
         return null;
@@ -202,6 +324,18 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
         }
     }
 
+    private static void CollectNullableDisables(string path, string text, List<Site> sites)
+    {
+        var lines = text.Split('\n');
+        for (var index = 0; index < lines.Length; index++)
+        {
+            if (NullableDisable().IsMatch(lines[index]))
+            {
+                sites.Add(new Site($"{path}:{index + 1}", null, "#nullable disable", false));
+            }
+        }
+    }
+
     // NoWarn in Directory.Build.props switches a rule off for every project it covers; the
     // same element in one .csproj is that project's private exception.
     private static void CollectFromXml(DotNetFile file, List<Site> sites, bool repositoryWide)
@@ -213,13 +347,31 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
                 var line = element is IXmlLineInfo info && info.HasLineInfo() ? info.LineNumber : 0;
                 var location = line > 0 ? $"{file.Path}:{line}" : file.Path;
                 var value = DotNetRepository.Value(element) ?? string.Empty;
+                var conditional = element.AncestorsAndSelf().Any(node =>
+                    !string.IsNullOrWhiteSpace(node.Attribute("Condition")?.Value));
                 sites.AddRange(Codes(value, ';', ',', ' ', '\n', '\t')
-                    .Select(code => new Site(location, code, property, repositoryWide)));
+                    .Select(code => new Site(location, code, property, repositoryWide && !conditional)));
+                if (value.Replace("$(NoWarn)", string.Empty, StringComparison.Ordinal)
+                    .Contains("$(", StringComparison.Ordinal))
+                {
+                    sites.Add(new Site(location, null, $"unresolved MSBuild property in {property}", false));
+                }
             }
         }
     }
 
-    private static void CollectFromEditorConfig(EditorConfigFile file, List<Site> sites)
+    private static void CollectUnresolvedConfigReferences(DotNetFile file, List<Site> sites)
+    {
+        foreach (var property in new[] { "GlobalAnalyzerConfigFiles", "CodeAnalysisRuleSet" })
+        {
+            foreach (var element in DotNetRepository.Elements(file, property))
+            {
+                sites.Add(new Site(file.Path, null, $"{property} requires a reviewed analyzer configuration", false));
+            }
+        }
+    }
+
+    private static void CollectFromEditorConfig(EditorConfigFile file, List<Site> sites, bool appliesToAllSources)
     {
         foreach (var section in file.Sections.Where(section => !section.IsGeneratedCode))
         {
@@ -238,7 +390,7 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
                         location,
                         Normalize(diagnostic.Groups[1].Value),
                         $"[{section.Glob}] severity = {entry.Value}",
-                        IsRepositoryWide(section.Glob)));
+                        appliesToAllSources && IsRepositoryWide(section.Glob)));
                 }
                 else if (entry.Key.StartsWith("dotnet_analyzer_diagnostic.", StringComparison.Ordinal)
                     && entry.Key.EndsWith(".severity", StringComparison.Ordinal))
@@ -275,19 +427,22 @@ internal sealed partial class WarningSuppressionsCheck : DotNetCheck
     private static string Normalize(string code)
         => code.All(char.IsAsciiDigit) ? $"CS{code}" : code.ToUpperInvariant();
 
-    private static bool IsGeneratedContent(string text)
-        => text.Split('\n').Take(5).Any(line => line.Contains("<auto-generated", StringComparison.Ordinal));
-
     [GeneratedRegex(@"^\s*#pragma\s+warning\s+disable\b(.*)$", RegexOptions.CultureInvariant)]
     private static partial Regex Pragma();
 
+    [GeneratedRegex(@"^\s*#nullable\s+disable\b", RegexOptions.CultureInvariant)]
+    private static partial Regex NullableDisable();
+
     [GeneratedRegex(
-        @"\[\s*(?:System\.Diagnostics\.CodeAnalysis\.)?(?:Unconditional)?SuppressMessage\s*\(\s*""[^""]*""\s*,\s*""([A-Za-z]+\d+)",
+        @"\[\s*(?:assembly\s*:\s*)?(?:System\.Diagnostics\.CodeAnalysis\.)?(?:Unconditional)?SuppressMessage\s*\(\s*""[^""]*""\s*,\s*""([A-Za-z]+\d+)",
         RegexOptions.CultureInvariant)]
     private static partial Regex SuppressionAttribute();
 
     [GeneratedRegex(@"^dotnet_diagnostic\.([a-z]+\d+)\.severity$", RegexOptions.CultureInvariant)]
     private static partial Regex DiagnosticSeverity();
+
+    [GeneratedRegex(@"dotnet_diagnostic\.([A-Za-z]+\d+)\.severity\s*=\s*(none|silent|suggestion)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex GlobalSeverity();
 
     [GeneratedRegex(@"^\*(\.(\{[A-Za-z0-9,]+\}|[A-Za-z0-9]+))?$", RegexOptions.CultureInvariant)]
     private static partial Regex RepositoryWideGlob();

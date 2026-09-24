@@ -12,7 +12,8 @@ internal sealed record RunReport(
     string? ToolError,
     TimeSpan EvidenceDuration = default,
     string? Pin = null,
-    IReadOnlyList<string>? UntrackedEvidence = null)
+    IReadOnlyList<string>? UntrackedEvidence = null,
+    IReadOnlyList<string>? ScopeEvidence = null)
 {
     public bool NothingWasVerified
         => ToolError is not null || !Gates.Any(gate => gate.Outcome is CheckOutcome.Passed or CheckOutcome.Failed);

@@ -5,8 +5,12 @@ public static class Fixtures
     public static RepositoryFixture Compliant() => Compliant(Frame.AllPresent());
 
     public static RepositoryFixture Framed()
-        => RepositoryFixture.CreateGitRepository()
-            .WriteFile(".harness.json", Frame.AllPresent().ToString());
+    {
+        var frame = Frame.AllPresent();
+        return RepositoryFixture.CreateGitRepository()
+            .WriteFile(".harness.json", frame.ToString())
+            .UseFrame(frame);
+    }
 
     public static RepositoryFixture Compliant(Frame frame)
         => RepositoryFixture.CreateGitRepository()
@@ -14,6 +18,7 @@ public static class Fixtures
             .WriteFile("README.md", "# Overview\n")
             .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
             .WriteFile(".harness.json", frame.ToString())
+            .UseFrame(frame)
             .Commit();
 
     public static RepositoryFixture WithoutAFrame()

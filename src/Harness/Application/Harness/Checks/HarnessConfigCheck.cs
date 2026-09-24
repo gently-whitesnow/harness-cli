@@ -61,6 +61,10 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
                         Projects share that root version and commit envelope; answers,
                         applicability, policy, architecture and other settings never inherit.
                         A settings section without a policy entry is refused.
+                        Repository-wide linter and diagnostic switches require reviewed
+                        id/reason entries in settings.<check>.repositoryWide.
+          generated     optional paths/reason declarations; a file is excluded only with
+                        both a declared path and a toolchain-generated marker.
           answers       one self-reported answer for every `frame` question the policy names,
                         keyed without the `frame.` prefix; other questions may be answered.
           architecture  required once an architecture.sliced-dotnet check is named: the

@@ -8,6 +8,10 @@ internal interface IRepository
 
     TimeSpan ReadDuration { get; }
 
+    IReadOnlyList<string> DeclaredGeneratedPaths => [];
+
+    EvidenceKind Classify(TrackedEntry entry);
+
     /// <summary>
     /// The tracked copies of one file name in the directories above this repository's root,
     /// nearest first, as `../`-prefixed entries. A whole repository has nothing above it; a

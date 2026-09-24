@@ -8,6 +8,8 @@ namespace Harness.Tests;
 /// </summary>
 public sealed class RepositoryFixture : TemporaryDirectory
 {
+    private Frame? autoFrame;
+    private string? lastFrameText;
     private RepositoryFixture(string path) : base(path)
     {
     }
@@ -29,6 +31,13 @@ public sealed class RepositoryFixture : TemporaryDirectory
         var absolutePath = Absolute(relativePath);
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(absolutePath)!);
         File.WriteAllText(absolutePath, content);
+        return this;
+    }
+
+    public RepositoryFixture UseFrame(Frame frame)
+    {
+        autoFrame = frame;
+        lastFrameText = frame.ToString();
         return this;
     }
 
@@ -139,6 +148,22 @@ public sealed class RepositoryFixture : TemporaryDirectory
     /// <summary>Stages everything and commits, so tracked state is unambiguous.</summary>
     public RepositoryFixture Commit()
     {
+        if (autoFrame is not null)
+        {
+            var framePath = Absolute(".harness.json");
+            if (File.Exists(framePath) && File.ReadAllText(framePath) == lastFrameText)
+            {
+                autoFrame.MatchFixtureSources(Directory.EnumerateFiles(Path, "*", SearchOption.AllDirectories)
+                    .Select(path => System.IO.Path.GetRelativePath(Path, path).Replace('\\', '/'))
+                    .Where(path => !path.StartsWith(".git/", StringComparison.Ordinal)));
+                lastFrameText = autoFrame.ToString();
+                File.WriteAllText(framePath, lastFrameText);
+            }
+            else
+            {
+                autoFrame = null;
+            }
+        }
         Git("add", "--all");
         Git("commit", "--quiet", "--allow-empty", "--message", "fixture");
         return this;

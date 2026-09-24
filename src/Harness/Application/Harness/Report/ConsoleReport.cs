@@ -62,6 +62,20 @@ internal static class ConsoleReport
 
         AppendOutsideFrame(text, report, verbose, focused);
 
+        text.Append("\n  scope:");
+        if (report.ScopeEvidence is not { Count: > 0 })
+        {
+            text.Append(" all tracked sources measured\n");
+        }
+        else
+        {
+            text.Append('\n');
+            foreach (var entry in report.ScopeEvidence)
+            {
+                text.Append("    ").Append(entry).Append('\n');
+            }
+        }
+
         var untracked = report.UntrackedEvidence ?? [];
         if (verbose)
         {
@@ -129,6 +143,14 @@ internal static class ConsoleReport
 
         if (!verbose)
         {
+            if (gate.Id is "warning-suppressions.dotnet" or "lint-suppressions.go" or "lint-suppressions.ansible")
+            {
+                foreach (var detail in gate.Details.Where(detail => detail.Contains("repository-wide", StringComparison.Ordinal)))
+                {
+                    text.Append("    ").Append(detail).Append('\n');
+                }
+            }
+
             return;
         }
 

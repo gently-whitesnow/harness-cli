@@ -87,7 +87,9 @@ public sealed class ReleaseContractTests
     [Fact]
     public void Upgrade_names_the_dsm_keys_but_preserves_values_until_manual_migration()
     {
-        var legacy = JsonNode.Parse(Frame.AllPresent().Version("2.15.0").ToString())!.AsObject();
+        var fixtureFrame = Frame.AllPresent().Version("2.15.0");
+        fixtureFrame.MatchFixtureSources([]);
+        var legacy = JsonNode.Parse(fixtureFrame.ToString())!.AsObject();
         legacy["settings"]!["complexity.csharp"] = JsonNode.Parse("""{ "meanReach": 9, "coreSize": 2 }""");
         using var repository = Fixtures.WithRawFrame(legacy.ToJsonString());
         var before = File.ReadAllText(repository.Absolute(".harness.json"));

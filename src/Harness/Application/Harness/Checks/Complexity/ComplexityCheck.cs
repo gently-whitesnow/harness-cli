@@ -64,6 +64,20 @@ internal sealed class ComplexityCheck(ILanguageAnalyzer analyzer)
         }
 
         var findings = new List<Finding>();
+        if (Analyzer.Language == Language.CSharp && scope.TestProjects.Count > 0)
+        {
+            var answered = context.Config!.Answers.Values
+                .Where(answer => answer.Key.StartsWith("tests.", StringComparison.Ordinal))
+                .SelectMany(answer => answer.Paths).ToList();
+            foreach (var testProject in scope.TestProjects.Where(testProject => !answered.Any(path =>
+                path == testProject || path.StartsWith(testProject + "/", StringComparison.Ordinal)
+                    || testProject.StartsWith(path + "/", StringComparison.Ordinal))))
+            {
+                findings.Add(new Finding(FindingSeverity.Blocking, testProject,
+                    "test project excluded from DSM is absent from answers.tests.*.paths"));
+            }
+        }
+
         if (metric.AverageReachableFiles > limit.AverageReachableFiles)
         {
             findings.Add(new Finding(

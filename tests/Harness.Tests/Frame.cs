@@ -15,6 +15,8 @@ public sealed class Frame
     private static readonly string[] Questions =
         ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck", "verify"];
 
+    private static readonly string[] TypeScriptSuffixes = [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
+
     private static readonly string[] Checks =
     [
         "harness.config",
@@ -59,10 +61,12 @@ public sealed class Frame
         ["go"] = """{ "applicable": true }""",
         ["ansible"] = """{ "applicable": true }""",
     };
+    private readonly HashSet<string> autoDeclined = new(StringComparer.Ordinal);
 
     private string version = Quote(Release.Current);
 
     private string architecture = """{ "applicable": false, "reason": "standalone fixture repository" }""";
+    private string? generated;
 
     /// <summary>A frame that answers "no" to every question.</summary>
     public static Frame Answering() => new();
@@ -155,6 +159,52 @@ public sealed class Frame
         return this;
     }
 
+    public Frame Generated(string body)
+    {
+        generated = body;
+        return this;
+    }
+
+    public void MatchFixtureSources(IEnumerable<string> paths)
+    {
+        var files = paths.ToList();
+        foreach (var key in new[] { "csharp", "dotnet", "yaml", "typescript", "go", "ansible" })
+        {
+            if (applicability.TryGetValue(key, out var answer)
+                && answer.Contains("\"applicable\": false", StringComparison.Ordinal)
+                && !autoDeclined.Contains(key))
+            {
+                continue;
+            }
+
+            var present = files.Any(path => key switch
+            {
+                "csharp" => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase),
+                "dotnet" => path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)
+                    || path.EndsWith(".fsproj", StringComparison.OrdinalIgnoreCase)
+                    || path.EndsWith(".vbproj", StringComparison.OrdinalIgnoreCase),
+                "yaml" => path.EndsWith(".yml", StringComparison.OrdinalIgnoreCase)
+                    || path.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase),
+                "typescript" => TypeScriptSuffixes
+                    .Any(suffix => path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)),
+                "go" => path.EndsWith(".go", StringComparison.OrdinalIgnoreCase),
+                "ansible" => path == "ansible.cfg" || path == ".ansible-lint"
+                    || path.StartsWith("roles/", StringComparison.Ordinal),
+                _ => false,
+            });
+            if (present)
+            {
+                applicability[key] = """{ "applicable": true }""";
+                autoDeclined.Remove(key);
+            }
+            else
+            {
+                applicability[key] = """{ "applicable": false, "reason": "fixture has no tracked sources for this axis" }""";
+                autoDeclined.Add(key);
+            }
+        }
+    }
+
     /// <summary>Pins the frame to a release, or to the moving "latest" marker.</summary>
     public Frame Version(string value)
     {
@@ -179,6 +229,11 @@ public sealed class Frame
         if (settings is not null)
         {
             text.Append(",\n  \"settings\": ").Append(settings);
+        }
+
+        if (generated is not null)
+        {
+            text.Append(",\n  \"generated\": ").Append(generated);
         }
 
         text.Append(",\n  \"policy\": {\n");

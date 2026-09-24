@@ -21,7 +21,9 @@ internal static class DocumentationPolicyExplanation
           CLAUDE.md    required at the root and allowed beside any AGENTS.md: always a tracked
                        Git symbolic link whose direct relative target is the sibling AGENTS.md.
           README.md    optional overview at any depth, at most {LineLimit} physical lines.
-          SKILL.md     allowed at any depth and not measured: an agent skill is a payload
+          SKILL.md     allowed only at skills/<name>/SKILL.md and the agent toolchain
+                       mirrors .agents/skills/<name>/SKILL.md and
+                       .claude/skills/<name>/SKILL.md; not measured: a skill is a payload
                        loaded on demand for one task, not navigation carried in every context.
           DESIGN.md    allowed at any depth and not measured: a design document is opened
                        for a UI task, and its size is set by the design system it records.
@@ -37,7 +39,7 @@ internal static class DocumentationPolicyExplanation
           other *.md   blocking violation by default.
 
         Evidence
-          Only Git-tracked Markdown is considered, so generated, vendored and build-output
+          Every Git-tracked Markdown is considered, including generated, vendored and build-output
           content cannot create noise. Symbolic links are read from the Git index, so a
           regular-file copy, a chained link, a broken link, an absolute link and a link to
           another target are all distinguishable from a correct direct relative link.
