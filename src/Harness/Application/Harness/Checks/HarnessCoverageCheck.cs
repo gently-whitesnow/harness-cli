@@ -44,17 +44,22 @@ internal sealed class HarnessCoverageCheck(Func<IReadOnlyList<CheckDescriptor>> 
           `{ "applicable": true }` or `{ "applicable": false, "reason": "..." }`. An axis
           without tracked sources needs no entry and cannot claim applicability. A declined axis passes: the decision is
           tracked and reviewed, which is what the check asks for.
+          The `generated` declarations answer to the same index: a tracked file with a
+          toolchain-generated marker outside every declared path blocks, and so does a
+          declared path with no tracked files under it, as a stale declaration.
 
         Remediation
           The finding prints the fragment `harness init` would have written for the axis: its
           applicability entry, the settings sections of its checks with the contract defaults,
           and their policy entries. Paste each object into the matching section of
           {{HarnessConfig.FileName}}, adjust the numbers knowingly, and commit. To decline the
-          axis instead, declare it not applicable with a reason. The harness does not edit the
-          tracked file.
+          axis instead, declare it not applicable with a reason. For an undeclared marker,
+          add its path and reason to `generated` or remove the marker; for a stale path,
+          remove the declaration. The harness does not edit the tracked file.
 
         Decisions
           adrs/0054-explicit-only-frame.md
+          adrs/0067-reviewed-weakening-in-the-frame.md
         """;
 
     public CheckEvaluation Evaluate(CheckContext context)

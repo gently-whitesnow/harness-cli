@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harness CLI — harness начинается с репозитория</title>
+  <meta name="description" content="Агенту предстоит ещё тысяча итераций. Репозиторий должен оставаться понятным. Мой опыт в 44 проверках: общие правила, проверки языков, Go, Ansible и строгие границы .NET-приложения." />
+  <link rel="canonical" href="https://harness.whitesnow.tech/ru/" />
+  <link rel="alternate" hreflang="en" href="https://harness.whitesnow.tech/" />
+  <link rel="alternate" hreflang="ru" href="https://harness.whitesnow.tech/ru/" />
+  <link rel="alternate" hreflang="x-default" href="https://harness.whitesnow.tech/" />
+  <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Harness CLI — harness начинается с репозитория" />
+  <meta property="og:description" content="Как сохранить репозиторий пригодным для автономных агентов после тысячи итераций. Общие и языковые проверки, собранные из практики." />
+  <meta property="og:url" content="https://harness.whitesnow.tech/ru/" />
+  <meta property="og:image" content="https://harness.whitesnow.tech/og-card-ru.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Harness CLI: проверки репозитория для автономных агентов" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta property="og:locale" content="ru_RU" />
+  <meta property="og:locale:alternate" content="en_US" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#16171c" media="(prefers-color-scheme: dark)" />
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('harness-site-theme');
+        document.documentElement.dataset.theme = stored === 'dark' || stored === 'light'
+          ? stored : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      } catch (_) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержимому</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="#top" aria-label="Harness CLI — начало">
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5V7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17M17 21h2.5a1.5 1.5 0 0 0 1.5-1.5V17M8 12.5l2.5 2.5L16 9.5" />
+        </svg>
+        harness <span class="version">3.9.1</span>
+      </a>
+      <nav aria-label="Основная навигация">
+        <a href="#checks">Проверки</a>
+        <a href="#deep">Разобраться</a>
+        <a href="https://github.com/gently-whitesnow/harness-cli">GitHub</a>
+        <a class="lang-switch" href="../" hreflang="en" lang="en">English</a>
+        <button class="theme-toggle" type="button" id="theme-toggle" aria-label="Переключить светлую и тёмную тему" hidden>◐ Тема</button>
+      </nav>
+    </div>
+  </header>
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="container">
+        <div class="hero-grid">
+          <div>
+            <p class="eyebrow">Репозиторий для автономных агентов</p>
+            <h1>Harness начинается с репозитория.</h1>
+            <p class="lead">Агенту предстоит ещё тысяча итераций. Репозиторий должен оставаться понятным и пригодным для изменений.</p>
+            <p class="lead">Хорошего agent loop для этого мало. Нужны правила, которые переживут смену агента, контекста и проекта.</p>
+            <div class="actions">
+              <a class="button primary" href="#checks">Какие правила я проверяю</a>
+              <a class="button" href="#deep">Разобраться на примерах</a>
+            </div>
+          </div>
+          <figure>
+            <div class="terminal">
+<pre><code>$ harness check --verbose
+<strong>FAIL</strong>  ~/shop
+  harness 3.9.1 · repository pins 3.9.1
+✅ complexity.csharp       0
+❌ docs.policy             1
+    violation  NOTES.md: unexpected
+    tracked Markdown
+❌ dependencies.csharp     1
+    violation  module dependency cycle
+    Shop.Billing -&gt; Shop.Orders
+    -&gt; Shop.Billing
+✅ duplication.csharp      0
+exit 1</code></pre>
+            </div>
+            <figcaption>Сокращённый вывод: нарушение даёт код 1. Полная находка называет строки, которые замыкают цикл, а <code>harness explain</code> объясняет правило и исправление.</figcaption>
+          </figure>
+        </div>
+        <div class="statement">
+          <p>Я собрал в Harness CLI проверки из собственной практики: неочевидные вещи, которые приходится заново объяснять в каждом репозитории. Теперь эти правила можно одинаково применять после каждого изменения.</p>
+          <p>Подход уже прошёл много итераций; текущую версию я считаю готовой к релизу. Можно взять CLI или перенести сами правила в свой harness.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="policy">
+      <div class="container policy">
+        <div>
+          <p class="eyebrow">Строгость — часть идеи</p>
+          <h2>Нормальное состояние — все применимые проверки включены и проходят.</h2>
+          <p class="lead">Я добавляю проверку, потому что считаю её нужной. Если правило постоянно приходится отключать, для меня это повод пересмотреть правило.</p>
+        </div>
+        <div>
+          <p>Все проверки уже входят в CLI. Выбирать набор плагинов не нужно. Правила и настройки явно записаны в <code>.harness.json</code> и меняются вместе с кодом на ревью.</p>
+          <ul class="policy-list">
+            <li><code>required</code> нарушение блокирует прогон</li>
+            <li><code>advisory</code> нарушение видно, но оно не блокирует</li>
+            <li><code>off</code> проверка выключена целиком</li>
+            <li>не названа в <code>policy</code> — вне рамки: не запускается, в отчёте одна строка <code>outside the frame</code></li>
+          </ul>
+          <p class="note">Любую проверку можно смягчить или отключить. Спрятать отдельную находку исключением для файла нельзя. Названная проверка несёт свои настройки полностью: скрытых дефолтов нет.</p>
+          <p class="note">Ослабления на весь репозиторий тоже живут в рамке: generated-пути объявляются в <code>generated</code> с причиной, глобально выключенные правила линтеров и анализаторов — в <code>settings.&lt;check&gt;.repositoryWide</code> с id и причиной. Адресные <code>//nolint</code> и <code># noqa</code> блокируют даже с причиной. <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0067-reviewed-weakening-in-the-frame.md">ADR-0067 →</a></p>
+          <p class="note"><code>adrs.shape</code> удерживает ADR в форме записи решения: непрерывные номера, дата, статус и разделы; дефолты — 1000 слов, 10 строк кода и 12 строк таблицы. <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0066-adr-shape-as-decision-record.md">Почему эта форма →</a></p>
+          <details class="read-more">
+            <summary>Несколько проектов в одном Git-репозитории</summary>
+            <div>
+              <p>Корневой <code>.harness.json</code> регистрирует непересекающиеся каталоги: <code>"projects": ["apps/api", "apps/web"]</code>. Каждый содержит tracked <code>.harness.json</code> с собственными ответами, applicability, policy и settings. Наследования нет; версия и commit-интеграция остаются только в корне.</p>
+              <p>Корень покрывает файлы вне проектов. Проверку можно выключить или оставить advisory целиком для одного проекта; исключений для файлов внутри проекта нет. Общие tracked настройки предков доступны при чтении, но соседний код не входит в измерение.</p>
+              <p><code>harness check</code> проверяет весь workspace; <code>harness check --project apps/api</code> — корневая область и выбранный проект после валидации всех конфигов, явно частичный прогон. <code>--verbose</code> показывает область. Незарегистрированный вложенный конфиг — ошибка.</p>
+              <p class="note">Дублирование и графы измеряются локально: межпроектные повторы и зависимости не проверены. Границы проектов меняют область метрик и требуют ревью. <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0060-explicit-workspace-projects.md">ADR-0060</a>.</p>
+            </div>
+          </details>
+          <details class="read-more">
+            <summary>Что включено сразу после init</summary>
+            <div>
+              <p><code>init</code> читает git-индекс и записывает только языки и стеки, у которых есть tracked-исходники (<code>--languages</code> заменяет детекцию для CI). Все проверки стартуют как <code>required</code>, включая комментарии; для языков, которых в проекте нет, в файле ничего нет. Вопрос application/library задаётся только при C#; для standalone-библиотеки стандарт архитектуры неприменим.</p>
+              <p><code>harness.coverage</code> защищает от забытого стека: язык с tracked-исходниками без записи в <code>applicability</code> — блокирующая находка с готовым JSON-фрагментом для вставки. Отказ выражается явным <code>applicable: false</code> с причиной; сам файл harness не правит.</p>
+              <p>Ответы о тестах, сборке и других инструментах <code>init</code> оставляет пустыми; все <code>frame.*</code> стоят в <code>required</code>. Заполните ответы — это завершение настройки. Переход на <code>advisory</code> или <code>off</code> агент обсуждает с владельцем для конкретной проверки, включая комментарии.</p>
+              <p>У архитектуры восемь самостоятельных проверок с явной policy. Каждая находка блокирует при <code>required</code>; эвристические рекомендации удалены. Селекторы <code>architecture</code> и <code>architecture.sliced-dotnet</code> выбирают всю группу.</p>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section id="checks">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">44 проверки · две части</p>
+          <h2>Общее для репозитория. Конкретное для его стека.</h2>
+          <p>Сначала — одинаковые вопросы и правила независимо от языка. Затем — проверки исходников и устройства проекта. Самый подробный набор — для C# и .NET; Go получает комментарии, повторы, длину функций, DSM по пакетам и учёт подавлений линтера; TypeScript и JavaScript — циклы импортов, повторы и DSM по файлам. Ansible — подавления линтера и циклы ролей.</p>
+        </div>
+        <div class="catalog">
+          <div class="catalog-column">
+            <span class="axis-label">01 / COMMON</span>
+            <h3>Порядок в любом репозитории</h3>
+            <p>Где агент читает правила, как оформляет изменения и чем проверяет результат.</p>
+            <details>
+              <summary>Документация, ADR, коммиты, конфигурация <span>Короткая навигация, записи решений, единая история и явные правила · 5 проверок</span></summary>
+              <ul class="check-list" id="common-checks" aria-label="Общие правила"></ul>
+            </details>
+            <details>
+              <summary>Тесты и инструменты проекта <span>Unit, integration, architecture, format, lint, build, typecheck, verify · 8 проверок</span></summary>
+              <p>Репозиторий сообщает, где находятся инструменты или почему их нет. Harness проверяет полноту ответа; тесты, сборку и линтеры запускает ваш verify-скрипт в CI.</p>
+              <ul class="check-list" id="frame-checks" aria-label="Ответы о проверках проекта"></ul>
+            </details>
+          </div>
+          <div class="catalog-column">
+            <span class="axis-label">02 / LANGUAGES &amp; STACK</span>
+            <h3>Структура кода и границы</h3>
+            <p>Языковые проверки используют ту же рамку. Если языка нет, его группы просто нет в файле; если язык появился, <code>harness.coverage</code> скажет, что дописать.</p>
+            <details>
+              <summary>C# <span>Циклы, связанность, повторы, длина функций, один тип на файл, комментарии · 6 проверок</span></summary>
+              <ul class="check-list" id="csharp-checks" aria-label="Проверки C#"></ul>
+            </details>
+            <details>
+              <summary>.NET <span>Сборка, пакеты, .slnx, стиль, подавления warnings · 5 проверок</span></summary>
+              <ul class="check-list" id="dotnet-checks" aria-label="Проверки .NET"></ul>
+            </details>
+            <details>
+              <summary>Архитектура .NET-приложения <span>Слои и слайсы sliced-dotnet/1 · 8 проверок</span></summary>
+              <ul class="check-list" id="architecture-checks" aria-label="Проверка архитектуры"></ul>
+              <p><a href="#architecture">Посмотреть раскладку проекта ↓</a></p>
+            </details>
+            <details>
+              <summary>Go <span>Комментарии, повторы, длина функций, DSM по пакетам, подавления линтера · 5 проверок</span></summary>
+              <p>Единица DSM — пакет: файлы одного пакета видят друг друга без импортов, а циклы импортов запрещает компилятор. <code>go vet</code> и <code>gofmt</code> не дублируются: рамка спрашивает, где они запускаются.</p>
+              <ul class="check-list" id="go-checks" aria-label="Проверки Go"></ul>
+            </details>
+            <details>
+              <summary>Ansible <span>Подавления линтера и циклы ролей · 2 проверки</span></summary>
+              <p>Ось обнаруживается по ansible.cfg, ролям или плейбукам. YAML-комментарии остаются отдельной проверкой; ansible-lint, syntax-check и molecule запускает verify-скрипт проекта.</p>
+              <ul class="check-list" id="ansible-checks" aria-label="Проверки Ansible"></ul>
+            </details>
+            <details>
+              <summary>YAML, TypeScript и JavaScript <span>Комментарии, импорты, дубли и DSM · 5 проверок</span></summary>
+              <p>TS/JS-ось читает tracked импорты без tsc, считает циклы каталогов и DSM по файлам с прозрачными barrels. Неразрешённые импорты видны в деталях; стартовый потолок средней достижимости — 8 файлов.</p>
+              <ul class="check-list" id="language-checks" aria-label="Проверки YAML и TypeScript"></ul>
+            </details>
+          </div>
+        </div>
+        <noscript><p class="note">Для раскрытия полного каталога включите JavaScript или откройте <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/src/Harness/Host/CheckRegistry.cs">реестр проверок в репозитории</a>.</p></noscript>
+        <p class="note">Подробности любой проверки: <code>harness explain &lt;check-id&gt;</code>. Идентификаторы и версия на сайте сверяются с бинарём тестом.</p>
+      </div>
+    </section>
+
+    <section id="deep">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Три понятия, которые стоит разобрать</p>
+          <h2>Где лежит код. Кто от кого зависит. Как далеко тянутся связи.</h2>
+        </div>
+        <article class="explainer" id="architecture">
+          <div class="explainer-head">
+            <h3>01. Слайсы: у каждой задачи своё место</h3>
+            <p>Заказы — в <code>Orders</code>, оплата — в <code>Billing</code>. Слой отвечает за роль кода, слайс — за задачу продукта. Агент находит нужную часть и меняет её в заданных границах.</p>
+            <p>Это адаптация идей <a href="https://feature-sliced.design/docs/reference/slices-segments">Feature-Sliced Design</a> к .NET: разделение по смыслу, изоляция слайсов и явный публичный API. Здесь свои слои Clean Architecture и правило «слой = сборка».</p>
+          </div>
+          <figure class="panel table-scroll">
+            <table class="arch-table">
+              <caption>Фрагмент src/Shop/: читаем строку как слой, колонку как слайс</caption>
+              <thead><tr><th scope="col">Слой / роль</th><th scope="col">Orders / заказы</th><th scope="col">Billing / оплата</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Api · HTTP-вход</th><td><code>Api/Orders/Endpoints/</code></td><td><code>Api/Billing/Endpoints/</code></td></tr>
+                <tr><th scope="row">Application · сценарии</th><td><code>Application/Orders/Placement/</code></td><td><code>Application/Billing/Invoicing/</code></td></tr>
+                <tr><th scope="row">Domain · бизнес-правила</th><td><code>Domain/Orders/</code></td><td><code>Domain/Billing/</code></td></tr>
+                <tr><th scope="row">Infrastructure · адаптеры</th><td><code>Infrastructure/Orders/Postgres/</code></td><td><code>Infrastructure/Billing/Payments/</code></td></tr>
+              </tbody>
+            </table>
+            <figcaption>У каждой строки свой <code>.csproj</code>. <code>Host</code> собирает приложение; для входа через очередь есть <code>Consumers</code>. Слайсы лежат прямо в слое, без промежуточного <code>Features/</code>.</figcaption>
+          </figure>
+          <div class="example-grid read-more">
+            <div class="panel">
+              <h4>Обычный вход в слайс</h4>
+              <div class="flow"><b>Api/Orders</b><span class="arrow" aria-label="использует">→</span><b>Application/Orders/Contracts</b></div>
+              <p>Внешний код использует объявленный API сценария. Внутреннее устройство <code>Placement/</code> можно менять без обхода всех потребителей.</p>
+            </div>
+            <div class="panel">
+              <h4>Связь с соседним слайсом</h4>
+              <div class="flow"><b>Application/Orders</b><span class="arrow" aria-label="использует">→</span><b>Application/Billing/Contracts/X/Orders</b></div>
+              <p>Billing явно открывает API для Orders. Обычный <code>Contracts/</code> не разрешает импорт соседа на том же слое; нужен <code>X/Orders</code>, аналог <a href="https://feature-sliced.design/docs/reference/public-api#public-api-for-cross-imports">@x в FSD</a>.</p>
+            </div>
+          </div>
+          <details class="read-more">
+            <summary>Направления слоёв и ещё несколько правил</summary>
+            <div>
+              <div class="table-scroll">
+                <table>
+                  <caption>Разрешённые зависимости между слоями</caption>
+                  <thead><tr><th scope="col">Откуда</th><th scope="col">Какие слои можно использовать</th></tr></thead>
+                  <tbody>
+                    <tr><th scope="row">Host</th><td>Все остальные — собирает приложение</td></tr>
+                    <tr><th scope="row">Api, Consumers</th><td>Application, Domain</td></tr>
+                    <tr><th scope="row">Infrastructure</th><td>Application, Domain</td></tr>
+                    <tr><th scope="row">Application</th><td>Domain</td></tr>
+                    <tr><th scope="row">Domain</th><td>Ни один другой слой</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <ul class="rules">
+                <li>Каждому Application-слайсу нужен вход в Api или Consumers. Доменные слайсы доступны верхним слоям независимо от имени слайса-потребителя.</li>
+                <li>Папки внутри слайса называются по назначению: <code>Placement</code>, <code>Pricing</code>. <code>Helpers</code> и <code>Utils</code> не объясняют назначение.</li>
+                <li>Общие зарезервированные места — <code>Domain/Shared</code> и <code>Infrastructure/Persistence</code>. Обвязка приложения живёт в Host.</li>
+                <li>Слой с кодом имеет одну сборку. Подключать чужие слои через <code>Compile Include</code> нельзя; <code>ProjectReference</code> подчиняется той же таблице.</li>
+                <li>Standalone-библиотека отмечает архитектуру как неприменимую с причиной.</li>
+              </ul>
+              <p><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0033-canonical-standard-over-declarations.md">Стандарт sliced-dotnet/1 и его обоснование →</a></p>
+            </div>
+          </details>
+        </article>
+
+        <article class="explainer" id="deep-cycles">
+          <div class="explainer-head">
+            <h3>02. Цикл: зависимость вернулась к началу</h3>
+            <p>Orders использует Billing. Если Billing тоже использует Orders, модули зависят друг от друга. Их труднее менять и переносить независимо: исправление одной стороны может потребовать правок другой.</p>
+          </div>
+          <div class="example-grid">
+            <figure class="panel">
+              <h4>Цикл из двух модулей</h4>
+              <div class="flow"><b>Orders</b><span class="arrow" aria-label="использует">→</span><b>Billing</b><span class="cycle-back" aria-label="использует">→</span><b>Orders</b></div>
+              <p>Вернулись в Orders — круг замкнулся. Через три или десять модулей это тоже цикл.</p>
+              <figcaption>Стрелка всегда означает «использует». Проверка показывает кратчайшее кольцо и строки исходников, которые его замыкают.</figcaption>
+            </figure>
+            <div class="panel">
+              <h4>Один из способов разорвать круг</h4>
+              <div class="flow"><b>Orders</b><span class="arrow" aria-label="использует">→</span><b>Billing</b><span class="arrow" aria-label="использует">→</span><b>Domain/Orders</b></div>
+              <p>Если Billing нужен только тип заказа, вынесите само бизнес-понятие в Domain. Обратная ссылка на сценарии Orders исчезнет: Domain не зависит от верхних слоёв.</p>
+              <p class="note">Если модули всегда меняются вместе, стоит проверить, не одна ли это задача. Добавление Contracts само по себе цикл не разрывает.</p>
+            </div>
+          </div>
+          <p class="note">В <code>dependencies.csharp</code> модуль определяется по namespace. Блокируются только связи, доказанные ридером исходников; предположение по имени не становится нарушением. <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0021-coupling-evidence-grades.md">Как определяется доказанная связь →</a></p>
+        </article>
+
+        <article class="explainer" id="deep-dsm">
+          <div class="explainer-head">
+            <h3>03. Средняя достижимость файлов: сколько файлов видно по цепочке зависимостей</h3>
+            <p>Циклов может не быть, а связей — слишком много. Средняя достижимость файлов показывает, до скольких файлов в среднем можно дойти из одного файла, следуя его зависимостям. Сам исходный файл тоже считается.</p>
+          </div>
+          <div class="example-grid">
+            <figure class="panel">
+              <h4>Весь пример — три файла</h4>
+              <div class="flow"><b>A.cs</b><span class="arrow" aria-label="использует">→</span><b>B.cs</b><span class="arrow" aria-label="использует">→</span><b>C.cs</b></div>
+              <table>
+                <caption>Идём по стрелкам из каждого файла</caption>
+                <thead><tr><th scope="col">Старт</th><th scope="col">Достижимы</th><th scope="col">Сколько</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">A</th><td>A, B, C</td><td>3</td></tr>
+                  <tr><th scope="row">B</th><td>B, C</td><td>2</td></tr>
+                  <tr><th scope="row">C</th><td>C</td><td>1</td></tr>
+                </tbody>
+              </table>
+              <p class="formula">Средняя достижимость файлов = (3 + 2 + 1) / 3 = 2 файла</p>
+              <figcaption>Без связей каждый видит только себя: средняя достижимость файлов = 1. Если добавить C → A, каждый увидит все три файла: средняя достижимость файлов = 3, размер циклической группы = 3.</figcaption>
+            </figure>
+            <div class="panel">
+              <h4>Как читать число</h4>
+              <p>Чем оно выше, тем дальше в среднем тянутся зависимости файла. Это сигнал о связанности кода, а не обещание, что при следующей задаче придётся изменить ровно столько файлов.</p>
+              <p><strong>Размер циклической группы</strong> — размер крупнейшей группы файлов, из каждого из которых можно добраться до всех остальных. Это размер всей группы, а не длина отдельного простого цикла. В цепочке слева такой группы нет: размер циклической группы = 0.</p>
+              <p>По умолчанию <code>complexity.csharp</code> требует <strong>средняя достижимость файлов ≤ 8</strong> и <strong>размер циклической группы = 0</strong>. При превышении отчёт называет файлы с наибольшим числом достижимых зависимостей или участников циклической группы.</p>
+            </div>
+          </div>
+          <details class="read-more">
+            <summary>Что входит в расчёт и откуда предел 8</summary>
+            <div>
+              <p>Измеряются файлы продукта и доказанные связи между ними. Для sliced-dotnet это файлы внутри архитектурных зон; без зон — файлы вне тестовых проектов. Generated-код исключён только при объявленном пути и маркере; исключения видны в <code>scope:</code>. Host входит в число, но не в список кандидатов на сокращение связей.</p>
+              <p>Предел 8 взят из практических замеров и устройства sliced-dotnet. Это выбранное автором ограничение, которое можно пересмотреть, накопив опыт. Оба предела явно записаны в <code>settings."complexity.csharp"</code>.</p>
+              <p>Те же ключи и стартовые пределы 8 / 0 у <code>complexity.typescript</code> (файлы, barrels прозрачны) и <code>complexity.go</code> (пакеты по tracked <code>go.mod</code>; циклы импортов запрещает компилятор).</p>
+              <p><a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0042-dsm-over-the-product-in-files.md">Формула и область измерения</a> · <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0052-dsm-ceiling-is-a-declared-setting.md">Обоснование пределов</a></p>
+            </div>
+          </details>
+        </article>
+      </div>
+    </section>
+
+    <section id="run">
+      <div class="container">
+        <div class="section-head">
+          <p class="eyebrow">Применить у себя</p>
+          <h2>Заберите правила. Или готовый CLI.</h2>
+          <p>Суть подхода — договорённости в репозитории, проверяемые после каждого изменения. Реализация открыта; причины решений записаны в ADR.</p>
+          <div class="actions">
+            <a class="button primary" href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/REGISTRY.md">Посмотреть решения и их причины</a>
+            <a class="button" href="https://github.com/gently-whitesnow/harness-cli">Исходники на GitHub</a>
+          </div>
+        </div>
+        <details class="install">
+          <summary>Установить Harness CLI и включить в работу</summary>
+          <div class="example-grid">
+            <div>
+              <p>Standalone-бинарь; для работы нужен Git. .NET runtime не требуется.</p>
+              <ol class="steps">
+                <li>Установите CLI:
+<pre class="panel"><code>curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master/install.sh | sh</code></pre>
+                </li>
+                <li>В корне репозитория создайте конфигурацию:
+<pre class="panel"><code>harness init --kind application</code></pre>
+                  <p class="note">Для standalone-библиотеки: <code>--kind library</code>.</p>
+                </li>
+                <li>Заполните ответы в <code>.harness.json</code>, отметьте неприменимые языки и просмотрите policy. Добавьте конфигурацию и файлы проекта в индекс Git.</li>
+                <li>Подготовьте клон и проверьте репозиторий:
+<pre class="panel"><code>harness setup
+harness check</code></pre>
+                </li>
+              </ol>
+            </div>
+            <div class="panel">
+              <h4>После каждой правки</h4>
+              <p>Включите <code>harness check</code> в свой <code>verify</code>-скрипт вместе с тестами, сборкой и линтерами. Запускайте этот скрипт в CI и возвращайте отчёт агенту для исправления.</p>
+              <p>Harness видит только файлы в индексе Git. Сам тесты и сборку не запускает.</p>
+              <p><code>0</code> — блокирующие проверки прошли; замечания и пробелы в готовности ещё возможны.<br /><code>1</code> — доказано нарушение.<br /><code>2</code> — проверка не завершилась достоверно.</p>
+              <p class="note">Объяснение правила: <code>harness explain &lt;check-id&gt;</code>.<br />Обновление контракта репозитория: <code>harness upgrade</code>.<br />Руководство для агента одной командой: <code>harness guide</code>.</p>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
+  </main>
+  <footer>
+    <div class="container footer-inner">
+      <span>Harness CLI · MIT · <a href="https://github.com/gently-whitesnow/harness-cli">GitHub</a></span>
+      <span><a href="#top">К началу ↑</a></span>
+    </div>
+  </footer>
+  <script src="../app.js"></script>
+</body>
+</html>

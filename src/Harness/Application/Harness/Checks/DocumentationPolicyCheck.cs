@@ -1,10 +1,11 @@
+using System.Text.RegularExpressions;
 using Harness.Repository;
 
 namespace Harness.Checks;
 
 /// <summary>Audits the Markdown documentation policy from the Git index, so generated and
 /// vendored content stays out of scope and symbolic links are judged by what Git stores.</summary>
-internal sealed class DocumentationPolicyCheck : IRepositoryCheck
+internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
 {
     private const int LineLimit = DocumentationPolicyExplanation.LineLimit;
     private const string RootDocument = "AGENTS.md";
@@ -100,8 +101,7 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
             {
                 if (!IsMarkdown(entry.Path)
                     || entry.Path is RootDocument or AgentEntryPoint
-                    || entry.Path.StartsWith(AdrDirectory, StringComparison.Ordinal)
-)
+                    || entry.Path.StartsWith(AdrDirectory, StringComparison.Ordinal))
                 {
                     continue;
                 }
@@ -126,6 +126,12 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
                     EnforceLineLimit(entry);
                     return;
 
+                // A translation is the same overview in another language, so it lives beside
+                // the original under the same limit instead of in a directory of its own.
+                case var name when ReadmeTranslation().IsMatch(name):
+                    ReviewTranslation(entry);
+                    return;
+
                 // An agent skill is a payload loaded on demand for one task, not navigation
                 // carried in every context, so the navigation line limit does not apply.
                 case SkillDocument when IsSkillPath(entry.Path):
@@ -147,6 +153,20 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
                             + "or record a concise decision in adrs/ (`harness explain adrs.shape` describes its form)");
                     return;
             }
+        }
+
+        private void ReviewTranslation(TrackedEntry entry)
+        {
+            if (!tracked.ContainsKey(DirectoryOf(entry.Path) + ReadmeDocument))
+            {
+                Violation(
+                    entry.Path,
+                    $"is a README translation with no {ReadmeDocument} tracked beside it; "
+                        + $"keep the original {ReadmeDocument} in the same directory");
+                return;
+            }
+
+            EnforceLineLimit(entry);
         }
 
         private static bool IsSkillPath(string path)
@@ -313,4 +333,8 @@ internal sealed class DocumentationPolicyCheck : IRepositoryCheck
         private void RecordEvidenceGap(string? failure)
             => evidenceGap ??= failure ?? "Git evidence could not be read.";
     }
+
+    /// <summary>README.&lt;language&gt;.md with a BCP 47 tag such as ru, pt-BR or zh-Hans.</summary>
+    [GeneratedRegex(@"^README\.[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*\.md$", RegexOptions.CultureInvariant)]
+    private static partial Regex ReadmeTranslation();
 }

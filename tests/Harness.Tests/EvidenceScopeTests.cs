@@ -57,6 +57,19 @@ public sealed class EvidenceScopeTests
     }
 
     [Fact]
+    public void Coverage_explanation_names_both_generated_blocks()
+    {
+        using var repository = Fixtures.Compliant();
+
+        var run = HarnessCli.Run(repository.Path, "explain", "harness.coverage");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.Contains("toolchain-generated marker outside every declared path blocks", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("declared path with no tracked files under it, as a stale declaration", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("adrs/0067-reviewed-weakening-in-the-frame.md", run.StandardOutput, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Declared_applicable_stack_without_sources_blocks_coverage()
     {
         using var repository = Fixtures.WithRawFrame(Frame.AllPresent().ToString());

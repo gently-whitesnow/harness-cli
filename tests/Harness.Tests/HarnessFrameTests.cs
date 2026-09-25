@@ -19,6 +19,25 @@ public sealed class HarnessFrameTests
     }
 
     [Fact]
+    public void Config_explanation_names_every_configurable_settings_section()
+    {
+        using var repository = Fixtures.Compliant();
+
+        var run = HarnessCli.Run(repository.Path, "explain", "harness.config");
+
+        Assert.Equal(0, run.ExitCode);
+        var accepted = run.StandardOutput.Split("What it accepts")[1].Split("Workspace runs")[0];
+        foreach (var section in new[]
+        {
+            "comments.*", "duplication.*", "complexity.*", "functions.*", "ownLines", "adrs.shape",
+            "settings.<check>.repositoryWide", "warning-suppressions.dotnet", "lint-suppressions.go", "lint-suppressions.ansible",
+        })
+        {
+            Assert.Contains(section, accepted, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void An_untracked_frame_does_not_count()
     {
         using var repository = Fixtures.WithoutAFrame()

@@ -63,7 +63,7 @@ editorconfig.dotnet` печатает эталон, `init` записывает 
 адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
 блокируются; выключение правила для всего репозитория печатается в verbose details. Читается tracked XML и текст без MSBuild evaluation. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
 
-`version` — строка текущего контракта (`"3.8.1"`). Бинарь исполняет только его; другой pin даёт
+`version` — строка текущего контракта (`"3.9.1"`). Бинарь исполняет только его; другой pin даёт
 `Incomplete`, а меняет pin только `harness upgrade`, печатающий маршрут от pin и фрагменты для
 обнаруженных осей. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
 
@@ -142,8 +142,8 @@ dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
 ## Документация
 `AGENTS.md` — источник агентской навигации, обычный tracked-файл не более 150 физических
 строк. `CLAUDE.md` — прямой относительный симлинк на соседний `AGENTS.md`. `README.md` —
-краткий обзор. Документ судится по имени, а не по каталогу: эти три имени действуют на любой
+краткий обзор на английском, `README.ru.md` — его перевод рядом (`README.<тег BCP 47>.md`, тот же лимит). Документ судится по имени, а не по каталогу: эти три имени действуют на любой
 глубине по тем же правилам, что в корне, где `AGENTS.md` и `CLAUDE.md` обязательны.
 `SKILL.md` разрешён в `skills/<name>/` и зеркалах `.agents/skills/`, `.claude/skills/`; `DESIGN.md` разрешён везде, как и файлы форджа (community health, шаблоны issue/PR) в корне, `.github/`, `docs/`. Решения — в корневом `adrs/`; `adrs.shape` требует номер без дыр, дату, статус, разделы и лимиты 1000 слов / 10 строк кода / 12 строк таблицы.
 Прочий tracked Markdown — нарушение; смягчение — через `policy`. `harness guide` печатает агенту потребителя цикл работы.
-[ADR-0010](adrs/0010-documentation-policy.md), [ADR-0025](adrs/0025-nested-agent-documents.md), [ADR-0061](adrs/0061-forge-and-design-documents.md), [ADR-0062](adrs/0062-agent-guide-command.md), [ADR-0066](adrs/0066-adr-shape-as-decision-record.md)
+[ADR-0010](adrs/0010-documentation-policy.md), [ADR-0025](adrs/0025-nested-agent-documents.md), [ADR-0061](adrs/0061-forge-and-design-documents.md), [ADR-0062](adrs/0062-agent-guide-command.md), [ADR-0066](adrs/0066-adr-shape-as-decision-record.md), [ADR-0068](adrs/0068-readme-translations.md)
