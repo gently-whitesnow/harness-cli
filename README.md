@@ -38,7 +38,7 @@ The script picks the build for macOS arm64 or Linux x64/arm64 (glibc or musl), v
 sha256 and puts it in `~/.local/bin/harness` without sudo. It is a NativeAOT binary: no .NET
 runtime, only Git. The same command updates it and, inside a framed repository, runs `harness setup`.
 
-`HARNESS_VERSION=3.9.0` installs a given release, `HARNESS_INSTALL_DIR` changes the directory,
+`HARNESS_VERSION=3.9.1` installs a given release, `HARNESS_INSTALL_DIR` changes the directory,
 `HARNESS_NO_SETUP=1` skips clone setup. `sh -s -- --scope clone` installs into the clone's
 `<git-common-dir>/harness/bin/`, where the `commit-msg` hook looks before `PATH`.
 
@@ -67,7 +67,7 @@ A C# repository where `Orders` and `Billing` use each other and a stray `NOTES.m
 ```text
 $ harness check --only dependencies.csharp,docs.policy --verbose
 FAIL  /work/shop
-  harness 3.9.0 · repository pins 3.9.0
+  harness 3.9.1 · repository pins 3.9.1
    CHECK ID             FINDINGS
 ❌ docs.policy                 1
     violation  NOTES.md: unexpected tracked Markdown; remove it, fold navigation into
@@ -114,7 +114,7 @@ measured inside each project, not across projects. [ADR-0060](adrs/0060-explicit
 
 ## Contract version
 
-`version` pins one contract for the workspace (`"3.9.0"`); `"latest"` follows the installed
+`version` pins one contract for the workspace (`"3.9.1"`); `"latest"` follows the installed
 binary. A binary runs only its own contract, and any other pin exits with `2`.
 `harness upgrade` raises the pin and prints the migration route with fragments for the
 detected axes; it never guesses the owner's answers. [ADR-0023](adrs/0023-release-version-as-the-verification-contract.md)
@@ -125,7 +125,7 @@ GitLab:
 
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:3.9.0
+  image: ghcr.io/gently-whitesnow/harness:3.9.1
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"

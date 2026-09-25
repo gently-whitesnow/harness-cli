@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 3.9.0 · English at /, Russian at /ru/ · no dependencies. */
+/* Harness CLI landing · contract 3.9.1 · English at /, Russian at /ru/ · no dependencies. */
 (function () {
   'use strict';
 

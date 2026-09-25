@@ -613,6 +613,12 @@ internal static class FrameUpgrade
                    directory; it carries the same 150-line limit as README.md
           kept     every other tracked Markdown is still a finding; no frame edit is needed
         """),
+        (new HarnessVersion(3, 9, 1), """
+        Release 3.9.1 fixes:
+          changed  complexity.typescript and dependencies.typescript treat an index made only
+                   of `export type { ... } from`, `export type * from` or local `export type`
+                   reexports as a transparent barrel; average reachable files can drop
+        """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)

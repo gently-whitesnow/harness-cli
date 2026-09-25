@@ -38,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 и кладёт её в `~/.local/bin/harness` без sudo. Это NativeAOT-бинарь: .NET runtime не нужен,
 только Git. Та же команда обновляет его, а внутри репозитория с рамкой выполняет `harness setup`.
 
-`HARNESS_VERSION=3.9.0` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог,
+`HARNESS_VERSION=3.9.1` ставит конкретный релиз, `HARNESS_INSTALL_DIR` меняет каталог,
 `HARNESS_NO_SETUP=1` отключает подготовку клона. `sh -s -- --scope clone` ставит бинарь в
 `<git-common-dir>/harness/bin/` клона — там `commit-msg` hook ищет его раньше, чем в `PATH`.
 
@@ -67,7 +67,7 @@ C#-репозиторий, где `Orders` и `Billing` используют д�
 ```text
 $ harness check --only dependencies.csharp,docs.policy --verbose
 FAIL  /work/shop
-  harness 3.9.0 · repository pins 3.9.0
+  harness 3.9.1 · repository pins 3.9.1
    CHECK ID             FINDINGS
 ❌ docs.policy                 1
     violation  NOTES.md: unexpected tracked Markdown; remove it, fold navigation into
@@ -114,7 +114,7 @@ FAIL  /work/shop
 
 ## Версия контракта
 
-`version` фиксирует один контракт для всего workspace (`"3.9.0"`); `"latest"` следует за
+`version` фиксирует один контракт для всего workspace (`"3.9.1"`); `"latest"` следует за
 установленным бинарём. Бинарь исполняет только свой контракт, другой pin даёт код `2`.
 `harness upgrade` поднимает pin и печатает маршрут миграции с фрагментами для обнаруженных
 осей; ответы владельца он не угадывает. [ADR-0023](adrs/0023-release-version-as-the-verification-contract.md)
@@ -125,7 +125,7 @@ GitLab:
 
 ```yaml
 harness:
-  image: ghcr.io/gently-whitesnow/harness:3.9.0
+  image: ghcr.io/gently-whitesnow/harness:3.9.1
   script:
     - harness check
     - harness commits check "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA"

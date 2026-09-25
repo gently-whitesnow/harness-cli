@@ -134,6 +134,44 @@ public sealed class TypeScriptLanguageTests
         Assert.True(run.OutputContains("average reachable files: 2.00 files"), run.Output);
     }
 
+    [Theory]
+    [InlineData("export type { User, Role } from './user';\n")]
+    [InlineData("export type * from './user';\n")]
+    [InlineData("import type { User } from './user';\nexport type { User };\n")]
+    public void Type_only_reexport_index_is_a_transparent_barrel(string index)
+    {
+        using var repository = Fixtures.Compliant()
+            .WriteFile("src/model/index.ts", index)
+            .WriteFile("src/model/user.ts", "export type User = { id: string };\nexport type Role = 'admin';\n")
+            .WriteFile("src/app/main.ts", "import type { User } from '../model';\nexport const x = (user: User) => user.id;\n")
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "complexity.typescript");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("transparent barrels: 1"), run.Output);
+        Assert.True(run.OutputContains("2 authored TypeScript/JavaScript files"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 1.50 files"), run.Output);
+    }
+
+    [Fact]
+    public void Type_only_reexports_beside_code_keep_the_index_a_dsm_node()
+    {
+        using var repository = Fixtures.Compliant()
+            .WriteFile("src/model/index.ts", "export type { User } from './user';\nexport type * from './role';\nexport const guest = 'guest';\n")
+            .WriteFile("src/model/user.ts", "export type User = { id: string };\n")
+            .WriteFile("src/model/role.ts", "export type Role = 'admin';\n")
+            .WriteFile("src/app/main.ts", "import { guest } from '../model';\nexport const x = guest;\n")
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "complexity.typescript");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("transparent barrels: 0"), run.Output);
+        Assert.True(run.OutputContains("4 authored TypeScript/JavaScript files"), run.Output);
+        Assert.True(run.OutputContains("average reachable files: 2.25 files"), run.Output);
+    }
+
     [Fact]
     public void Dynamic_imports_and_import_text_inside_literals_do_not_create_edges()
     {
@@ -245,6 +283,21 @@ public sealed class TypeScriptLanguageTests
         Assert.True(run.OutputContains("Release 3.6 additions"), run.Output);
         Assert.True(run.OutputContains("dependencies.typescript"), run.Output);
         Assert.True(run.OutputContains("8.0 / 0"), run.Output);
+    }
+
+    [Fact]
+    public void Upgrade_from_390_names_the_type_only_barrel_fix()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("3.9.0"))
+            .WriteFile("src/app.ts", "export const app = 1;\n")
+            .Commit();
+
+        var run = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("Release 3.9.1 fixes"), run.Output);
+        Assert.True(run.OutputContains("export type * from"), run.Output);
+        Assert.False(run.OutputContains("Release 3.9 additions"), run.Output);
     }
 
     [Fact]
