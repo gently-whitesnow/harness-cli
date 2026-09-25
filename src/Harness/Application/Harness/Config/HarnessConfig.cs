@@ -80,6 +80,10 @@ internal sealed record HarnessConfig
               "dotnet": { "applicable": true }
             },
             "settings": {
+              "complexity.csharp": {
+                "averageReachableFiles": 8.0,
+                "largestCyclicGroupSize": 0
+              },
               "adrs.shape": {
                 "wordLimit": 1000,
                 "fencedLineLimit": 10,
@@ -93,9 +97,13 @@ internal sealed record HarnessConfig
                 "windowLines": 30,
                 "minimumTokens": 90
               },
-              "complexity.csharp": {
-                "averageReachableFiles": 8.0,
-                "largestCyclicGroupSize": 0
+              "functions.csharp": {
+                "ownLines": 80
+              },
+              "warning-suppressions.dotnet": {
+                "repositoryWide": [
+                  { "id": "CA1707", "reason": "sentence-style test names use underscores" }
+                ]
               },
               "commits": {
                 "language": "ru",
@@ -121,6 +129,7 @@ internal sealed record HarnessConfig
               "types-per-file.csharp": "required",
               "dependencies.csharp": "required",
               "duplication.csharp": "required",
+              "functions.csharp": "required",
               "build-properties.dotnet": "required",
               "central-packages.dotnet": "required",
               "solution-format.dotnet": "required",
@@ -142,7 +151,8 @@ internal sealed record HarnessConfig
         sources must be declared applicable or declined with a reason — harness.coverage says which.
         Generated tracked sources need a top-level `generated` array of paths and reasons; only
         files under those paths with a toolchain marker are excluded. Repository-wide diagnostic
-        switches need id/reason entries in settings.<check>.repositoryWide.
+        switches need id/reason entries in settings.<check>.repositoryWide; the CA1707 entry pairs
+        with the reference .editorconfig `init` writes, and goes when that switch goes.
         Run `harness explain <check-id>` for what one answer means and how it is reported.
         """;
 

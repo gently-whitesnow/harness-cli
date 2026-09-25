@@ -56,13 +56,16 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           applicability every axis a named check belongs to, marked true or false with reason;
                         an axis no named check belongs to needs no entry.
           settings      an explicit object, with one complete section per configurable check
-                        named in policy (comments.*, duplication.*, complexity.*). Only the
-                        root declares `settings.commits` and `policy.commits.setup`.
+                        named in policy: comments.*, duplication.*, complexity.*, functions.*
+                        (ownLines) and adrs.shape. Only the root declares `settings.commits`
+                        and `policy.commits.setup`.
                         Projects share that root version and commit envelope; answers,
                         applicability, policy, architecture and other settings never inherit.
                         A settings section without a policy entry is refused.
                         Repository-wide linter and diagnostic switches require reviewed
-                        id/reason entries in settings.<check>.repositoryWide.
+                        id/reason entries in settings.<check>.repositoryWide, the only key of
+                        the optional warning-suppressions.dotnet, lint-suppressions.go and
+                        lint-suppressions.ansible sections.
           generated     optional paths/reason declarations; a file is excluded only with
                         both a declared path and a toolchain-generated marker.
           answers       one self-reported answer for every `frame` question the policy names,

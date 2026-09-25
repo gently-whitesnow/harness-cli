@@ -301,6 +301,42 @@ public sealed class InitCommandTests
         Assert.False(File.Exists(repository.Absolute(".harness.json")));
     }
 
+    [Fact]
+    public void Explained_template_is_the_frame_init_writes_for_a_csharp_application()
+    {
+        using var repository = RepositoryFixture.CreateGitRepository()
+            .WriteFile("src/App.cs", "sealed class App;")
+            .WriteFile("src/App.csproj", Fixtures.SimpleSdkProject)
+            .Commit();
+
+        var explained = HarnessCli.Run(repository.Path, "explain", "harness.config");
+        var init = HarnessCli.RunWithInput(repository.Path, "application\n", "init");
+
+        Assert.Equal(0, explained.ExitCode);
+        Assert.Equal(0, init.ExitCode);
+        using var template = JsonDocument.Parse(TemplateJson(explained.StandardOutput));
+        using var written = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
+        Assert.Equal(
+            written.RootElement.GetProperty("answers").EnumerateObject().Select(answer => answer.Name),
+            template.RootElement.GetProperty("answers").EnumerateObject().Select(answer => answer.Name));
+        foreach (var section in new[] { "version", "architecture", "applicability", "settings", "policy" })
+        {
+            var expected = written.RootElement.GetProperty(section);
+            var actual = template.RootElement.GetProperty(section);
+            Assert.True(JsonElement.DeepEquals(expected, actual), $"{section}: init wrote {expected}, the template shows {actual}");
+        }
+    }
+
+    /// <summary>The indented JSON object `explain harness.config` prints after its prose.</summary>
+    private static string TemplateJson(string explanation)
+    {
+        var lines = explanation.Split('\n');
+        var start = Array.IndexOf(lines, "  {");
+        var end = start < 0 ? -1 : Array.IndexOf(lines, "  }", start);
+        Assert.True(end > start, explanation);
+        return string.Join('\n', lines[start..(end + 1)]);
+    }
+
     /// <summary>A repository with C# in the index, so init asks the application/library question.</summary>
     private static RepositoryFixture CSharpRepository()
         => RepositoryFixture.CreateGitRepository()
