@@ -58,7 +58,7 @@ internal sealed class TypeScriptAnalyzer(TypeScriptSources sources) : ILanguageA
                 if (external) { externalCount++; continue; }
                 if (target is null) { unresolved.Add($"{file.Path}:{import.Line} {import.Specifier}"); continue; }
                 resolved++;
-                foreach (var leaf in Expand(target, import.ImportedName, barrels, resolver, []))
+                foreach (var leaf in Leaves(target, import, barrels, resolver))
                 {
                     if (!nodes.TryGetValue(leaf, out var to) || leaf == file.Path)
                     {
@@ -93,6 +93,28 @@ internal sealed class TypeScriptAnalyzer(TypeScriptSources sources) : ILanguageA
         { Details = details }, null);
     }
 
+    /// <summary>
+    /// Files one import reaches: each named specifier through barrels to the module that declares it; the whole
+    /// barrel only for namespace or star forms, or when a name is not found among its reexports.
+    /// </summary>
+    private static IEnumerable<string> Leaves(string target, TypeScriptImport import,
+        Dictionary<string, File> barrels, TypeScriptResolver resolver)
+    {
+        if (import.Bindings is null)
+        {
+            return Expand(target, null, barrels, resolver, []);
+        }
+
+        var leaves = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var binding in import.Bindings)
+        {
+            var named = Expand(target, binding.Source, barrels, resolver, []).ToList();
+            leaves.UnionWith(named.Count > 0 ? named : Expand(target, null, barrels, resolver, []));
+        }
+
+        return leaves;
+    }
+
     private static IEnumerable<string> Expand(string path, string? name,
         Dictionary<string, File> barrels, TypeScriptResolver resolver, HashSet<string> visited)
     {
@@ -105,31 +127,37 @@ internal sealed class TypeScriptAnalyzer(TypeScriptSources sources) : ILanguageA
         var targets = new List<(string Path, string? Name)>();
         foreach (var import in barrel.Imports.Where(import => import.Reexport))
         {
-            if (name is not null && import.ImportedName is not null && import.ImportedName != name)
+            var names = new List<string?>();
+            if (import.Bindings is null)
             {
-                continue;
+                names.Add(name);
+            }
+            else
+            {
+                names.AddRange(import.Bindings.Where(binding => name is null || binding.Exposed == name)
+                    .Select(binding => name is null ? null : binding.Source));
             }
 
-            var target = resolver.Resolve(path, import.Specifier, out _);
-            if (target is not null)
+            if (names.Count > 0 && resolver.Resolve(path, import.Specifier, out _) is { } target)
             {
-                targets.Add((target, import.SourceName ?? name));
+                targets.AddRange(names.Select(item => (target, item)));
             }
         }
-        foreach (Match export in LocalReexport.Matches(TypeScriptMask.Apply(barrel.Text).Masked))
+        foreach (var (local, exposed) in LocalReexports(barrel))
         {
-            var local = export.Groups["local"].Value;
-            var exposed = export.Groups["alias"].Success ? export.Groups["alias"].Value : local;
             if (name is not null && exposed != name)
             {
                 continue;
             }
 
-            foreach (var import in barrel.Imports.Where(import => !import.Reexport && import.LocalName == local))
+            foreach (var import in barrel.Imports.Where(import => !import.Reexport))
             {
-                if (resolver.Resolve(path, import.Specifier, out _) is { } target)
+                foreach (var binding in import.Bindings?.Where(binding => binding.Local == local) ?? [])
                 {
-                    targets.Add((target, import.SourceName));
+                    if (resolver.Resolve(path, import.Specifier, out _) is { } target)
+                    {
+                        targets.Add((target, name is null ? null : binding.Source));
+                    }
                 }
             }
         }
@@ -144,6 +172,18 @@ internal sealed class TypeScriptAnalyzer(TypeScriptSources sources) : ILanguageA
         visited.Remove(path);
     }
 
+    /// <summary>`export { A, B as C }` without `from`: each local binding with the name it is exposed under.</summary>
+    private static IEnumerable<(string Local, string Exposed)> LocalReexports(File file)
+    {
+        foreach (Match export in LocalReexport.Matches(TypeScriptMask.Apply(file.Text).Masked))
+        {
+            foreach (var item in TypeScriptImports.ReadList(export.Groups["list"].Value) ?? [])
+            {
+                yield return (item.Name, item.Alias);
+            }
+        }
+    }
+
     private static bool IsBarrel(File file)
     {
         if (file.IsTest)
@@ -153,11 +193,13 @@ internal sealed class TypeScriptAnalyzer(TypeScriptSources sources) : ILanguageA
 
         var (masked, _) = TypeScriptMask.Apply(file.Text);
         var skeleton = Regex.Replace(masked,
-            @"(?m)^\s*(?:import\b(?:\{[^}]*\}|[^;\n])*|export\s+(?:type\s+)?(?:\*|\{[^}]*\})\s+from\b[^;\n]*)(?:;|$)",
+            @"(?m)^\s*(?:import\b(?:\{[^}]*\}|[^;\n])*|export\s+(?:type\s+)?(?:\*(?:\s*as\s+[$\w]+)?|\{[^}]*\})\s+from\b[^;\n]*)(?:;|$)",
             "", RegexOptions.CultureInvariant);
+        var locals = file.Imports.Where(import => !import.Reexport)
+            .SelectMany(import => import.Bindings ?? []).Select(binding => binding.Local).ToHashSet(StringComparer.Ordinal);
         foreach (Match export in LocalReexport.Matches(masked))
         {
-            if (file.Imports.Any(import => !import.Reexport && import.LocalName == export.Groups["local"].Value))
+            if (TypeScriptImports.ReadList(export.Groups["list"].Value) is [_, ..] list && list.All(item => locals.Contains(item.Name)))
             {
                 skeleton = skeleton.Replace(export.Value, "", StringComparison.Ordinal);
             }
@@ -171,7 +213,7 @@ internal sealed class TypeScriptAnalyzer(TypeScriptSources sources) : ILanguageA
         return string.IsNullOrWhiteSpace(skeleton);
     }
 
-    private static readonly Regex LocalReexport = new(@"(?m)^\s*export(?:\s+type)?\s*\{\s*(?:type\s+)?(?<local>[$\w]+)(?:\s+as\s+(?<alias>[$\w]+))?\s*\}\s*;?", RegexOptions.CultureInvariant);
+    private static readonly Regex LocalReexport = new(@"(?m)^\s*export(?:\s+type)?\s*\{(?<list>[^}]*)\}(?!\s*from\b)\s*;?", RegexOptions.CultureInvariant);
 
     private static string Module(string path)
     {

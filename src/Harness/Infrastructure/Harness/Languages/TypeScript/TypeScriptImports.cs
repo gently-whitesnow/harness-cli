@@ -37,10 +37,9 @@ internal static partial class TypeScriptImports
 
             var declaration = match.Groups["head"].Value;
             var reexport = declaration.TrimStart().StartsWith("export", StringComparison.Ordinal);
-            var (name, sourceName, localName) = ImportedName(declaration, reexport);
-            result.Add(new TypeScriptImport(specifier, Line(code, match.Index),
-                Regex.IsMatch(declaration, @"\btype\b", RegexOptions.CultureInvariant), name,
-                reexport, false, sourceName, localName));
+            var bindings = Bindings(declaration, reexport);
+            var typeOnly = TypeKeyword().IsMatch(declaration) || bindings is [_, ..] && bindings.All(binding => binding.TypeOnly);
+            result.Add(new TypeScriptImport(specifier, Line(code, match.Index), typeOnly, bindings, reexport, false));
         }
         foreach (Match match in DynamicImport().Matches(code))
         {
@@ -75,32 +74,75 @@ internal static partial class TypeScriptImports
         return result.OrderBy(import => import.Line).ToList();
     }
 
-    private static (string? Exposed, string? Source, string? Local) ImportedName(string head, bool reexport)
+    /// <summary>
+    /// Every named specifier of the declaration, or null when it reaches the whole module (`import * as ns`,
+    /// `export *`, side-effect imports) or when a specifier cannot be read literally.
+    /// </summary>
+    private static List<TypeScriptBinding>? Bindings(string head, bool reexport)
     {
-        if (head.Contains('*'))
+        head = head.Trim();
+        if (reexport)
         {
-            return (null, null, null);
-        }
-
-        var match = Regex.Match(head, @"\{\s*(?:type\s+)?(?<name>[$\w]+)(?:\s+as\s+(?<alias>[$\w]+))?", RegexOptions.CultureInvariant);
-        if (match.Success)
-        {
-            if (head[match.Index..].Contains(',', StringComparison.Ordinal))
+            if (NamespaceReexport().Match(head) is { Success: true } star)
             {
-                return (null, null, null);
+                return [new TypeScriptBinding(star.Groups["alias"].Value, null, null, star.Groups["type"].Success)];
             }
 
-            var source = match.Groups["name"].Value;
-            var alias = match.Groups["alias"].Success ? match.Groups["alias"].Value : source;
-            return reexport ? (alias, source, null) : (source, source, alias);
+            if (head.Contains('*', StringComparison.Ordinal) || ListOf(head) is not { } exported)
+            {
+                return null;
+            }
+
+            return ReadList(exported)?.Select(item => new TypeScriptBinding(item.Alias, item.Name, null, item.TypeOnly)).ToList();
         }
 
-        if (!reexport && Regex.Match(head, @"^import\s+(?:type\s+)?(?<local>[$\w]+)\s+from\s*$", RegexOptions.CultureInvariant) is { Success: true } importedDefault)
+        if (head.Contains('*', StringComparison.Ordinal))
         {
-            return ("default", "default", importedDefault.Groups["local"].Value);
+            return null;
         }
 
-        return (null, null, null);
+        var bindings = new List<TypeScriptBinding>();
+        if (DefaultImport().Match(head) is { Success: true } importedDefault)
+        {
+            bindings.Add(new TypeScriptBinding("default", "default", importedDefault.Groups["local"].Value, false));
+        }
+
+        if (ListOf(head) is { } imported)
+        {
+            if (ReadList(imported) is not { } named)
+            {
+                return null;
+            }
+
+            bindings.AddRange(named.Select(item => new TypeScriptBinding(item.Name, item.Name, item.Alias, item.TypeOnly)));
+        }
+
+        return bindings.Count == 0 ? null : bindings;
+    }
+
+    /// <summary>Reads `A, B as C, type D,` from a masked brace list; null when any specifier is not a plain name.</summary>
+    public static IReadOnlyList<(string Name, string Alias, bool TypeOnly)>? ReadList(string list)
+    {
+        var result = new List<(string, string, bool)>();
+        foreach (var item in list.Split(',').Select(item => item.Trim()).Where(item => item.Length > 0))
+        {
+            if (Specifier().Match(item) is not { Success: true } specifier)
+            {
+                return null;
+            }
+
+            var name = specifier.Groups["name"].Value;
+            result.Add((name, specifier.Groups["alias"].Success ? specifier.Groups["alias"].Value : name, specifier.Groups["type"].Success));
+        }
+
+        return result;
+    }
+
+    private static string? ListOf(string head)
+    {
+        var open = head.IndexOf('{', StringComparison.Ordinal);
+        var close = head.IndexOf('}', StringComparison.Ordinal);
+        return open >= 0 && close > open ? head[(open + 1)..close] : null;
     }
 
     private static bool InsideLiteral(int offset, IReadOnlyList<MaskedRegion> regions)
@@ -128,4 +170,16 @@ internal static partial class TypeScriptImports
 
     [GeneratedRegex("""\bimport\s*\(\s*(?<argument>[^)]*)\)""", RegexOptions.CultureInvariant)]
     private static partial Regex NonLiteralImport();
+
+    [GeneratedRegex(@"^(?:import|export)\s+type\b(?!\s*(?:,|from\b))", RegexOptions.CultureInvariant)]
+    private static partial Regex TypeKeyword();
+
+    [GeneratedRegex(@"^import\s+(?:type\s+)?(?<local>[$\w]+)\s*(?:,|\bfrom\s*$)", RegexOptions.CultureInvariant)]
+    private static partial Regex DefaultImport();
+
+    [GeneratedRegex(@"^export\s+(?<type>type\s+)?\*\s*as\s+(?<alias>[$\w]+)\s+from\s*$", RegexOptions.CultureInvariant)]
+    private static partial Regex NamespaceReexport();
+
+    [GeneratedRegex(@"^(?:(?<type>type)\s+(?!as\b|$))?(?<name>[$\w]+)(?:\s+as\s+(?<alias>[$\w]+))?$", RegexOptions.CultureInvariant)]
+    private static partial Regex Specifier();
 }
