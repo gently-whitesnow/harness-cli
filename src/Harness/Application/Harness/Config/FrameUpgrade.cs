@@ -619,6 +619,13 @@ internal static class FrameUpgrade
                    of `export type { ... } from`, `export type * from` or local `export type`
                    reexports as a transparent barrel; average reachable files can drop
         """),
+        (new HarnessVersion(3, 9, 2), """
+        Release 3.9.2 fixes:
+          changed  complexity.typescript and dependencies.typescript resolve every name of
+                   `import { A, B } from` and `export { A, B } from` through barrels to its
+                   own module; only `import * as`, `export *` and unknown names reach the
+                   whole barrel, so average reachable files can drop
+        """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)

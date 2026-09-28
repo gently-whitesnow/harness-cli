@@ -98,6 +98,21 @@ public sealed class TypeScriptBarrelNameTests
         Assert.True(complexity.OutputContains("average reachable files: 2.25 files"), complexity.Output);
     }
 
+    [Fact]
+    public void Upgrade_from_391_names_the_multi_name_import_fix()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("3.9.1"))
+            .WriteFile("src/app.ts", "export const app = 1;\n")
+            .Commit();
+
+        var run = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("Release 3.9.2 fixes"), run.Output);
+        Assert.True(run.OutputContains("import { A, B } from"), run.Output);
+        Assert.False(run.OutputContains("Release 3.9.1 fixes"), run.Output);
+    }
+
     private static RepositoryFixture UiRepository(string barrel, string main)
         => Fixtures.Compliant()
             .WriteFile("src/ui/index.ts", barrel)
