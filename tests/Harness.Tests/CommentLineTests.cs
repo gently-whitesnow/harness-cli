@@ -103,11 +103,27 @@ public sealed class CommentLineTests
     }
 
     [Fact]
-    public void Xml_docs_and_inline_comments_count()
+    public void Xml_docs_above_a_declaration_leave_both_counts()
     {
-        var source = string.Concat(Enumerable.Repeat("/// contract\n", 9))
-            + "public int Value => 1; // reason\n"
-            + CodeLines(29);
+        var source = string.Concat(Enumerable.Repeat(
+                "/// <summary>Contract.</summary>\n[Obsolete]\npublic int Value() => 1;\n", 20))
+            + "/// <inheritdoc />\npublic override string ToString() => \"\"; // reason\n"
+            + CodeLines(9);
+        using var repository = SourceRepository(source);
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+    }
+
+    [Fact]
+    public void Xml_docs_without_a_declaration_below_and_inline_comments_count()
+    {
+        var source = string.Concat(Enumerable.Repeat("/// contract\n", 5)) + "\n"
+            + "/// note\n// reason\n"
+            + "//// banner\npublic int Value => 1; // reason\n"
+            + "/// <summary>Documents the type below.</summary>\n"
+            + CodeLines(29) + "/// orphan\n";
         using var repository = SourceRepository(source);
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
@@ -149,6 +165,21 @@ public sealed class CommentLineTests
         Assert.True(run.OutputContains("refactor names and structure"), run.Output);
         Assert.True(run.OutputContains("minimumCommentLines"), run.Output);
         Assert.True(run.OutputContains("percentageLimit"), run.Output);
+    }
+
+    [Fact]
+    public void Upgrade_from_392_names_the_xml_documentation_fix()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("3.9.2"))
+            .WriteFile("src/App/Source.cs", CodeLines(1))
+            .Commit();
+
+        var run = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("Release 3.9.3 fixes"), run.Output);
+        Assert.True(run.OutputContains("comments.csharp leaves `///`"), run.Output);
+        Assert.False(run.OutputContains("Release 3.9.2 fixes"), run.Output);
     }
 
     private static RepositoryFixture SourceRepository(string source, Frame? frame = null)

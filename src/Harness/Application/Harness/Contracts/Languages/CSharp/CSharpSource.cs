@@ -9,6 +9,7 @@ internal sealed class CSharpSource
     private readonly int[] lineStarts;
     private readonly bool[] isLogical;
     private readonly bool[] hasComment;
+    private readonly bool[] documents;
 
     private CSharpSource(
         string path,
@@ -16,7 +17,8 @@ internal sealed class CSharpSource
         IReadOnlyList<MaskedRegion> maskedRegions,
         int[] lineStarts,
         bool[] isLogical,
-        bool[] hasComment)
+        bool[] hasComment,
+        bool[] documents)
     {
         Path = path;
         Masked = masked;
@@ -24,6 +26,7 @@ internal sealed class CSharpSource
         this.lineStarts = lineStarts;
         this.isLogical = isLogical;
         this.hasComment = hasComment;
+        this.documents = documents;
     }
 
     public string Path { get; }
@@ -36,24 +39,27 @@ internal sealed class CSharpSource
 
     public int LogicalLines => LogicalLinesBetween(1, LineCount);
 
-    public int CommentLines => hasComment.Count(line => line);
+    public int CommentLines => Enumerable.Range(0, LineCount).Count(line => hasComment[line] && !documents[line]);
 
     public int AuthoredLines
-        => Enumerable.Range(0, LineCount).Count(line => isLogical[line] || hasComment[line]);
+        => Enumerable.Range(0, LineCount).Count(line => !documents[line] && (isLogical[line] || hasComment[line]));
 
     public static CSharpSource Create(
         string path,
         string masked,
-        List<MaskedRegion> regions)
+        List<MaskedRegion> regions,
+        IReadOnlyCollection<MaskedRegion> documentation)
     {
         var lineStarts = LineStarts(masked);
+        var isLogical = ClassifyLines(masked, lineStarts, regions);
         return new CSharpSource(
             path,
             masked,
             regions,
             lineStarts,
-            ClassifyLines(masked, lineStarts, regions),
-            ClassifyCommentLines(lineStarts, regions));
+            isLogical,
+            ClassifyCommentLines(lineStarts, regions),
+            DocumentationLines(lineStarts, isLogical, documentation));
     }
 
     public int LineOf(int index)
@@ -145,6 +151,36 @@ internal sealed class CSharpSource
         }
 
         return hasComment;
+    }
+
+    // The XML documentation of a declaration: `///` lines directly above a line of code, as the
+    // compiler attaches them. The language and CS1591 ask for these on public members, so they
+    // are the language's convention rather than the author's prose and leave both counts.
+    private static bool[] DocumentationLines(
+        int[] lineStarts, bool[] isLogical, IReadOnlyCollection<MaskedRegion> documentation)
+    {
+        var isDocumentation = new bool[lineStarts.Length];
+        foreach (var region in documentation)
+        {
+            var line = LineIndexOf(lineStarts, region.Start);
+            isDocumentation[line] = !isLogical[line];
+        }
+
+        var documents = new bool[lineStarts.Length];
+        for (var line = 1; line < lineStarts.Length; line++)
+        {
+            if (!isLogical[line])
+            {
+                continue;
+            }
+
+            for (var above = line - 1; above >= 0 && isDocumentation[above]; above--)
+            {
+                documents[above] = true;
+            }
+        }
+
+        return documents;
     }
 
     private static int LineIndexOf(int[] lineStarts, int index)

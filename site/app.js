@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 3.9.2 · English at /, Russian at /ru/ · no dependencies. */
+/* Harness CLI landing · contract 3.9.3 · English at /, Russian at /ru/ · no dependencies. */
 (function () {
   'use strict';
 
@@ -68,9 +68,9 @@
       ru: 'Проверяет, что шаблон коммитов и commit-msg hook активны на весь клон, а харнес, который hook найдёт при коммите, существует и совпадает с pin. Подготовка: harness setup.',
     }, adr: ['0020-commit-message-contract-and-clone-setup.md', '0065-hook-resolves-the-harness-at-commit-time.md'] },
     { id: 'comments.csharp', group: 'csharp', axis: 'csharp', summary: {
-      en: 'Limits comment density: by default a finding starts at 10 comment lines when they exceed 8% of authored lines.',
-      ru: 'Ограничивает плотность комментариев: по умолчанию находка от 10 строк комментариев, если их больше 8% авторских строк.',
-    }, adr: ['0028-recalibrated-csharp-defaults.md', '0043-comment-density-across-languages.md'] },
+      en: 'Limits comment density: by default a finding starts at 10 comment lines when they exceed 8% of authored lines. XML documentation (///) directly above a declaration is not counted.',
+      ru: 'Ограничивает плотность комментариев: по умолчанию находка от 10 строк комментариев, если их больше 8% авторских строк. XML-документация (///) непосредственно над декларацией не считается.',
+    }, adr: ['0028-recalibrated-csharp-defaults.md', '0043-comment-density-across-languages.md', '0069-csharp-xml-docs-leave-comment-count.md'] },
     { id: 'comments.yaml', group: 'langs', axis: 'yaml', summary: {
       en: 'YAML prose density: from 10 lines and above 8%. Blocks above keys at any depth, trailing comments and directives are not counted; init always writes required; any relaxation is agreed with the owner.',
       ru: 'Плотность прозы YAML: от 10 строк и больше 8%. Блоки над ключами любой глубины, trailing-комментарии и директивы исключены; init всегда ставит required; смягчение обсуждается с владельцем.',
