@@ -626,6 +626,12 @@ internal static class FrameUpgrade
                    own module; only `import * as`, `export *` and unknown names reach the
                    whole barrel, so average reachable files can drop
         """),
+        (new HarnessVersion(3, 9, 3), """
+        Release 3.9.3 fixes:
+          changed  comments.csharp leaves `///` lines directly above a line of code out of
+                   both counts, as comments.go does for doc comments; `////`, `/** */` and
+                   a `///` block before a blank line still count, so findings can only drop
+        """),
     ];
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)

@@ -167,6 +167,21 @@ public sealed class CommentLineTests
         Assert.True(run.OutputContains("percentageLimit"), run.Output);
     }
 
+    [Fact]
+    public void Upgrade_from_392_names_the_xml_documentation_fix()
+    {
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Version("3.9.2"))
+            .WriteFile("src/App/Source.cs", CodeLines(1))
+            .Commit();
+
+        var run = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
+
+        Assert.Equal(0, run.ExitCode);
+        Assert.True(run.OutputContains("Release 3.9.3 fixes"), run.Output);
+        Assert.True(run.OutputContains("comments.csharp leaves `///`"), run.Output);
+        Assert.False(run.OutputContains("Release 3.9.2 fixes"), run.Output);
+    }
+
     private static RepositoryFixture SourceRepository(string source, Frame? frame = null)
         => Fixtures.Compliant(frame ?? Frame.AllPresent()).WriteFile("src/App/Source.cs", source).Commit();
 
