@@ -103,11 +103,27 @@ public sealed class CommentLineTests
     }
 
     [Fact]
-    public void Xml_docs_and_inline_comments_count()
+    public void Xml_docs_above_a_declaration_leave_both_counts()
     {
-        var source = string.Concat(Enumerable.Repeat("/// contract\n", 9))
-            + "public int Value => 1; // reason\n"
-            + CodeLines(29);
+        var source = string.Concat(Enumerable.Repeat(
+                "/// <summary>Contract.</summary>\n[Obsolete]\npublic int Value() => 1;\n", 20))
+            + "/// <inheritdoc />\npublic override string ToString() => \"\"; // reason\n"
+            + CodeLines(9);
+        using var repository = SourceRepository(source);
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);
+
+        Assert.Equal(0, run.ExitCode);
+    }
+
+    [Fact]
+    public void Xml_docs_without_a_declaration_below_and_inline_comments_count()
+    {
+        var source = string.Concat(Enumerable.Repeat("/// contract\n", 5)) + "\n"
+            + "/// note\n// reason\n"
+            + "//// banner\npublic int Value => 1; // reason\n"
+            + "/// <summary>Documents the type below.</summary>\n"
+            + CodeLines(29) + "/// orphan\n";
         using var repository = SourceRepository(source);
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", Check);

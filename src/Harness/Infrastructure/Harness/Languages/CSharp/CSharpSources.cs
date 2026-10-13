@@ -1,3 +1,4 @@
+using Harness.Languages;
 using Harness.Languages.CSharp;
 using Harness.Repository;
 
@@ -59,11 +60,19 @@ internal sealed class CSharpSources : ICSharpSources
 
             var (masked, regions) = CSharpMask.Apply(text);
 
-            var source = CSharpSource.Create(entry.Path, masked, regions);
+            var source = CSharpSource.Create(entry.Path, masked, regions, Documentation(text, regions));
             files.Add(new CSharpFile(source, () => CSharpStructureReader.Read(source)));
         }
 
         return (files, marked, null);
     }
+
+    // `///` opens a documentation comment; a fourth slash makes it an ordinary one again.
+    private static List<MaskedRegion> Documentation(string text, List<MaskedRegion> regions)
+        => regions
+            .Where(region => region.Content == MaskedContent.Comment
+                && text.AsSpan(region.Start).StartsWith("///", StringComparison.Ordinal)
+                && !text.AsSpan(region.Start).StartsWith("////", StringComparison.Ordinal))
+            .ToList();
 
 }
