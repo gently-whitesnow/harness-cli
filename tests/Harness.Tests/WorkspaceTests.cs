@@ -72,7 +72,7 @@ public sealed class WorkspaceTests
     {
         using var repository = Workspace("one", "two")
             .WriteFile("one/notes.md", "# Invalid\n")
-            .WriteFile("two/.harness.json", """{"settings":{},"policy":{"frame.verify":"required"},"answers":{"verify":{}}}""")
+            .WriteFile("two/.harness.json", """{"settings":{},"policy":{"verify.entrypoint":"required"}}""")
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
@@ -175,16 +175,15 @@ public sealed class WorkspaceTests
     {
         using var repository = Workspace("app");
         var root = JsonNode.Parse(RootFrame("app"))!.AsObject();
-        root["answers"] = JsonNode.Parse("""{"verify":{"paths":["verify.sh"]}}""");
-        root["applicability"] = JsonNode.Parse("""{"yaml":{"applicable":true}}""");
+        root["applicability"] = JsonNode.Parse("""{"go":{"applicable":true}}""");
         repository.WriteFile(".harness.json", root.ToJsonString())
-            .WriteFile("app/.harness.json", """{"policy":{"comments.yaml":"required"},"settings":{"comments.yaml":{"minimumCommentLines":10,"percentageLimit":8}}}""")
+            .WriteFile("app/.harness.json", """{"policy":{"functions.go":"required"},"settings":{"functions.go":{"ownTokens":700}}}""")
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(2, run.ExitCode);
-        Assert.Contains("applicability.yaml", run.Output, StringComparison.Ordinal);
+        Assert.Contains("applicability.go", run.Output, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -286,18 +285,17 @@ public sealed class WorkspaceTests
     }
 
     [Fact]
-    public void Root_answer_failure_cannot_be_hidden_by_a_check_selector()
+    public void Root_config_failure_cannot_be_hidden_by_a_check_selector()
     {
         using var repository = Workspace("app");
         var root = JsonNode.Parse(RootFrame("app"))!.AsObject();
-        root["policy"]!["frame.verify"] = "required";
-        root["answers"] = JsonNode.Parse("""{"verify":{}}""");
+        root["policy"]!["verify.entrypoint"] = "required";
         repository.WriteFile(".harness.json", root.ToJsonString()).Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "docs.policy");
 
         Assert.Equal(2, run.ExitCode);
-        Assert.Contains("verify", run.Output, StringComparison.Ordinal);
+        Assert.Contains("verify.entrypoint", run.Output, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -329,9 +327,9 @@ public sealed class WorkspaceTests
         Assert.Equal(0, run.ExitCode);
         var projectHeading = run.Output.IndexOf("Project app (app/.harness.json)", StringComparison.Ordinal);
         Assert.True(projectHeading >= 0, run.Output);
-        Assert.DoesNotContain("comments.go", run.Output[..projectHeading], StringComparison.Ordinal);
+        Assert.DoesNotContain("duplication.go", run.Output[..projectHeading], StringComparison.Ordinal);
         var project = run.Output[projectHeading..];
-        Assert.Contains("comments.go", project, StringComparison.Ordinal);
+        Assert.Contains("duplication.go", project, StringComparison.Ordinal);
         Assert.DoesNotContain("commits.setup", project, StringComparison.Ordinal);
         Assert.DoesNotContain("\"commits\"", project, StringComparison.Ordinal);
         Assert.DoesNotContain("\"version\"", project, StringComparison.Ordinal);
@@ -352,19 +350,20 @@ public sealed class WorkspaceTests
     }
 
     [Fact]
-    public void Parent_answers_do_not_claim_readiness_for_a_project()
+    public void Parent_settings_do_not_inherit_into_a_project()
     {
         using var repository = Workspace("app");
         var root = JsonNode.Parse(RootFrame("app"))!.AsObject();
-        root["answers"] = JsonNode.Parse("""{"verify":{"paths":["verify.sh"]}}""");
+        root["settings"]!["verify.entrypoint"] = JsonNode.Parse("""{"path":"verify.sh"}""");
+        root["policy"]!["verify.entrypoint"] = "required";
         repository.WriteFile(".harness.json", root.ToJsonString())
-            .WriteFile("app/.harness.json", """{"settings":{},"policy":{"frame.verify":"required"}}""")
+            .WriteFile("app/.harness.json", """{"settings":{},"policy":{"verify.entrypoint":"required"}}""")
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(2, run.ExitCode);
-        Assert.Contains("answers", run.Output, StringComparison.Ordinal);
+        Assert.Contains("verify.entrypoint", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -56,11 +56,11 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           applicability every axis a named check belongs to, marked true or false with reason;
                         an axis no named check belongs to needs no entry.
           settings      an explicit object, with one complete section per configurable check
-                        named in policy: comments.*, duplication.*, complexity.*, functions.*
-                        (ownLines) and adrs.shape. Only the root declares `settings.commits`
-                        and `policy.commits.setup`.
-                        Projects share that root version and commit envelope; answers,
-                        applicability, policy, architecture and other settings never inherit.
+                        named in policy: duplication.*, complexity.*, functions.* (ownTokens),
+                        adrs.shape (fencedBlockLineLimit) and verify.entrypoint (path). Only the
+                        root declares `settings.commits` and `policy.commits.setup`.
+                        Projects share that root version and commit envelope; applicability,
+                        policy, architecture and other settings never inherit.
                         A settings section without a policy entry is refused.
                         Repository-wide linter and diagnostic switches require reviewed
                         id/reason entries in settings.<check>.repositoryWide, the only key of
@@ -68,8 +68,6 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
                         lint-suppressions.ansible sections.
           generated     optional paths/reason declarations; a file is excluded only with
                         both a declared path and a toolchain-generated marker.
-          answers       one self-reported answer for every `frame` question the policy names,
-                        keyed without the `frame.` prefix; other questions may be answered.
           architecture  required once an architecture.sliced-dotnet check is named: the
                         sliced-dotnet/1 standard, or not applicable with a reason.
 
@@ -103,26 +101,14 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
     {
         var parts = new List<string>
         {
-            $"{config.Answers.Count} answer{(config.Answers.Count == 1 ? "" : "s")}",
+            $"{config.Policy.Count} explicit policy entr{(config.Policy.Count == 1 ? "y" : "ies")}",
         };
-
-        if (config.AnswerFailures.Count > 0)
-        {
-            parts.Add(
-                $"{config.AnswerFailures.Count} answer{(config.AnswerFailures.Count == 1 ? "" : "s")} to complete");
-        }
 
         if (config.ArchitectureFailure is not null)
         {
             parts.Add("architecture section to complete");
         }
 
-        if (config.Policy.Count > 0)
-        {
-            parts.Add($"{config.Policy.Count} explicit policy entr{(config.Policy.Count == 1 ? "y" : "ies")}");
-        }
-
-        return $"{HarnessConfig.FileName} contains {string.Join(", ", parts)}. Answers are self-reported; "
-            + "the harness validates their form and does not fact-check them.";
+        return $"{HarnessConfig.FileName} contains {string.Join(", ", parts)}.";
     }
 }

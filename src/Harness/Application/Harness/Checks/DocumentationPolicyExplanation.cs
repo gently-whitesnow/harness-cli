@@ -3,7 +3,7 @@ namespace Harness.Checks;
 /// <summary>Long-form content for `harness explain docs.policy`.</summary>
 internal static class DocumentationPolicyExplanation
 {
-    public const int LineLimit = 150;
+    public const int WordLimit = 1200;
 
     public static readonly string Text =
         $"""
@@ -17,14 +17,16 @@ internal static class DocumentationPolicyExplanation
 
         Rules
           AGENTS.md    required at the root and allowed in any directory: a tracked regular
-                       file of at most {LineLimit} physical lines, never a symbolic link.
+                       file of at most {WordLimit} words, never a symbolic link. Words are
+                       measured instead of physical lines so deleting blank lines cannot game
+                       the budget.
           CLAUDE.md    required at the root and allowed beside any AGENTS.md: always a tracked
                        Git symbolic link whose direct relative target is the sibling AGENTS.md.
-          README.md    optional overview at any depth, at most {LineLimit} physical lines.
+          README.md    optional human overview at any depth; not measured.
           README.<language>.md
                        a translation of that overview, named by a BCP 47 tag such as
                        README.ru.md, README.pt-BR.md or README.zh-Hans.md; allowed only beside
-                       a tracked README.md in the same directory, at most {LineLimit} lines.
+                       a tracked README.md in the same directory; not measured.
           SKILL.md     allowed only at skills/<name>/SKILL.md and the agent toolchain
                        mirrors .agents/skills/<name>/SKILL.md and
                        .claude/skills/<name>/SKILL.md; not measured: a skill is a payload
@@ -43,21 +45,22 @@ internal static class DocumentationPolicyExplanation
           other *.md   blocking violation by default.
 
         Evidence
-          Every Git-tracked Markdown is considered, including generated, vendored and build-output
+          Every Git-tracked Markdown is considered, so generated, vendored and build-output
           content cannot create noise. Symbolic links are read from the Git index, so a
           regular-file copy, a chained link, a broken link, an absolute link and a link to
           another target are all distinguishable from a correct direct relative link.
           Non-Markdown contracts such as OpenAPI documents and schemas are out of scope.
-          Line counts are measured on the working tree, so an edit is judged before it is
+          Word counts are measured on the working tree, so an edit is judged before it is
           staged; when a tracked document is absent there, its staged content is used
           instead. A new document is different: until `git add` it is not in the index and
           the check reads it as missing, which the run says in as many words.
           Evidence that cannot be read at all ends the check as incomplete.
 
         Remediation
-          Blocking findings: create AGENTS.md if it is missing, shorten a document that
-          exceeds the line limit, and replace CLAUDE.md with a direct relative symbolic
-          link, for example `ln -sf AGENTS.md CLAUDE.md && git add CLAUDE.md`.
+          Blocking findings: create AGENTS.md if it is missing, shorten an AGENTS.md that
+          exceeds the word limit (move task procedures to skills/<name>/SKILL.md or rationale
+          to adrs/), and replace CLAUDE.md with a direct relative symbolic link, for example
+          `ln -sf AGENTS.md CLAUDE.md && git add CLAUDE.md`.
           A translation without an original: add README.md beside it or move the
           translation next to the README.md it translates.
           Unexpected Markdown: remove the document, rename it to the name an agent already

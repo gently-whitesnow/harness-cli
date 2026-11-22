@@ -208,6 +208,7 @@
   evaluation, репозиторий без SDK-style проектов не судится.
 
 ## Сборка и документация
+- [ADR-0070](0070-contract-4-goodhart-filter.md) — Контракт 4.0: удалены `comments.*`, ось `yaml` и 7 анкетных `frame.*`; `verify.entrypoint` проверяется по git-индексу (`100755` + вызов `harness check`); `AGENTS.md` ограничен 1200 словами без лимита на `README`; `adrs.shape` хранит форму и `fencedBlockLineLimit: 20`; `functions.*` считают `ownTokens` (700).
 - [ADR-0067](0067-reviewed-weakening-in-the-frame.md) — tracked-файлы измеряются независимо от имени каталога; generated и repository-wide исключения объявляются в рамке.
 <!-- Инварианты, которые ограничивают код и тексты репозитория -->
 

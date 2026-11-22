@@ -46,7 +46,7 @@ internal static class FrameUpgrade
             return (null, ConfigJson.Failure($"duplicate property '{duplicate}' leaves the frame ambiguous; keep one before upgrading"));
         }
 
-        var (migrated, migrationFailure) = SplitArchitecturePolicy(text);
+        var (migrated, migrationFailure) = MigrateFrame(text);
         if (migrationFailure is not null)
         {
             return (null, migrationFailure);
@@ -99,8 +99,8 @@ internal static class FrameUpgrade
             .Append(dryRun
                 ? "Nothing was written."
                 : policyChanged
-                    ? "The pin and architecture policy were migrated; repository answers were not guessed."
-                    : "Only the pin was changed; repository answers were not guessed.")
+                    ? "The pin and contract schema were migrated; review the diff before committing."
+                    : "Only the pin was changed.")
             .Append('\n');
         return (report.ToString(), null);
     }
@@ -632,7 +632,132 @@ internal static class FrameUpgrade
                    both counts, as comments.go does for doc comments; `////`, `/** */` and
                    a `///` block before a blank line still count, so findings can only drop
         """),
+        (new HarnessVersion(4, 0, 0), """
+        Contract 4.0 migration (Goodhart-resistant checks):
+          removed  comments.csharp, comments.yaml, comments.typescript, comments.go and the yaml axis
+          removed  self-reported answers and the 7 questionnaire checks (frame.tests.*, frame.format,
+                   frame.lint, frame.build, frame.typecheck)
+          changed  frame.verify becomes verify.entrypoint with settings."verify.entrypoint".path;
+                   the harness verifies from the Git index that the file is tracked, executable
+                   (mode 100755), non-empty and invokes `harness check` on a non-comment line
+          changed  docs.policy removes the 150-line ceiling on README.md and README.<lang>.md, and
+                   replaces AGENTS.md's 150-line ceiling with a 1200-word ceiling
+          changed  adrs.shape removes wordLimit and tableRowLimit, and replaces total fencedLineLimit
+                   with per-block fencedBlockLineLimit (default 20)
+          changed  functions.csharp and functions.go replace physical ownLines with lexical ownTokens
+                   (default 700), invariant to line breaks and whitespace
+        """),
     ];
+
+    private static (string? Text, string? Failure) MigrateFrame(string text)
+    {
+        var (afterArch, failure) = SplitArchitecturePolicy(text);
+        if (failure is not null)
+        {
+            return (null, failure);
+        }
+
+        return MigrateToContract4(afterArch!);
+    }
+
+    private static (string? Text, string? Failure) MigrateToContract4(string text)
+    {
+        var document = JsonNode.Parse(text, documentOptions: ConfigJson.ParseOptions) as JsonObject;
+        if (document is null)
+        {
+            return (text, null);
+        }
+
+        var changed = false;
+        string? migratedVerifyPath = null;
+        if (document["answers"] is JsonObject answers)
+        {
+            if (answers["verify"] is JsonObject verifyAnswer
+                && verifyAnswer["paths"] is JsonArray paths
+                && paths.Count > 0
+                && paths[0] is JsonValue firstPath
+                && firstPath.TryGetValue<string>(out var rawPath)
+                && !string.IsNullOrWhiteSpace(rawPath))
+            {
+                migratedVerifyPath = rawPath.Trim().Replace('\\', '/');
+            }
+
+            document.Remove("answers");
+            changed = true;
+        }
+
+        if (document["applicability"] is JsonObject applicability && applicability.Remove("yaml"))
+        {
+            changed = true;
+        }
+
+        var settings = document["settings"] as JsonObject;
+        var policy = document["policy"] as JsonObject;
+
+        if (policy is not null)
+        {
+            if (policy.TryGetPropertyValue("frame.verify", out var verifyPolicy) && !policy.ContainsKey("verify.entrypoint"))
+            {
+                policy["verify.entrypoint"] = verifyPolicy?.DeepClone();
+                changed = true;
+            }
+
+            foreach (var retired in policy.Select(entry => entry.Key)
+                .Where(key => key.StartsWith("comments.", StringComparison.Ordinal)
+                    || key.StartsWith("frame.", StringComparison.Ordinal))
+                .ToList())
+            {
+                policy.Remove(retired);
+                changed = true;
+            }
+        }
+
+        if (settings is not null)
+        {
+            foreach (var retired in settings.Select(entry => entry.Key)
+                .Where(key => key.StartsWith("comments.", StringComparison.Ordinal))
+                .ToList())
+            {
+                settings.Remove(retired);
+                changed = true;
+            }
+
+            if (settings["adrs.shape"] is JsonObject adrShape
+                && (adrShape.ContainsKey("wordLimit") || adrShape.ContainsKey("fencedLineLimit") || adrShape.ContainsKey("tableRowLimit")))
+            {
+                settings["adrs.shape"] = new JsonObject
+                {
+                    ["fencedBlockLineLimit"] = AdrShapeSettings.Default.FencedBlockLineLimit,
+                };
+                changed = true;
+            }
+
+            foreach (var fnKey in new[] { "functions.csharp", "functions.go" })
+            {
+                if (settings[fnKey] is JsonObject fnSection && fnSection.ContainsKey("ownLines"))
+                {
+                    settings[fnKey] = new JsonObject
+                    {
+                        ["ownTokens"] = FunctionSettings.Default.OwnTokens,
+                    };
+                    changed = true;
+                }
+            }
+
+            if (policy is not null && policy.ContainsKey("verify.entrypoint") && !settings.ContainsKey("verify.entrypoint"))
+            {
+                settings["verify.entrypoint"] = new JsonObject
+                {
+                    ["path"] = migratedVerifyPath ?? VerifyEntrypointSettings.Default.Path,
+                };
+                changed = true;
+            }
+        }
+
+        return changed
+            ? (document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n", null)
+            : (text, null);
+    }
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)
     {

@@ -1,4 +1,3 @@
-using Harness.Checks.Frame;
 using Harness.Config;
 
 namespace Harness.Checks;
@@ -10,8 +9,7 @@ internal static class CheckCatalog
             .Select(check => new CheckDescriptor(
                 check.Id,
                 check.Group,
-                check.Applicability,
-                (check as FrameQuestionCheck)?.AnswerKey))
+                check.Applicability))
             .ToList();
 
     public static IReadOnlyList<CheckSummary> Summaries(IReadOnlyList<IRepositoryCheck> checks)

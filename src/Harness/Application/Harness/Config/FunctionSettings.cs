@@ -1,6 +1,6 @@
 namespace Harness.Config;
 
-internal sealed record FunctionSettings(int OwnLines)
+internal sealed record FunctionSettings(int OwnTokens)
 {
-    public static FunctionSettings Default { get; } = new(80);
+    public static FunctionSettings Default { get; } = new(700);
 }

@@ -75,6 +75,14 @@ internal static class HarnessSettingsReader
             }
         }
 
+        foreach (var removed in new[] { "comments.csharp", "comments.yaml", "comments.typescript", "comments.go" })
+        {
+            if (declared.TryGetProperty(removed, out _))
+            {
+                return $"'settings.{removed}' was removed in harness 4.0; run `harness upgrade` or remove this section";
+            }
+        }
+
         return null;
     }
 
@@ -82,28 +90,15 @@ internal static class HarnessSettingsReader
         JsonElement declared,
         IReadOnlyList<CheckDescriptor> checks)
     {
-        var comments = new Dictionary<string, CommentSettings>(StringComparer.Ordinal);
         var duplication = new Dictionary<string, DuplicationSettings>(StringComparer.Ordinal);
         var complexity = new Dictionary<string, ComplexitySettings>(StringComparer.Ordinal);
         var functions = new Dictionary<string, FunctionSettings>(StringComparer.Ordinal);
         AdrShapeSettings? adrShape = null;
+        VerifyEntrypointSettings? verifyEntrypoint = null;
         foreach (var check in checks)
         {
             switch (check.Group)
             {
-                case HarnessSettings.CommentsGroup:
-                {
-                    var (values, failure) = ReadSection(
-                        declared, check.Id, ["minimumCommentLines", "percentageLimit"], [null, 100]);
-                    if (values is null)
-                    {
-                        return (null, failure);
-                    }
-
-                    comments[check.Id] = new CommentSettings(values[0], values[1]);
-                    break;
-                }
-
                 case HarnessSettings.DuplicationGroup:
                 {
                     var (values, failure) = ReadSection(declared, check.Id, ["windowLines", "minimumTokens"]);
@@ -135,7 +130,7 @@ internal static class HarnessSettingsReader
 
                 case HarnessSettings.FunctionsGroup:
                 {
-                    var (values, failure) = ReadSection(declared, check.Id, ["ownLines"]);
+                    var (values, failure) = ReadSection(declared, check.Id, ["ownTokens"]);
                     if (values is null)
                     {
                         return (null, failure);
@@ -143,7 +138,7 @@ internal static class HarnessSettingsReader
 
                     if (values[0] == 0)
                     {
-                        return (null, $"'settings.{check.Id}.ownLines' must be a positive integer");
+                        return (null, $"'settings.{check.Id}.ownTokens' must be a positive integer");
                     }
 
                     functions[check.Id] = new FunctionSettings(values[0]);
@@ -162,19 +157,30 @@ internal static class HarnessSettingsReader
                     break;
                 }
 
+                case HarnessSettings.VerifyGroup:
+                {
+                    var (verify, failure) = ReadVerifyEntrypoint(declared, check.Id);
+                    if (verify is null)
+                    {
+                        return (null, failure);
+                    }
+
+                    verifyEntrypoint = verify;
+                    break;
+                }
             }
         }
 
-        return Complete(declared, comments, duplication, complexity, functions, adrShape);
+        return Complete(declared, duplication, complexity, functions, adrShape, verifyEntrypoint);
     }
 
     private static (HarnessSettings? Settings, string? Failure) Complete(
         JsonElement declared,
-        Dictionary<string, CommentSettings> comments,
         Dictionary<string, DuplicationSettings> duplication,
         Dictionary<string, ComplexitySettings> complexity,
         Dictionary<string, FunctionSettings> functions,
-        AdrShapeSettings? adrShape)
+        AdrShapeSettings? adrShape,
+        VerifyEntrypointSettings? verifyEntrypoint)
     {
         var (commits, commitFailure) = ReadCommits(declared);
         if (commits is null)
@@ -185,7 +191,7 @@ internal static class HarnessSettingsReader
         var (repositoryWide, suppressionFailure) = ReadRepositoryWide(declared);
         return repositoryWide is null
             ? (null, suppressionFailure)
-            : (new HarnessSettings(comments, duplication, complexity, functions, adrShape, commits, repositoryWide), null);
+            : (new HarnessSettings(duplication, complexity, functions, adrShape, verifyEntrypoint, commits, repositoryWide), null);
     }
 
     private static (IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? Entries, string? Failure)
@@ -236,15 +242,45 @@ internal static class HarnessSettingsReader
 
     private static (AdrShapeSettings? Settings, string? Failure) ReadAdrShape(JsonElement declared, string section)
     {
-        var (values, failure) = ReadSection(declared, section, ["wordLimit", "fencedLineLimit", "tableRowLimit"]);
+        var (values, failure) = ReadSection(declared, section, ["fencedBlockLineLimit"]);
         if (values is null)
         {
             return (null, failure);
         }
 
-        return values.Any(value => value == 0)
-            ? (null, $"'settings.{section}' limits must be positive integers")
-            : (new AdrShapeSettings(values[0], values[1], values[2]), null);
+        return values[0] == 0
+            ? (null, $"'settings.{section}.fencedBlockLineLimit' must be a positive integer")
+            : (new AdrShapeSettings(values[0]), null);
+    }
+
+    private static (VerifyEntrypointSettings? Settings, string? Failure) ReadVerifyEntrypoint(JsonElement settings, string section)
+    {
+        if (!settings.TryGetProperty(section, out var declared))
+        {
+            return (null, $"'settings.{section}' must be present");
+        }
+
+        var failure = ValidateObject(declared, section, ["path"]);
+        if (failure is not null)
+        {
+            return (null, failure);
+        }
+
+        if (!declared.TryGetProperty("path", out var pathElement) || pathElement.ValueKind != JsonValueKind.String)
+        {
+            return (null, $"'settings.{section}.path' must be a nonempty relative path string");
+        }
+
+        var path = pathElement.GetString()?.Trim().Replace('\\', '/') ?? string.Empty;
+        if (path.Length == 0
+            || path.StartsWith('/')
+            || path.EndsWith('/')
+            || path.Split('/').Any(segment => segment is "" or "." or ".."))
+        {
+            return (null, $"'settings.{section}.path' must be a normalized repository-relative file path");
+        }
+
+        return (new VerifyEntrypointSettings(path), null);
     }
 
     private static (ComplexitySettings? Settings, string? Failure) ReadComplexity(JsonElement settings, string section)

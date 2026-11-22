@@ -51,17 +51,15 @@ public sealed class ReadmeTranslationTests
     }
 
     [Fact]
-    public void Translation_carries_the_readme_line_limit()
+    public void Translation_has_no_line_limit()
     {
         using var repository = Fixtures.Compliant()
-            .WriteLines("README.ru.md", 151)
+            .WriteLines("README.ru.md", 300)
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "docs.policy");
 
-        Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("README.ru.md"), run.Output);
-        Assert.True(run.OutputContains("exceeds the limit of 150"), run.Output);
+        Assert.Equal(0, run.ExitCode);
     }
 
     [Theory]

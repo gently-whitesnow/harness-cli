@@ -83,7 +83,7 @@ public sealed class CliContractTests
     [Fact]
     public void Incomplete_checks_offer_a_verbose_details_command_in_compact_output()
     {
-        using var repository = Fixtures.Compliant(Frame.Answering().Silent("tests.architecture"));
+        using var repository = Fixtures.Compliant(Frame.AllPresent().Architecture("{}"));
 
         var run = HarnessCli.Run(repository.Path, "check");
 
@@ -94,13 +94,13 @@ public sealed class CliContractTests
     [Fact]
     public void A_run_in_which_nothing_ran_does_not_claim_the_repository_passed()
     {
-        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 400).Commit();
+        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 1500).Commit();
 
         var run = HarnessCli.Run(
             repository.Path,
             "check",
             "--skip",
-            "harness,docs,adrs,commits,csharp,dotnet,frame");
+            "harness,docs,adrs,commits,verify,csharp,dotnet");
 
         Assert.Equal(0, run.ExitCode);
         Assert.False(run.OutputContains("PASS"), run.Output);
@@ -117,7 +117,7 @@ public sealed class CliContractTests
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("docs.policy"), run.Output);
         Assert.True(run.OutputContains("group docs"), run.Output);
-        Assert.True(run.OutputContains("C# comment density limit"), run.Output);
+        Assert.True(run.OutputContains("tracked executable verification entry point"), run.Output);
         Assert.True(run.OutputContains("harness upgrade"), run.Output);
     }
 
@@ -176,7 +176,7 @@ public sealed class CliContractTests
         Assert.True(run.OutputContains("Rationale"), run.Output);
         Assert.True(run.OutputContains("Remediation"), run.Output);
         Assert.True(run.OutputContains("AGENTS.md"), run.Output);
-        Assert.True(run.OutputContains("150"), run.Output);
+        Assert.True(run.OutputContains("1200"), run.Output);
     }
 
     [Fact]
@@ -227,7 +227,7 @@ public sealed class CliContractTests
     public void A_failed_status_ends_with_its_finding_count_and_a_focused_verbose_command()
     {
         using var repository = Fixtures.Compliant()
-            .WriteLines("AGENTS.md", 151)
+            .WriteLines("AGENTS.md", 700)
             .WriteFile("docs/stale.md", "# Stale\n")
             .Commit();
 
@@ -248,7 +248,7 @@ public sealed class CliContractTests
     [Fact]
     public void A_single_check_can_be_run_with_verbose_findings()
     {
-        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 151).Commit();
+        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 700).Commit();
 
         var run = HarnessCli.Run(
             repository.Path,

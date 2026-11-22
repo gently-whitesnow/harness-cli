@@ -7,7 +7,7 @@ namespace Harness.Checks;
 /// vendored content stays out of scope and symbolic links are judged by what Git stores.</summary>
 internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
 {
-    private const int LineLimit = DocumentationPolicyExplanation.LineLimit;
+    private const int WordLimit = DocumentationPolicyExplanation.WordLimit;
     private const string RootDocument = "AGENTS.md";
     private const string ReadmeDocument = "README.md";
     private const string AgentEntryPoint = "CLAUDE.md";
@@ -123,11 +123,10 @@ internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
                     return;
 
                 case ReadmeDocument:
-                    EnforceLineLimit(entry);
                     return;
 
                 // A translation is the same overview in another language, so it lives beside
-                // the original under the same limit instead of in a directory of its own.
+                // the original instead of in a directory of its own.
                 case var name when ReadmeTranslation().IsMatch(name):
                     ReviewTranslation(entry);
                     return;
@@ -163,10 +162,7 @@ internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
                     entry.Path,
                     $"is a README translation with no {ReadmeDocument} tracked beside it; "
                         + $"keep the original {ReadmeDocument} in the same directory");
-                return;
             }
-
-            EnforceLineLimit(entry);
         }
 
         private static bool IsSkillPath(string path)
@@ -188,7 +184,7 @@ internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
                 return;
             }
 
-            EnforceLineLimit(entry);
+            EnforceWordLimit(entry);
         }
 
         private void ReviewEntryPoint(TrackedEntry entry)
@@ -298,7 +294,7 @@ internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
             return string.Join('/', segments);
         }
 
-        private void EnforceLineLimit(TrackedEntry entry)
+        private void EnforceWordLimit(TrackedEntry entry)
         {
             var (text, failure) = repository.ReadTrackedText(entry);
             if (text is null)
@@ -307,24 +303,11 @@ internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
                 return;
             }
 
-            var lineCount = CountPhysicalLines(text);
-            if (lineCount > LineLimit)
+            var wordCount = WordPattern().Count(text);
+            if (wordCount > WordLimit)
             {
-                Violation(entry.Path, $"{lineCount} physical lines exceeds the limit of {LineLimit}");
+                Violation(entry.Path, $"{wordCount} words exceeds the limit of {WordLimit}");
             }
-        }
-
-        private static int CountPhysicalLines(string text)
-        {
-            if (text.Length == 0)
-            {
-                return 0;
-            }
-
-            var lineCount = text.Count(character => character == '\n');
-
-            // A final line without a trailing newline is still a physical line.
-            return text[^1] == '\n' ? lineCount : lineCount + 1;
         }
 
         private void Violation(string location, string message)
@@ -337,4 +320,7 @@ internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
     /// <summary>README.&lt;language&gt;.md with a BCP 47 tag such as ru, pt-BR or zh-Hans.</summary>
     [GeneratedRegex(@"^README\.[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*\.md$", RegexOptions.CultureInvariant)]
     private static partial Regex ReadmeTranslation();
+
+    [GeneratedRegex(@"\S+", RegexOptions.CultureInvariant)]
+    private static partial Regex WordPattern();
 }

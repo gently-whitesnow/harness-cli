@@ -13,17 +13,6 @@ internal static class FrameSections
     /// <summary>The default settings section of a check, as JSON lines, or null when it has none.</summary>
     public static string? DefaultSettings(CheckDescriptor check, CommitSettings? commits = null)
     {
-        if (check.Group == HarnessSettings.CommentsGroup)
-        {
-            var comments = CommentSettings.Default;
-            return $$"""
-                "{{check.Id}}": {
-                  "minimumCommentLines": {{comments.MinimumCommentLines}},
-                  "percentageLimit": {{comments.PercentageLimit}}
-                }
-                """;
-        }
-
         if (check.Group == HarnessSettings.DuplicationGroup)
         {
             var duplication = DuplicationSettings.Default;
@@ -50,7 +39,7 @@ internal static class FrameSections
         {
             return $$"""
                 "{{check.Id}}": {
-                  "ownLines": {{FunctionSettings.Default.OwnLines}}
+                  "ownTokens": {{FunctionSettings.Default.OwnTokens}}
                 }
                 """;
         }
@@ -60,9 +49,16 @@ internal static class FrameSections
             var shape = AdrShapeSettings.Default;
             return $$"""
                 "{{check.Id}}": {
-                  "wordLimit": {{shape.WordLimit}},
-                  "fencedLineLimit": {{shape.FencedLineLimit}},
-                  "tableRowLimit": {{shape.TableRowLimit}}
+                  "fencedBlockLineLimit": {{shape.FencedBlockLineLimit}}
+                }
+                """;
+        }
+
+        if (check.Group == HarnessSettings.VerifyGroup)
+        {
+            return $$"""
+                "{{check.Id}}": {
+                  "path": "{{VerifyEntrypointSettings.Default.Path}}"
                 }
                 """;
         }

@@ -10,8 +10,6 @@ internal sealed class Language
 {
     public static readonly Language CSharp = new("csharp", "C#", [".cs"]);
 
-    public static readonly Language Yaml = new("yaml", "YAML", [".yml", ".yaml"]);
-
     public static readonly Language TypeScript = new(
         "typescript",
         "TypeScript",
@@ -23,7 +21,7 @@ internal sealed class Language
     public static readonly Language Ansible = new("ansible", "Ansible", []);
 
     /// <summary>Every language the harness ships, in the order the frame lists them.</summary>
-    public static readonly IReadOnlyList<Language> All = [CSharp, Yaml, TypeScript, Go, Ansible];
+    public static readonly IReadOnlyList<Language> All = [CSharp, TypeScript, Go, Ansible];
 
     private Language(string key, string name, IReadOnlyList<string> suffixes)
     {

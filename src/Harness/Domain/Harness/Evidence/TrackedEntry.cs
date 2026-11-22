@@ -7,6 +7,8 @@ namespace Harness.Repository;
 internal sealed record TrackedEntry(string Path, string Mode, string ObjectId)
 {
     public bool IsSymbolicLink => Mode == "120000";
+
+    public bool IsExecutable => Mode == "100755";
 }
 
 internal enum EvidenceKind

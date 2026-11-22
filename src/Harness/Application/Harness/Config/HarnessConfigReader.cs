@@ -13,7 +13,7 @@ namespace Harness.Config;
 internal static class HarnessConfigReader
 {
     private static readonly string[] TopLevelKeys =
-        ["version", "architecture", "answers", "applicability", "settings", "policy", "projects", "generated"];
+        ["version", "architecture", "applicability", "settings", "policy", "projects", "generated"];
 
     /// <summary>
     /// Reads the tracked config and validates its envelope before preserving per-answer results.
@@ -134,6 +134,12 @@ internal static class HarnessConfigReader
                     $"'{property.Name}' was removed in harness 2.0; remove this section"));
             }
 
+            if (property.Name == "answers")
+            {
+                return (null, ConfigJson.Failure(
+                    "'answers' was removed in harness 4.0; run `harness upgrade` to migrate verify.entrypoint and remove this section"));
+            }
+
             if (!TopLevelKeys.Contains(property.Name, StringComparer.Ordinal))
             {
                 return (null, ConfigJson.Failure($"'{property.Name}' is not a key this harness reads "
@@ -171,16 +177,6 @@ internal static class HarnessConfigReader
             return (null, policyFailure);
         }
 
-        var questions = checks.Where(check => check.AnswerKey is not null).ToList();
-        var (answers, answerFailures, answerFailure) = FrameAnswerReader.Read(
-            root,
-            questions,
-            questions.Where(question => policy.ContainsKey(question.Id)).ToList());
-        if (answers is null)
-        {
-            return (null, answerFailure);
-        }
-
         var (applicability, applicabilityFailure) = PolicyReader.ReadApplicability(root, checks, policy.Keys);
         if (applicability is null)
         {
@@ -204,8 +200,6 @@ internal static class HarnessConfigReader
             TracksLatest = tracksLatest,
             Architecture = architecture,
             ArchitectureFailure = architectureFailure,
-            Answers = answers,
-            AnswerFailures = answerFailures!,
             Applicability = applicability,
             Settings = settings,
             Policy = policy,

@@ -1,39 +1,28 @@
 using Harness.Checks;
 using Harness.Checks.Ansible;
 using Harness.Checks.Architecture;
-using Harness.Checks.Comments;
 using Harness.Checks.Commits;
 using Harness.Checks.Complexity;
 using Harness.Checks.Dependencies;
 using Harness.Checks.DotNet;
 using Harness.Checks.Duplication;
-using Harness.Checks.Frame;
 using Harness.Checks.Functions;
 using Harness.Checks.LintSuppressions;
 using Harness.Checks.TypesPerFile;
+using Harness.Checks.Verify;
 using Harness.Git;
 using Harness.Infrastructure.Languages.Ansible;
 using Harness.Infrastructure.Languages.CSharp;
 using Harness.Infrastructure.Languages.Go;
 using Harness.Infrastructure.Languages.TypeScript;
-using Harness.Infrastructure.Languages.Yaml;
 using Harness.Languages;
 
 namespace Harness.Host;
 
 /// <summary>The checks this version of the harness ships, in execution order.</summary>
-/// <remarks>
-/// The frame is read first, because every frame question reads it. Then the analyses the
-/// harness performs itself, which drift between repositories and which no repository's own
-/// pipeline measures the same way. Then the frame's questions, the same for every repository.
-/// </remarks>
 internal static class CheckRegistry
 {
     private static readonly CSharpSources CSharp = new();
-
-    private static readonly YamlSources Yaml = new();
-
-    private static readonly TypeScriptSources TypeScript = new();
 
     private static readonly GoSources Go = new();
 
@@ -43,7 +32,7 @@ internal static class CheckRegistry
 
     /// <summary>The analyzers whose graph is measured as a DSM; the Ansible role graph is judged for cycles only.</summary>
     public static readonly IReadOnlyList<ILanguageAnalyzer> LanguageAnalyzers =
-        [new CSharpAnalyzer(CSharp), new TypeScriptAnalyzer(TypeScript), new GoAnalyzer(Go)];
+        [new CSharpAnalyzer(CSharp), new TypeScriptAnalyzer(), new GoAnalyzer(Go)];
 
     private static readonly ILanguageAnalyzer AnsibleAnalyzer = new AnsibleAnalyzer(Ansible);
 
@@ -64,10 +53,6 @@ internal static class CheckRegistry
             new DocumentationPolicyCheck(),
             new AdrShapeCheck(),
             new CommitSetupCheck(CommitIntegration),
-            new CommentLineCheck(new CSharpCommentedSources(CSharp)),
-            new CommentLineCheck(Yaml),
-            new CommentLineCheck(TypeScript),
-            new CommentLineCheck(new GoCommentedSources(Go)),
             new TypesPerFileCheck(CSharp),
             new DependenciesCheck(csharpAnalyzer),
             new DependenciesCheck(LanguageAnalyzers.Single(analyzer => analyzer.Language == Language.TypeScript)),
@@ -86,7 +71,7 @@ internal static class CheckRegistry
             new EditorConfigCheck(),
             new WarningSuppressionsCheck(),
 
-            .. FrameQuestions.All.Select(question => new FrameQuestionCheck(question)),
+            new VerifyEntrypointCheck(),
         ];
     }
 

@@ -20,25 +20,24 @@ public sealed class NestedAgentDocumentTests
     }
 
     [Fact]
-    public void Nested_overview_over_the_line_limit_fails_the_run()
+    public void Nested_overview_has_no_line_limit()
     {
         using var repository = Fixtures.Compliant()
-            .WriteLines("apps/web/README.md", 151)
+            .WriteLines("apps/web/README.md", 300)
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "docs.policy");
 
-        Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("apps/web/README.md"), run.Output);
-        Assert.True(run.OutputContains("151"), run.Output);
+        Assert.Equal(0, run.ExitCode);
     }
 
     [Fact]
     public void Nested_instruction_document_is_allowed_and_measured()
     {
+        var words = string.Join(" ", Enumerable.Range(1, 1201).Select(n => $"word{n}"));
         using var repository = Fixtures.Compliant()
             .WriteFile("specs/contracts/AGENTS.md", "# Contracts\n")
-            .WriteLines("apps/api/AGENTS.md", 151)
+            .WriteFile("apps/api/AGENTS.md", words + "\n")
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "docs.policy");
@@ -46,7 +45,7 @@ public sealed class NestedAgentDocumentTests
         Assert.Equal(1, run.ExitCode);
         Assert.False(run.OutputContains("specs/contracts/AGENTS.md"), run.Output);
         Assert.True(run.OutputContains("apps/api/AGENTS.md"), run.Output);
-        Assert.True(run.OutputContains("151"), run.Output);
+        Assert.True(run.OutputContains("1201"), run.Output);
     }
 
     [Fact]

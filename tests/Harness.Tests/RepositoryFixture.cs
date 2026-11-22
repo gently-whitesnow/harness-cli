@@ -34,6 +34,21 @@ public sealed class RepositoryFixture : TemporaryDirectory
         return this;
     }
 
+    public RepositoryFixture WriteExecutable(string relativePath, string content)
+    {
+        WriteFile(relativePath, content);
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(
+                Absolute(relativePath),
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                | UnixFileMode.GroupRead | UnixFileMode.GroupExecute
+                | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+        }
+
+        return this;
+    }
+
     public RepositoryFixture UseFrame(Frame frame)
     {
         autoFrame = frame;

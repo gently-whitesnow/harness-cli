@@ -91,7 +91,9 @@ public sealed class ReleaseContractTests
         fixtureFrame.MatchFixtureSources([]);
         var legacy = JsonNode.Parse(fixtureFrame.ToString())!.AsObject();
         legacy["settings"]!["complexity.csharp"] = JsonNode.Parse("""{ "meanReach": 9, "coreSize": 2 }""");
-        using var repository = Fixtures.WithRawFrame(legacy.ToJsonString());
+        using var repository = Fixtures.WithRawFrame(legacy.ToJsonString())
+            .WriteExecutable("verify.sh", "#!/usr/bin/env sh\nharness check\n")
+            .Commit();
         var before = File.ReadAllText(repository.Absolute(".harness.json"));
 
         var run = HarnessCli.Run(repository.Path, "upgrade");

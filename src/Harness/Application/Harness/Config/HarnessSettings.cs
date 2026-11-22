@@ -7,33 +7,29 @@ namespace Harness.Config;
 /// not in the frame has no section here, and a check in the frame always finds its own.
 /// </summary>
 internal sealed record HarnessSettings(
-    IReadOnlyDictionary<string, CommentSettings> Comments,
     IReadOnlyDictionary<string, DuplicationSettings> Duplication,
     IReadOnlyDictionary<string, ComplexitySettings> Complexity,
     IReadOnlyDictionary<string, FunctionSettings> Functions,
     AdrShapeSettings? AdrShape,
+    VerifyEntrypointSettings? VerifyEntrypoint,
     CommitSettings Commits,
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> RepositoryWide)
 {
-    public const string CommentsGroup = "comments";
-
     public const string DuplicationGroup = "duplication";
 
     public const string ComplexityGroup = "complexity";
     public const string FunctionsGroup = "functions";
     public const string AdrShapeGroup = "adrs";
+    public const string VerifyGroup = "verify";
 
     public const string CommitsSection = "commits";
 
     /// <summary>The families whose checks read a settings section named by their check id.</summary>
     public static readonly IReadOnlyList<string> ConfigurableGroups =
-        [CommentsGroup, DuplicationGroup, ComplexityGroup, FunctionsGroup, AdrShapeGroup];
+        [DuplicationGroup, ComplexityGroup, FunctionsGroup, AdrShapeGroup, VerifyGroup];
 
     public static bool HasSection(string group)
         => ConfigurableGroups.Contains(group, StringComparer.Ordinal);
-
-    public CommentSettings? CommentsFor(Language language)
-        => Comments.TryGetValue(language.Qualify(CommentsGroup), out var settings) ? settings : null;
 
     public DuplicationSettings? DuplicationFor(Language language)
         => Duplication.TryGetValue(language.Qualify(DuplicationGroup), out var settings) ? settings : null;

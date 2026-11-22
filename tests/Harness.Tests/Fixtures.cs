@@ -17,6 +17,7 @@ public static class Fixtures
             .WriteFile("AGENTS.md", "# Root\n\nNavigation.\n")
             .WriteFile("README.md", "# Overview\n")
             .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
+            .WriteExecutable("verify.sh", "#!/usr/bin/env sh\nset -eu\nharness check\n")
             .WriteFile(".harness.json", frame.ToString())
             .UseFrame(frame)
             .Commit();

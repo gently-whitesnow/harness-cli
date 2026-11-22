@@ -4,16 +4,12 @@ using System.Text.Json.Nodes;
 namespace Harness.Tests;
 
 /// <summary>
-/// Builds a complete `.harness.json` for a fixture. Every question has a self-reported
-/// answer unless a test deliberately removes or corrupts one.
+/// Builds a complete v4.0.0 `.harness.json` for a fixture.
 /// </summary>
 public sealed class Frame
 {
     private const string DefaultSettings =
-        """{ "adrs.shape": { "wordLimit": 1000, "fencedLineLimit": 10, "tableRowLimit": 12 }, "comments.csharp": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 }, "comments.typescript": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.typescript": { "windowLines": 30, "minimumTokens": 90 }, "complexity.typescript": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "complexity.csharp": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "functions.csharp": { "ownLines": 80 }, "comments.go": { "minimumCommentLines": 10, "percentageLimit": 8 }, "duplication.go": { "windowLines": 30, "minimumTokens": 90 }, "complexity.go": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "functions.go": { "ownLines": 80 }, "commits": { "language": "ru", "requireSetup": false } }""";
-
-    private static readonly string[] Questions =
-        ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck", "verify"];
+        """{ "adrs.shape": { "fencedBlockLineLimit": 20 }, "duplication.typescript": { "windowLines": 30, "minimumTokens": 90 }, "complexity.typescript": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "duplication.csharp": { "windowLines": 30, "minimumTokens": 90 }, "complexity.csharp": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "functions.csharp": { "ownTokens": 700 }, "duplication.go": { "windowLines": 30, "minimumTokens": 90 }, "complexity.go": { "averageReachableFiles": 8.0, "largestCyclicGroupSize": 0 }, "functions.go": { "ownTokens": 700 }, "verify.entrypoint": { "path": "verify.sh" }, "commits": { "language": "ru", "requireSetup": false } }""";
 
     private static readonly string[] TypeScriptSuffixes = [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
 
@@ -28,35 +24,43 @@ public sealed class Frame
         "architecture.sliced-dotnet.dependency-direction",
         "architecture.sliced-dotnet.slice-isolation",
         "architecture.sliced-dotnet.public-api",
-        "architecture.sliced-dotnet.cross-api", "complexity.csharp", "docs.policy", "adrs.shape",
-        "commits.setup", "comments.csharp", "comments.yaml", "comments.typescript",
-        "types-per-file.csharp", "dependencies.csharp", "dependencies.typescript", "complexity.typescript", "duplication.typescript",
-        "duplication.csharp", "functions.csharp", "comments.go", "duplication.go", "complexity.go", "functions.go", "lint-suppressions.go",
-        "lint-suppressions.ansible", "dependencies.ansible",
-        "build-properties.dotnet", "central-packages.dotnet",
-        "solution-format.dotnet", "editorconfig.dotnet", "warning-suppressions.dotnet", "frame.tests.unit", "frame.tests.integration",
-        "frame.tests.architecture", "frame.format", "frame.lint", "frame.build", "frame.typecheck", "frame.verify",
+        "architecture.sliced-dotnet.cross-api",
+        "complexity.csharp",
+        "docs.policy",
+        "adrs.shape",
+        "commits.setup",
+        "types-per-file.csharp",
+        "dependencies.csharp",
+        "dependencies.typescript",
+        "complexity.typescript",
+        "duplication.typescript",
+        "duplication.csharp",
+        "functions.csharp",
+        "duplication.go",
+        "complexity.go",
+        "functions.go",
+        "lint-suppressions.go",
+        "lint-suppressions.ansible",
+        "dependencies.ansible",
+        "build-properties.dotnet",
+        "central-packages.dotnet",
+        "solution-format.dotnet",
+        "editorconfig.dotnet",
+        "warning-suppressions.dotnet",
+        "verify.entrypoint",
     ];
-
-    private readonly Dictionary<string, string> answers = Questions.ToDictionary(
-        question => question,
-        _ => """{ "present": false, "reason": "fixture owns nothing here" }""",
-        StringComparer.Ordinal);
 
     private readonly Dictionary<string, string> policy = Checks.ToDictionary(
         check => check,
         _ => "required",
         StringComparer.Ordinal);
 
-    // Unrelated acceptance tests opt out of clone-local setup explicitly. Tests of the
-    // shipped settings profile replace this section and exercise the actual defaults.
     private string? settings = DefaultSettings;
 
     private readonly Dictionary<string, string> applicability = new(StringComparer.Ordinal)
     {
         ["csharp"] = """{ "applicable": true }""",
         ["dotnet"] = """{ "applicable": true }""",
-        ["yaml"] = """{ "applicable": true }""",
         ["typescript"] = """{ "applicable": true }""",
         ["go"] = """{ "applicable": true }""",
         ["ansible"] = """{ "applicable": true }""",
@@ -68,46 +72,9 @@ public sealed class Frame
     private string architecture = """{ "applicable": false, "reason": "standalone fixture repository" }""";
     private string? generated;
 
-    /// <summary>A frame that answers "no" to every question.</summary>
     public static Frame Answering() => new();
 
-    /// <summary>A frame with a positive answer to every question.</summary>
-    public static Frame AllPresent()
-    {
-        var frame = new Frame();
-        foreach (var question in Questions)
-        {
-            frame.Present(question, "fixture provides it");
-        }
-
-        frame.Located("verify", "verify.sh");
-
-        return frame;
-    }
-
-    public Frame Located(string question, params string[] paths)
-        => With(question, $$"""{ "paths": [{{string.Join(", ", paths.Select(Quote))}}] }""");
-
-    public Frame Present(string question, string reason = "no single file carries it")
-        => With(question, $$"""{ "present": true, "reason": {{Quote(reason)}} }""");
-
-    /// <summary>Answers that one question does not apply to this repository.</summary>
-    public Frame NotApplicable(string question, string reason = "no stack for it")
-        => With(question, $$"""{ "applicable": false, "reason": {{Quote(reason)}} }""");
-
-    /// <summary>Leaves one question out of the frame entirely.</summary>
-    public Frame Silent(string question)
-    {
-        answers.Remove(question);
-        return this;
-    }
-
-    /// <summary>Writes one answer verbatim, including one the reader should reject.</summary>
-    public Frame With(string question, string body)
-    {
-        answers[question] = body;
-        return this;
-    }
+    public static Frame AllPresent() => new();
 
     public Frame Policy(string selector, string value)
     {
@@ -120,16 +87,6 @@ public sealed class Frame
             return this;
         }
         policy[selector] = value;
-        return this;
-    }
-
-    public Frame FramePolicy(string value)
-    {
-        foreach (var check in Checks.Where(check => check.StartsWith("frame.", StringComparison.Ordinal)))
-        {
-            policy[check] = value;
-        }
-
         return this;
     }
 
@@ -168,7 +125,7 @@ public sealed class Frame
     public void MatchFixtureSources(IEnumerable<string> paths)
     {
         var files = paths.ToList();
-        foreach (var key in new[] { "csharp", "dotnet", "yaml", "typescript", "go", "ansible" })
+        foreach (var key in new[] { "csharp", "dotnet", "typescript", "go", "ansible" })
         {
             if (applicability.TryGetValue(key, out var answer)
                 && answer.Contains("\"applicable\": false", StringComparison.Ordinal)
@@ -183,8 +140,6 @@ public sealed class Frame
                 "dotnet" => path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)
                     || path.EndsWith(".fsproj", StringComparison.OrdinalIgnoreCase)
                     || path.EndsWith(".vbproj", StringComparison.OrdinalIgnoreCase),
-                "yaml" => path.EndsWith(".yml", StringComparison.OrdinalIgnoreCase)
-                    || path.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase),
                 "typescript" => TypeScriptSuffixes
                     .Any(suffix => path.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)),
                 "go" => path.EndsWith(".go", StringComparison.OrdinalIgnoreCase),
@@ -205,7 +160,6 @@ public sealed class Frame
         }
     }
 
-    /// <summary>Pins the frame to a release, or to the moving "latest" marker.</summary>
     public Frame Version(string value)
     {
         version = Quote(value);
@@ -215,11 +169,7 @@ public sealed class Frame
     public override string ToString()
     {
         var text = new StringBuilder(
-            $"{{\n  \"version\": {version},\n  \"architecture\": {architecture},\n  \"answers\": {{\n");
-        text.Append(string.Join(
-            ",\n",
-            answers.Select(entry => $"    {Quote(entry.Key)}: {entry.Value}")));
-        text.Append("\n  }");
+            $"{{\n  \"version\": {version},\n  \"architecture\": {architecture}");
 
         text.Append(",\n  \"applicability\": {\n");
         text.Append(string.Join(",\n", applicability.Select(entry =>

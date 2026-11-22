@@ -30,13 +30,14 @@ internal static partial class FunctionScanner
                     : DataSpan(child, masked))
                 .Concat(collections.Where(span => span.From >= node.Open && span.To <= node.End))
                 .ToList();
+            var ownTokens = CountTokens(masked, node.Start, node.End, excluded);
             var own = Count(masked, lines, node.Start, node.End, excluded);
             var logical = Count(masked, lines, node.Start, node.End, []);
             var largest = complete
                 .Where(child => child.Kind == Kind.Function && child != node && child.Start >= node.Open && child.End <= node.End)
                 .Select(child => Count(masked, lines, child.Start, child.End, []))
                 .DefaultIfEmpty(0).Max();
-            units.Add(new FunctionUnit(path, node.Name, LineOf(lines, node.Start), own, logical, largest,
+            units.Add(new FunctionUnit(path, node.Name, LineOf(lines, node.Start), ownTokens, own, logical, largest,
                 Cognitive(node, complete, masked, excluded)));
         }
 
@@ -50,6 +51,7 @@ internal static partial class FunctionScanner
                 .Concat(collections)
                 .ToList();
             units.Add(new FunctionUnit(path, "<top-level>", 1,
+                CountTokens(masked, 0, masked.Length, excluded),
                 Count(masked, lines, 0, masked.Length, excluded),
                 Count(masked, lines, 0, masked.Length, []),
                 complete.Where(node => node.Kind == Kind.Function)
@@ -408,6 +410,53 @@ internal static partial class FunctionScanner
         return Control.Contains(first) || first.StartsWith("if(", StringComparison.Ordinal)
             || first.StartsWith("for(", StringComparison.Ordinal)
             || first.StartsWith("switch(", StringComparison.Ordinal);
+    }
+
+    private static int CountTokens(string text, int from, int to, IReadOnlyList<(int From, int To)> excluded)
+    {
+        var count = 0;
+        var index = from;
+        while (index < to)
+        {
+            var skipped = false;
+            foreach (var span in excluded)
+            {
+                if (index >= span.From && index < span.To)
+                {
+                    index = span.To;
+                    skipped = true;
+                    break;
+                }
+            }
+
+            if (skipped)
+            {
+                continue;
+            }
+
+            var character = text[index];
+            if (char.IsWhiteSpace(character))
+            {
+                index++;
+                continue;
+            }
+
+            count++;
+            if (char.IsLetterOrDigit(character) || character is '_' or '@')
+            {
+                index++;
+                while (index < to && (char.IsLetterOrDigit(text[index]) || text[index] == '_'))
+                {
+                    index++;
+                }
+            }
+            else
+            {
+                index++;
+            }
+        }
+
+        return count;
     }
 
     private static int Count(string text, int[] starts, int from, int to, IReadOnlyList<(int From, int To)> excluded)

@@ -73,7 +73,7 @@ public sealed class WorkspaceAnsibleTests
 
     private static string ProjectFrame(string policy)
         => $$$"""
-            {"settings":{},"applicability":{"ansible":{"applicable":true},"yaml":{"applicable":true}},
+            {"settings":{},"applicability":{"ansible":{"applicable":true}},
              "policy":{"harness.coverage":"required","lint-suppressions.ansible":"{{{policy}}}","dependencies.ansible":"{{{policy}}}"}}
             """;
 }

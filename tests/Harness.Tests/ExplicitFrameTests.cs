@@ -28,17 +28,17 @@ public sealed class ExplicitFrameTests
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.Output.StartsWith("PASS", StringComparison.Ordinal), run.Output);
         Assert.True(run.OutputContains("docs.policy"), run.Output);
-        Assert.False(run.OutputContains("comments.csharp"), run.Output);
-        Assert.False(run.OutputContains("frame.verify"), run.Output);
+        Assert.False(run.OutputContains("duplication.csharp"), run.Output);
+        Assert.False(run.OutputContains("verify.entrypoint"), run.Output);
         Assert.True(run.OutputContains("outside the frame"), run.Output);
-        Assert.True(verbose.OutputContains("outside the frame  42 checks not named in policy: harness.coverage"), verbose.Output);
+        Assert.True(verbose.OutputContains("outside the frame  31 checks not named in policy: harness.coverage"), verbose.Output);
     }
 
     [Fact]
     public void A_check_outside_the_frame_does_not_run_even_when_it_would_fail()
     {
         using var repository = Fixtures.WithRawFrame(MinimalFrame.Replace("docs.policy", "commits.setup", StringComparison.Ordinal))
-            .WriteLines("AGENTS.md", 400)
+            .WriteLines("AGENTS.md", 700)
             .Commit();
 
         var run = HarnessCli.Run(repository.Path, "check");
@@ -71,7 +71,7 @@ public sealed class ExplicitFrameTests
     public void A_settings_section_for_a_check_outside_the_policy_is_incomplete()
     {
         var frame = Frame.AllPresent().ToString().Replace(
-            "    \"comments.yaml\": \"required\",\n",
+            "    \"functions.csharp\": \"required\",\n",
             string.Empty,
             StringComparison.Ordinal);
         using var repository = Fixtures.WithRawFrame(frame);
@@ -79,14 +79,14 @@ public sealed class ExplicitFrameTests
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(2, run.ExitCode);
-        Assert.True(run.OutputContains("'settings.comments.yaml' is declared, but 'policy' does not mention comments.yaml"), run.Output);
+        Assert.True(run.OutputContains("'settings.functions.csharp' is declared, but 'policy' does not mention functions.csharp"), run.Output);
     }
 
     [Fact]
     public void A_named_check_without_its_settings_section_is_incomplete()
     {
         var frame = Frame.AllPresent().ToString().Replace(
-            "\"comments.yaml\": { \"minimumCommentLines\": 10, \"percentageLimit\": 8 }, ",
+            "\"functions.csharp\": { \"ownTokens\": 700 }, ",
             string.Empty,
             StringComparison.Ordinal);
         using var repository = Fixtures.WithRawFrame(frame);
@@ -94,7 +94,7 @@ public sealed class ExplicitFrameTests
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(2, run.ExitCode);
-        Assert.True(run.OutputContains("'settings' is missing explicit sections for checks in 'policy': comments.yaml"), run.Output);
+        Assert.True(run.OutputContains("'settings' is missing explicit sections for checks in 'policy': functions.csharp"), run.Output);
     }
 
     [Fact]
@@ -111,36 +111,20 @@ public sealed class ExplicitFrameTests
     }
 
     [Fact]
-    public void An_unanswered_question_outside_the_policy_is_not_a_failure()
-    {
-        using var repository = Fixtures.WithRawFrame(
-            MinimalFrame.Replace("docs.policy", "frame.verify", StringComparison.Ordinal)
-                .Replace("\"settings\"", "\"answers\": { \"verify\": { \"paths\": [\"verify.sh\"] } },\n  \"settings\"", StringComparison.Ordinal));
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check");
-
-        Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("frame.verify"), run.Output);
-        Assert.False(run.OutputContains("answers.tests.unit"), run.Output);
-    }
-
-    [Fact]
     public void Coverage_reports_a_tracked_language_the_frame_does_not_declare()
     {
         using var repository = Fixtures.WithRawFrame(MinimalFrame.Replace("docs.policy", "harness.coverage", StringComparison.Ordinal))
-            .WriteFile("deploy/values.yml", "key: value\n")
+            .WriteFile("src/index.ts", "export const value = 1;\n")
             .WriteFile("node_modules/lib/index.js", "module.exports = 1;\n")
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "harness.coverage");
 
         Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("1 tracked YAML source (deploy/values.yml) but no `applicability.yaml` entry"), run.Output);
-        Assert.True(run.OutputContains("\"yaml\": { \"applicable\": true }"), run.Output);
-        Assert.True(run.OutputContains("\"comments.yaml\": {"), run.Output);
-        Assert.True(run.OutputContains("\"minimumCommentLines\": 10"), run.Output);
-        Assert.True(run.OutputContains("\"comments.yaml\": \"required\""), run.Output);
-        Assert.Contains("applicability.typescript", run.Output, StringComparison.Ordinal);
+        Assert.True(run.OutputContains("2 tracked TypeScript sources (node_modules/lib/index.js, src/index.ts) but no `applicability.typescript` entry"), run.Output);
+        Assert.True(run.OutputContains("\"typescript\": { \"applicable\": true }"), run.Output);
+        Assert.True(run.OutputContains("\"duplication.typescript\": {"), run.Output);
+        Assert.True(run.OutputContains("\"duplication.typescript\": \"required\""), run.Output);
     }
 
     [Theory]
@@ -209,24 +193,22 @@ public sealed class ExplicitFrameTests
             MinimalFrame.Replace("docs.policy", "harness.coverage", StringComparison.Ordinal)
                 .Replace(
                     "\"settings\"",
-                    "\"applicability\": { \"yaml\": { \"applicable\": false, \"reason\": \"generated deploy manifests\" } },\n  \"settings\"",
+                    "\"applicability\": { \"typescript\": { \"applicable\": false, \"reason\": \"generated client bundle\" } },\n  \"settings\"",
                     StringComparison.Ordinal))
-            .WriteFile("deploy/values.yml", "key: value\n")
+            .WriteFile("src/client.ts", "export const x = 1;\n")
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "harness.coverage");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("yaml: 1 tracked source, declined — \"generated deploy manifests\""), run.Output);
+        Assert.True(run.OutputContains("typescript: 1 tracked source, declined — \"generated client bundle\""), run.Output);
     }
 
     [Fact]
     public void Coverage_prints_the_suffixes_no_axis_reads_without_a_finding()
     {
         using var repository = Fixtures.WithRawFrame(
-            MinimalFrame.Replace("docs.policy", "harness.coverage", StringComparison.Ordinal)
-                .Replace("\"settings\"", "\"applicability\": { \"yaml\": { \"applicable\": true } },\n  \"settings\"", StringComparison.Ordinal))
-            .WriteFile("deploy/values.yml", "key: value\n")
+            MinimalFrame.Replace("docs.policy", "harness.coverage", StringComparison.Ordinal))
             .WriteFile("roles/app/templates/compose.yml.j2", "name: app\n")
             .WriteFile("roles/app/templates/unit.j2", "[Unit]\n")
             .WriteFile("tools/render.py", "print(1)\n")
@@ -247,7 +229,7 @@ public sealed class ExplicitFrameTests
     public void Coverage_names_untracked_sources_it_cannot_see()
     {
         using var repository = Fixtures.WithRawFrame(MinimalFrame.Replace("docs.policy", "harness.coverage", StringComparison.Ordinal))
-            .WriteFile("deploy/values.yml", "key: value\n")
+            .WriteFile("src/main.go", "package main\nfunc main() {}\n")
             .Commit()
             .WriteFile("web/app.ts", "export const value = 1;\n");
 
@@ -269,19 +251,17 @@ public sealed class ExplicitFrameTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.Empty(run.StandardError);
-        Assert.Contains("Declared csharp, yaml from the tracked sources", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("Declared csharp from the tracked sources", run.StandardOutput, StringComparison.Ordinal);
         Assert.False(File.Exists(repository.Absolute(".editorconfig")));
 
         using var document = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
         var root = document.RootElement;
         Assert.True(root.TryGetProperty("architecture", out _));
         Assert.Contains("csharp", root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
-        Assert.Contains("yaml", root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
-        Assert.True(root.GetProperty("settings").TryGetProperty("comments.yaml", out _));
-        Assert.True(root.GetProperty("policy").TryGetProperty("comments.csharp", out _));
+        Assert.True(root.GetProperty("policy").TryGetProperty("duplication.csharp", out _));
 
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
-        var check = HarnessCli.Run(repository.Path, "check", "--skip", "frame,docs,commits,csharp,architecture");
+        var check = HarnessCli.Run(repository.Path, "check", "--skip", "verify,docs,commits,csharp,architecture");
         Assert.Equal(0, check.ExitCode);
         Assert.False(check.OutputContains("not applicable"), check.Output);
     }
@@ -290,7 +270,7 @@ public sealed class ExplicitFrameTests
     public void Languages_option_replaces_detection()
     {
         using var repository = RepositoryFixture.CreateGitRepository()
-            .WriteFile("deploy/values.yml", "key: value\n")
+            .WriteFile("src/index.ts", "export const value = 1;\n")
             .Commit();
 
         var run = HarnessCli.RunWithInput(repository.Path, string.Empty, "init", "--languages", "csharp,dotnet", "--kind", "library");
@@ -303,7 +283,7 @@ public sealed class ExplicitFrameTests
         Assert.False(root.GetProperty("architecture").GetProperty("applicable").GetBoolean());
         Assert.Equal(["csharp", "dotnet"], root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
         Assert.True(root.GetProperty("policy").TryGetProperty("build-properties.dotnet", out _));
-        Assert.False(root.GetProperty("policy").TryGetProperty("comments.yaml", out _));
+        Assert.False(root.GetProperty("policy").TryGetProperty("duplication.typescript", out _));
     }
 
     [Fact]
@@ -315,7 +295,7 @@ public sealed class ExplicitFrameTests
 
         Assert.Equal(2, run.ExitCode);
         Assert.Contains("rust", run.StandardError, StringComparison.Ordinal);
-        Assert.Contains("Known keys: csharp, yaml, typescript, go, ansible, dotnet", run.StandardError, StringComparison.Ordinal);
+        Assert.Contains("Known keys: csharp, typescript, go, ansible, dotnet", run.StandardError, StringComparison.Ordinal);
         Assert.False(File.Exists(repository.Absolute(".harness.json")));
     }
 
@@ -324,11 +304,14 @@ public sealed class ExplicitFrameTests
     {
         var frame = Frame.AllPresent().Version("2.16.0").ToString()
             .Replace("    \"harness.coverage\": \"required\",\n", string.Empty, StringComparison.Ordinal)
-            .Replace(",\n    \"yaml\": { \"applicable\": true }", string.Empty, StringComparison.Ordinal)
-            .Replace("\"comments.yaml\": { \"minimumCommentLines\": 10, \"percentageLimit\": 8 }, ", string.Empty, StringComparison.Ordinal)
-            .Replace("    \"comments.yaml\": \"required\",\n", string.Empty, StringComparison.Ordinal);
+            .Replace(",\n    \"typescript\": { \"applicable\": true }", string.Empty, StringComparison.Ordinal)
+            .Replace("\"duplication.typescript\": { \"windowLines\": 30, \"minimumTokens\": 90 }, ", string.Empty, StringComparison.Ordinal)
+            .Replace("\"complexity.typescript\": { \"averageReachableFiles\": 8.0, \"largestCyclicGroupSize\": 0 }, ", string.Empty, StringComparison.Ordinal)
+            .Replace("    \"dependencies.typescript\": \"required\",\n", string.Empty, StringComparison.Ordinal)
+            .Replace("    \"complexity.typescript\": \"required\",\n", string.Empty, StringComparison.Ordinal)
+            .Replace("    \"duplication.typescript\": \"required\",\n", string.Empty, StringComparison.Ordinal);
         using var repository = Fixtures.WithRawFrame(frame)
-            .WriteFile("deploy/values.yml", "key: value\n")
+            .WriteFile("src/index.ts", "export const value = 1;\n")
             .Commit();
 
         var run = HarnessCli.Run(repository.Path, "upgrade");
@@ -336,13 +319,13 @@ public sealed class ExplicitFrameTests
         Assert.Equal(0, run.ExitCode);
         Assert.Contains("Release 2.17 changes", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("Contract 3.0 migration", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("Contract 4.0 migration", run.StandardOutput, StringComparison.Ordinal);
         Assert.DoesNotContain("Contract 2.0 migration", run.StandardOutput, StringComparison.Ordinal);
         Assert.DoesNotContain("Release 2.16 changes", run.StandardOutput, StringComparison.Ordinal);
-        Assert.Contains("Sections to add for tracked YAML sources", run.StandardOutput, StringComparison.Ordinal);
-        Assert.Contains("\"comments.yaml\": \"required\"", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("Sections to add for tracked TypeScript sources", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("\"duplication.typescript\": \"required\"", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("the policy does not name yet", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("\"harness.coverage\": \"required\"", run.StandardOutput, StringComparison.Ordinal);
-        Assert.DoesNotContain("comments.typescript", run.StandardOutput, StringComparison.Ordinal);
         Assert.Equal(0, HarnessCli.Run(repository.Path, "check", "--only", "harness.config").ExitCode);
     }
 }

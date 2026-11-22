@@ -1,4 +1,4 @@
-/* Harness CLI landing · contract 3.9.3 · English at /, Russian at /ru/ · no dependencies. */
+/* Harness CLI landing · contract 4.0.0 · English at /, Russian at /ru/ · no dependencies. */
 (function () {
   'use strict';
 
@@ -14,7 +14,7 @@
     { id: 'harness.config', group: 'common', axis: null, summary: {
       en: 'Tracked .harness.json: one root version, explicit workspace projects and local frames without inheritance; a check the policy does not name is outside the frame. Excluded generated code and repository-wide rule switches are declared only here.',
       ru: 'Tracked .harness.json: одна корневая версия, явные проекты workspace и локальные рамки без наследования; проверка вне policy — вне рамки. Исключение generated-кода и глобальное выключение правил объявляются только здесь.',
-    }, adr: ['0014-frame-answers-are-self-reported.md', '0016-versioned-frame-and-explicit-initialization.md', '0054-explicit-only-frame.md', '0060-explicit-workspace-projects.md', '0067-reviewed-weakening-in-the-frame.md'] },
+    }, adr: ['0016-versioned-frame-and-explicit-initialization.md', '0054-explicit-only-frame.md', '0060-explicit-workspace-projects.md', '0067-reviewed-weakening-in-the-frame.md', '0070-contract-4-goodhart-filter.md'] },
     { id: 'harness.coverage', group: 'common', axis: null, summary: {
       en: 'A language or stack with tracked sources must be declared applicable or declined with a reason; the finding prints a ready config fragment. A generated marker outside the declared generated paths, a stale generated path and applicable: true without sources block; excluded paths are shown in scope.',
       ru: 'Язык или стек с tracked-исходниками должен быть объявлен в applicability или отклонён с причиной; находка печатает готовый фрагмент конфига. Generated-маркер вне объявленного generated, устаревший путь generated и applicable: true без исходников блокируют; исключённые пути видны в scope.',
@@ -56,29 +56,21 @@
       ru: 'Ограничивает связанность файлов: средняя достижимость файлов ≤ 8, размер циклической группы — 0 по умолчанию.',
     }, adr: ['0032-topology-over-thresholds.md', '0042-dsm-over-the-product-in-files.md', '0048-dsm-product-boundary-without-a-zone.md', '0052-dsm-ceiling-is-a-declared-setting.md'] },
     { id: 'adrs.shape', group: 'common', axis: null, summary: {
-      en: 'An ADR as a decision record: four digits and contiguous unique numbers, status, date and sections; settings.adrs.shape sets the limits of 1000 words, 10 code lines and 12 table rows.',
-      ru: 'ADR как запись решения: четыре цифры и непрерывные уникальные номера, статус, дата и разделы; пределы 1000 слов, 10 строк кода и 12 строк таблицы задаёт settings.adrs.shape.',
-    }, adr: ['0066-adr-shape-as-decision-record.md'] },
+      en: 'An ADR as a decision record: four digits and contiguous unique numbers, status, date and sections; settings.adrs.shape sets fencedBlockLineLimit (default 20 lines per code block).',
+      ru: 'ADR как запись решения: четыре цифры и непрерывные уникальные номера, статус, дата и разделы; settings.adrs.shape задаёт fencedBlockLineLimit (по умолчанию 20 строк на один блок кода).',
+    }, adr: ['0066-adr-shape-as-decision-record.md', '0070-contract-4-goodhart-filter.md'] },
     { id: 'docs.policy', group: 'common', axis: null, summary: {
-      en: 'Short AGENTS.md and README.md, up to 150 lines; a README.<language>.md translation sits beside README.md with the same limit. CLAUDE.md is a direct relative symlink to the sibling AGENTS.md; decisions live in adrs/, skills in skills/<name>/SKILL.md and the agent toolchain mirrors. DESIGN.md and forge files (community health, issue/PR templates in the root, .github/, docs/) are allowed without a limit. Any other Markdown is a violation.',
-      ru: 'Короткие AGENTS.md и README.md — до 150 строк; перевод README.<язык>.md — рядом с README.md, с тем же лимитом. CLAUDE.md — прямой относительный симлинк на соседний AGENTS.md; решения живут в adrs/, навыки — в skills/<name>/SKILL.md и зеркалах агентского тулчейна. DESIGN.md и файлы форджа (community health, шаблоны issue/PR в корне, .github/, docs/) разрешены без лимита. Прочий Markdown запрещён.',
-    }, adr: ['0010-documentation-policy.md', '0025-nested-agent-documents.md', '0061-forge-and-design-documents.md', '0068-readme-translations.md'] },
+      en: 'Short AGENTS.md up to 1200 words (immune to blank-line deletion); CLAUDE.md is a direct relative symlink to the sibling AGENTS.md. README.md and README.<language>.md beside it are allowed without a length limit; decisions live in adrs/, skills in skills/<name>/SKILL.md and mirrors, DESIGN.md and forge files are allowed without a limit. Any other Markdown is a violation.',
+      ru: 'Короткий AGENTS.md до 1200 слов (не обходится удалением пустых строк); CLAUDE.md — прямой относительный симлинк на соседний AGENTS.md. README.md и перевод README.<язык>.md рядом с ним разрешены без лимита длины; решения живут в adrs/, навыки — в skills/<name>/SKILL.md и зеркалах, DESIGN.md и файлы форджа разрешены без лимита. Прочий Markdown запрещён.',
+    }, adr: ['0010-documentation-policy.md', '0025-nested-agent-documents.md', '0061-forge-and-design-documents.md', '0068-readme-translations.md', '0070-contract-4-goodhart-filter.md'] },
     { id: 'commits.setup', group: 'common', axis: null, summary: {
       en: 'Checks that the commit template and commit-msg hook are active for the whole clone, and that the harness the hook resolves at commit time exists and matches the pin. Setup: harness setup.',
       ru: 'Проверяет, что шаблон коммитов и commit-msg hook активны на весь клон, а харнес, который hook найдёт при коммите, существует и совпадает с pin. Подготовка: harness setup.',
     }, adr: ['0020-commit-message-contract-and-clone-setup.md', '0065-hook-resolves-the-harness-at-commit-time.md'] },
-    { id: 'comments.csharp', group: 'csharp', axis: 'csharp', summary: {
-      en: 'Limits comment density: by default a finding starts at 10 comment lines when they exceed 8% of authored lines. XML documentation (///) directly above a declaration is not counted.',
-      ru: 'Ограничивает плотность комментариев: по умолчанию находка от 10 строк комментариев, если их больше 8% авторских строк. XML-документация (///) непосредственно над декларацией не считается.',
-    }, adr: ['0028-recalibrated-csharp-defaults.md', '0043-comment-density-across-languages.md', '0069-csharp-xml-docs-leave-comment-count.md'] },
-    { id: 'comments.yaml', group: 'langs', axis: 'yaml', summary: {
-      en: 'YAML prose density: from 10 lines and above 8%. Blocks above keys at any depth, trailing comments and directives are not counted; init always writes required; any relaxation is agreed with the owner.',
-      ru: 'Плотность прозы YAML: от 10 строк и больше 8%. Блоки над ключами любой глубины, trailing-комментарии и директивы исключены; init всегда ставит required; смягчение обсуждается с владельцем.',
-    }, adr: ['0043-comment-density-across-languages.md', '0056-configuration-repository-frame.md'] },
-    { id: 'comments.typescript', group: 'langs', axis: 'typescript', summary: {
-      en: 'The same check for TypeScript and JavaScript: from 10 lines and above 8%.',
-      ru: 'Та же проверка для TypeScript и JavaScript: от 10 строк и больше 8%.',
-    }, adr: ['0043-comment-density-across-languages.md'] },
+    { id: 'verify.entrypoint', group: 'common', axis: null, summary: {
+      en: 'Verifies from the Git index that settings."verify.entrypoint".path (default verify.sh) is tracked, executable (mode 100755), non-empty and invokes harness check on a non-comment line.',
+      ru: 'Проверяет по индексу Git, что settings."verify.entrypoint".path (по умолчанию verify.sh) tracked, исполняемый (mode 100755), непустой и вызывает harness check в некомментируемой строке.',
+    }, adr: ['0046-unified-verification-entry-point.md', '0070-contract-4-goodhart-filter.md'] },
     { id: 'complexity.typescript', group: 'langs', axis: 'typescript', summary: {
       en: 'A file DSM over TS/JS with transparent barrels; initial limits: average reachable files 8, largest cyclic group 0.',
       ru: 'DSM по файлам TS/JS с прозрачными barrels; стартовые пределы: средняя достижимость 8, циклическая группа 0.',
@@ -91,10 +83,6 @@
       en: 'Cross-file TS/JS repetition after normalization; a window of 30 lines and 90 tokens.',
       ru: 'Межфайловые дубли TS/JS после нормализации; окно 30 строк и 90 токенов.',
     }, adr: ['0064-typescript-language-axis.md', '0045-duplication-required-by-default.md'] },
-    { id: 'comments.go', group: 'go', axis: 'go', summary: {
-      en: 'Go comment density: from 10 lines and above 8%. Doc comments of top-level declarations and //go: directives are not counted; generated code is excluded only by a declaration in the frame, vendor and testdata by Go rules.',
-      ru: 'Плотность комментариев в Go: от 10 строк и больше 8%. Doc-комментарии top-level деклараций и директивы //go: не считаются; generated исключается по объявлению в рамке, vendor и testdata — по правилам Go.',
-    }, adr: ['0055-go-language-axis.md', '0043-comment-density-across-languages.md'] },
     { id: 'types-per-file.csharp', group: 'csharp', axis: 'csharp', summary: {
       en: 'At most one top-level class or record per file, so the file name points at one concept.',
       ru: 'Не больше одного верхнеуровневого class или record в файле. Имя файла указывает на одно понятие.',
@@ -108,17 +96,17 @@
       ru: 'Находит повторяющиеся блоки в разных файлах, даже с другими именами и литералами. Дефолтное окно — 30 нормализованных строк и минимум 90 токенов.',
     }, adr: ['0045-duplication-required-by-default.md', '0007-one-finding-one-report.md'] },
     { id: 'functions.csharp', group: 'csharp', axis: 'csharp', summary: {
-      en: 'Methods, local functions, lambdas and top-level code: at most 80 own non-empty lines without comments (settings.functions.csharp.ownLines); nested units and data literals are not counted.',
-      ru: 'Методы, локальные функции, лямбды и top-level код: не более 80 собственных непустых строк без комментариев (settings.functions.csharp.ownLines); вложенные единицы и литералы данных не входят.',
-    }, adr: ['0063-function-own-lines.md'] },
+      en: 'Methods, local functions, lambdas and top-level code: at most 700 own lexical tokens (settings.functions.csharp.ownTokens); whitespace-invariant, nested units and data literals are not counted.',
+      ru: 'Методы, локальные функции, лямбды и top-level код: не более 700 собственных лексических токенов (settings.functions.csharp.ownTokens); не зависит от переносов строк, вложенные единицы и литералы данных не входят.',
+    }, adr: ['0063-function-own-lines.md', '0070-contract-4-goodhart-filter.md'] },
     { id: 'duplication.go', group: 'go', axis: 'go', summary: {
       en: 'Repeated blocks across Go files after normalization: names become n, literals one token, keywords and predeclared identifiers stay. A window of 30 lines and 90 tokens.',
       ru: 'Повторяющиеся блоки в разных Go-файлах после нормализации: имена → n, литералы → токен, ключевые слова и предопределённые идентификаторы остаются. Окно 30 строк и 90 токенов.',
     }, adr: ['0055-go-language-axis.md', '0007-one-finding-one-report.md'] },
     { id: 'functions.go', group: 'go', axis: 'go', summary: {
-      en: 'Go functions and func literals: at most 80 own non-empty lines without comments (settings.functions.go.ownLines); nested functions and composite literals are not counted.',
-      ru: 'Go-функции и func-литералы: не более 80 собственных непустых строк без комментариев (settings.functions.go.ownLines); вложенные функции и composite literals не входят.',
-    }, adr: ['0063-function-own-lines.md'] },
+      en: 'Go functions and func literals: at most 700 own lexical tokens (settings.functions.go.ownTokens); whitespace-invariant, nested functions and composite literals are not counted.',
+      ru: 'Go-функции и func-литералы: не более 700 собственных лексических токенов (settings.functions.go.ownTokens); не зависит от переносов строк, вложенные функции и composite literals не входят.',
+    }, adr: ['0063-function-own-lines.md', '0070-contract-4-goodhart-filter.md'] },
     { id: 'complexity.go', group: 'go', axis: 'go', summary: {
       en: 'A DSM over the package graph through tracked go.mod: average reachable packages at most 8, largest cyclic group 0 (the compiler forbids cycles). main packages are the composition root.',
       ru: 'DSM по графу пакетов через tracked go.mod: средняя достижимость пакетов ≤ 8, циклическая группа — 0 (компилятор запрещает циклы). main-пакеты — composition root.',
@@ -155,43 +143,10 @@
       en: 'Forbids silencing warnings for a single file or location. A repository-wide switch needs an id and reason in settings.warning-suppressions.dotnet.repositoryWide and is printed in the ordinary report.',
       ru: 'Запрещает подавлять предупреждения для отдельного файла или места. Глобальное отключение требует id и причины в settings.warning-suppressions.dotnet.repositoryWide и печатается в обычном отчёте.',
     }, adr: ['0044-editorconfig-baseline-and-warning-suppressions.md', '0067-reviewed-weakening-in-the-frame.md'] },
-    { id: 'frame.tests.unit', group: 'frame', summary: {
-      en: 'Where the unit tests are, or why there are none. The address is the test project, not individual test files.',
-      ru: 'Где unit-тесты или почему их нет. Адрес — тестовый проект, а не отдельные тестовые файлы.',
-    }, adr: ['0049-test-suite-address-is-the-project.md'] },
-    { id: 'frame.tests.integration', group: 'frame', summary: {
-      en: 'Where the integration tests are, or why there are none. The address is the test project.',
-      ru: 'Где интеграционные тесты или почему их нет. Адрес — тестовый проект.',
-    }, adr: ['0049-test-suite-address-is-the-project.md'] },
-    { id: 'frame.tests.architecture', group: 'frame', summary: {
-      en: 'Where the architecture rule tests are, or why there are none.',
-      ru: 'Где тесты архитектурных правил или почему их нет.',
-    } },
-    { id: 'frame.format', group: 'frame', summary: {
-      en: 'What checks the source format.',
-      ru: 'Чем проверяется формат кода.',
-    } },
-    { id: 'frame.lint', group: 'frame', summary: {
-      en: 'Where static analysis is configured.',
-      ru: 'Где настроен статический анализ.',
-    } },
-    { id: 'frame.build', group: 'frame', summary: {
-      en: 'How to run the build.',
-      ru: 'Как запустить сборку.',
-    } },
-    { id: 'frame.typecheck', group: 'frame', summary: {
-      en: 'What checks types, or why a separate check does not apply.',
-      ru: 'Чем проверяются типы или почему отдельная проверка неприменима.',
-    } },
-    { id: 'frame.verify', group: 'frame', summary: {
-      en: 'Where the single verify script is that runs the project\'s checks, including harness check. A path is required here.',
-      ru: 'Где единый verify-скрипт, который запускает проверки проекта, включая harness check. Здесь обязателен путь.',
-    }, adr: ['0046-unified-verification-entry-point.md'] },
   ];
 
   const GROUPS = [
     { key: 'common', target: 'common-checks' },
-    { key: 'frame', target: 'frame-checks' },
     { key: 'csharp', target: 'csharp-checks' },
     { key: 'dotnet', target: 'dotnet-checks' },
     { key: 'arch', target: 'architecture-checks' },

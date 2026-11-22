@@ -27,9 +27,10 @@ public sealed class CheckCommandTests
     }
 
     [Fact]
-    public void Root_document_at_the_line_limit_passes()
+    public void Root_document_at_the_word_limit_passes()
     {
-        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 150).Commit();
+        var words = string.Join(" ", Enumerable.Range(1, 1200).Select(n => $"word{n}"));
+        using var repository = Fixtures.Compliant().WriteFile("AGENTS.md", words + "\n").Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
@@ -37,26 +38,26 @@ public sealed class CheckCommandTests
     }
 
     [Fact]
-    public void Root_document_above_the_line_limit_is_a_violation()
+    public void Root_document_above_the_word_limit_is_a_violation()
     {
-        using var repository = Fixtures.Compliant().WriteLines("AGENTS.md", 151).Commit();
+        var words = string.Join(" ", Enumerable.Range(1, 1201).Select(n => $"word{n}"));
+        using var repository = Fixtures.Compliant().WriteFile("AGENTS.md", words + "\n").Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("151"), run.Output);
-        Assert.True(run.OutputContains("150"), run.Output);
+        Assert.True(run.OutputContains("1201"), run.Output);
+        Assert.True(run.OutputContains("1200"), run.Output);
     }
 
     [Fact]
-    public void Readme_above_the_line_limit_is_a_violation()
+    public void Readme_has_no_line_limit()
     {
-        using var repository = Fixtures.Compliant().WriteLines("README.md", 151).Commit();
+        using var repository = Fixtures.Compliant().WriteLines("README.md", 300).Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
-        Assert.Equal(1, run.ExitCode);
-        Assert.True(run.OutputContains("README.md"), run.Output);
+        Assert.Equal(0, run.ExitCode);
     }
 
     [Fact]
@@ -65,6 +66,7 @@ public sealed class CheckCommandTests
         using var repository = Fixtures.Framed()
             .WriteFile("AGENTS.md", "# Root\n")
             .WriteSymbolicLink("CLAUDE.md", "AGENTS.md")
+            .WriteExecutable("verify.sh", "#!/usr/bin/env sh\nharness check\n")
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");

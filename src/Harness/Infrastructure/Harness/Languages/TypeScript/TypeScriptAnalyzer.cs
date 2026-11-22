@@ -6,13 +6,13 @@ using Harness.Structure;
 namespace Harness.Infrastructure.Languages.TypeScript;
 
 /// <summary>File graph with literal imports and transparent reexport-only barrels.</summary>
-internal sealed class TypeScriptAnalyzer(TypeScriptSources sources) : ILanguageAnalyzer
+internal sealed class TypeScriptAnalyzer : ILanguageAnalyzer
 {
     private IRepository? read;
     private (SourceGraph? Graph, string? Failure) result;
     public Language Language => Language.TypeScript;
     public string Unit => "file";
-    public string NothingToAnalyze => sources.NothingToAnalyze;
+    public string NothingToAnalyze => "no tracked authored TypeScript or JavaScript source outside toolchain-ignored paths";
     public IReadOnlyList<string> NamedEvidence => [];
 
     public (SourceGraph? Graph, string? Failure) ReadGraph(IRepository repository)

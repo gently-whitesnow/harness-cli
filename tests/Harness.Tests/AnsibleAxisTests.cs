@@ -60,7 +60,7 @@ public sealed class AnsibleAxisTests
         var run = HarnessCli.RunWithInput(repository.Path, string.Empty, "init");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Contains("Declared yaml from the tracked sources", run.StandardOutput, StringComparison.Ordinal);
+        Assert.DoesNotContain("ansible", run.StandardOutput, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -138,22 +138,21 @@ public sealed class AnsibleAxisTests
         var run = HarnessCli.RunWithInput(repository.Path, string.Empty, "init");
 
         Assert.Equal(0, run.ExitCode);
-        Assert.Contains("Declared yaml, ansible from the tracked sources", run.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("Declared ansible from the tracked sources", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("`ansible-lint`", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("`ansible-playbook --syntax-check`", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("molecule", run.StandardOutput, StringComparison.Ordinal);
 
         using var document = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
         var root = document.RootElement;
-        Assert.Equal(["yaml", "ansible"], root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
-        Assert.Equal(["adrs.shape", "comments.yaml", "commits"], root.GetProperty("settings").EnumerateObject().Select(section => section.Name));
+        Assert.Equal(["ansible"], root.GetProperty("applicability").EnumerateObject().Select(axis => axis.Name));
+        Assert.Equal(["adrs.shape", "verify.entrypoint", "commits"], root.GetProperty("settings").EnumerateObject().Select(section => section.Name));
         var policy = root.GetProperty("policy");
-        Assert.Equal("required", policy.GetProperty("comments.yaml").GetString());
         Assert.Equal("required", policy.GetProperty(LintSuppressions).GetString());
         Assert.Equal("required", policy.GetProperty(Dependencies).GetString());
 
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
-        var check = HarnessCli.Run(repository.Path, "check", "--skip", "frame,docs,commits");
+        var check = HarnessCli.Run(repository.Path, "check", "--skip", "verify,docs,commits");
         Assert.Equal(0, check.ExitCode);
         Assert.False(check.OutputContains("not applicable"), check.Output);
     }
@@ -164,7 +163,7 @@ public sealed class AnsibleAxisTests
         const string frame = """
             {
               "version": "latest",
-              "applicability": { "yaml": { "applicable": true } },
+              "applicability": {},
               "settings": { "commits": { "language": "ru", "requireSetup": false } },
               "policy": { "harness.coverage": "required" }
             }
@@ -215,20 +214,6 @@ public sealed class AnsibleAxisTests
     }
 
     [Fact]
-    public void Frame_explanations_and_the_go_hint_mention_the_ansible_toolchain()
-    {
-        using var repository = Fixtures.Compliant();
-
-        var lint = HarnessCli.Run(repository.Path, "explain", "frame.lint");
-        var build = HarnessCli.Run(repository.Path, "explain", "frame.build");
-        var integration = HarnessCli.Run(repository.Path, "explain", "frame.tests.integration");
-
-        Assert.True(lint.OutputContains("`ansible-lint` and `yamllint`"), lint.Output);
-        Assert.True(build.OutputContains("`ansible-playbook --syntax-check`"), build.Output);
-        Assert.True(integration.OutputContains("molecule"), integration.Output);
-    }
-
-    [Fact]
     public void A_role_including_itself_is_a_cycle()
     {
         using var repository = Ansible()
@@ -271,14 +256,11 @@ public sealed class AnsibleAxisTests
 
         Assert.Equal(0, run.ExitCode);
         using var json = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
-        Assert.False(json.RootElement.GetProperty("applicability").TryGetProperty("ansible", out _));
+        Assert.False(json.RootElement.TryGetProperty("applicability", out var app) && app.TryGetProperty("ansible", out _));
     }
 
-    [Theory]
-    [InlineData("required")]
-    [InlineData("advisory")]
-    [InlineData("off")]
-    public void Upgrade_from_31_preserves_policy_and_prints_the_new_axis(string policy)
+    [Fact]
+    public void Upgrade_from_31_migrates_retired_yaml_comments_and_prints_the_new_axis()
     {
         var frame = """
             {
@@ -288,19 +270,20 @@ public sealed class AnsibleAxisTests
               "policy": { "comments.yaml": "required", "harness.coverage": "required" }
             }
             """;
-        frame = frame.Replace("\"comments.yaml\": \"required\"", $"\"comments.yaml\": \"{policy}\"", StringComparison.Ordinal);
         using var repository = Fixtures.WithRawFrame(frame)
             .WriteFile("ansible.cfg", "[defaults]\n").Commit();
 
         var dry = HarnessCli.Run(repository.Path, "upgrade", "--dry-run");
         Assert.Equal(0, dry.ExitCode);
         Assert.True(dry.OutputContains("Release 3.2 additions"), dry.Output);
+        Assert.True(dry.OutputContains("Contract 4.0 migration"), dry.Output);
         Assert.Equal(frame, File.ReadAllText(repository.Absolute(".harness.json")));
         var run = HarnessCli.Run(repository.Path, "upgrade");
         Assert.Equal(0, run.ExitCode);
         using var json = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
         Assert.Equal(Release.Current, json.RootElement.GetProperty("version").GetString());
-        Assert.Equal(policy, json.RootElement.GetProperty("policy").GetProperty("comments.yaml").GetString());
+        Assert.False(json.RootElement.GetProperty("policy").TryGetProperty("comments.yaml", out _));
+        Assert.False(json.RootElement.GetProperty("applicability").TryGetProperty("yaml", out _));
         Assert.False(json.RootElement.GetProperty("applicability").TryGetProperty("ansible", out _));
     }
 
