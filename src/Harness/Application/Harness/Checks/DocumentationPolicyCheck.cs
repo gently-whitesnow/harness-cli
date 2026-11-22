@@ -123,6 +123,7 @@ internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
                     return;
 
                 case ReadmeDocument:
+                    EnforceWordLimit(entry);
                     return;
 
                 // A translation is the same overview in another language, so it lives beside
@@ -132,7 +133,7 @@ internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
                     return;
 
                 // An agent skill is a payload loaded on demand for one task, not navigation
-                // carried in every context, so the navigation line limit does not apply.
+                // carried in every context, so the navigation word limit does not apply.
                 case SkillDocument when IsSkillPath(entry.Path):
                     return;
 
@@ -162,7 +163,10 @@ internal sealed partial class DocumentationPolicyCheck : IRepositoryCheck
                     entry.Path,
                     $"is a README translation with no {ReadmeDocument} tracked beside it; "
                         + $"keep the original {ReadmeDocument} in the same directory");
+                return;
             }
+
+            EnforceWordLimit(entry);
         }
 
         private static bool IsSkillPath(string path)

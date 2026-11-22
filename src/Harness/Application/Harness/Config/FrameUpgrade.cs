@@ -671,8 +671,8 @@ internal static class FrameUpgrade
           changed  frame.verify becomes verify.entrypoint with settings."verify.entrypoint".path;
                    the harness verifies from the Git index that the file is tracked, executable
                    (mode 100755), non-empty and invokes `harness check` on a non-comment line
-          changed  docs.policy removes the 150-line ceiling on README.md and README.<lang>.md, and
-                   replaces AGENTS.md's 150-line ceiling with a 1200-word ceiling
+          changed  docs.policy replaces the 150-line ceiling on AGENTS.md, README.md and
+                   README.<lang>.md with a 1200-word ceiling
           changed  adrs.shape removes wordLimit and tableRowLimit, and replaces total fencedLineLimit
                    with per-block fencedBlockLineLimit (default 20)
           changed  functions.csharp and functions.go replace physical ownLines with lexical ownTokens

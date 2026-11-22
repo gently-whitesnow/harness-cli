@@ -51,13 +51,28 @@ public sealed class CheckCommandTests
     }
 
     [Fact]
-    public void Readme_has_no_line_limit()
+    public void Readme_at_the_word_limit_passes()
     {
-        using var repository = Fixtures.Compliant().WriteLines("README.md", 300).Commit();
+        var words = string.Join(" ", Enumerable.Range(1, 1200).Select(n => $"word{n}"));
+        using var repository = Fixtures.Compliant().WriteFile("README.md", words + "\n").Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(0, run.ExitCode);
+    }
+
+    [Fact]
+    public void Readme_above_the_word_limit_is_a_violation()
+    {
+        var words = string.Join(" ", Enumerable.Range(1, 1201).Select(n => $"word{n}"));
+        using var repository = Fixtures.Compliant().WriteFile("README.md", words + "\n").Commit();
+
+        var run = HarnessCli.RunVerbose(repository.Path, "check");
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.True(run.OutputContains("README.md"), run.Output);
+        Assert.True(run.OutputContains("1201"), run.Output);
+        Assert.True(run.OutputContains("1200"), run.Output);
     }
 
     [Fact]

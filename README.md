@@ -19,7 +19,7 @@ usually re-explained by hand into checks that run after every change:
 
 - module dependency cycles and file reachability (DSM) with explicit ceilings;
 - cross-file duplication and whitespace-invariant function size (`ownTokens`);
-- one short `AGENTS.md` (≤ 1200 words), `CLAUDE.md` as a symlink to it, decisions in `adrs/`;
+- short `AGENTS.md` and `README.md` (≤ 1200 words), `CLAUDE.md` as a symlink to `AGENTS.md`, decisions in `adrs/`;
 - commit message shape, checked by a `commit-msg` hook and in CI;
 - a hardened .NET baseline and the `sliced-dotnet/1` architecture (layers × slices);
 - `verify.entrypoint`: proves from the Git index that `verify.sh` is tracked, executable (`100755`) and invokes `harness check`.

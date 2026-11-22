@@ -22,11 +22,12 @@ internal static class DocumentationPolicyExplanation
                        the budget.
           CLAUDE.md    required at the root and allowed beside any AGENTS.md: always a tracked
                        Git symbolic link whose direct relative target is the sibling AGENTS.md.
-          README.md    optional human overview at any depth; not measured.
+          README.md    optional human overview at any depth; at most {WordLimit} words.
           README.<language>.md
                        a translation of that overview, named by a BCP 47 tag such as
                        README.ru.md, README.pt-BR.md or README.zh-Hans.md; allowed only beside
-                       a tracked README.md in the same directory; not measured.
+                       a tracked README.md in the same directory and carries the same
+                       {WordLimit}-word limit.
           SKILL.md     allowed only at skills/<name>/SKILL.md and the agent toolchain
                        mirrors .agents/skills/<name>/SKILL.md and
                        .claude/skills/<name>/SKILL.md; not measured: a skill is a payload
@@ -57,10 +58,10 @@ internal static class DocumentationPolicyExplanation
           Evidence that cannot be read at all ends the check as incomplete.
 
         Remediation
-          Blocking findings: create AGENTS.md if it is missing, shorten an AGENTS.md that
-          exceeds the word limit (move task procedures to skills/<name>/SKILL.md or rationale
-          to adrs/), and replace CLAUDE.md with a direct relative symbolic link, for example
-          `ln -sf AGENTS.md CLAUDE.md && git add CLAUDE.md`.
+          Blocking findings: create AGENTS.md if it is missing, shorten an AGENTS.md or
+          README.md that exceeds the word limit (move task procedures to skills/<name>/SKILL.md
+          or rationale to adrs/), and replace CLAUDE.md with a direct relative symbolic link,
+          for example `ln -sf AGENTS.md CLAUDE.md && git add CLAUDE.md`.
           A translation without an original: add README.md beside it or move the
           translation next to the README.md it translates.
           Unexpected Markdown: remove the document, rename it to the name an agent already
