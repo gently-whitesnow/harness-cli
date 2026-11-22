@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/gently-whitesnow/harness-cli/master
 cd /path/to/repository
 harness init --kind application   # или --kind library; спрашивается только при C# в индексе
 git add .harness.json            # и .editorconfig, который init пишет для .NET
-harness check                     # заполняйте ответы, пока прогон не станет полным
+harness check                     # проверьте AGENTS.md, симлинк CLAUDE.md и исполняемый verify.sh
 harness check --only <check-id> --verbose
 harness explain <check-id>
 ```

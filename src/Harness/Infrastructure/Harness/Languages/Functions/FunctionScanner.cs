@@ -50,8 +50,9 @@ internal static partial class FunctionScanner
                     : DataSpan(node, masked))
                 .Concat(collections)
                 .ToList();
+            var bodyStart = SkipLeadingUsings(masked);
             units.Add(new FunctionUnit(path, "<top-level>", 1,
-                CountTokens(masked, 0, masked.Length, excluded),
+                CountTokens(masked, bodyStart, masked.Length, excluded),
                 Count(masked, lines, 0, masked.Length, excluded),
                 Count(masked, lines, 0, masked.Length, []),
                 complete.Where(node => node.Kind == Kind.Function)
@@ -412,25 +413,52 @@ internal static partial class FunctionScanner
             || first.StartsWith("switch(", StringComparison.Ordinal);
     }
 
-    private static int CountTokens(string text, int from, int to, IReadOnlyList<(int From, int To)> excluded)
+    private static int SkipLeadingUsings(string text)
     {
+        var index = 0;
+        while (index < text.Length)
+        {
+            var lineStart = index;
+            var lineEnd = text.IndexOf('\n', index);
+            if (lineEnd < 0)
+            {
+                lineEnd = text.Length;
+            }
+
+            var trimmed = text.AsSpan(lineStart, lineEnd - lineStart).Trim();
+            if (trimmed.Length == 0
+                || ((trimmed.StartsWith("using ", StringComparison.Ordinal)
+                    || trimmed.StartsWith("global using ", StringComparison.Ordinal))
+                    && trimmed.EndsWith(';')))
+            {
+                index = lineEnd < text.Length ? lineEnd + 1 : text.Length;
+                continue;
+            }
+
+            return lineStart;
+        }
+
+        return text.Length;
+    }
+
+    private static int CountTokens(string text, int from, int to, List<(int From, int To)> excluded)
+    {
+        var sorted = excluded.Count <= 1
+            ? excluded
+            : [.. excluded.OrderBy(span => span.From)];
+        var spanIndex = 0;
         var count = 0;
         var index = from;
         while (index < to)
         {
-            var skipped = false;
-            foreach (var span in excluded)
+            while (spanIndex < sorted.Count && sorted[spanIndex].To <= index)
             {
-                if (index >= span.From && index < span.To)
-                {
-                    index = span.To;
-                    skipped = true;
-                    break;
-                }
+                spanIndex++;
             }
 
-            if (skipped)
+            if (spanIndex < sorted.Count && index >= sorted[spanIndex].From && index < sorted[spanIndex].To)
             {
+                index = sorted[spanIndex].To;
                 continue;
             }
 

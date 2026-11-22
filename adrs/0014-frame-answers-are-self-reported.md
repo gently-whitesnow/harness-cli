@@ -3,7 +3,7 @@
 ## Status
 
 Date: 2026-08-16
-Accepted. Заменяет [ADR-0012](0012-declaration-with-an-address-of-proof.md). Правило о
+Superseded by [ADR-0070](0070-contract-4-goodhart-filter.md). Заменяет [ADR-0012](0012-declaration-with-an-address-of-proof.md). Правило о
 неявной мягкой policy заменено [ADR-0017](0017-required-by-default.md).
 
 ## Context

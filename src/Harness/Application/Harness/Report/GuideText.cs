@@ -49,7 +49,7 @@ internal static class GuideText
         Upgrade
           A pin that differs from the binary ends in exit code 2. `harness upgrade --dry-run`
           prints the route, `harness upgrade` raises the pin; then run `harness check --verbose`.
-          Answers and policy are never guessed: new sections are printed for the owner to decide.
+          Settings and policy are never guessed: new sections are printed for the owner to decide.
 
         `harness help` lists every command, option and check identifier.
 

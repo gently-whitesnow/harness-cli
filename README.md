@@ -48,7 +48,7 @@ runtime, only Git. The same command updates it and, inside a framed repository, 
 cd /path/to/repository
 harness init --kind application   # or --kind library; asked only when C# is in the index
 git add .harness.json            # and .editorconfig, which init writes for .NET
-harness check                     # fill in the answers until the run is complete
+harness check                     # verify AGENTS.md, CLAUDE.md symlink and executable verify.sh
 harness check --only <check-id> --verbose
 harness explain <check-id>
 ```

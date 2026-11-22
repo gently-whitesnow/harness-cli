@@ -495,6 +495,66 @@ public sealed class WorkspaceTests
         return repository.Commit();
     }
 
+    [Fact]
+    public void Upgrade_from_3x_migrates_workspace_projects_normalizes_verify_path_and_preserves_utf8()
+    {
+        using var repository = Fixtures.WithoutAFrame()
+            .WriteExecutable("verify.sh", "#!/usr/bin/env sh\nharness check\n")
+            .WriteFile("app/AGENTS.md", "# App\n")
+            .WriteSymbolicLink("app/CLAUDE.md", "AGENTS.md")
+            .WriteFile(".harness.json", """
+                {
+                  "version": "3.9.3",
+                  "projects": ["app"],
+                  "answers": { "verify": { "paths": ["./verify.sh"] } },
+                  "generated": [{ "paths": ["gen"], "reason": "генерируемый код" }],
+                  "applicability": { "yaml": { "applicable": true } },
+                  "settings": {
+                    "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 },
+                    "commits": { "language": "ru", "requireSetup": false }
+                  },
+                  "policy": {
+                    "harness.config": "required",
+                    "comments.yaml": "required",
+                    "frame.verify": "required"
+                  }
+                }
+                """)
+            .WriteFile("app/.harness.json", """
+                {
+                  "answers": { "tests.unit": { "paths": ["src"] } },
+                  "applicability": { "yaml": { "applicable": true } },
+                  "settings": {
+                    "adrs.shape": { "wordLimit": 1000, "fencedLineLimit": 10, "tableRowLimit": 12 },
+                    "comments.yaml": { "minimumCommentLines": 10, "percentageLimit": 8 }
+                  },
+                  "policy": {
+                    "docs.policy": "required",
+                    "adrs.shape": "required",
+                    "comments.yaml": "required",
+                    "frame.tests.unit": "required"
+                  }
+                }
+                """)
+            .Commit();
+
+        var upgrade = HarnessCli.Run(repository.Path, "upgrade");
+
+        Assert.Equal(0, upgrade.ExitCode);
+        Assert.Contains("Migrated 1 project frame(s)", upgrade.Output, StringComparison.Ordinal);
+        var rootText = File.ReadAllText(repository.Absolute(".harness.json"));
+        Assert.Contains("генерируемый код", rootText, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\u0433", rootText, StringComparison.Ordinal);
+        Assert.Contains("\"path\": \"verify.sh\"", rootText, StringComparison.Ordinal);
+        var appText = File.ReadAllText(repository.Absolute("app/.harness.json"));
+        Assert.DoesNotContain("\"answers\"", appText, StringComparison.Ordinal);
+        Assert.Contains("\"fencedBlockLineLimit\": 20", appText, StringComparison.Ordinal);
+
+        repository.Commit();
+        var check = HarnessCli.RunVerbose(repository.Path, "check");
+        Assert.Equal(0, check.ExitCode);
+    }
+
     private static string RootFrame(params string[] projects)
     {
         var frame = JsonNode.Parse("""{"version":"latest","settings":{"commits":{"language":"ru","requireSetup":false}},"policy":{"docs.policy":"required"}}""")!.AsObject();

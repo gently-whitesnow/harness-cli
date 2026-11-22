@@ -80,4 +80,33 @@ public sealed class VerifyEntrypointTests
 
         Assert.Equal(0, run.ExitCode);
     }
+
+    [Theory]
+    [InlineData("#!/usr/bin/env sh\nharness commits check origin/master..HEAD\n")]
+    [InlineData("#!/usr/bin/env sh\necho \"todo: harness check\"\n")]
+    [InlineData("#!/usr/bin/env sh\nharness check || true\n")]
+    [InlineData("#!/usr/bin/env sh\nharness check --only commits.setup\n")]
+    public void Non_check_commands_echo_narrowing_and_silencing_do_not_satisfy_verify(string script)
+    {
+        using var repo = Fixtures.Compliant()
+            .WriteExecutable("verify.sh", script)
+            .Commit();
+
+        var run = HarnessCli.RunVerbose(repo.Path, "check", "--only", "verify.entrypoint");
+
+        Assert.Equal(1, run.ExitCode);
+        Assert.True(run.OutputContains("does not invoke `harness check`"), run.Output);
+    }
+
+    [Fact]
+    public void Line_continuation_before_check_passes()
+    {
+        using var repo = Fixtures.Compliant()
+            .WriteExecutable("verify.sh", "#!/usr/bin/env sh\ndotnet run --project src/Harness/Host/Harness.Host.csproj -- \\\n  check\n")
+            .Commit();
+
+        var run = HarnessCli.Run(repo.Path, "check", "--only", "verify.entrypoint");
+
+        Assert.Equal(0, run.ExitCode);
+    }
 }

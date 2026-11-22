@@ -29,7 +29,7 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           The harness holds the same frame over every repository it is pointed at, and the
           frame is a document the repository owns rather than a flag someone passes. The
           root frame can register independent project frames; each tracked file carries the
-          answers and check policy that reviewers, agents and CI read for its own scope.
+          applicability, settings and check policy that reviewers, agents and CI read for its own scope.
 
         What it reads
           The tracked root {HarnessConfig.FileName}, plus every project config explicitly
@@ -78,16 +78,15 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           each frame; cross-project duplication and graph relationships are not measured.
 
         Why it is incomplete rather than a violation
-          Without a readable frame the harness cannot state what this repository answers, so
+          Without a readable frame the harness cannot state what this repository checks, so
           it has proved nothing about it. A run that cannot establish anything is incomplete
           (exit 2), which is distinct from having proved a violation (exit 1).
 
         Remediation
-          Run `harness init` to create an unresolved {HarnessConfig.FileName} scaffold at the
-          repository root. It does not overwrite an existing file or stage the new one. The
-          repository owner or their agent must investigate and answer each question before
-          committing it; the harness never assumes an answer on their behalf. Every missing
-          or malformed answer names the exact key at fault.
+          Run `harness init` to create a {HarnessConfig.FileName} scaffold at the
+          repository root. It does not overwrite an existing file or stage the new one. Review
+          the generated policy and settings before committing it; every missing or malformed
+          section names the exact key at fault.
 
         {HarnessConfig.Template}
         """;

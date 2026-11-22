@@ -124,6 +124,13 @@ internal static class PolicyReader
                     $"'policy.{property.Name}' was removed in harness 2.0; remove this entry"));
             }
 
+            if (property.Name.StartsWith("comments.", StringComparison.Ordinal)
+                || property.Name.StartsWith("frame.", StringComparison.Ordinal))
+            {
+                return (null, ConfigJson.Failure(
+                    $"'policy.{property.Name}' was removed in harness 4.0; run `harness upgrade` or remove this entry"));
+            }
+
             if (!checks.Any(check => check.Id == property.Name))
             {
                 return (null, ConfigJson.Failure(

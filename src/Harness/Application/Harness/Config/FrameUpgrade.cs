@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -11,6 +12,11 @@ namespace Harness.Config;
 
 internal static class FrameUpgrade
 {
+    private static readonly JsonSerializerOptions WriteOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
     public static (string? Report, string? Failure) Raise(
         IRepository repository,
         bool dryRun,
@@ -51,7 +57,14 @@ internal static class FrameUpgrade
         {
             return (null, migrationFailure);
         }
-        var policyChanged = migrated != text;
+
+        var (projectMigrations, projectMigrationFailure) = MigrateProjects(repository, migrated!);
+        if (projectMigrationFailure is not null)
+        {
+            return (null, projectMigrationFailure);
+        }
+
+        var policyChanged = migrated != text || projectMigrations.Count > 0;
         if (!policyChanged && (pin is "latest" || pin == HarnessVersion.Current.ToString()))
         {
             return ($"{HarnessConfig.FileName} already runs contract {pin}; there is no pin to raise.\n"
@@ -76,6 +89,18 @@ internal static class FrameUpgrade
             {
                 return (null, rewriteFailure);
             }
+
+            foreach (var (projectConfigPath, projectMigratedText) in projectMigrations)
+            {
+                try
+                {
+                    File.WriteAllText(projectConfigPath, projectMigratedText);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return (null, $"Could not write '{projectConfigPath}': {exception.Message}");
+                }
+            }
         }
 
         var action = pin == target
@@ -83,6 +108,11 @@ internal static class FrameUpgrade
             : dryRun ? "Would raise" : "Raised";
         var report = new StringBuilder();
         report.Append($"{action} {HarnessConfig.FileName} from {pin} to {target}.\n");
+        if (projectMigrations.Count > 0)
+        {
+            var verb = dryRun ? "Would migrate" : "Migrated";
+            report.Append($"{verb} {projectMigrations.Count} project frame(s) to contract {HarnessVersion.Current}.\n");
+        }
 
         // Only the route from the pin: a repository that already lives in 2.16 has read the
         // 2.0 migration before, and the whole history says nothing about what changes for it.
@@ -156,7 +186,8 @@ internal static class FrameUpgrade
 
             try
             {
-                report.Append(ScopeAdditions(scope, local, projectChecks));
+                var (migratedLocal, _) = MigrateFrame(local);
+                report.Append(ScopeAdditions(scope, migratedLocal ?? local, projectChecks));
             }
             catch (JsonException exception)
             {
@@ -164,7 +195,7 @@ internal static class FrameUpgrade
             }
         }
 
-        report.Append("Project frames keep local answers and policies; only the root pin is upgraded.\n");
+        report.Append("Project frames keep local applicability, settings and policies.\n");
         return report.ToString();
     }
 
@@ -649,6 +680,58 @@ internal static class FrameUpgrade
         """),
     ];
 
+    private static (List<(string AbsolutePath, string Content)> Migrations, string? Failure) MigrateProjects(
+        IRepository repository,
+        string rootText)
+    {
+        var result = new List<(string, string)>();
+        using var document = JsonDocument.Parse(rootText, ConfigJson.ParseOptions);
+        var (projects, projectsFailure) = WorkspaceProjects.Read(document.RootElement);
+        if (projects is null || projects.Count == 0)
+        {
+            return (result, null);
+        }
+
+        foreach (var project in projects)
+        {
+            var relativePath = WorkspaceScope.ConfigPath(project);
+            if (!repository.TrackedEntries.Any(entry => entry.Path == relativePath))
+            {
+                continue;
+            }
+
+            var absolutePath = Path.Combine(repository.RootPath, relativePath);
+            string localText;
+            try
+            {
+                localText = File.ReadAllText(absolutePath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                return ([], $"Could not read '{absolutePath}': {exception.Message}");
+            }
+
+            var duplicate = DuplicateProperty(localText);
+            if (duplicate is not null)
+            {
+                return ([], ConfigJson.Failure($"{relativePath}: duplicate property '{duplicate}' leaves the frame ambiguous; keep one before upgrading"));
+            }
+
+            var (migratedLocal, localFailure) = MigrateFrame(localText);
+            if (localFailure is not null)
+            {
+                return ([], $"{relativePath}: {localFailure}");
+            }
+
+            if (migratedLocal != localText)
+            {
+                result.Add((absolutePath, migratedLocal!));
+            }
+        }
+
+        return (result, null);
+    }
+
     private static (string? Text, string? Failure) MigrateFrame(string text)
     {
         var (afterArch, failure) = SplitArchitecturePolicy(text);
@@ -679,7 +762,11 @@ internal static class FrameUpgrade
                 && firstPath.TryGetValue<string>(out var rawPath)
                 && !string.IsNullOrWhiteSpace(rawPath))
             {
-                migratedVerifyPath = rawPath.Trim().Replace('\\', '/');
+                var normalized = NormalizeMigratedPath(rawPath);
+                if (normalized is not null)
+                {
+                    migratedVerifyPath = normalized;
+                }
             }
 
             document.Remove("answers");
@@ -710,6 +797,13 @@ internal static class FrameUpgrade
                 policy.Remove(retired);
                 changed = true;
             }
+        }
+
+        if (policy is not null && policy.ContainsKey("verify.entrypoint") && settings is null)
+        {
+            settings = [];
+            document["settings"] = settings;
+            changed = true;
         }
 
         if (settings is not null)
@@ -755,8 +849,29 @@ internal static class FrameUpgrade
         }
 
         return changed
-            ? (document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n", null)
+            ? (document.ToJsonString(WriteOptions) + "\n", null)
             : (text, null);
+    }
+
+    private static string? NormalizeMigratedPath(string rawPath)
+    {
+        var normalized = rawPath.Trim().Replace('\\', '/');
+        while (normalized.StartsWith("./", StringComparison.Ordinal))
+        {
+            normalized = normalized[2..];
+        }
+
+        while (normalized.Contains("//", StringComparison.Ordinal))
+        {
+            normalized = normalized.Replace("//", "/", StringComparison.Ordinal);
+        }
+
+        return normalized.Length > 0
+            && !normalized.StartsWith('/')
+            && !normalized.EndsWith('/')
+            && !normalized.Split('/').Any(segment => segment is "" or "." or "..")
+                ? normalized
+                : null;
     }
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)
@@ -782,7 +897,7 @@ internal static class FrameUpgrade
             policy[id] = mode;
         }
         policy.Remove(SlicedDotNetShapeCheck.Family);
-        return (document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n", null);
+        return (document.ToJsonString(WriteOptions) + "\n", null);
     }
 
     // Called after ReadPin, so the text is known to parse.

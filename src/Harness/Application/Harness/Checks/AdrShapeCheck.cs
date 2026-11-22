@@ -104,7 +104,7 @@ internal sealed partial class AdrShapeCheck : IRepositoryCheck
 
     private static void Review(string path, string source, AdrShapeSettings settings, HashSet<int> numbers, Action<string, string> add)
     {
-        var (header, sections, status, maxFencedBlockLines) = Scan(path, source, add);
+        var (header, sections, status, fencedBlocks) = Scan(path, source, add);
 
         if (!StatusPattern().IsMatch(status))
         {
@@ -133,13 +133,13 @@ internal sealed partial class AdrShapeCheck : IRepositoryCheck
             }
         }
 
-        if (maxFencedBlockLines > settings.FencedBlockLineLimit)
+        foreach (var (line, blockLines) in fencedBlocks.Where(block => block.Lines > settings.FencedBlockLineLimit))
         {
-            add(path, $"fenced code block has {maxFencedBlockLines} lines, above fencedBlockLineLimit {settings.FencedBlockLineLimit}; keep code in source files");
+            add($"{path}:{line}", $"fenced code block has {blockLines} lines, above fencedBlockLineLimit {settings.FencedBlockLineLimit}; keep code in source files");
         }
     }
 
-    private sealed record AdrScan(List<string> Header, HashSet<string> Sections, string Status, int MaxFencedBlockLines);
+    private sealed record AdrScan(List<string> Header, HashSet<string> Sections, string Status, List<(int Line, int Lines)> FencedBlocks);
 
     private static AdrScan Scan(string path, string source, Action<string, string> add)
     {
@@ -148,27 +148,29 @@ internal sealed partial class AdrShapeCheck : IRepositoryCheck
         var header = new List<string>();
         var inFence = false;
         var fenceMarker = '\0';
+        var fenceStartLine = 0;
         var currentFenceLines = 0;
-        var maxFenceBlockLines = 0;
+        var fencedBlocks = new List<(int Line, int Lines)>();
         var headerEnded = false;
         var statusSection = false;
         var status = string.Empty;
 
-        foreach (var raw in lines)
+        for (var lineIndex = 0; lineIndex < lines.Length; lineIndex++)
         {
-            var line = raw.Trim();
+            var line = lines[lineIndex].Trim();
             if (line.StartsWith("```", StringComparison.Ordinal) || line.StartsWith("~~~", StringComparison.Ordinal))
             {
                 if (!inFence)
                 {
                     inFence = true;
                     fenceMarker = line[0];
+                    fenceStartLine = lineIndex + 1;
                     currentFenceLines = 0;
                 }
                 else if (line[0] == fenceMarker)
                 {
                     inFence = false;
-                    maxFenceBlockLines = Math.Max(maxFenceBlockLines, currentFenceLines);
+                    fencedBlocks.Add((fenceStartLine, currentFenceLines));
                     currentFenceLines = 0;
                 }
 
@@ -213,7 +215,7 @@ internal sealed partial class AdrShapeCheck : IRepositoryCheck
 
         if (inFence)
         {
-            maxFenceBlockLines = Math.Max(maxFenceBlockLines, currentFenceLines);
+            fencedBlocks.Add((fenceStartLine, currentFenceLines));
         }
 
         if (status.Length == 0)
@@ -223,7 +225,7 @@ internal sealed partial class AdrShapeCheck : IRepositoryCheck
                     ? line[7..].Trim() : string.Empty).FirstOrDefault(line => line.Length > 0) ?? string.Empty;
         }
 
-        return new AdrScan(header, sections, status, maxFenceBlockLines);
+        return new AdrScan(header, sections, status, fencedBlocks);
     }
 
     private static string StatusOnLine(string line, bool statusSection, string status)
