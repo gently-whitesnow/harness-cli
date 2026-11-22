@@ -22,7 +22,7 @@ public sealed class NativePublicationTests
         Assert.Equal(0, passing.ExitCode);
         Assert.True(passing.Output.StartsWith("PASS", StringComparison.Ordinal), passing.Output);
 
-        using var violating = Fixtures.Compliant().WriteLines("AGENTS.md", 400).Commit();
+        using var violating = Fixtures.Compliant().WriteLines("AGENTS.md", 700).Commit();
         var failing = RunPublished(executable, violating.Path);
         Assert.Equal(1, failing.ExitCode);
     }
