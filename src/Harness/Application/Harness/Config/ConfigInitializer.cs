@@ -115,7 +115,6 @@ internal static class ConfigInitializer
         var version = latest ? "latest" : HarnessVersion.Current.ToString();
         var architecture = AsksArchitecture(axes);
         var inFrame = InFrame(checks, axes, architecture);
-        var questions = inFrame.Where(check => check.AnswerKey is not null).Select(check => check.AnswerKey!).ToList();
 
         var text = new StringBuilder();
         text.Append("{\n  \"version\": \"").Append(version).Append("\",\n");
@@ -127,10 +126,6 @@ internal static class ConfigInitializer
                     : "{ \"standard\": \"sliced-dotnet/1\" }")
                 .Append(",\n");
         }
-
-        text.Append("  \"answers\": {\n");
-        text.Append(string.Join(",\n", questions.Select(question => $"    \"{question}\": {{}}")));
-        text.Append("\n  },\n");
 
         if (axes.Count > 0)
         {

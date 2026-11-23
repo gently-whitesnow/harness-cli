@@ -4,11 +4,8 @@ namespace Harness.Tests;
 
 public sealed class InitCommandTests
 {
-    private static readonly string[] Questions =
-        ["tests.unit", "tests.integration", "tests.architecture", "format", "lint", "build", "typecheck", "verify"];
-
     [Fact]
-    public void Init_from_a_subdirectory_creates_an_untracked_unanswered_frame_at_the_git_root()
+    public void Init_from_a_subdirectory_creates_an_untracked_frame_at_the_git_root()
     {
         using var repository = RepositoryFixture.CreateGitRepository()
             .WriteFile("src/App.cs", "sealed class App;")
@@ -22,8 +19,6 @@ public sealed class InitCommandTests
         Assert.Empty(run.StandardError);
         Assert.Contains(repository.Absolute(".harness.json"), run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("Discuss each finding with the repository owner", run.StandardOutput, StringComparison.Ordinal);
-        Assert.Contains("Review every answer", run.StandardOutput, StringComparison.Ordinal);
-        Assert.Contains("ask the repository owner", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("Track the file", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("harness check --verbose", run.StandardOutput, StringComparison.Ordinal);
         Assert.Contains("Declared csharp, dotnet from the tracked sources", run.StandardOutput, StringComparison.Ordinal);
@@ -39,16 +34,9 @@ public sealed class InitCommandTests
         var root = document.RootElement;
         Assert.Equal(Release.Current, root.GetProperty("version").GetString());
         Assert.Equal("sliced-dotnet/1", root.GetProperty("architecture").GetProperty("standard").GetString());
-        Assert.Equal(
-            Questions,
-            root.GetProperty("answers").EnumerateObject().Select(answer => answer.Name));
-        Assert.All(
-            root.GetProperty("answers").EnumerateObject(),
-            answer => Assert.Empty(answer.Value.EnumerateObject()));
+        Assert.False(root.TryGetProperty("answers", out _));
         Assert.True(root.GetProperty("applicability").GetProperty("csharp").GetProperty("applicable").GetBoolean());
         Assert.True(root.GetProperty("applicability").GetProperty("dotnet").GetProperty("applicable").GetBoolean());
-        Assert.False(root.GetProperty("applicability").TryGetProperty("yaml", out _));
-        Assert.False(root.GetProperty("policy").TryGetProperty("comments.yaml", out _));
         AssertDefaultSettings(root.GetProperty("settings"));
         Assert.Contains("harness-hooks", repository.Git("config", "--local", "--get", "core.hooksPath"));
         Assert.All(root.GetProperty("policy").EnumerateObject(), entry =>
@@ -64,11 +52,12 @@ public sealed class InitCommandTests
     private static void AssertDefaultSettings(JsonElement settings)
     {
         Assert.Equal(
-            ["complexity.csharp", "adrs.shape", "comments.csharp", "duplication.csharp", "functions.csharp", "warning-suppressions.dotnet", "commits"],
+            ["complexity.csharp", "adrs.shape", "duplication.csharp", "functions.csharp", "verify.entrypoint", "warning-suppressions.dotnet", "commits"],
             settings.EnumerateObject().Select(section => section.Name));
-        AssertSection(settings, "comments.csharp", ("minimumCommentLines", 10), ("percentageLimit", 8));
+        AssertSection(settings, "adrs.shape", ("fencedBlockLineLimit", 20));
         AssertSection(settings, "duplication.csharp", ("windowLines", 30), ("minimumTokens", 90));
-        AssertSection(settings, "functions.csharp", ("ownLines", 80));
+        AssertSection(settings, "functions.csharp", ("ownTokens", 700));
+        Assert.Equal("verify.sh", settings.GetProperty("verify.entrypoint").GetProperty("path").GetString());
         Assert.Equal(8.0, settings.GetProperty("complexity.csharp").GetProperty("averageReachableFiles").GetDouble());
         Assert.Equal(0, settings.GetProperty("complexity.csharp").GetProperty("largestCyclicGroupSize").GetInt32());
         Assert.Equal("ru", settings
@@ -186,23 +175,7 @@ public sealed class InitCommandTests
             .Commit();
 
         Assert.Equal(0, HarnessCli.RunWithInput(repository.Path, "application\n", "init").ExitCode);
-        var framePath = repository.Absolute(".harness.json");
-        File.WriteAllText(
-            framePath,
-            File.ReadAllText(framePath).Replace(
-                "\"verify\": {}",
-                "\"verify\": { \"paths\": [\"verify.sh\"] }",
-                StringComparison.Ordinal));
-        var answered = File.ReadAllText(framePath);
-        foreach (var question in Questions.Where(question => question != "verify"))
-        {
-            answered = answered.Replace(
-                $"\"{question}\": {{}}",
-                $"\"{question}\": {{ \"present\": true, \"reason\": \"provided by the fixture\" }}",
-                StringComparison.Ordinal);
-        }
-
-        File.WriteAllText(framePath, answered);
+        repository.WriteExecutable("verify.sh", "#!/usr/bin/env sh\nset -eu\nharness check\n");
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
 
         var check = HarnessCli.RunVerbose(repository.Path, "check");
@@ -213,22 +186,16 @@ public sealed class InitCommandTests
     }
 
     [Fact]
-    public void Initialized_frame_requires_every_unanswered_question()
+    public void Initialized_frame_checks_verify_entrypoint()
     {
         using var repository = RepositoryFixture.CreateGitRepository();
         Assert.Equal(0, HarnessCli.RunWithInput(repository.Path, "application\n", "init").ExitCode);
         repository.CommitAs("chore(harness): инициализировать рамку репозитория");
 
-        var check = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame");
+        var check = HarnessCli.RunVerbose(repository.Path, "check", "--only", "verify.entrypoint");
 
-        Assert.Equal(2, check.ExitCode);
-        foreach (var question in Questions)
-        {
-            Assert.Contains($"frame.{question}", check.Output, StringComparison.Ordinal);
-        }
-
-        Assert.Equal(0, Occurrences(check.Output, "outcome: skipped"));
-        Assert.Equal(Questions.Length, Occurrences(check.Output, "outcome: incomplete"));
+        Assert.Equal(1, check.ExitCode);
+        Assert.Contains("verify.sh", check.Output, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -316,9 +283,6 @@ public sealed class InitCommandTests
         Assert.Equal(0, init.ExitCode);
         using var template = JsonDocument.Parse(TemplateJson(explained.StandardOutput));
         using var written = JsonDocument.Parse(File.ReadAllText(repository.Absolute(".harness.json")));
-        Assert.Equal(
-            written.RootElement.GetProperty("answers").EnumerateObject().Select(answer => answer.Name),
-            template.RootElement.GetProperty("answers").EnumerateObject().Select(answer => answer.Name));
         foreach (var section in new[] { "version", "architecture", "applicability", "settings", "policy" })
         {
             var expected = written.RootElement.GetProperty(section);

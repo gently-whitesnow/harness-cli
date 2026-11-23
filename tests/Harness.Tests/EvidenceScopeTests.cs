@@ -6,13 +6,14 @@ public sealed class EvidenceScopeTests
     public void Tracked_build_directory_is_measured_as_authored_typescript()
     {
         using var repository = Fixtures.Compliant()
-            .WriteFile("src/pages/build/Page.ts", string.Concat(Enumerable.Repeat("// prose\n", 10)) + "export const page = 1;\n")
+            .WriteFile("src/pages/build/a.ts", "import { b } from '../other/b';\nexport const a = b + 1;\n")
+            .WriteFile("src/pages/other/b.ts", "import { a } from '../build/a';\nexport const b = a + 1;\n")
             .Commit();
 
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "comments.typescript");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "dependencies.typescript");
 
         Assert.Equal(1, run.ExitCode);
-        Assert.Contains("src/pages/build/Page.ts", run.Output, StringComparison.Ordinal);
+        Assert.Contains("src/pages/build/a.ts", run.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -24,7 +25,7 @@ public sealed class EvidenceScopeTests
             .WriteFile("src/App/Widget.cs", Fixtures.FormattedSource)
             .Commit();
 
-        var run = HarnessCli.Run(repository.Path, "check", "--only", "harness.coverage,comments.csharp");
+        var run = HarnessCli.Run(repository.Path, "check", "--only", "harness.coverage,types-per-file.csharp");
 
         Assert.Equal(0, run.ExitCode);
         Assert.Contains("DeclaredGenerated: src/Generated/Client.g.cs", run.Output, StringComparison.Ordinal);

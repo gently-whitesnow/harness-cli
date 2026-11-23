@@ -34,7 +34,6 @@ public sealed class ArchitecturePolicyTests
         {
             Assert.Equal(mode, after["policy"]![id]!.GetValue<string>());
         }
-        Assert.True(JsonNode.DeepEquals(frame["answers"], after["answers"]));
         Assert.True(JsonNode.DeepEquals(frame["settings"], after["settings"]));
         Assert.Equal(0, HarnessCli.Run(repository.Path, "check", "--only", Family).ExitCode);
     }

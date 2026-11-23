@@ -10,5 +10,4 @@ namespace Harness.Config;
 internal sealed record CheckDescriptor(
     string Id,
     string Group,
-    string? Applicability,
-    string? AnswerKey);
+    string? Applicability);

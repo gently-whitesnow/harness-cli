@@ -9,6 +9,7 @@ public sealed class AgentEntryPointTests
         using var repository = Fixtures.Framed()
             .WriteFile("AGENTS.md", "# Root\n")
             .WriteSymbolicLink("CLAUDE.md", "./AGENTS.md")
+            .WriteExecutable("verify.sh", "#!/usr/bin/env sh\nharness check\n")
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");

@@ -30,13 +30,14 @@ internal static partial class FunctionScanner
                     : DataSpan(child, masked))
                 .Concat(collections.Where(span => span.From >= node.Open && span.To <= node.End))
                 .ToList();
+            var ownTokens = CountTokens(masked, node.Start, node.End, excluded);
             var own = Count(masked, lines, node.Start, node.End, excluded);
             var logical = Count(masked, lines, node.Start, node.End, []);
             var largest = complete
                 .Where(child => child.Kind == Kind.Function && child != node && child.Start >= node.Open && child.End <= node.End)
                 .Select(child => Count(masked, lines, child.Start, child.End, []))
                 .DefaultIfEmpty(0).Max();
-            units.Add(new FunctionUnit(path, node.Name, LineOf(lines, node.Start), own, logical, largest,
+            units.Add(new FunctionUnit(path, node.Name, LineOf(lines, node.Start), ownTokens, own, logical, largest,
                 Cognitive(node, complete, masked, excluded)));
         }
 
@@ -49,7 +50,9 @@ internal static partial class FunctionScanner
                     : DataSpan(node, masked))
                 .Concat(collections)
                 .ToList();
+            var bodyStart = SkipLeadingUsings(masked);
             units.Add(new FunctionUnit(path, "<top-level>", 1,
+                CountTokens(masked, bodyStart, masked.Length, excluded),
                 Count(masked, lines, 0, masked.Length, excluded),
                 Count(masked, lines, 0, masked.Length, []),
                 complete.Where(node => node.Kind == Kind.Function)
@@ -408,6 +411,80 @@ internal static partial class FunctionScanner
         return Control.Contains(first) || first.StartsWith("if(", StringComparison.Ordinal)
             || first.StartsWith("for(", StringComparison.Ordinal)
             || first.StartsWith("switch(", StringComparison.Ordinal);
+    }
+
+    private static int SkipLeadingUsings(string text)
+    {
+        var index = 0;
+        while (index < text.Length)
+        {
+            var lineStart = index;
+            var lineEnd = text.IndexOf('\n', index);
+            if (lineEnd < 0)
+            {
+                lineEnd = text.Length;
+            }
+
+            var trimmed = text.AsSpan(lineStart, lineEnd - lineStart).Trim();
+            if (trimmed.Length == 0
+                || ((trimmed.StartsWith("using ", StringComparison.Ordinal)
+                    || trimmed.StartsWith("global using ", StringComparison.Ordinal))
+                    && trimmed.EndsWith(';')))
+            {
+                index = lineEnd < text.Length ? lineEnd + 1 : text.Length;
+                continue;
+            }
+
+            return lineStart;
+        }
+
+        return text.Length;
+    }
+
+    private static int CountTokens(string text, int from, int to, List<(int From, int To)> excluded)
+    {
+        var sorted = excluded.Count <= 1
+            ? excluded
+            : [.. excluded.OrderBy(span => span.From)];
+        var spanIndex = 0;
+        var count = 0;
+        var index = from;
+        while (index < to)
+        {
+            while (spanIndex < sorted.Count && sorted[spanIndex].To <= index)
+            {
+                spanIndex++;
+            }
+
+            if (spanIndex < sorted.Count && index >= sorted[spanIndex].From && index < sorted[spanIndex].To)
+            {
+                index = sorted[spanIndex].To;
+                continue;
+            }
+
+            var character = text[index];
+            if (char.IsWhiteSpace(character))
+            {
+                index++;
+                continue;
+            }
+
+            count++;
+            if (char.IsLetterOrDigit(character) || character is '_' or '@')
+            {
+                index++;
+                while (index < to && (char.IsLetterOrDigit(text[index]) || text[index] == '_'))
+                {
+                    index++;
+                }
+            }
+            else
+            {
+                index++;
+            }
+        }
+
+        return count;
     }
 
     private static int Count(string text, int[] starts, int from, int to, IReadOnlyList<(int From, int To)> excluded)

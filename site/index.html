@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Harness CLI — the harness starts with the repository</title>
-  <meta name="description" content="An agent has another thousand iterations ahead. The repository has to stay readable. My experience in 44 checks: shared rules, language checks, Go, Ansible and strict boundaries for a .NET application." />
+  <meta name="description" content="An agent has another thousand iterations ahead. The repository has to stay readable. My experience in 35 checks: shared rules, language checks, Go, Ansible and strict boundaries for a .NET application." />
   <link rel="canonical" href="https://harness.whitesnow.tech/" />
   <link rel="alternate" hreflang="en" href="https://harness.whitesnow.tech/" />
   <link rel="alternate" hreflang="ru" href="https://harness.whitesnow.tech/ru/" />
@@ -42,7 +42,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M7 3H4.5A1.5 1.5 0 0 0 3 4.5V7M17 3h2.5A1.5 1.5 0 0 1 21 4.5V7M7 21H4.5A1.5 1.5 0 0 1 3 19.5V17M17 21h2.5a1.5 1.5 0 0 0 1.5-1.5V17M8 12.5l2.5 2.5L16 9.5" />
         </svg>
-        harness <span class="version">3.9.3</span>
+        harness <span class="version">4.0.0</span>
       </a>
       <nav aria-label="Main navigation">
         <a href="#checks">Checks</a>
@@ -72,7 +72,7 @@
             <div class="terminal">
 <pre><code>$ harness check --verbose
 <strong>FAIL</strong>  ~/shop
-  harness 3.9.3 · repository pins 3.9.3
+  harness 4.0.0 · repository pins 4.0.0
 ✅ complexity.csharp       0
 ❌ docs.policy             1
     violation  NOTES.md: unexpected
@@ -111,7 +111,7 @@ exit 1</code></pre>
           </ul>
           <p class="note">Any check can be softened or switched off. A single finding cannot be hidden with a per-file exception. A named check carries its settings in full: there are no hidden defaults.</p>
           <p class="note">Repository-wide weakening lives in the frame too: generated paths are declared in <code>generated</code> with a reason, and linter or analyzer rules switched off for the whole repository go into <code>settings.&lt;check&gt;.repositoryWide</code> with an id and a reason. An inline <code>//nolint</code> or <code># noqa</code> blocks even with a reason. <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0067-reviewed-weakening-in-the-frame.md">ADR-0067 →</a></p>
-          <p class="note"><code>adrs.shape</code> keeps ADRs in the shape of a decision record: continuous numbers, a date, a status and sections; the defaults are 1000 words, 10 lines of code and 12 table rows. <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0066-adr-shape-as-decision-record.md">Why this shape →</a></p>
+          <p class="note"><code>adrs.shape</code> keeps ADRs in the shape of a decision record: continuous numbers, a date, a status, sections and a per-block code limit (20 lines). <a href="https://github.com/gently-whitesnow/harness-cli/blob/master/adrs/0066-adr-shape-as-decision-record.md">Why this shape →</a></p>
           <details class="read-more">
             <summary>Several projects in one Git repository</summary>
             <div>
@@ -124,9 +124,9 @@ exit 1</code></pre>
           <details class="read-more">
             <summary>What is on right after init</summary>
             <div>
-              <p><code>init</code> reads the Git index and writes only the languages and stacks that have tracked sources (<code>--languages</code> replaces detection for CI). Every check starts as <code>required</code>, comments included; languages the project does not have are not in the file at all. The application/library question is asked only for C#; for a standalone library the architecture standard does not apply.</p>
+              <p><code>init</code> reads the Git index and writes only the languages and stacks that have tracked sources (<code>--languages</code> replaces detection for CI). Every check starts as <code>required</code>; languages the project does not have are not in the file at all. The application/library question is asked only for C#; for a standalone library the architecture standard does not apply.</p>
               <p><code>harness.coverage</code> guards against a forgotten stack: a language with tracked sources and no <code>applicability</code> entry is a blocking finding with a ready JSON fragment to paste. Declining is an explicit <code>applicable: false</code> with a reason; the harness never edits the file itself.</p>
-              <p><code>init</code> leaves the answers about tests, build and other tools empty; every <code>frame.*</code> is <code>required</code>. Filling in the answers completes the setup. Moving a check to <code>advisory</code> or <code>off</code> is something the agent discusses with the owner for that specific check, comments included.</p>
+              <p><code>verify.entrypoint</code> verifies from the Git index that the verification script is tracked, executable (<code>100755</code>) and invokes <code>harness check</code>. Moving any check to <code>advisory</code> or <code>off</code> is something the agent discusses with the owner for that specific check.</p>
               <p>The architecture has eight independent checks, each with an explicit policy. Every finding blocks under <code>required</code>; heuristic recommendations were removed. The selectors <code>architecture</code> and <code>architecture.sliced-dotnet</code> pick the whole group.</p>
             </div>
           </details>
@@ -137,9 +137,9 @@ exit 1</code></pre>
     <section id="checks">
       <div class="container">
         <div class="section-head">
-          <p class="eyebrow">44 checks · two parts</p>
+          <p class="eyebrow">35 checks · two parts</p>
           <h2>Shared by every repository. Specific to its stack.</h2>
-          <p>First, the same questions and rules regardless of language. Then checks of the sources and of how the project is built. The fullest set is for C# and .NET; Go gets comments, duplication, function length, a package DSM and linter suppressions; TypeScript and JavaScript get import cycles, duplication and a file DSM. Ansible gets linter suppressions and role cycles.</p>
+          <p>First, the same rules regardless of language. Then checks of the sources and of how the project is built. The fullest set is for C# and .NET; Go gets duplication, function size, a package DSM and linter suppressions; TypeScript and JavaScript get import cycles, duplication and a file DSM. Ansible gets linter suppressions and role cycles.</p>
         </div>
         <div class="catalog">
           <div class="catalog-column">
@@ -147,13 +147,8 @@ exit 1</code></pre>
             <h3>Order in any repository</h3>
             <p>Where the agent reads the rules, how it records changes and what it verifies the result with.</p>
             <details>
-              <summary>Documentation, ADRs, commits, configuration <span>Short navigation, decision records, one history and explicit rules · 5 checks</span></summary>
+              <summary>Documentation, ADRs, commits, verify, configuration <span>Short navigation, decision records, one history, executable verify script and explicit rules · 6 checks</span></summary>
               <ul class="check-list" id="common-checks" aria-label="Repository rules"></ul>
-            </details>
-            <details>
-              <summary>Project tests and tools <span>Unit, integration, architecture, format, lint, build, typecheck, verify · 8 checks</span></summary>
-              <p>The repository says where its tools are or why they are absent. The harness checks that the answer is complete; your verify script runs the tests, build and linters in CI.</p>
-              <ul class="check-list" id="frame-checks" aria-label="Answers about project checks"></ul>
             </details>
           </div>
           <div class="catalog-column">
@@ -161,7 +156,7 @@ exit 1</code></pre>
             <h3>Code structure and boundaries</h3>
             <p>Language checks use the same frame. If a language is absent, its group is simply not in the file; if a language appears, <code>harness.coverage</code> says what to add.</p>
             <details>
-              <summary>C# <span>Cycles, coupling, duplication, function length, one type per file, comments · 6 checks</span></summary>
+              <summary>C# <span>Cycles, coupling, duplication, function size, one type per file · 5 checks</span></summary>
               <ul class="check-list" id="csharp-checks" aria-label="C# checks"></ul>
             </details>
             <details>
@@ -174,19 +169,19 @@ exit 1</code></pre>
               <p><a href="#architecture">See the project layout ↓</a></p>
             </details>
             <details>
-              <summary>Go <span>Comments, duplication, function length, package DSM, linter suppressions · 5 checks</span></summary>
-              <p>The DSM unit is the package: files of one package see each other without imports, and the compiler forbids import cycles. <code>go vet</code> and <code>gofmt</code> are not duplicated: the frame asks where they run.</p>
+              <summary>Go <span>Duplication, function size, package DSM, linter suppressions · 4 checks</span></summary>
+              <p>The DSM unit is the package: files of one package see each other without imports, and the compiler forbids import cycles. <code>go vet</code> and <code>gofmt</code> run in the repository's verify script.</p>
               <ul class="check-list" id="go-checks" aria-label="Go checks"></ul>
             </details>
             <details>
               <summary>Ansible <span>Linter suppressions and role cycles · 2 checks</span></summary>
-              <p>The axis is detected by ansible.cfg, roles or playbooks. YAML comments stay a separate check; the project's verify script runs ansible-lint, syntax-check and molecule.</p>
+              <p>The axis is detected by ansible.cfg, roles or playbooks. The project's verify script runs ansible-lint, syntax-check and molecule.</p>
               <ul class="check-list" id="ansible-checks" aria-label="Ansible checks"></ul>
             </details>
             <details>
-              <summary>YAML, TypeScript and JavaScript <span>Comments, imports, duplication and DSM · 5 checks</span></summary>
+              <summary>TypeScript and JavaScript <span>Imports, duplication and DSM · 3 checks</span></summary>
               <p>The TS/JS axis reads tracked imports without tsc, finds directory cycles and builds a file DSM with transparent barrels. Unresolved imports are shown in the details; the starting ceiling for average reachable files is 8.</p>
-              <ul class="check-list" id="language-checks" aria-label="YAML and TypeScript checks"></ul>
+              <ul class="check-list" id="language-checks" aria-label="TypeScript checks"></ul>
             </details>
           </div>
         </div>

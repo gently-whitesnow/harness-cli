@@ -1,59 +1,22 @@
 {
-  "version": "3.9.3",
-  "architecture": { "standard": "sliced-dotnet/1" },
-  "answers": {
-    "tests.unit": {
-      "present": false,
-      "reason": "ADR-0001: единственный тестовый шов — скомпилированный процесс CLI, поэтому юнит-тестов на internal-типы здесь нет намеренно"
-    },
-    "tests.integration": {
-      "paths": ["tests/Harness.Tests"]
-    },
-    "tests.architecture": {
-      "present": true,
-      "reason": "харнес доказывает циклы модулей (ADR-0021), форму sliced-dotnet и допустимые направления Proven-рёбер между слоями"
-    },
-    "format": {
-      "paths": [".editorconfig"]
-    },
-    "lint": {
-      "present": true,
-      "reason": "анализаторы и EnforceCodeStyleInBuild включены централизованно; обязательные style-диагностики заданы в .editorconfig, все warnings становятся errors"
-    },
-    "build": {
-      "paths": ["Harness.slnx"]
-    },
-    "typecheck": {
-      "applicable": false,
-      "reason": "нет web-стека; типы этого репозитория проверяет компилятор C# на сборке"
-    },
-    "verify": {
-      "paths": ["verify.sh"]
-    }
+  "version": "4.0.0",
+  "architecture": {
+    "standard": "sliced-dotnet/1"
   },
   "applicability": {
-    "csharp": { "applicable": true },
-    "dotnet": { "applicable": true },
-    "yaml": { "applicable": true },
-    "typescript": { "applicable": true }
+    "csharp": {
+      "applicable": true
+    },
+    "dotnet": {
+      "applicable": true
+    },
+    "typescript": {
+      "applicable": true
+    }
   },
   "settings": {
     "adrs.shape": {
-      "wordLimit": 1000,
-      "fencedLineLimit": 10,
-      "tableRowLimit": 12
-    },
-    "comments.csharp": {
-      "minimumCommentLines": 10,
-      "percentageLimit": 8
-    },
-    "comments.yaml": {
-      "minimumCommentLines": 10,
-      "percentageLimit": 8
-    },
-    "comments.typescript": {
-      "minimumCommentLines": 10,
-      "percentageLimit": 8
+      "fencedBlockLineLimit": 20
     },
     "duplication.typescript": {
       "windowLines": 30,
@@ -72,17 +35,26 @@
       "largestCyclicGroupSize": 0
     },
     "functions.csharp": {
-      "ownLines": 80
+      "ownTokens": 700
     },
     "warning-suppressions.dotnet": {
       "repositoryWide": [
-        { "id": "CA1707", "reason": "xUnit test names use underscores" },
-        { "id": "CS1591", "reason": "internal CLI has no public API documentation contract" }
+        {
+          "id": "CA1707",
+          "reason": "xUnit test names use underscores"
+        },
+        {
+          "id": "CS1591",
+          "reason": "internal CLI has no public API documentation contract"
+        }
       ]
     },
     "commits": {
       "language": "ru",
       "requireSetup": true
+    },
+    "verify.entrypoint": {
+      "path": "verify.sh"
     }
   },
   "policy": {
@@ -100,12 +72,11 @@
     "docs.policy": "required",
     "adrs.shape": "required",
     "commits.setup": "required",
-    "comments.csharp": "required",
-    "comments.yaml": "required",
-    "comments.typescript": "required",
     "dependencies.typescript": "required",
     "duplication.typescript": "required",
     "complexity.typescript": "required",
+    "lint-suppressions.typescript": "required",
+    "tsconfig.typescript": "required",
     "types-per-file.csharp": "required",
     "dependencies.csharp": "required",
     "duplication.csharp": "required",
@@ -115,13 +86,6 @@
     "solution-format.dotnet": "required",
     "editorconfig.dotnet": "required",
     "warning-suppressions.dotnet": "required",
-    "frame.tests.unit": "advisory",
-    "frame.tests.integration": "required",
-    "frame.tests.architecture": "required",
-    "frame.format": "required",
-    "frame.lint": "required",
-    "frame.build": "required",
-    "frame.typecheck": "required",
-    "frame.verify": "required"
+    "verify.entrypoint": "required"
   }
 }

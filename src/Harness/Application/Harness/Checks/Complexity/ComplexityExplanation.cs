@@ -154,8 +154,7 @@ internal static class ComplexityExplanation
           architecture zones the shape check discovers: a directory holding Application/
           and the canonical layers below it. Tests, tooling and samples outside a zone are
           not nodes, and an edge into them lends no reachability. The shape check validates
-          this boundary. Test projects excluded from the DSM must be named in
-          `answers.tests.*.paths`. Without a zone — a standalone library or a
+          this boundary. Without a zone — a standalone library or a
           repository that does not follow sliced-dotnet — the product is every authored file
           whose nearest tracked project file is not a test project. A project is a test
           project when its own XML references Microsoft.NET.Test.Sdk, xunit, NUnit, MSTest or

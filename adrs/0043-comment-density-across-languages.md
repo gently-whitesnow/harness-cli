@@ -3,7 +3,7 @@
 ## Status
 
 Date: 2026-09-24
-Accepted. Уточняет [ADR-0022](0022-language-axis.md): семейство `comments` перестаёт быть
+Superseded by [ADR-0070](0070-contract-4-goodhart-filter.md). Уточняет [ADR-0022](0022-language-axis.md): семейство `comments` перестаёт быть
 лексически привязанным к C#.
 
 ## Context

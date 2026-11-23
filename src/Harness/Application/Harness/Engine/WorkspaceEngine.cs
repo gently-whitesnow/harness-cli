@@ -132,11 +132,6 @@ internal static class WorkspaceEngine
 
     private static void AddFrameFailures(HarnessConfig config, string path, List<string> errors)
     {
-        foreach (var answerFailure in config.AnswerFailures)
-        {
-            errors.Add($"{path}: {answerFailure.Key}: {answerFailure.Value}");
-        }
-
         if (config.ArchitectureFailure is not null)
         {
             errors.Add($"{path}: {config.ArchitectureFailure}");

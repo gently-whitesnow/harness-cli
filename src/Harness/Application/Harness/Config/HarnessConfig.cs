@@ -3,14 +3,11 @@ using Harness.Versioning;
 namespace Harness.Config;
 
 /// <summary>
-/// The repository's own answers to the harness frame and how strictly each check is treated.
-/// Answers are self-reported: validated for form, never inspected or fact-checked.
+/// The repository's harness frame: applicability, explicit settings and check policy.
 /// </summary>
 internal sealed record HarnessConfig
 {
     public const string FileName = ".harness.json";
-
-    public const string FrameGroup = "frame";
 
     public const string RetiredBudgetFileName = ".harness.budget.json";
 
@@ -26,21 +23,11 @@ internal sealed record HarnessConfig
 
     public required string? ArchitectureFailure { get; init; }
 
-    public required IReadOnlyDictionary<string, FrameAnswer> Answers { get; init; }
-
-    public required IReadOnlyDictionary<string, string> AnswerFailures { get; init; }
-
     public required IReadOnlyDictionary<string, ApplicabilityAnswer> Applicability { get; init; }
 
     public required HarnessSettings Settings { get; init; }
 
     public required IReadOnlyDictionary<string, CheckPolicy> Policy { get; init; }
-
-    public FrameAnswer? Answered(string key)
-        => Answers.TryGetValue(key, out var answer) ? answer : null;
-
-    public string? AnswerFailure(string key)
-        => AnswerFailures.TryGetValue(key, out var failure) ? failure : null;
 
     public bool TryPolicyFor(string checkId, out CheckPolicy policy)
         => Policy.TryGetValue(checkId, out policy);
@@ -65,16 +52,6 @@ internal sealed record HarnessConfig
           {
             "version": "{{HarnessVersion.Current}}",
             "architecture": { "standard": "sliced-dotnet/1" },
-            "answers": {
-              "tests.unit": { "paths": ["tests/Unit"] },
-              "tests.integration": { "present": false, "reason": "no external dependencies yet" },
-              "tests.architecture": { "present": false, "reason": "planned" },
-              "format": { "paths": [".editorconfig"] },
-              "lint": { "present": true, "reason": "analyzers enabled in Directory.Build.props" },
-              "build": { "paths": ["Repository.slnx"] },
-              "typecheck": { "applicable": false, "reason": "no web stack" },
-              "verify": { "paths": ["verify.sh"] }
-            },
             "applicability": {
               "csharp": { "applicable": true },
               "dotnet": { "applicable": true }
@@ -85,20 +62,17 @@ internal sealed record HarnessConfig
                 "largestCyclicGroupSize": 0
               },
               "adrs.shape": {
-                "wordLimit": 1000,
-                "fencedLineLimit": 10,
-                "tableRowLimit": 12
-              },
-              "comments.csharp": {
-                "minimumCommentLines": 10,
-                "percentageLimit": 8
+                "fencedBlockLineLimit": 20
               },
               "duplication.csharp": {
                 "windowLines": 30,
                 "minimumTokens": 90
               },
               "functions.csharp": {
-                "ownLines": 80
+                "ownTokens": 700
+              },
+              "verify.entrypoint": {
+                "path": "verify.sh"
               },
               "warning-suppressions.dotnet": {
                 "repositoryWide": [
@@ -125,7 +99,6 @@ internal sealed record HarnessConfig
               "docs.policy": "required",
               "adrs.shape": "required",
               "commits.setup": "required",
-              "comments.csharp": "required",
               "types-per-file.csharp": "required",
               "dependencies.csharp": "required",
               "duplication.csharp": "required",
@@ -135,14 +108,7 @@ internal sealed record HarnessConfig
               "solution-format.dotnet": "required",
               "editorconfig.dotnet": "required",
               "warning-suppressions.dotnet": "required",
-              "frame.tests.unit": "required",
-              "frame.tests.integration": "required",
-              "frame.tests.architecture": "required",
-              "frame.format": "required",
-              "frame.lint": "required",
-              "frame.build": "required",
-              "frame.typecheck": "required",
-              "frame.verify": "required"
+              "verify.entrypoint": "required"
             }
           }
 
@@ -153,7 +119,7 @@ internal sealed record HarnessConfig
         files under those paths with a toolchain marker are excluded. Repository-wide diagnostic
         switches need id/reason entries in settings.<check>.repositoryWide; the CA1707 entry pairs
         with the reference .editorconfig `init` writes, and goes when that switch goes.
-        Run `harness explain <check-id>` for what one answer means and how it is reported.
+        Run `harness explain <check-id>` for what one check proves and how to fix it.
         """;
 
     /// <summary>The smallest frame for a registered project; pin and commit settings stay in the root.</summary>
@@ -163,27 +129,20 @@ internal sealed record HarnessConfig
         (`version`, `projects`, `settings.commits` and `policy.commits.setup` stay in the root):
 
           {
-            "answers": {
-              "verify": { "present": false, "reason": "verified by the root verify script" }
-            },
             "applicability": {},
             "settings": {
               "adrs.shape": {
-                "wordLimit": 1000,
-                "fencedLineLimit": 10,
-                "tableRowLimit": 12
+                "fencedBlockLineLimit": 20
               }
             },
             "policy": {
               "harness.coverage": "required",
               "docs.policy": "required",
-              "adrs.shape": "required",
-              "frame.verify": "required"
+              "adrs.shape": "required"
             }
           }
 
-        Answers, applicability, settings and policy are not inherited from the root; every
-        question the project policy names is answered here. Run `harness explain harness.config`
-        for the workspace rules.
+        Applicability, settings and policy are not inherited from the root. Run
+        `harness explain harness.config` for the workspace rules.
         """;
 }

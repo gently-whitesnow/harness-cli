@@ -29,7 +29,7 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           The harness holds the same frame over every repository it is pointed at, and the
           frame is a document the repository owns rather than a flag someone passes. The
           root frame can register independent project frames; each tracked file carries the
-          answers and check policy that reviewers, agents and CI read for its own scope.
+          applicability, settings and check policy that reviewers, agents and CI read for its own scope.
 
         What it reads
           The tracked root {HarnessConfig.FileName}, plus every project config explicitly
@@ -56,11 +56,11 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           applicability every axis a named check belongs to, marked true or false with reason;
                         an axis no named check belongs to needs no entry.
           settings      an explicit object, with one complete section per configurable check
-                        named in policy: comments.*, duplication.*, complexity.*, functions.*
-                        (ownLines) and adrs.shape. Only the root declares `settings.commits`
-                        and `policy.commits.setup`.
-                        Projects share that root version and commit envelope; answers,
-                        applicability, policy, architecture and other settings never inherit.
+                        named in policy: duplication.*, complexity.*, functions.* (ownTokens),
+                        adrs.shape (fencedBlockLineLimit) and verify.entrypoint (path). Only the
+                        root declares `settings.commits` and `policy.commits.setup`.
+                        Projects share that root version and commit envelope; applicability,
+                        policy, architecture and other settings never inherit.
                         A settings section without a policy entry is refused.
                         Repository-wide linter and diagnostic switches require reviewed
                         id/reason entries in settings.<check>.repositoryWide, the only key of
@@ -68,8 +68,6 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
                         lint-suppressions.ansible sections.
           generated     optional paths/reason declarations; a file is excluded only with
                         both a declared path and a toolchain-generated marker.
-          answers       one self-reported answer for every `frame` question the policy names,
-                        keyed without the `frame.` prefix; other questions may be answered.
           architecture  required once an architecture.sliced-dotnet check is named: the
                         sliced-dotnet/1 standard, or not applicable with a reason.
 
@@ -80,16 +78,15 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
           each frame; cross-project duplication and graph relationships are not measured.
 
         Why it is incomplete rather than a violation
-          Without a readable frame the harness cannot state what this repository answers, so
+          Without a readable frame the harness cannot state what this repository checks, so
           it has proved nothing about it. A run that cannot establish anything is incomplete
           (exit 2), which is distinct from having proved a violation (exit 1).
 
         Remediation
-          Run `harness init` to create an unresolved {HarnessConfig.FileName} scaffold at the
-          repository root. It does not overwrite an existing file or stage the new one. The
-          repository owner or their agent must investigate and answer each question before
-          committing it; the harness never assumes an answer on their behalf. Every missing
-          or malformed answer names the exact key at fault.
+          Run `harness init` to create a {HarnessConfig.FileName} scaffold at the
+          repository root. It does not overwrite an existing file or stage the new one. Review
+          the generated policy and settings before committing it; every missing or malformed
+          section names the exact key at fault.
 
         {HarnessConfig.Template}
         """;
@@ -103,26 +100,14 @@ internal sealed class HarnessConfigCheck : IRepositoryCheck
     {
         var parts = new List<string>
         {
-            $"{config.Answers.Count} answer{(config.Answers.Count == 1 ? "" : "s")}",
+            $"{config.Policy.Count} explicit policy entr{(config.Policy.Count == 1 ? "y" : "ies")}",
         };
-
-        if (config.AnswerFailures.Count > 0)
-        {
-            parts.Add(
-                $"{config.AnswerFailures.Count} answer{(config.AnswerFailures.Count == 1 ? "" : "s")} to complete");
-        }
 
         if (config.ArchitectureFailure is not null)
         {
             parts.Add("architecture section to complete");
         }
 
-        if (config.Policy.Count > 0)
-        {
-            parts.Add($"{config.Policy.Count} explicit policy entr{(config.Policy.Count == 1 ? "y" : "ies")}");
-        }
-
-        return $"{HarnessConfig.FileName} contains {string.Join(", ", parts)}. Answers are self-reported; "
-            + "the harness validates their form and does not fact-check them.";
+        return $"{HarnessConfig.FileName} contains {string.Join(", ", parts)}.";
     }
 }

@@ -1,7 +1,7 @@
 namespace Harness.Languages.Functions;
 
 internal sealed record FunctionUnit(
-    string Path, string Name, int Line, int OwnLines, int LogicalLines, int LargestNestedLines, int CognitiveComplexity);
+    string Path, string Name, int Line, int OwnTokens, int OwnLines, int LogicalLines, int LargestNestedLines, int CognitiveComplexity);
 
 internal interface IFunctionSources
 {

@@ -3,7 +3,7 @@
 ## Status
 
 Date: 2026-10-13
-Accepted. Контракт 3.9.3. Уточняет [ADR-0015](0015-comment-density-is-a-blocking-source-policy.md)
+Superseded by [ADR-0070](0070-contract-4-goodhart-filter.md). Контракт 3.9.3. Уточняет [ADR-0015](0015-comment-density-is-a-blocking-source-policy.md)
 и [ADR-0028](0028-recalibrated-csharp-defaults.md): `///` над декларацией больше не считается
 в `comments.csharp`; исключение по позиции повторяет [ADR-0055](0055-go-language-axis.md).
 

@@ -36,8 +36,7 @@ public sealed class AdrShapeTests
 
         Assert.Equal(0, run.ExitCode);
         Assert.Equal(0, explanation.ExitCode);
-        Assert.Contains("wordLimit", explanation.Output);
-        Assert.Contains("fencedLineLimit", explanation.Output);
+        Assert.Contains("fencedBlockLineLimit", explanation.Output);
     }
 
     [Theory]
@@ -103,7 +102,7 @@ public sealed class AdrShapeTests
     public void Limits_are_read_from_frame_and_never_suggested_as_remediation()
     {
         using var repository = Fixtures.Compliant(Frame.AllPresent().Settings("""
-            { "adrs.shape": { "wordLimit": 20, "fencedLineLimit": 1, "tableRowLimit": 1 } }
+            { "adrs.shape": { "fencedBlockLineLimit": 1 } }
             """))
             .WriteFile("adrs/0001-first-decision.md", Valid + "\n```cs\nfirst\nsecond\n```\n\n| A |\n| --- |\n| one |\n| two |\n")
             .Commit();
@@ -111,9 +110,7 @@ public sealed class AdrShapeTests
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "adrs.shape");
 
         Assert.Equal(1, run.ExitCode);
-        Assert.Contains("words exceeds wordLimit 20", run.Output);
-        Assert.Contains("fenced lines exceeds fencedLineLimit 1", run.Output);
-        Assert.Contains("above tableRowLimit 1", run.Output);
+        Assert.Contains("above fencedBlockLineLimit 1", run.Output);
         Assert.DoesNotContain("raise", run.Output, StringComparison.OrdinalIgnoreCase);
     }
 }

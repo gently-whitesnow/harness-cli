@@ -1,6 +1,6 @@
 namespace Harness.Config;
 
-internal sealed record AdrShapeSettings(int WordLimit, int FencedLineLimit, int TableRowLimit)
+internal sealed record AdrShapeSettings(int FencedBlockLineLimit)
 {
-    public static AdrShapeSettings Default { get; } = new(1000, 10, 12);
+    public static AdrShapeSettings Default { get; } = new(20);
 }

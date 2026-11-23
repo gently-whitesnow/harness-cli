@@ -15,7 +15,7 @@ public sealed class HarnessFrameTests
         Assert.Equal(2, run.ExitCode);
         Assert.True(run.OutputContains("INCOMPLETE"), run.Output);
         Assert.True(run.OutputContains(".harness.json"), run.Output);
-        Assert.True(run.OutputContains("\"answers\""), run.Output);
+        Assert.True(run.OutputContains("\"verify.entrypoint\""), run.Output);
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public sealed class HarnessFrameTests
         var accepted = run.StandardOutput.Split("What it accepts")[1].Split("Workspace runs")[0];
         foreach (var section in new[]
         {
-            "comments.*", "duplication.*", "complexity.*", "functions.*", "ownLines", "adrs.shape",
+            "duplication.*", "complexity.*", "functions.*", "ownTokens", "adrs.shape", "verify.entrypoint",
             "settings.<check>.repositoryWide", "warning-suppressions.dotnet", "lint-suppressions.go", "lint-suppressions.ansible",
         })
         {
@@ -60,10 +60,9 @@ public sealed class HarnessFrameTests
     [InlineData("""{ "version": "0.9.0" }""", "upgrade required")]
     [InlineData("""{ "version": "99.0.0" }""", "upgrade required")]
     [InlineData("""{ "version": "latest" }""", "'policy' must be an object")]
-    [InlineData("""{ "version": "latest", "policy": {}, "answers": [] }""", "'answers' must be an object")]
+    [InlineData("""{ "version": "latest", "policy": {}, "answers": [] }""", "removed in harness 4.0")]
     [InlineData("""{ "version": "latest", "checks": {} }""", "not a key this harness reads")]
-    [InlineData("""{ "version": "latest", "policy": {}, "answers": { "tests": {} } }""", "not a question this harness asks")]
-    [InlineData("""{ "version": "latest", "policy": {}, "answers": {} }""", "'settings' must be an object holding 'commits'")]
+    [InlineData("""{ "version": "latest", "policy": {} }""", "'settings' must be an object holding 'commits'")]
     public void An_unsound_frame_ends_the_run_as_incomplete(string frame, string explanation)
     {
         using var repository = Fixtures.WithRawFrame(frame);
@@ -124,8 +123,8 @@ public sealed class HarnessFrameTests
     [Theory]
     [InlineData("[]", "'settings' must be an object")]
     [InlineData("{ \"comments\": {} }", "is not configurable")]
-    [InlineData("{ \"comments.csharp\": { \"percent\": 25 } }", "is not a setting")]
-    [InlineData("{ \"comments.csharp\": { \"percentageLimit\": 101 } }", "must not exceed 100")]
+    [InlineData("{ \"comments.csharp\": { \"percent\": 25 } }", "removed in harness 4.0")]
+    [InlineData("{ \"functions.csharp\": { \"ownTokens\": 0 } }", "positive integer")]
     [InlineData("{ \"maintainability.csharp\": { \"methodLines\": 60 } }", "removed in harness 2.0")]
     [InlineData("{ \"cohesion.csharp\": { \"groups\": 2 } }", "removed in harness 2.0")]
     [InlineData("{ \"dependencies.csharp\": { \"incomingReferences\": 20 } }", "not part of the current contract")]
@@ -180,63 +179,31 @@ public sealed class HarnessFrameTests
     }
 
     [Fact]
-    public void A_missing_answer_is_local_to_its_question()
+    public void Removed_answers_section_fails_with_v4_migration_message()
     {
-        using var repository = Fixtures.Compliant(Frame.Answering().Silent("tests.unit"));
+        using var repository = Fixtures.WithRawFrame($$"""
+            {
+              "version": "{{Release.Current}}",
+              "answers": { "verify": { "paths": ["verify.sh"] } },
+              "applicability": {},
+              "settings": { "commits": { "language": "ru", "requireSetup": false } },
+              "policy": { "harness.config": "required" }
+            }
+            """);
 
         var run = HarnessCli.RunVerbose(repository.Path, "check");
 
         Assert.Equal(2, run.ExitCode);
-        Assert.True(run.OutputContains("answers.tests.unit"), run.Output);
-        Assert.True(run.OutputContains("harness.config"), run.Output);
-        Assert.True(run.OutputContains("outcome: passed"), run.Output);
-        Assert.True(run.OutputContains("repository answers absent"), run.Output);
-        Assert.True(run.OutputContains("owner's intent is unclear"), run.Output);
-        Assert.Equal(1, run.Output.Split("outcome: incomplete", StringSplitOptions.None).Length - 1);
-    }
-
-    [Theory]
-    [InlineData("""{ "present": true }""", "needs a non-empty 'reason'")]
-    [InlineData("""{ "paths": [] }""", "is empty")]
-    [InlineData("""{ "paths": [".x"], "present": true }""", "already an answer")]
-    [InlineData("""{ "applicable": false }""", "why the question does not apply")]
-    [InlineData("""{ "hint": 1 }""", "not a key this harness reads")]
-    public void A_malformed_answer_is_local_to_its_question(string answer, string explanation)
-    {
-        using var repository = Fixtures.Compliant(Frame.Answering().With("format", answer));
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check");
-
-        Assert.Equal(2, run.ExitCode);
-        Assert.True(run.OutputContains(explanation), run.Output);
-        Assert.True(run.OutputContains("harness.config"), run.Output);
-        Assert.True(run.OutputContains("repository answers absent"), run.Output);
-        Assert.True(run.OutputContains("\"format\": { \"paths\":"), run.Output);
-        Assert.True(run.OutputContains("Do not invent a positive answer"), run.Output);
-        Assert.Equal(1, run.Output.Split("outcome: incomplete", StringSplitOptions.None).Length - 1);
+        Assert.True(run.OutputContains("'answers' was removed in harness 4.0"), run.Output);
     }
 
     [Fact]
-    public void Latest_uses_the_current_question_set()
+    public void Latest_uses_the_current_contract()
     {
         using var repository = Fixtures.Compliant(
-            Frame.Answering().Version("latest").FramePolicy("advisory"));
+            Frame.AllPresent().Version("latest"));
 
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame");
-
-        Assert.Equal(0, run.ExitCode);
-        Assert.True(run.OutputContains("repository answers absent"), run.Output);
-    }
-
-    [Fact]
-    public void Required_policy_accepts_a_positive_self_report()
-    {
-        using var repository = Fixtures.Compliant(
-            Frame.Answering()
-                .Present("tests.unit", "the suite is generated by the build")
-                .Policy("frame.tests.unit", "required"));
-
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.tests.unit");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "verify.entrypoint");
 
         Assert.Equal(0, run.ExitCode);
     }
@@ -245,10 +212,10 @@ public sealed class HarnessFrameTests
     public void Policy_is_explicit_for_one_check_identifier()
     {
         using var repository = Fixtures.Compliant(
-            Frame.Answering()
-                .Policy("frame.tests.unit", "off"));
+            Frame.AllPresent()
+                .Policy("verify.entrypoint", "off"));
 
-        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "frame.tests.unit");
+        var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "verify.entrypoint");
 
         Assert.Equal(0, run.ExitCode);
         Assert.True(run.OutputContains("turns this check off"), run.Output);

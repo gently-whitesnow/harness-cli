@@ -16,7 +16,7 @@ public sealed class GuideCommandTests
             "harness check --only <id> --verbose",
             "harness explain <id>",
             "not the frame",
-            "required", "advisory", "answers", "settings",
+            "required", "advisory", "settings", "verify.entrypoint",
             "Exit codes",
             "harness commit-message template",
             "harness setup",

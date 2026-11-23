@@ -2,7 +2,7 @@ namespace Harness.Tests;
 
 /// <summary>
 /// ADR-0068: a README translation named by a language tag lives beside the README.md it
-/// translates and carries the same line limit; the same name without an original is a finding.
+/// translates and carries the same word limit; the same name without an original is a finding.
 /// </summary>
 public sealed class ReadmeTranslationTests
 {
@@ -51,17 +51,19 @@ public sealed class ReadmeTranslationTests
     }
 
     [Fact]
-    public void Translation_carries_the_readme_line_limit()
+    public void Translation_above_the_word_limit_is_a_violation()
     {
+        var words = string.Join(" ", Enumerable.Range(1, 1201).Select(n => $"word{n}"));
         using var repository = Fixtures.Compliant()
-            .WriteLines("README.ru.md", 151)
+            .WriteFile("README.ru.md", words + "\n")
             .Commit();
 
         var run = HarnessCli.RunVerbose(repository.Path, "check", "--only", "docs.policy");
 
         Assert.Equal(1, run.ExitCode);
         Assert.True(run.OutputContains("README.ru.md"), run.Output);
-        Assert.True(run.OutputContains("exceeds the limit of 150"), run.Output);
+        Assert.True(run.OutputContains("1201"), run.Output);
+        Assert.True(run.OutputContains("1200"), run.Output);
     }
 
     [Theory]

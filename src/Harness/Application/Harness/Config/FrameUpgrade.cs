@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
@@ -11,6 +12,11 @@ namespace Harness.Config;
 
 internal static class FrameUpgrade
 {
+    private static readonly JsonSerializerOptions WriteOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
     public static (string? Report, string? Failure) Raise(
         IRepository repository,
         bool dryRun,
@@ -46,12 +52,19 @@ internal static class FrameUpgrade
             return (null, ConfigJson.Failure($"duplicate property '{duplicate}' leaves the frame ambiguous; keep one before upgrading"));
         }
 
-        var (migrated, migrationFailure) = SplitArchitecturePolicy(text);
+        var (migrated, migrationFailure) = MigrateFrame(text);
         if (migrationFailure is not null)
         {
             return (null, migrationFailure);
         }
-        var policyChanged = migrated != text;
+
+        var (projectMigrations, projectMigrationFailure) = MigrateProjects(repository, migrated!);
+        if (projectMigrationFailure is not null)
+        {
+            return (null, projectMigrationFailure);
+        }
+
+        var policyChanged = migrated != text || projectMigrations.Count > 0;
         if (!policyChanged && (pin is "latest" || pin == HarnessVersion.Current.ToString()))
         {
             return ($"{HarnessConfig.FileName} already runs contract {pin}; there is no pin to raise.\n"
@@ -76,6 +89,18 @@ internal static class FrameUpgrade
             {
                 return (null, rewriteFailure);
             }
+
+            foreach (var (projectConfigPath, projectMigratedText) in projectMigrations)
+            {
+                try
+                {
+                    File.WriteAllText(projectConfigPath, projectMigratedText);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return (null, $"Could not write '{projectConfigPath}': {exception.Message}");
+                }
+            }
         }
 
         var action = pin == target
@@ -83,6 +108,11 @@ internal static class FrameUpgrade
             : dryRun ? "Would raise" : "Raised";
         var report = new StringBuilder();
         report.Append($"{action} {HarnessConfig.FileName} from {pin} to {target}.\n");
+        if (projectMigrations.Count > 0)
+        {
+            var verb = dryRun ? "Would migrate" : "Migrated";
+            report.Append($"{verb} {projectMigrations.Count} project frame(s) to contract {HarnessVersion.Current}.\n");
+        }
 
         // Only the route from the pin: a repository that already lives in 2.16 has read the
         // 2.0 migration before, and the whole history says nothing about what changes for it.
@@ -99,8 +129,8 @@ internal static class FrameUpgrade
             .Append(dryRun
                 ? "Nothing was written."
                 : policyChanged
-                    ? "The pin and architecture policy were migrated; repository answers were not guessed."
-                    : "Only the pin was changed; repository answers were not guessed.")
+                    ? "The pin and contract schema were migrated; review the diff before committing."
+                    : "Only the pin was changed.")
             .Append('\n');
         return (report.ToString(), null);
     }
@@ -156,7 +186,8 @@ internal static class FrameUpgrade
 
             try
             {
-                report.Append(ScopeAdditions(scope, local, projectChecks));
+                var (migratedLocal, _) = MigrateFrame(local);
+                report.Append(ScopeAdditions(scope, migratedLocal ?? local, projectChecks));
             }
             catch (JsonException exception)
             {
@@ -164,7 +195,7 @@ internal static class FrameUpgrade
             }
         }
 
-        report.Append("Project frames keep local answers and policies; only the root pin is upgraded.\n");
+        report.Append("Project frames keep local applicability, settings and policies.\n");
         return report.ToString();
     }
 
@@ -632,7 +663,234 @@ internal static class FrameUpgrade
                    both counts, as comments.go does for doc comments; `////`, `/** */` and
                    a `///` block before a blank line still count, so findings can only drop
         """),
+        (new HarnessVersion(4, 0, 0), """
+        Contract 4.0 migration (Goodhart-resistant checks):
+          removed  comments.csharp, comments.yaml, comments.typescript, comments.go and the yaml axis
+          removed  self-reported answers and the 7 questionnaire checks (frame.tests.*, frame.format,
+                   frame.lint, frame.build, frame.typecheck)
+          changed  frame.verify becomes verify.entrypoint with settings."verify.entrypoint".path;
+                   the harness verifies from the Git index that the file is tracked, executable
+                   (mode 100755), non-empty and invokes `harness check` on a non-comment line
+          changed  docs.policy replaces the 150-line ceiling on AGENTS.md, README.md and
+                   README.<lang>.md with a 1200-word ceiling
+          changed  adrs.shape removes wordLimit and tableRowLimit, and replaces total fencedLineLimit
+                   with per-block fencedBlockLineLimit (default 20)
+          changed  functions.csharp and functions.go replace physical ownLines with lexical ownTokens
+                   (default 700), invariant to line breaks and whitespace
+          added    tsconfig.typescript (strict: true & tsconfig.json coverage for TS sources) and
+                   lint-suppressions.typescript (blocks @ts-ignore/@ts-nocheck/@ts-expect-error,
+                   eslint-disable, biome-ignore and oxlint-disable)
+        """),
     ];
+
+    private static (List<(string AbsolutePath, string Content)> Migrations, string? Failure) MigrateProjects(
+        IRepository repository,
+        string rootText)
+    {
+        var result = new List<(string, string)>();
+        using var document = JsonDocument.Parse(rootText, ConfigJson.ParseOptions);
+        var (projects, projectsFailure) = WorkspaceProjects.Read(document.RootElement);
+        if (projects is null || projects.Count == 0)
+        {
+            return (result, null);
+        }
+
+        foreach (var project in projects)
+        {
+            var relativePath = WorkspaceScope.ConfigPath(project);
+            if (!repository.TrackedEntries.Any(entry => entry.Path == relativePath))
+            {
+                continue;
+            }
+
+            var absolutePath = Path.Combine(repository.RootPath, relativePath);
+            string localText;
+            try
+            {
+                localText = File.ReadAllText(absolutePath);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                return ([], $"Could not read '{absolutePath}': {exception.Message}");
+            }
+
+            var duplicate = DuplicateProperty(localText);
+            if (duplicate is not null)
+            {
+                return ([], ConfigJson.Failure($"{relativePath}: duplicate property '{duplicate}' leaves the frame ambiguous; keep one before upgrading"));
+            }
+
+            var (migratedLocal, localFailure) = MigrateFrame(localText);
+            if (localFailure is not null)
+            {
+                return ([], $"{relativePath}: {localFailure}");
+            }
+
+            if (migratedLocal != localText)
+            {
+                result.Add((absolutePath, migratedLocal!));
+            }
+        }
+
+        return (result, null);
+    }
+
+    private static (string? Text, string? Failure) MigrateFrame(string text)
+    {
+        var (afterArch, failure) = SplitArchitecturePolicy(text);
+        if (failure is not null)
+        {
+            return (null, failure);
+        }
+
+        return MigrateToContract4(afterArch!);
+    }
+
+    private static (string? Text, string? Failure) MigrateToContract4(string text)
+    {
+        var document = JsonNode.Parse(text, documentOptions: ConfigJson.ParseOptions) as JsonObject;
+        if (document is null)
+        {
+            return (text, null);
+        }
+
+        var changed = false;
+        string? migratedVerifyPath = null;
+        if (document["answers"] is JsonObject answers)
+        {
+            if (answers["verify"] is JsonObject verifyAnswer
+                && verifyAnswer["paths"] is JsonArray paths
+                && paths.Count > 0
+                && paths[0] is JsonValue firstPath
+                && firstPath.TryGetValue<string>(out var rawPath)
+                && !string.IsNullOrWhiteSpace(rawPath))
+            {
+                var normalized = NormalizeMigratedPath(rawPath);
+                if (normalized is not null)
+                {
+                    migratedVerifyPath = normalized;
+                }
+            }
+
+            document.Remove("answers");
+            changed = true;
+        }
+
+        if (document["applicability"] is JsonObject applicability && applicability.Remove("yaml"))
+        {
+            changed = true;
+        }
+
+        var settings = document["settings"] as JsonObject;
+        var policy = document["policy"] as JsonObject;
+
+        if (policy is not null)
+        {
+            if (policy.TryGetPropertyValue("frame.verify", out var verifyPolicy) && !policy.ContainsKey("verify.entrypoint"))
+            {
+                policy["verify.entrypoint"] = verifyPolicy?.DeepClone();
+                changed = true;
+            }
+
+            foreach (var retired in policy.Select(entry => entry.Key)
+                .Where(key => key.StartsWith("comments.", StringComparison.Ordinal)
+                    || key.StartsWith("frame.", StringComparison.Ordinal))
+                .ToList())
+            {
+                policy.Remove(retired);
+                changed = true;
+            }
+
+            if (policy.ContainsKey("complexity.typescript"))
+            {
+                if (!policy.ContainsKey("lint-suppressions.typescript"))
+                {
+                    policy["lint-suppressions.typescript"] = "required";
+                    changed = true;
+                }
+
+                if (!policy.ContainsKey("tsconfig.typescript"))
+                {
+                    policy["tsconfig.typescript"] = "required";
+                    changed = true;
+                }
+            }
+        }
+
+        if (policy is not null && policy.ContainsKey("verify.entrypoint") && settings is null)
+        {
+            settings = [];
+            document["settings"] = settings;
+            changed = true;
+        }
+
+        if (settings is not null)
+        {
+            foreach (var retired in settings.Select(entry => entry.Key)
+                .Where(key => key.StartsWith("comments.", StringComparison.Ordinal))
+                .ToList())
+            {
+                settings.Remove(retired);
+                changed = true;
+            }
+
+            if (settings["adrs.shape"] is JsonObject adrShape
+                && (adrShape.ContainsKey("wordLimit") || adrShape.ContainsKey("fencedLineLimit") || adrShape.ContainsKey("tableRowLimit")))
+            {
+                settings["adrs.shape"] = new JsonObject
+                {
+                    ["fencedBlockLineLimit"] = AdrShapeSettings.Default.FencedBlockLineLimit,
+                };
+                changed = true;
+            }
+
+            foreach (var fnKey in new[] { "functions.csharp", "functions.go" })
+            {
+                if (settings[fnKey] is JsonObject fnSection && fnSection.ContainsKey("ownLines"))
+                {
+                    settings[fnKey] = new JsonObject
+                    {
+                        ["ownTokens"] = FunctionSettings.Default.OwnTokens,
+                    };
+                    changed = true;
+                }
+            }
+
+            if (policy is not null && policy.ContainsKey("verify.entrypoint") && !settings.ContainsKey("verify.entrypoint"))
+            {
+                settings["verify.entrypoint"] = new JsonObject
+                {
+                    ["path"] = migratedVerifyPath ?? VerifyEntrypointSettings.Default.Path,
+                };
+                changed = true;
+            }
+        }
+
+        return changed
+            ? (document.ToJsonString(WriteOptions) + "\n", null)
+            : (text, null);
+    }
+
+    private static string? NormalizeMigratedPath(string rawPath)
+    {
+        var normalized = rawPath.Trim().Replace('\\', '/');
+        while (normalized.StartsWith("./", StringComparison.Ordinal))
+        {
+            normalized = normalized[2..];
+        }
+
+        while (normalized.Contains("//", StringComparison.Ordinal))
+        {
+            normalized = normalized.Replace("//", "/", StringComparison.Ordinal);
+        }
+
+        return normalized.Length > 0
+            && !normalized.StartsWith('/')
+            && !normalized.EndsWith('/')
+            && !normalized.Split('/').Any(segment => segment is "" or "." or "..")
+                ? normalized
+                : null;
+    }
 
     private static (string? Text, string? Failure) SplitArchitecturePolicy(string text)
     {
@@ -657,7 +915,7 @@ internal static class FrameUpgrade
             policy[id] = mode;
         }
         policy.Remove(SlicedDotNetShapeCheck.Family);
-        return (document.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n", null);
+        return (document.ToJsonString(WriteOptions) + "\n", null);
     }
 
     // Called after ReadPin, so the text is known to parse.

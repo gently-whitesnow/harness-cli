@@ -1,149 +1,63 @@
 # Harness CLI — навигация для агента
 
-Standalone CLI, который держит одну и ту же harness-рамку над разными репозиториями и
-объясняет через ошибки, как должно быть. Он не запускает toolchain репозитория: тесты,
-сборку и линтеры гоняет CI через self-reported `verify`-скрипт. Харнес сообщает ответы и
-выполняет разные для репозиториев измерения. [ADR-0046](adrs/0046-unified-verification-entry-point.md)
+Standalone CLI, который держит одну и ту же harness-рамку над разными репозиториями и объясняет через ошибки, как должно быть. Он не запускает toolchain репозитория: тесты, сборку и линтеры гоняет CI через исполняемый `verify.entrypoint`-скрипт, проверяемый по git-индексу ([ADR-0046](adrs/0046-unified-verification-entry-point.md), [ADR-0070](adrs/0070-contract-4-goodhart-filter.md)).
 
 ## Рамка
-Корневой tracked `.harness.json` задаёт версию и commit-интеграцию; `projects` регистрирует непересекающиеся
-каталоги с рамками без наследования. Корень покрывает остальные файлы; графы и дубли только локальные.
-`check --project <path>` — корень и проект после валидации всех конфигов, частичный прогон.
-[ADR-0060](adrs/0060-explicit-workspace-projects.md). Ответы self-reported; адрес — навигация. Формы:
 
-```jsonc
-"tests.unit":  { "paths": ["tests/Unit"] }                        // есть; адрес — проект, не файлы
-"lint":        { "present": true,  "reason": "аналайзеры в csproj" } // есть без одного адреса
-"tests.e2e":   { "present": false, "reason": "разложим в HARNESS-142" } // отсутствует осознанно
-"typecheck":   { "applicable": false, "reason": "нет web-стека" }    // вопрос не про нас
-```
+Корневой tracked `.harness.json` задаёт `version` и commit-интеграцию; `projects` регистрирует непересекающиеся каталоги с рамками без наследования. Корень покрывает остальные файлы; графы и дубли только локальные. `check --project <path>` проверяет корень и проект после валидации всех конфигов ([ADR-0060](adrs/0060-explicit-workspace-projects.md)).
 
-Рамка явная и только явная, как EditorConfig: проверка, не названная в `policy`, — вне рамки
-(не запускается, в отчёте одна строка `outside the frame`); названная несёт `required`
-(находка blocking), `advisory` (видима) или `off` и полную секцию `settings.<id>`, если её
-семейство читает настройки: скрытых дефолтов нет, секция не названной проверки и policy без
-`applicability` оси — `Incomplete`. Переключатель един для всех проверок, включая инварианты и
-DSM-пределы: запрещено адресное подавление файла или находки, а не выключение проверки целиком.
-`harness.coverage` находит ось с tracked-источниками без applicability и печатает фрагмент,
-который написал бы `init`; отказ — явный `applicable: false` с причиной. Харнес валидирует форму
-ответов, но не инспектирует их. [ADR-0054](adrs/0054-explicit-only-frame.md), [ADR-0027](adrs/0027-required-findings-are-blocking.md),
-[ADR-0035](adrs/0035-policy-switch-is-uniform.md), [ADR-0049](adrs/0049-test-suite-address-is-the-project.md)
+Рамка явная: проверка вне `policy` не запускается (одна строка `outside the frame`); названная несёт `required` (блокирует), `advisory` (видима) или `off` и полную секцию `settings.<id>`, если её семейство читает настройки. Скрытых дефолтов нет; секция не названной проверки и policy без `applicability` оси — `Incomplete`. Запрещено адресное подавление файла или находки, а не выключение проверки целиком. `harness.coverage` находит ось с tracked-исходниками без `applicability` и печатает фрагмент `init`; отказ — `{ "applicable": false, "reason": "..." }` ([ADR-0054](adrs/0054-explicit-only-frame.md), [ADR-0027](adrs/0027-required-findings-are-blocking.md), [ADR-0035](adrs/0035-policy-switch-is-uniform.md)).
 
-Проверка называется `<семейство>.<язык>`, `Group` — семейство, `Applicability` — язык:
-`"csharp": { "applicable": false, "reason": "..." }` делает все C#-проверки `NotApplicable`, а
-отсутствие оси в файле — тоже ответ. Язык-нейтральное ядро живёт в `Structure/`, чтение исходника —
-за `ILanguageAnalyzer` в `Languages/<Язык>/`; второй язык — экземпляр `Language`, ридер и строка в
-реестре, а не копия проверки: так `comments.{yaml,typescript,go}` и `duplication.go` считают по своим
-applicability и `settings`. [ADR-0018](adrs/0018-csharp-applicability-and-one-type-per-file.md), [ADR-0022](adrs/0022-language-axis.md), [ADR-0043](adrs/0043-comment-density-across-languages.md)
+Проверка называется `<семейство>.<язык>`, `Group` — семейство, `Applicability` — язык. Язык-нейтральное ядро живёт в `Structure/`, чтение исходника — за `ILanguageAnalyzer` в `Languages/<Язык>/` ([ADR-0018](adrs/0018-csharp-applicability-and-one-type-per-file.md), [ADR-0022](adrs/0022-language-axis.md)).
 
-Граф C# строится по tracked-исходникам средствами BCL. Ребро несёт `Proven` (позиция
-допускает только тип, кандидат по имени один) или `Inferred`. `dependencies.csharp` строит
-из `Proven` только blocking-циклы модулей; raw fan-in/out и external imports удалены как
-counts без универсального remediation. Вложенный модуль — содержание, а не цикл.
-[ADR-0021](adrs/0021-coupling-evidence-grades.md), [ADR-0029](adrs/0029-dependency-counts-removed.md)
+## Оси и проверки
 
-DSM `complexity.csharp` — средняя достижимость файлов и размер циклической группы по продукту: внутри зон
-sliced-dotnet, а без зоны — вне tracked тестовых проектов; граница из дерева, не из ответа. Потолок —
-`settings."complexity.csharp"` (`averageReachableFiles`, `largestCyclicGroupSize`), дефолт контракта 8.0 / 0 из sliced-dotnet/1;
-превышение блокирует, отдельного файла и команды нет, находка называет файлы с наибольшей |R(i)| вне `Host`. [ADR-0042](adrs/0042-dsm-over-the-product-in-files.md), [ADR-0048](adrs/0048-dsm-product-boundary-without-a-zone.md), [ADR-0052](adrs/0052-dsm-ceiling-is-a-declared-setting.md)
+- **C#**: граф строится средствами BCL; `dependencies.csharp` доказывает циклы модулей по `Proven`-рёбрам ([ADR-0021](adrs/0021-coupling-evidence-grades.md), [ADR-0029](adrs/0029-dependency-counts-removed.md)). `complexity.csharp` считает среднюю достижимость файлов и размер SCC по продукту (внутри зон `sliced-dotnet` или вне tracked тестовых проектов); дефолт `8.0 / 0` ([ADR-0042](adrs/0042-dsm-over-the-product-in-files.md), [ADR-0048](adrs/0048-dsm-product-boundary-without-a-zone.md), [ADR-0052](adrs/0052-dsm-ceiling-is-a-declared-setting.md)). `duplication.csharp` — `30/90`. `functions.csharp` — собственные лексические токены `ownTokens <= 700` ([ADR-0063](adrs/0063-function-own-lines.md), [ADR-0070](adrs/0070-contract-4-goodhart-filter.md)). `types-per-file.csharp` — один top-level класс или record на файл.
+- **Go**: `duplication.go` (`30/90`), `complexity.go` (DSM по пакетам через `go.mod`, `8.0 / 0`), `functions.go` (`ownTokens <= 700`), `lint-suppressions.go` (блокирует любой адресный `//nolint`; глобальные требуют id/reason в `repositoryWide`) ([ADR-0055](adrs/0055-go-language-axis.md)).
+- **TypeScript**: `dependencies.typescript` (циклы каталогов по литеральным импортам, включая type-only), `duplication.typescript` (`30/90`), `complexity.typescript` (файловый DSM с прозрачными barrels, `8.0 / 0`); node/tsc не нужен ([ADR-0064](adrs/0064-typescript-language-axis.md)).
+- **Ansible**: детектируется по маркерам; `dependencies.ansible` (циклы ролей) и `lint-suppressions.ansible` (адресный `noqa` блокирует) ([ADR-0059](adrs/0059-focused-ansible-release.md)).
+- **.NET (`dotnet`)**: hardened `Directory.Build.props`, central package versions в `Directory.Packages.props`, `.slnx`, эталонный `.editorconfig`, запрет адресных подавлений warnings (`warning-suppressions.dotnet`; глобальные требуют `repositoryWide`) ([ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md), [ADR-0067](adrs/0067-reviewed-weakening-in-the-frame.md)).
+- **Архитектура (`sliced-dotnet/1`)**: слои `Host`, `Api`, `Consumers`, `Application`, `Domain`, `Infrastructure` × слайсы `<Слой>/<Слайс>` в корне слоя. Публичный API слайса — `Contracts/`, кросс-импорт — `X/<Потребитель>`, слой = одна сборка `.csproj`. Восемь самостоятельных ID группы `architecture.sliced-dotnet`: `zone-shape`, `slice-shape`, `segment-names`, `layer-assemblies`, `dependency-direction`, `slice-isolation`, `public-api`, `cross-api`. Библиотека отвечает `"architecture": { "applicable": false, "reason": "..." }` ([ADR-0033](adrs/0033-canonical-standard-over-declarations.md), [ADR-0050](adrs/0050-domain-is-the-bottom-layer.md)–[ADR-0053](adrs/0053-explicit-architecture-checks.md)).
+- **Verify (`verify.entrypoint`)**: проверяет по git-индексу, что `settings."verify.entrypoint".path` tracked, имеет mode `100755`, непустой и вызывает `harness check` на некомментируемой строке ([ADR-0070](adrs/0070-contract-4-goodhart-filter.md)).
+- **Коммиты**: `settings.commits` задаёт `language` (`ru`/`en`) и `requireSetup`. `harness setup` ставит общий шаблон и `commit-msg` hook в `<git-common-dir>`, разрешающий бинарь в момент коммита. В CI используется `harness commits check <base>..<head>` ([ADR-0020](adrs/0020-commit-message-contract-and-clone-setup.md), [ADR-0065](adrs/0065-hook-resolves-the-harness-at-commit-time.md)).
 
-Ось `go` (контракт 3.1): `comments.go` не считает doc-комментарии top-level деклараций и директивы `//go:`;
-`duplication.go` — общий токенизатор с ключевыми словами Go; `complexity.go` — DSM по пакетам через tracked `go.mod`
-(`main` — composition root, `largestCyclicGroupSize` всегда 0), те же ключи и 8.0 / 0; `lint-suppressions.go` блокирует любой адресный `//nolint`; глобальные отключения требуют id и причины в `settings.lint-suppressions.go.repositoryWide`.
-`go vet`/`gofmt` — через `answers.lint`/`answers.format`; types-per-file, dependencies, архитектура и editorconfig для Go не делаются. [ADR-0055](adrs/0055-go-language-axis.md)
-Ось `typescript` (контракт 3.6): `dependencies.typescript` доказывает циклы каталогов по литеральным импортам, включая type-only; `duplication.typescript` — 30/90; `complexity.typescript` — файловый DSM с прозрачными barrels и потолком 8.0 / 0. Неразрешённые импорты видны в details; node/tsc не нужен. [ADR-0064](adrs/0064-typescript-language-axis.md)
-Ось `ansible` по маркерам: inline `noqa` блокирует, циклы ролей проверяются. Из `init` — required, как и комментарии.
-YAML не считает блоки над ключами любой глубины и trailing-комментарии; смягчение агент обсуждает с владельцем.
-Состав первого релиза — [ADR-0059](adrs/0059-focused-ansible-release.md); рамка — [ADR-0056](adrs/0056-configuration-repository-frame.md).
+## Контракт и доказательства
 
-.NET-проекты разделяют applicability `dotnet`: общий hardened `Directory.Build.props`,
-central package versions в ближайшем `Directory.Packages.props`, `.slnx` вместо `.sln`,
-эталонный code-style baseline в цепочке `.editorconfig` над каждым проектом (`explain
-editorconfig.dotnet` печатает эталон, `init` записывает его) и учёт подавлений warnings:
-адресные — pragma, `SuppressMessage`, `NoWarn` в `.csproj`, `severity = none` в path-секции —
-блокируются; выключение правила для всего репозитория печатается в verbose details. Читается tracked XML и текст без MSBuild evaluation. [ADR-0019](adrs/0019-dotnet-repository-policy.md), [ADR-0044](adrs/0044-editorconfig-baseline-and-warning-suppressions.md)
+`version` фиксирует релиз (`"4.0.0"`) или `"latest"`. Бинарь исполняет только свой контракт; другой pin даёт `Incomplete`, а мигрирует только `harness upgrade` ([ADR-0023](adrs/0023-release-version-as-the-verification-contract.md), [ADR-0032](adrs/0032-topology-over-thresholds.md)). `harness init` детектирует оси по git-индексу (`--languages` заменяет детекцию) и пишет все проверки как `required` ([ADR-0058](adrs/0058-required-initial-frame.md)).
 
-`version` — строка текущего контракта (`"3.9.3"`). Бинарь исполняет только его; другой pin даёт
-`Incomplete`, а меняет pin только `harness upgrade`, печатающий маршрут от pin и фрагменты для
-обнаруженных осей. Legacy-проверки не воспроизводятся. [ADR-0032](adrs/0032-topology-over-thresholds.md)
-
-`architecture` называет единственный стандарт топологии `sliced-dotnet/1`: фиксированные
-Clean Architecture-слои (`Host`, `Api`, `Consumers`, `Application`, `Domain`, `Infrastructure`;
-`Domain` — основание без исходящих рёбер) × сквозные слайсы `<Слой>/<Слайс>` в корне слоя без
-`Features/`. Зарезервированы только `Domain/Shared` и `Infrastructure/Persistence`; корень
-слайсового слоя содержит только слайсы (сквозная обвязка — в `Host` или в слайс), `Contracts/`
-в корне слоя блокируется (`no-layer-public-api`). Публичный API слайса — его `Contracts/`,
-кросс-импорт — только явный cross-API `X/<Потребитель>` (аналог `@x` FSD 2.1), верхние слои
-читают любой `Domain`-слайс, прямой сегмент именуется по назначению; слой = сборка: один
-`.csproj` на слой с C#-кодом, без linked-компиляции чужих слоёв, ProjectReference — по той же
-таблице. Восемь самостоятельных ID группы `architecture.sliced-dotnet`: `zone-shape`,
-`slice-shape`, `segment-names`, `layer-assemblies`, `dependency-direction`, `slice-isolation`,
-`public-api`, `cross-api` (полный ID — группа + суффикс). Каждый имеет явную policy;
-`architecture` и `architecture.sliced-dotnet` — групповые селекторы без агрегатной policy.
-Эвристических advisories нет; карта и DSM — нейтральные verbose details.
-[ADR-0053](adrs/0053-explicit-architecture-checks.md). Standalone-библиотека отвечает `"architecture": { "applicable": false, "reason": "..." }`.
-[ADR-0033](adrs/0033-canonical-standard-over-declarations.md), [ADR-0037](adrs/0037-segments-by-purpose.md)–[ADR-0041](adrs/0041-layer-is-the-assembly.md), [ADR-0050](adrs/0050-domain-is-the-bottom-layer.md), [ADR-0051](adrs/0051-slices-in-the-layer-root.md)
-
-`"latest"` включает rolling-контракт. `harness init` детектирует языки и .NET по git-индексу (`--languages go,yaml`
-заменяет детекцию) и пишет только их секции; при C# спрашивает application или standalone-library (`--kind` без
-stdin) и создаёт `architecture`. Все записанные проверки — `required`; нерешённые answer-ключи — `{}` и дают
-`Incomplete` до ответа. [ADR-0058](adrs/0058-required-initial-frame.md); `duplication.*` — `30/90`.
-
-`settings.commits` выбирает язык `ru`/`en` и может требовать clone-local setup. `harness setup` включает шаблон
-и `commit-msg` hook в общем каталоге клона, поэтому одна подготовка покрывает и все его worktree. Hook не хранит
-путь бинаря: он разрешает харнес в момент коммита — clone-local `<git-common-dir>/harness/bin/harness`, затем
-`harness` в `PATH` — и fail-closed отказывает, не найдя ни одного; `commits.setup` называет мёртвый путь, чужой
-файл, просмотренные места и релиз, отличный от pin. Для CI передавай явный диапазон в `harness commits check
-<base>..<head>`: hook допускает временный autosquash, публикуемый диапазон — нет. [ADR-0020](adrs/0020-commit-message-contract-and-clone-setup.md), [ADR-0065](adrs/0065-hook-resolves-the-harness-at-commit-time.md)
-
-Доказательство — только tracked-файл: созданный, но не добавленный в индекс файл харнес не видит, и
-вердикт от этого не меняется. Проверка обязана назвать в `Evidence` файлы, которые читает по имени, и
-спрашивать инвентарь только через `context.Tracked`/`context.Nearest`: необъявленное чтение — `Incomplete`.
-Отчёт печатает `not in the index` для объявленных имён, лежащих в рабочем дереве без `git add`, если
-проверка оставила вопрос открытым. [ADR-0026](adrs/0026-untracked-evidence-is-named-in-the-report.md)
+Доказательство — только tracked-файл: созданный без `git add` файл невидим. Проверка обязана объявить читаемые по имени файлы в `Evidence` и читать через `context.Tracked`/`context.Nearest` ([ADR-0026](adrs/0026-untracked-evidence-is-named-in-the-report.md)).
 
 ## Раскладка
-- `src/Harness` — сам CLI: NativeAOT, слой = отдельный проект `Harness.<Слой>.csproj`, публикуется `Host`.
-  - `Host/` — composition root, статический реестр и запуск процесса.
-  - `Api/Harness/Cli/` — входное зеркало с разбором командной строки.
-  - `Application/Harness/` — единый прикладной слайс: проверки, конфигурация, движок,
-    commit-команды, отчёт и публичные `Contracts/`; одна CLI-capability, а не набор бизнес-слайсов ([ADR-0034](adrs/0034-language-axis-in-sliced-dotnet.md)).
-  - `Domain/Harness/Structure/` — язык-нейтральная модель графа, модулей, циклов и DSM.
-  - `Domain/Harness/Languages/` — языковой порт ADR-0022/0034; реализаций здесь нет.
-  - `Domain/Harness/Evidence/` — модель tracked evidence и порт репозитория; `Domain/Harness/Versioning/` — версия бинаря и граница контракта.
-  - `Infrastructure/Harness/Git/` — Git-процесс и clone-local интеграция.
-  - `Infrastructure/Harness/Languages/<Язык>/` — ридеры C#, Go, YAML и TypeScript в infra namespace.
-- `tests/Harness.Tests` — приёмочные тесты, которые гоняют скомпилированный исполняемый файл.
-- `site/` — публичный лендинг без сборки; реестр проверок и версия там зеркалят бинарь и сверяются тестом, таблица «что обновлять» — `site/AGENTS.md` ([ADR-0047](adrs/0047-landing-mirrors-the-contract.md)).
-- `adrs/` — долговременные решения; правила ниже ссылаются туда за обоснованием.
-  Реестр — [`adrs/REGISTRY.md`](adrs/REGISTRY.md), шаблон — `adrs/.template.md`.
+
+- `src/Harness` — CLI (NativeAOT, слой = проект `Harness.<Слой>.csproj`, публикуется `Host`):
+  - `Host/` — composition root и статический реестр.
+  - `Api/Harness/Cli/` — разбор командной строки.
+  - `Application/Harness/` — проверки, конфигурация, движок, commit-команды, отчёт и `Contracts/` ([ADR-0034](adrs/0034-language-axis-in-sliced-dotnet.md)).
+  - `Domain/Harness/` — `Structure/`, `Languages/`, `Evidence/`, `Versioning/`.
+  - `Infrastructure/Harness/` — `Git/` и `Languages/<Язык>/`.
+- `tests/Harness.Tests` — приёмочные тесты на скомпилированном бинаре ([ADR-0001](adrs/0001-compiled-cli-as-only-test-seam.md)).
+- `site/` — публичный лендинг, зеркалирующий реестр проверок и версию (`site/AGENTS.md`, [ADR-0047](adrs/0047-landing-mirrors-the-contract.md)).
+- `adrs/` — решения (`adrs/REGISTRY.md`, `adrs/.template.md`).
+
 ## Команды
-Репозиторий публичный: tracked-тексты не называют внутренние репозитории, сервисы, домены,
-хосты и локальные пути. Примеры и результаты пилотных прогонов всегда обезличиваются;
-перед сдачей проверь tracked diff на инфраструктурные имена.
+
+Репозиторий публичный: tracked-тексты не называют внутренние репозитории, сервисы, домены, хосты и локальные пути.
 
 ```sh
-./harness init /path/to/repository                 # создать незавершённую рамку по индексу
-./harness upgrade                                  # поднять pin и увидеть маршрут от него
-./harness setup                                    # активировать hook и шаблон в этом клоне
-./harness commit-message template                  # показать шаблон выбранного языка
-./harness commits check <base>..<head>             # проверить диапазон для CI
-./verify.sh                                        # harness, format/code style, тесты и NativeAOT
+./harness init /path/to/repository                 # создать рамку по индексу
+./harness upgrade                                  # мигрировать pin и схему контракта
+./harness setup                                    # активировать hook и шаблон в клоне
+./verify.sh                                        # harness, format, тесты и NativeAOT
 dotnet build                                       # быстрая обратная связь
-dotnet format Harness.slnx --verify-no-changes --severity warn # формат и code style без правок
-dotnet publish src/Harness/Host/Harness.Host.csproj -c Release -r osx-arm64
-./src/Harness/bin/Release/net10.0/osx-arm64/publish/harness check
+dotnet format Harness.slnx --verify-no-changes --severity warn
 ```
+
 ## Коды возврата
-- `0` — каждая выбранная применимая blocking-проверка отработала и прошла. Advisory-находки
-  и readiness gaps при этом могут быть: отчёт скажет об этом вместо `PASS`.
-- `1` — выбранная применимая blocking-проверка доказала нарушение.
-- `2` — проверку не удалось выполнить достоверно; сюда же относится отсутствующий или невалидный `.harness.json`.
+
+- `0` — все выбранные применимые blocking-проверки прошли (advisory возможны).
+- `1` — blocking-проверка доказала нарушение.
+- `2` — проверить достоверно не удалось (невалидный `.harness.json`, другой pin, нечитаемые данные).
+
 ## Документация
-`AGENTS.md` — источник агентской навигации, обычный tracked-файл не более 150 физических
-строк. `CLAUDE.md` — прямой относительный симлинк на соседний `AGENTS.md`. `README.md` —
-краткий обзор на английском, `README.ru.md` — его перевод рядом (`README.<тег BCP 47>.md`, тот же лимит). Документ судится по имени, а не по каталогу: эти три имени действуют на любой
-глубине по тем же правилам, что в корне, где `AGENTS.md` и `CLAUDE.md` обязательны.
-`SKILL.md` разрешён в `skills/<name>/` и зеркалах `.agents/skills/`, `.claude/skills/`; `DESIGN.md` разрешён везде, как и файлы форджа (community health, шаблоны issue/PR) в корне, `.github/`, `docs/`. Решения — в корневом `adrs/`; `adrs.shape` требует номер без дыр, дату, статус, разделы и лимиты 1000 слов / 10 строк кода / 12 строк таблицы.
-Прочий tracked Markdown — нарушение; смягчение — через `policy`. `harness guide` печатает агенту потребителя цикл работы.
-[ADR-0010](adrs/0010-documentation-policy.md), [ADR-0025](adrs/0025-nested-agent-documents.md), [ADR-0061](adrs/0061-forge-and-design-documents.md), [ADR-0062](adrs/0062-agent-guide-command.md), [ADR-0066](adrs/0066-adr-shape-as-decision-record.md), [ADR-0068](adrs/0068-readme-translations.md)
+
+`AGENTS.md` — каноническая агентская навигация, обычный tracked-файл не более **1200 слов**. `CLAUDE.md` — прямой относительный симлинк на соседний `AGENTS.md`. `README.md` и `README.<тег BCP 47>.md` (только рядом с `README.md`) не ограничены по длине. `SKILL.md` разрешён в `skills/<name>/` и зеркалах `.agents/skills/`, `.claude/skills/`; `DESIGN.md` и файлы форджа разрешены без лимита. Решения — в корневом `adrs/`; `adrs.shape` проверяет нумерацию без дыр, дату, статус, разделы H2 и `fencedBlockLineLimit: 20`. Прочий tracked Markdown блокируется ([ADR-0010](adrs/0010-documentation-policy.md), [ADR-0025](adrs/0025-nested-agent-documents.md), [ADR-0061](adrs/0061-forge-and-design-documents.md), [ADR-0066](adrs/0066-adr-shape-as-decision-record.md), [ADR-0068](adrs/0068-readme-translations.md), [ADR-0070](adrs/0070-contract-4-goodhart-filter.md)).
