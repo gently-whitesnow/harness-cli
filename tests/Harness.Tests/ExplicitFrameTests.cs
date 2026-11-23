@@ -31,7 +31,7 @@ public sealed class ExplicitFrameTests
         Assert.False(run.OutputContains("duplication.csharp"), run.Output);
         Assert.False(run.OutputContains("verify.entrypoint"), run.Output);
         Assert.True(run.OutputContains("outside the frame"), run.Output);
-        Assert.True(verbose.OutputContains("outside the frame  31 checks not named in policy: harness.coverage"), verbose.Output);
+        Assert.True(verbose.OutputContains("outside the frame  33 checks not named in policy: harness.coverage"), verbose.Output);
     }
 
     [Fact]
@@ -309,7 +309,9 @@ public sealed class ExplicitFrameTests
             .Replace("\"complexity.typescript\": { \"averageReachableFiles\": 8.0, \"largestCyclicGroupSize\": 0 }, ", string.Empty, StringComparison.Ordinal)
             .Replace("    \"dependencies.typescript\": \"required\",\n", string.Empty, StringComparison.Ordinal)
             .Replace("    \"complexity.typescript\": \"required\",\n", string.Empty, StringComparison.Ordinal)
-            .Replace("    \"duplication.typescript\": \"required\",\n", string.Empty, StringComparison.Ordinal);
+            .Replace("    \"duplication.typescript\": \"required\",\n", string.Empty, StringComparison.Ordinal)
+            .Replace("    \"lint-suppressions.typescript\": \"required\",\n", string.Empty, StringComparison.Ordinal)
+            .Replace("    \"tsconfig.typescript\": \"required\",\n", string.Empty, StringComparison.Ordinal);
         using var repository = Fixtures.WithRawFrame(frame)
             .WriteFile("src/index.ts", "export const value = 1;\n")
             .Commit();

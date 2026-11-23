@@ -25,7 +25,7 @@ Standalone CLI, который держит одну рамку качества
 - `verify.entrypoint`: доказывает по индексу Git, что `verify.sh` tracked, исполняемый (`100755`) и вызывает `harness check`.
 
 Для тех, кто доверяет агентам менять код и хочет одинаковых правил во всех репозиториях.
-Языки: C#/.NET (самый полный набор), Go, TypeScript/JavaScript и Ansible — 33 проверки;
+Языки: C#/.NET (самый полный набор), Go, TypeScript/JavaScript и Ansible — 35 проверок;
 `harness help` перечисляет их, `harness explain <check-id>` объясняет одну.
 
 ## Установка

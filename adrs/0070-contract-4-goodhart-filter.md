@@ -24,14 +24,15 @@ Accepted. Заменяет [ADR-0014](0014-frame-answers-are-self-reported.md), 
 3. **Упростить `adrs.shape`.** Сохранить структурный контракт (имена `NNNN-kebab-case.md`, непрерывная нумерация, дата, статус, ссылки `ADR-N`, допустимые H2). Удалить `wordLimit` и `tableRowLimit`. Заменить суммарный `fencedLineLimit` на лимит одного блока кода `fencedBlockLineLimit` (по умолчанию 20 строк).
 4. **Перевести `functions.csharp` и `functions.go` на собственные токены.** Заменить `ownLines` на `ownTokens` (лексические токены тела функции без комментариев, содержимого строковых литералов, вложенных функций и литералов данных; порог по умолчанию — 700 токенов). Переносы строк и пробелы на метрику не влияют.
 5. **Заменить анкету `frame.*` на `verify.entrypoint`.** Удалить секцию `answers` и 7 анкетных проверок (`frame.tests.*`, `frame.format`, `frame.lint`, `frame.build`, `frame.typecheck`). Заменить `frame.verify` на проверяемую по git-индексу `verify.entrypoint` (`settings."verify.entrypoint".path`, по умолчанию `"verify.sh"`): файл обязан быть tracked, иметь mode `100755`, быть непустым и содержать вызов `harness check` в некомментируемой строке.
+6. **Добавить детерминированные проверки гигиены TypeScript.** Добавить `tsconfig.typescript` (проверяет покрытие `.ts`/`.tsx` файлом `tsconfig.json` и включённый `compilerOptions.strict: true` без ослабления `noImplicitAny`/`strictNullChecks`) и `lint-suppressions.typescript` (запрещает `@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable*`, `biome-ignore`, `oxlint-disable*`).
 
-`harness upgrade` переносит конфиг с 3.x на 4.0 автоматически: переносит `answers.verify.paths[0]` в `settings."verify.entrypoint".path`, удаляет `answers`, `comments.*`, `frame.*` и `applicability.yaml`, обновляет секции `adrs.shape` и `functions.*`.
+`harness upgrade` переносит конфиг с 3.x на 4.0 автоматически: переносит `answers.verify.paths[0]` в `settings."verify.entrypoint".path`, удаляет `answers`, `comments.*`, `frame.*` и `applicability.yaml`, обновляет секции `adrs.shape` и `functions.*`, добавляет `tsconfig.typescript` и `lint-suppressions.typescript` для репозиториев с осью `typescript`.
 
 ## Consequences
 
 ### Positive
 
-- Число поставляемых проверок сокращается с 44 до 33; каждая оставшаяся проверка фальсифицируется по git-индексу и устойчива к косметическим обходам.
+- Число поставляемых проверок сокращается с 44 до 35; каждая оставшаяся проверка фальсифицируется по git-индексу и устойчива к косметическим обходам.
 - Устраняется основной источник холостых итераций агента (удаление комментариев, вырезание пустых строк, усушка ADR и заполнение формальной анкеты).
 - Сборка `verify.sh` без бита исполняемости (`100644`) или без реального вызова `harness check` ловится статически до CI.
 

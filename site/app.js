@@ -83,6 +83,14 @@
       en: 'Cross-file TS/JS repetition after normalization; a window of 30 lines and 90 tokens.',
       ru: 'Межфайловые дубли TS/JS после нормализации; окно 30 строк и 90 токенов.',
     }, adr: ['0064-typescript-language-axis.md', '0045-duplication-required-by-default.md'] },
+    { id: 'tsconfig.typescript', group: 'langs', axis: 'typescript', summary: {
+      en: 'Every tracked TypeScript source is covered by a tsconfig.json, and every compiling tsconfig enables strict: true without weakening noImplicitAny or strictNullChecks.',
+      ru: 'Каждый tracked TypeScript-файл покрыт tsconfig.json, а каждый компилирующий tsconfig включает strict: true без ослабления noImplicitAny и strictNullChecks.',
+    }, adr: ['0070-contract-4-goodhart-filter.md'] },
+    { id: 'lint-suppressions.typescript', group: 'langs', axis: 'typescript', summary: {
+      en: 'Forbids address-level TypeScript and JS linter suppressions (@ts-ignore, @ts-nocheck, @ts-expect-error, eslint-disable*, biome-ignore, oxlint-disable*) in tracked comments.',
+      ru: 'Запрещает адресные подавления тайпчекера и линтеров TS/JS (@ts-ignore, @ts-nocheck, @ts-expect-error, eslint-disable*, biome-ignore, oxlint-disable*) в комментариях.',
+    }, adr: ['0070-contract-4-goodhart-filter.md'] },
     { id: 'types-per-file.csharp', group: 'csharp', axis: 'csharp', summary: {
       en: 'At most one top-level class or record per file, so the file name points at one concept.',
       ru: 'Не больше одного верхнеуровневого class или record в файле. Имя файла указывает на одно понятие.',

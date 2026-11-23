@@ -25,7 +25,7 @@ usually re-explained by hand into checks that run after every change:
 - `verify.entrypoint`: proves from the Git index that `verify.sh` is tracked, executable (`100755`) and invokes `harness check`.
 
 It is for maintainers who let agents change their code and want the same rules everywhere.
-Languages: C#/.NET (the fullest set), Go, TypeScript/JavaScript and Ansible — 33 checks;
+Languages: C#/.NET (the fullest set), Go, TypeScript/JavaScript and Ansible — 35 checks;
 `harness help` lists them, `harness explain <check-id>` explains one.
 
 ## Install

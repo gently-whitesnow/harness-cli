@@ -8,6 +8,7 @@ using Harness.Checks.DotNet;
 using Harness.Checks.Duplication;
 using Harness.Checks.Functions;
 using Harness.Checks.LintSuppressions;
+using Harness.Checks.TypeScript;
 using Harness.Checks.TypesPerFile;
 using Harness.Checks.Verify;
 using Harness.Git;
@@ -62,6 +63,8 @@ internal static class CheckRegistry
             new FunctionLinesCheck(new CSharpFunctionSources(CSharp)),
             new FunctionLinesCheck(new GoFunctionSources(Go)),
             new LintSuppressionsCheck(Go),
+            new TypeScriptLintSuppressionsCheck(),
+            new TypeScriptConfigCheck(),
             new AnsibleLintSuppressionsCheck(Ansible),
             new DependenciesCheck(AnsibleAnalyzer),
 

@@ -34,6 +34,8 @@ public sealed class Frame
         "dependencies.typescript",
         "complexity.typescript",
         "duplication.typescript",
+        "lint-suppressions.typescript",
+        "tsconfig.typescript",
         "duplication.csharp",
         "functions.csharp",
         "duplication.go",

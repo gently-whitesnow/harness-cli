@@ -677,6 +677,9 @@ internal static class FrameUpgrade
                    with per-block fencedBlockLineLimit (default 20)
           changed  functions.csharp and functions.go replace physical ownLines with lexical ownTokens
                    (default 700), invariant to line breaks and whitespace
+          added    tsconfig.typescript (strict: true & tsconfig.json coverage for TS sources) and
+                   lint-suppressions.typescript (blocks @ts-ignore/@ts-nocheck/@ts-expect-error,
+                   eslint-disable, biome-ignore and oxlint-disable)
         """),
     ];
 
@@ -796,6 +799,21 @@ internal static class FrameUpgrade
             {
                 policy.Remove(retired);
                 changed = true;
+            }
+
+            if (policy.ContainsKey("complexity.typescript"))
+            {
+                if (!policy.ContainsKey("lint-suppressions.typescript"))
+                {
+                    policy["lint-suppressions.typescript"] = "required";
+                    changed = true;
+                }
+
+                if (!policy.ContainsKey("tsconfig.typescript"))
+                {
+                    policy["tsconfig.typescript"] = "required";
+                    changed = true;
+                }
             }
         }
 
